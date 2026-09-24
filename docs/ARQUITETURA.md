@@ -1,0 +1,404 @@
+# J.A.R.V.I.S. — Arquitetura
+
+Documentação de como o sistema funciona e, principalmente, **por que** cada
+decisão foi tomada. O código não tem comentários; todo o raciocínio está aqui.
+
+Para aspectos de linguagem e bibliotecas, veja [PYTHON.md](PYTHON.md).
+
+---
+
+## 1. O que o sistema faz
+
+Monitora câmeras Tapo pela rede local, identifica quando há **movimento**,
+decide se esse movimento é uma **pessoa**, e grava um **vídeo** do evento.
+
+O objetivo final é reconhecimento facial, mas a camada de pessoa é
+deliberadamente independente disso: alguém de máscara, capacete ou de costas
+continua sendo detectado como humano.
+
+## 2. Pipeline
+
+```
+     RTSP (rede)
+         │
+         ▼
+   ┌───────────┐
+   │ cameras.py│  captura, mede FPS, desenha, orquestra
+   └─────┬─────┘
+         │ frame (numpy array 1080x1920x3)
+         ├──────────────────────────────────────┐
+         ▼                                      │
+   ┌───────────┐                                │
+   │ motion.py │  MOG2: algo mudou na cena?     │
+   └─────┬─────┘                                │
+         │ caixas de movimento                  │
+         ▼                                      │
+   ┌───────────┐                                │
+   │ people.py │  YOLO11: isso é uma pessoa?    │
+   └─────┬─────┘                                │
+         │ caixas de pessoa + confiança         │
+         ▼                                      ▼
+   ┌───────────────────────────────────────────────┐
+   │ clips.py   grava vídeo (com pré-gravação)     │
+   └───────────────────────────────────────────────┘
+```
+
+A lógica central é **funil de custo**: cada camada é mais cara que a anterior
+e só roda se a anterior encontrou algo.
+
+| Camada | Custo | Frequência |
+|---|---|---|
+| Captura + decode | baixo | todo frame |
+| MOG2 | ~3 ms | todo frame |
+| YOLO11 | ~24 ms | só com movimento, no máximo 4×/s |
+| Gravação | ~2 ms | só com pessoa |
+
+## 3. Estrutura de arquivos
+
+```
+jarvis/
+├── cameras.py        aplicação principal (loop, exibição, orquestração)
+├── motion.py         camada 1: detecção de movimento
+├── people.py         camada 2: detecção de humanos
+├── clips.py          camada 3: gravação de vídeo
+├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
+├── .env              credenciais das câmeras (NÃO versionado)
+├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
+├── clips/            vídeos gravados (não versionado)
+└── docs/
+    ├── ARQUITETURA.md
+    └── PYTHON.md
+```
+
+## 4. Configuração — `.env`
+
+Uma câmera = três linhas. O nome do rótulo vira o nome exibido e a pasta dos
+clipes.
+
+```
+CAM_FRONT_IP=192.168.0.116
+CAM_FRONT_USER=camerafront
+CAM_FRONT_PASSWORD=camerafront999
+```
+
+`build_camera_list()` varre as chaves procurando o padrão `CAM_<X>_IP` e monta
+a URL RTSP. Adicionar uma terceira câmera não exige mudança de código.
+
+A senha passa por `urllib.parse.quote()` porque caracteres como `@ : / #` são
+estruturais numa URL e quebrariam o parsing.
+
+---
+
+## 5. Camada de captura — `cameras.py`
+
+### 5.1 A linha mais frágil do projeto
+
+```python
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+
+import cv2
+```
+
+**Essa atribuição precisa vir ANTES do `import cv2`.** O FFmpeg lê essa
+variável de ambiente no carregamento do módulo. Se alguém "organizar" os
+imports e mover o `import cv2` para cima, a configuração é silenciosamente
+perdida — sem erro, sem aviso.
+
+O efeito é o RTSP cair para UDP, e câmeras Tapo perdem frames e derrubam a
+conexão em UDP. O sintoma aparece minutos depois, não na hora.
+
+### 5.2 Timeouts
+
+O padrão do FFmpeg é travar 30 segundos antes de desistir. Com duas câmeras,
+um erro de credencial custava um minuto de espera. Reduzido para 5 s:
+
+```python
+cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000
+cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000
+```
+
+### 5.3 `CAP_PROP_BUFFERSIZE = 1`
+
+Sem isso, o OpenCV enfileira frames. Se o processamento fica mais lento que o
+stream, a fila cresce e a imagem exibida atrasa progressivamente. Com buffer 1,
+frames antigos são descartados e vemos sempre o mais recente.
+
+### 5.4 Estimativa de FPS (e um bug real)
+
+Os clipes precisam saber a taxa real de frames, senão tocam na velocidade
+errada.
+
+A primeira versão media o intervalo entre leituras consecutivas. **Resultado em
+produção: 63 fps para uma câmera de 15 fps** — o clipe tocaria 4× acelerado.
+
+Causa: RTSP entrega em rajadas. Quando já existe frame no buffer, `read()`
+retorna instantaneamente, e esses intervalos quase-zero implicam FPS altíssimo.
+
+Correção — média sobre a execução inteira em vez de intervalos individuais:
+
+```python
+self.fps = min(max(self._reads / elapsed, 1.0), 60.0)
+```
+
+Medição após a correção: **16,6 fps**. Correto.
+
+O cálculo só começa após 2 segundos e 30 frames, para não usar a rajada
+inicial de frames em buffer como amostra.
+
+---
+
+## 6. Camada de movimento — `motion.py`
+
+### 6.1 Por que MOG2
+
+| Algoritmo | Avaliação |
+|---|---|
+| Diferença de frames | Simples, mas pega só as **bordas** do que se move e dispara com qualquer variação de luz. |
+| **MOG2** | **Escolhido.** Aprende o fundo e se adapta. Marca sombras separadamente, o que importa muito em ambiente externo. Rápido e já vem no OpenCV. |
+| KNN | Equivalente, segundo lugar. Troca de uma linha se o MOG2 falhar. |
+| GSOC | Melhor com fundos agitados, porém muito mais lento e exige `opencv-contrib-python`. |
+
+**Como o MOG2 funciona:** ele não guarda uma imagem de fundo. Para cada pixel
+guarda várias distribuições estatísticas ("misturas de gaussianas"), então um
+pixel pode ter mais de uma aparência normal — uma folha que balança, por
+exemplo. Pixel que não combina com nenhuma delas é movimento.
+
+### 6.2 Os passos de `detect()`
+
+1. **Reduz para 640 px de largura.** Movimento não precisa de resolução total;
+   a imagem menor é ~9× mais barata.
+2. **Desfoque gaussiano.** Sem ele, ruído de sensor e artefatos de compressão
+   viram milhares de pixels "em movimento".
+3. **`subtractor.apply()`** compara com o modelo **e atualiza o modelo**. Por
+   isso precisa rodar em todo frame, inclusive durante o aquecimento — senão o
+   modelo nunca aprende.
+4. **Limiar em 200.** A máscara usa 255 para movimento, 127 para sombra, 0 para
+   fundo. O corte em 200 descarta as sombras.
+5. **Descarta o frame se mais de 50% "mudou".** Isso não é um objeto se
+   movendo: é nuvem, sol ou a câmera entrando em modo noturno.
+6. **Abertura e dilatação.** A abertura apaga pontos isolados; a dilatação
+   cresce o que sobrou, unindo os fragmentos de uma mesma pessoa num só blob.
+   É também por isso que a caixa fica um pouco maior que o objeto.
+7. **Contornos + `boundingRect`.** Blobs com área menor que `MIN_AREA` são
+   ignorados. As coordenadas voltam para a escala do frame original.
+
+### 6.3 Aquecimento
+
+`WARMUP_FRAMES = 60` (~4 s). Antes disso tudo é "novidade" e o detector
+reportaria a cena inteira. O painel mostra `learning background`.
+
+### 6.4 Ajustes
+
+| Constante | Efeito |
+|---|---|
+| `MIN_AREA` | Aumentar ignora objetos pequenos/distantes. |
+| `varThreshold` | Aumentar deixa menos sensível a variação. |
+| `DETECT_WIDTH` | Aumentar melhora objetos distantes, custa CPU. |
+| `MAX_MOTION_FRACTION` | Tolerância a mudanças globais de iluminação. |
+
+### 6.5 Observação de campo
+
+Na sua câmera **Front**, medimos movimento em **80% dos frames** (vegetação,
+chuva ou ruído do infravermelho noturno). A camada de pessoa filtrou 100%
+disso. É exatamente o papel dela.
+
+---
+
+## 7. Camada de pessoas — `people.py`
+
+### 7.1 O que o YOLO faz aqui
+
+YOLO11 foi treinado com corpos humanos inteiros: forma, postura, membros,
+proporções. **Ele não tem noção de rosto.** Por isso máscara, capacete, capuz
+ou pessoa de costas continuam sendo detectados.
+
+`PERSON_CLASS = 0` é a classe `person` do dataset COCO (80 classes no total).
+
+### 7.2 Decisão de projeto: frame inteiro, não recorte
+
+A primeira versão recortava o frame na região do movimento e rodava o YOLO só
+nesse recorte. Teste revelou a falha:
+
+- Recorte de 192×192, pessoa ocupando quase a imagem toda.
+- O YOLO acertou "pessoa", mas **a caixa retornada ficou limitada ao recorte**:
+  153×115 em vez do corpo inteiro.
+
+Isso é um teto estrutural, não questão de ajuste. Pior: se o movimento pegar só
+as pernas, a caixa recortada **nunca** conterá a cabeça — justamente o que a
+futura camada de rosto precisa.
+
+**Solução:** YOLO roda no frame inteiro. O movimento serve como (a) gatilho e
+(b) filtro de relevância. Reteste com o mesmo blob minúsculo: caixa completa
+`120,202 → 1109,712`, confiança 0.92, batendo com o *ground truth*.
+
+### 7.3 Throttle
+
+YOLO custa ~24 ms nesta CPU. Rodar em todo frame comeria o orçamento e
+travaria o vídeo. `MIN_INTERVAL = 0.25` limita a 4 execuções por segundo por
+câmera, **reaproveitando a resposta anterior** no intervalo.
+
+Evidência de que funciona: a taxa de frames ficou em 12,7 fps antes e depois de
+adicionar o YOLO.
+
+### 7.4 Filtro de sobreposição
+
+`REQUIRE_MOTION_OVERLAP = True` descarta pessoas detectadas que não encostam em
+nenhuma caixa de movimento. Isso amarra a resposta ao evento que a disparou.
+
+**Limitação conhecida:** quem parar de se mover é absorvido pelo modelo de
+fundo e deixa de ser reportado. A solução é *tracking*, próxima camada.
+
+### 7.5 `drop_duplicates` e IoU
+
+Duas caixas podem descrever a mesma pessoa. "Mesma" é medido por **IoU**
+(*Intersection over Union*): área compartilhada dividida pela área combinada.
+0 = sem sobreposição, 1 = idênticas. Acima de 0.5, tratamos como uma só e
+mantemos a de maior confiança.
+
+### 7.6 Um modelo, várias câmeras
+
+`@lru_cache(maxsize=1)` em `load_model()` garante uma única instância do YOLO
+na memória. É o oposto do `MotionDetector`:
+
+| Componente | Estado | Instâncias |
+|---|---|---|
+| `MotionDetector` | modelo de fundo daquela câmera | **uma por câmera** |
+| `PersonDetector` | só throttle e último resultado | uma por câmera |
+| Modelo YOLO | nenhum | **uma compartilhada** |
+
+---
+
+## 8. Camada de gravação — `clips.py`
+
+### 8.1 Pré-gravação (o conceito central)
+
+Quando o YOLO confirma uma pessoa, a parte interessante — ela se aproximando —
+já passou. Um clipe que começa nesse instante perde o evento.
+
+Por isso `clips.py` mantém os **últimos 30 frames em memória o tempo todo**.
+Ao detectar alguém, esses frames são escritos no arquivo **primeiro**, e o
+clipe começa ~2 segundos antes da detecção.
+
+```python
+self.buffer = deque(maxlen=PRE_FRAMES)
+```
+
+`deque` com `maxlen` é um *ring buffer*: ao encher, o append descarta o mais
+antigo. A memória nunca cresce.
+
+**Custo de memória:** cada frame 1080p ocupa ~5,9 MB (1920 × 1080 × 3 bytes).
+30 frames ≈ **180 MB por câmera**. É a constante a reduzir se a RAM apertar no
+M900.
+
+**Validação:** no teste, cada frame recebeu um brilho igual ao seu número, a
+pessoa apareceu no frame 50, e o arquivo lido de volta começava no frame 20 —
+30 frames de pré-gravação reais.
+
+### 8.2 Quando o clipe termina
+
+Não no instante em que a pessoa some. A detecção oscila (alguém vira de lado,
+a confiança cai por um frame) e parar na hora fragmentaria um evento em dezenas
+de arquivos.
+
+- `POST_SECONDS = 5.0` — continua gravando por 5 s sem ninguém à vista.
+- `MAX_SECONDS = 60.0` — teto rígido, para um clipe nunca crescer sem controle.
+
+### 8.3 Codec
+
+`FOURCC = "mp4v"`. Testado e funcional.
+
+`avc1` (H.264) **não está disponível** nesta instalação: falta a DLL do
+OpenH264. O `mp4v` gera arquivos maiores que o H.264 geraria. Instalar a DLL é
+a otimização de maior impacto se o disco apertar.
+
+### 8.4 `release()` é obrigatório
+
+Um MP4 precisa do índice escrito no final. Encerrar o processo sem chamar
+`writer.release()` deixa o arquivo **inutilizável**. Por isso a saída do
+programa fecha qualquer clipe aberto antes de terminar.
+
+### 8.5 O gravador recebe o frame limpo
+
+Antes de qualquer caixa ser desenhada. O vídeo salvo não tem retângulos
+queimados na imagem — importante porque a camada de rosto vai reanalisar esse
+material.
+
+### 8.6 Armazenamento
+
+Medido: **6,4 MB para ~7 segundos** em 1080p com `mp4v` ≈ 1 MB/s.
+
+| Atividade diária | Por dia | Por ano |
+|---|---|---|
+| 5 min | ~285 MB | ~100 GB |
+
+Cabe nos 512 GB do M900, mas vai precisar de política de retenção.
+
+---
+
+## 9. Exibição
+
+`make_panel()` redimensiona cada frame para 480 px de altura e desenha por
+cima. As caixas chegam em pixels do frame original, então são multiplicadas
+por `scale` para caber no painel.
+
+| Elemento | Significado |
+|---|---|
+| Retângulo amarelo fino | Algo se moveu |
+| Retângulo verde grosso + confiança | Isso é uma pessoa |
+| Ponto vermelho + `REC` | Gravando |
+
+`np.hstack` cola os painéis lado a lado e **exige altura idêntica** — é a única
+razão de `make_panel` redimensionar.
+
+### 9.1 Fechar a janela no X
+
+O HighGUI do OpenCV não tem evento de fechamento. Ao clicar no X a janela é
+destruída, mas o `imshow` seguinte **cria outra**. Por isso perguntamos a cada
+frame se ela ainda existe:
+
+```python
+if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+    break
+```
+
+A verificação precisa vir **depois** de `cv2.waitKey(1)`, porque é o `waitKey`
+que processa a fila de eventos da interface — inclusive o clique no X.
+
+---
+
+## 10. Restrição importante das câmeras Tapo
+
+**A câmera suporta apenas duas destas três funções ao mesmo tempo:**
+
+1. Tapo Care (nuvem)
+2. Gravação em cartão SD
+3. NVR / NAS / ONVIF / **RTSP**
+
+Com Tapo Care + SD ativos, o RTSP é desativado silenciosamente. O sintoma é
+peculiar: `DESCRIBE` responde `200 OK` normalmente (é só metadado), mas o
+`SETUP` fecha a conexão sem sequer pedir autenticação.
+
+**Desativar a gravação no app não basta — o cartão precisa ser removido
+fisicamente.** Alternativa: desligar o Tapo Care.
+
+`probe_rtsp.py` diagnostica isso mostrando cada etapa do handshake:
+
+```
+uv run probe_rtsp.py 192.168.0.116 camerafront camerafront999 stream1
+```
+
+---
+
+## 11. Estado atual e próximos passos
+
+**Funcionando:** captura RTSP, movimento, detecção de humanos, gravação com
+pré-roll, interface lado a lado.
+
+**Próximos passos naturais:**
+
+1. **Tracking** — manter a identidade de uma pessoa entre frames. Resolve o
+   caso de quem para de se mover e faz um clipe corresponder a uma pessoa.
+2. **Banco de eventos** (SQLite) — tornar os clipes pesquisáveis.
+3. **Retenção** — apagar clipes antigos automaticamente.
+4. **Reconhecimento facial** — SCRFD + ArcFace sobre as caixas de pessoa.
+5. **Deploy no M900** — exportar o modelo para OpenVINO INT8.
