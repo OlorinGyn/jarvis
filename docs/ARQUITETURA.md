@@ -22,24 +22,25 @@ continua sendo detectado como humano.
      RTSP (rede)
          │
          ▼
-   ┌───────────┐
-   │ cameras.py│  captura, mede FPS, desenha, orquestra
-   └─────┬─────┘
-         │ frame (numpy array 1080x1920x3)
-         ├──────────────────────────────────────┐
-         ▼                                      │
-   ┌───────────┐                                │
-   │ motion.py │  MOG2: algo mudou na cena?     │
-   └─────┬─────┘                                │
-         │ caixas de movimento                  │
-         ▼                                      │
-   ┌───────────┐                                │
-   │ people.py │  YOLO11: pessoa ou animal?     │
-   └─────┬─────┘                                │
-         │ Detection(x,y,w,h,conf,label)        │
-         ▼                                      ▼
+   ┌────────────┐
+   │ capture.py │  um ffmpeg por câmera, duas saídas
+   └──┬──────┬──┘
+      │      └── -c copy ──► segmentos de 4 s (pacotes originais)
+      │                                    │
+      │ frames 960x540 (bgr24 via pipe)    │
+      ▼                                    │
+   ┌───────────┐                           │
+   │ motion.py │  MOG2 + confirmação       │
+   └─────┬─────┘                           │
+         │ caixas de movimento             │
+         ▼                                 │
+   ┌───────────┐                           │
+   │ people.py │  YOLO11: pessoa/animal    │
+   └─────┬─────┘                           │
+         │ Detection(x,y,w,h,conf,label)   │
+         ▼                                 ▼
    ┌───────────────────────────────────────────────┐
-   │ clips.py   vídeo H.264 + miniatura + JSON     │
+   │ clips.py   concat -c copy + miniatura + JSON  │
    └─────────────────────┬─────────────────────────┘
                          │ metadados
                          ▼
@@ -47,6 +48,9 @@ continua sendo detectado como humano.
                    │   ui.py   │  menu lateral, tela Records
                    └───────────┘
 ```
+
+O vídeo salvo **nunca passa pelo Python**: ele vai dos pacotes da câmera direto
+para o disco. O Python só vê frames pequenos, para decidir quando gravar.
 
 A lógica central é **funil de custo**: cada camada é mais cara que a anterior
 e só roda se a anterior encontrou algo.
@@ -63,15 +67,18 @@ e só roda se a anterior encontrou algo.
 ```
 jarvis/
 ├── cameras.py        aplicação principal (loop, exibição, orquestração)
+├── capture.py        ffmpeg por câmera: segmentos originais + frames
 ├── motion.py         camada 1: detecção de movimento
 ├── people.py         camada 2: detecção de pessoas e animais
-├── clips.py          camada 3: gravação, miniatura, compressão, metadados
+├── clips.py          camada 3: eventos, montagem sem perda, metadados
 ├── ui.py             menu lateral e tela de gravações
 ├── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
 ├── .env              credenciais das câmeras (NÃO versionado)
 ├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
-├── clips/            vídeos gravados (não versionado)
+├── clips/            gravações (não versionado)
+│   ├── _buffer/      segmentos rotativos por câmera, apagados sozinhos
+│   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
 └── docs/
     ├── ARQUITETURA.md
     └── PYTHON.md
@@ -117,61 +124,112 @@ estruturais numa URL e quebrariam o parsing.
 
 ---
 
-## 5. Camada de captura — `cameras.py`
+## 5. Camada de captura — `capture.py`
 
-### 5.1 A linha mais frágil do projeto
+### 5.1 Por que o ffmpeg e não o OpenCV
 
-```python
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+Esta camada foi reescrita em 26/09/2026. A versão anterior usava
+`cv2.VideoCapture`, o que obrigava a recodificar o vídeo para salvá-lo — o
+OpenCV entrega frames decodificados, nunca os pacotes originais.
 
-import cv2
+Medição que motivou a troca, 10 s da câmera Back:
+
+| O que era gravado | Tamanho | Qualidade |
+|---|---|---|
+| **Stream original da câmera** | **579 KB** | **perfeita** |
+| Pipeline antigo (mp4v → H.264 CRF 26) | 725 KB | 3 gerações de perda |
+| Recodificado em alta qualidade (CRF 18) | 1919 KB | quase perfeita |
+| H.264 sem perda (lossless) | 5089 KB | perfeita |
+
+O arquivo antigo era **25% maior que o original e com pior qualidade**. Gastava
+CPU para piorar as duas coisas: a câmera já entrega H.264 a 463 kbps com
+encoder de hardware, e material já comprimido resiste a comprimir de novo.
+
+**Sobre compactar tipo zip:** medido no arquivo real, ZIP ganha 5,2% e LZMA
+11,1%. Vídeo já é comprimido — a entropia foi removida pelo codec, então o
+compactador acha pouca redundância. Guardar o stream original economiza 20% e
+dá qualidade perfeita, sem etapa de descompactar.
+
+### 5.2 Uma conexão, duas saídas
+
+A câmera aceita **apenas uma sessão RTSP**. Testado: com o OpenCV conectado, um
+segundo cliente recebe `406 Not Acceptable` e não abre nada.
+
+Isso força a arquitetura: um único processo ffmpeg por câmera tem que servir
+aos dois propósitos ao mesmo tempo.
+
+```
+                    ┌─ -c copy ──────────► segmentos de 4 s em disco
+RTSP ──► ffmpeg ────┤                       (pacotes originais, sem tocar)
+                    └─ rawvideo 960x540 ──► pipe:1 ──► Python (análise)
 ```
 
-**Essa atribuição precisa vir ANTES do `import cv2`.** O FFmpeg lê essa
-variável de ambiente no carregamento do módulo. Se alguém "organizar" os
-imports e mover o `import cv2` para cima, a configuração é silenciosamente
-perdida — sem erro, sem aviso.
+É a arquitetura que NVRs reais usam; o Frigate faz exactamente isso.
 
-O efeito é o RTSP cair para UDP, e câmeras Tapo perdem frames e derrubam a
-conexão em UDP. O sintoma aparece minutos depois, não na hora.
+Vantagens sobre a versão anterior:
 
-### 5.2 Timeouts
+| | Antes | Agora |
+|---|---|---|
+| Qualidade em disco | 3 gerações de perda | idêntica à câmera |
+| Tamanho | 72 KB/s | **48 KB/s** |
+| Decodificação 1080p | em Python | só no ffmpeg, uma vez |
+| RAM por câmera | ~180 MB (buffer de frames) | ~0 |
+| Pré-gravação | frames em memória | segmentos já em disco |
 
-O padrão do FFmpeg é travar 30 segundos antes de desistir. Com duas câmeras,
-um erro de credencial custava um minuto de espera. Reduzido para 5 s:
+Os ganhos de CPU e RAM são justamente o que o M900 precisa.
 
-```python
-cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000
-cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000
-```
+### 5.3 Frames de análise
 
-### 5.3 `CAP_PROP_BUFFERSIZE = 1`
-
-Sem isso, o OpenCV enfileira frames. Se o processamento fica mais lento que o
-stream, a fila cresce e a imagem exibida atrasa progressivamente. Com buffer 1,
-frames antigos são descartados e vemos sempre o mais recente.
-
-### 5.4 Estimativa de FPS (e um bug real)
-
-Os clipes precisam saber a taxa real de frames, senão tocam na velocidade
-errada.
-
-A primeira versão media o intervalo entre leituras consecutivas. **Resultado em
-produção: 63 fps para uma câmera de 15 fps** — o clipe tocaria 4× acelerado.
-
-Causa: RTSP entrega em rajadas. Quando já existe frame no buffer, `read()`
-retorna instantaneamente, e esses intervalos quase-zero implicam FPS altíssimo.
-
-Correção — média sobre a execução inteira em vez de intervalos individuais:
+`ANALYSIS_WIDTH/HEIGHT = 960x540` e `ANALYSIS_FPS = 10`. O ffmpeg redimensiona
+e entrega em `bgr24`, que é exatamente o layout que o numpy e o OpenCV esperam:
 
 ```python
-self.fps = min(max(self._reads / elapsed, 1.0), 60.0)
+frame = np.frombuffer(data, np.uint8).reshape(ANALYSIS_HEIGHT, ANALYSIS_WIDTH, 3)
 ```
 
-Medição após a correção: **16,6 fps**. Correto.
+Cada frame tem `960 * 540 * 3 = 1.555.200` bytes, e o leitor pede exatamente
+essa quantidade. Medido na prática: ~8 fps, porque o laço gasta tempo entre
+leituras.
 
-O cálculo só começa após 2 segundos e 30 frames, para não usar a rajada
-inicial de frames em buffer como amostra.
+`np.frombuffer` devolve um array **somente leitura** (aponta para os bytes do
+pipe), por isso há um `.copy()` — sem ele, qualquer desenho no frame falharia.
+
+**Implicação para a camada de rosto:** 960x540 é suficiente para movimento e
+para o YOLO, mas um rosto que tem 60 px em 1080p fica com 30 px aqui, pouco
+para o ArcFace. Quando essa camada chegar, o recorte em alta resolução deve
+sair **do segmento gravado**, usando o horário exato do evento. Os segmentos
+são a fonte de alta qualidade.
+
+### 5.4 Buffer rotativo de segmentos
+
+Os segmentos têm nome de horário (`-strftime 1`), o que torna a seleção
+trivial. `covering(start, end)` devolve os segmentos **inteiros** que
+intersectam a janela pedida:
+
+```python
+following = found[index + 1][0] if index + 1 < len(found) else datetime.max
+if following > start and stamp < end:
+```
+
+Como se guardam segmentos inteiros, a pré-gravação sai de graça: o segmento
+anterior ao evento já contém a aproximação da pessoa. Em troca, o clipe tem até
+4 s extras em cada ponta, o que é justamente o que se quer.
+
+`prune()` apaga segmentos com mais de `BUFFER_SECONDS = 240`, **nunca o mais
+recente** — o ffmpeg ainda está escrevendo nele. Enquanto um evento está aberto,
+`protect_from` impede que os segmentos dele sejam apagados. Medido: ~1 MB por
+câmera para 20 s de buffer.
+
+### 5.5 Reinício automático
+
+Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
+e o processo é recriado após `RESTART_SECONDS`. O painel mostra `no signal`
+nesse intervalo, e a aplicação não cai.
+
+Como o OpenCV não faz mais captura, a variável de ambiente
+`OPENCV_FFMPEG_CAPTURE_OPTIONS` desapareceu — junto com a fragilidade de ter
+uma atribuição obrigatória antes do `import cv2`. O transporte TCP agora é um
+argumento explícito do ffmpeg (`-rtsp_transport tcp`).
 
 ---
 
@@ -436,52 +494,55 @@ na memória. É o oposto do `MotionDetector`:
 
 ## 8. Camada de gravação — `clips.py`
 
-### 8.1 Pré-gravação (o conceito central)
+### 8.1 Nada é recodificado
 
-Quando o YOLO confirma uma pessoa, a parte interessante — ela se aproximando —
-já passou. Um clipe que começa nesse instante perde o evento.
-
-Por isso `clips.py` mantém os **últimos 30 frames em memória o tempo todo**.
-Ao detectar alguém, esses frames são escritos no arquivo **primeiro**, e o
-clipe começa ~2 segundos antes da detecção.
-
-```python
-self.buffer = deque(maxlen=PRE_FRAMES)
-```
-
-`deque` com `maxlen` é um *ring buffer*: ao encher, o append descarta o mais
-antigo. A memória nunca cresce.
-
-**Custo de memória:** cada frame 1080p ocupa ~5,9 MB (1920 × 1080 × 3 bytes).
-30 frames ≈ **180 MB por câmera**. É a constante a reduzir se a RAM apertar no
-M900.
-
-**Validação:** no teste, cada frame recebeu um brilho igual ao seu número, a
-pessoa apareceu no frame 50, e o arquivo lido de volta começava no frame 20 —
-30 frames de pré-gravação reais.
-
-### 8.2 Quando o clipe termina
-
-Não no instante em que a pessoa some. A detecção oscila (alguém vira de lado,
-a confiança cai por um frame) e parar na hora fragmentaria um evento em dezenas
-de arquivos.
-
-- `POST_SECONDS = 5.0` — continua gravando por 5 s sem ninguém à vista.
-- `MAX_SECONDS = 60.0` — teto rígido, para um clipe nunca crescer sem controle.
-
-### 8.3 Três arquivos por evento
-
-Cada gravação produz três arquivos com o mesmo nome base:
+O clipe é montado concatenando **segmentos inteiros** do buffer com o
+`concat` do ffmpeg em modo `-c copy`:
 
 ```
-19-17-30.mp4     vídeo já em H.264
+ffmpeg -f concat -safe 0 -i lista.txt -c copy -movflags +faststart saida.mp4
+```
+
+`-c copy` significa "copie os pacotes, não decodifique nem recodifique". O
+resultado é bit a bit o que a câmera produziu — não existe qualidade melhor
+possível, porque a câmera já é a fonte.
+
+**Verificado:** o clipe montado sai em **1920x1080, h264, 270 frames em 18 s**,
+enquanto a análise roda em 960x540. Se houvesse recodificação a partir dos
+frames de análise, o vídeo sairia em 960x540.
+
+### 8.2 Quando o evento começa e termina
+
+- Começa no primeiro frame com sujeito detectado. Nesse instante a **miniatura**
+  é salva e o horário é registrado.
+- `POST_SECONDS = 5.0` — o evento fecha após 5 s sem ninguém. A detecção oscila,
+  e parar na hora fragmentaria um evento em dezenas de arquivos.
+- `MAX_SECONDS = 60.0` — teto rígido.
+- `PRE_SECONDS = 6.0` — quanto se pede para trás ao selecionar segmentos.
+
+### 8.3 Atraso de montagem
+
+O ffmpeg só finaliza um segmento quando começa o próximo. Montar o clipe
+imediatamente pegaria o último segmento incompleto, então a montagem roda numa
+**thread** que espera `ASSEMBLY_DELAY = SEGMENT_SECONDS + 2` segundos antes de
+concatenar.
+
+Os metadados, porém, são escritos **na hora**, para a gravação aparecer na tela
+Records imediatamente. O vídeo materializa poucos segundos depois; por isso
+`reveal()` cai para a pasta do dia se o `.mp4` ainda não existir.
+
+`wait_for_jobs()` é chamado na saída para nenhuma montagem ficar pela metade.
+
+### 8.4 Três arquivos por evento
+
+```
+19-17-30.mp4     vídeo, montado dos segmentos originais
 19-17-30.jpg     o primeiro frame em que o sujeito apareceu
 19-17-30.json    metadados
 ```
 
-O `.jpg` é gravado no instante do `_start()`, ou seja, **é exatamente o frame
-que disparou a gravação** — com as caixas desenhadas e reduzido para
-`THUMB_WIDTH = 480` px (~20 KB). É o que a tela Records usa.
+A miniatura vem do frame de análise (960x540) reduzido para `THUMB_WIDTH = 480`
+— nenhuma perda prática, já que ela é sempre exibida pequena.
 
 O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
 
@@ -490,9 +551,7 @@ O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
   "camera": "Front",
   "started_at": "2026-09-26T19:52:06",
   "time": "19:52:06",
-  "seconds": 6.9,
-  "frames": 134,
-  "fps": 15.0,
+  "seconds": 12.1,
   "labels": ["dog", "person"],
   "best_confidence": 0.88,
   "video": "19-52-06.mp4",
@@ -501,61 +560,32 @@ O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
 }
 ```
 
-`labels` acumula tudo que apareceu durante o clipe, não só no primeiro frame.
+`labels` acumula tudo que apareceu durante o evento, não só no primeiro frame.
 
-Um JSON por clipe é deliberadamente simples e inspecionável — o passo natural
-depois é SQLite, quando houver busca por pessoa e por período.
+Um JSON por clipe é deliberadamente simples e inspecionável — o passo seguinte
+é SQLite, quando houver busca por pessoa e por período.
 
-### 8.4 Compressão
+### 8.5 A miniatura é a única que leva caixas desenhadas
 
-O `VideoWriter` do OpenCV grava em `mp4v` (MPEG-4 Parte 2), que é ineficiente.
-`avc1` (H.264) **não funciona** aqui: falta a DLL do OpenH264.
+O **vídeo** nunca é tocado, então não há como sujá-lo. A **miniatura** recebe as
+caixas de propósito, porque a função dela é ser folheada por um humano.
 
-A solução foi o pacote `imageio-ffmpeg`, que empacota um binário estático do
-FFmpeg 7.1 com `libx264`. O fluxo:
+Esse era um cuidado explícito na versão antiga (o gravador recebia o frame
+limpo); agora é consequência da arquitetura, o que é melhor: não depende de
+ninguém lembrar.
 
-1. Grava em `<nome>.raw.mp4` com `mp4v` (rápido, sem travar o loop).
-2. Ao fechar o clipe, uma **thread** recodifica para H.264 e apaga o raw.
+### 8.6 Armazenamento
 
-```
-ffmpeg -i raw.mp4 -c:v libx264 -preset veryfast -crf 26 -movflags +faststart
-```
+Medido no clipe real montado: **859 KB para 18 s** = ~48 KB/s.
 
-**Medido: 1017 KB → 336 KB, 3,0× menor**, com o vídeo final reproduzindo os
-mesmos 64 frames.
-
-A recodificação roda em thread porque levaria 1–3 s e congelaria a imagem ao
-vivo. Aqui o GIL não estorva: o trabalho está num **subprocesso**, então a
-thread só espera. As threads não são daemon, e `wait_for_compression()` é
-chamado na saída para nenhum arquivo ficar pela metade.
-
-`CRF = 26` controla a qualidade (menor = melhor e maior); `PRESET = "veryfast"`
-troca compressão por CPU. No M900 vale medir e possivelmente subir o preset.
-
-### 8.5 `release()` é obrigatório
-
-Um MP4 precisa do índice escrito no final. Encerrar o processo sem chamar
-`writer.release()` deixa o arquivo **inutilizável**. Por isso a saída do
-programa fecha qualquer clipe aberto antes de terminar.
-
-### 8.6 O vídeo recebe o frame limpo
-
-O **vídeo** é gravado antes de qualquer caixa ser desenhada, porque a camada de
-rosto vai reanalisar esse material e retângulos queimados o corromperiam.
-
-A **miniatura** é a exceção: nela as caixas são desenhadas de propósito, já que
-sua função é ser folheada por um humano na tela Records.
-
-### 8.7 Armazenamento
-
-Com `mp4v` eram ~1 MB/s. Com H.264 a 3× menos, cerca de **0,33 MB/s**:
-
-| Atividade diária | Por dia | Por ano |
+| | Antes | Agora |
 |---|---|---|
-| 5 min | ~95 MB | ~35 GB |
+| Taxa | 72 KB/s | **48 KB/s** |
+| 5 min/dia | ~285 MB | **~14 MB** |
+| Por ano | ~100 GB | **~5 GB** |
 
-Os 512 GB do M900 comportam anos disso, mas retenção automática segue sendo um
-próximo passo.
+O buffer rotativo custa à parte: ~1 MB por câmera para 20 s, ou ~12 MB por
+câmera com `BUFFER_SECONDS = 240`.
 
 ---
 
@@ -856,9 +886,10 @@ uv run probe_rtsp.py <ip> <usuario> <senha> stream1
 
 ## 11. Estado atual e próximos passos
 
-**Funcionando:** captura RTSP, movimento com confirmação temporal, detecção de
-pessoas e animais, supressão de cenário estático, gravação com pré-roll em
-H.264, miniatura e metadados por evento, menu lateral com Live e Records.
+**Funcionando:** captura via ffmpeg sem recodificar, movimento com confirmação
+temporal, detecção de pessoas e animais, supressão de cenário estático,
+gravação com pré-roll montada dos segmentos originais, miniatura e metadados
+por evento, menu lateral com Live e Records com calendário.
 
 **Próximos passos naturais:**
 

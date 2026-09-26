@@ -1,27 +1,29 @@
 """Live viewer: shows every configured camera side by side.
 
+Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
+on disk is the camera's own stream with no re-encoding.
+
 See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
 Press q or close the window to quit.
 """
 
-import os
 import time
 from pathlib import Path
 from urllib.parse import quote
-
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 
 import cv2
 import numpy as np
 
 import ui
-from clips import ClipRecorder, DEFAULT_FPS, wait_for_compression
+from capture import FFmpegCamera
+from clips import BUFFER_DIR, EventRecorder, wait_for_jobs
 from motion import MotionDetector
 from people import SubjectDetector
 
 STREAM = "stream1"
 PANEL_HEIGHT = 480
 WINDOW = "J.A.R.V.I.S."
+PRUNE_SECONDS = 10.0
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
@@ -56,44 +58,24 @@ def build_camera_list(env):
     return sorted(cameras)
 
 
-def open_camera(url):
-    """Open an RTSP stream with short timeouts and no frame queue."""
-    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG, [
-        cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000,
-        cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000,
-    ])
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    return cap
-
-
 class Camera:
-    """One camera: its stream plus the per-camera state of every layer."""
+    """One camera: its ffmpeg stream plus the per-camera state of every layer."""
 
     def __init__(self, label, url):
         self.label = label
-        self.cap = open_camera(url)
+        self.stream = FFmpegCamera(label, url, BUFFER_DIR)
         self.motion = MotionDetector()
         self.subjects = SubjectDetector()
-        self.recorder = ClipRecorder(label)
-        self.fps = DEFAULT_FPS
-        self._reads = 0
-        self._first_read = None
+        self.recorder = EventRecorder(self.stream)
 
     def read(self):
-        """Return the next frame and refine the frame-rate estimate."""
-        ok, frame = self.cap.read()
-        if not ok:
-            return None
+        return self.stream.read()
 
-        now = time.monotonic()
-        self._reads += 1
-        if self._first_read is None:
-            self._first_read = now
-        else:
-            elapsed = now - self._first_read
-            if elapsed > 2 and self._reads > 30:
-                self.fps = min(max(self._reads / elapsed, 1.0), 60.0)
-        return frame
+    def prune(self):
+        self.stream.prune(self.recorder.protect_from)
+
+    def close(self):
+        self.stream.stop()
 
     def status(self, motion_boxes, subjects):
         """Build the caption shown on this camera's panel."""
@@ -162,17 +144,16 @@ def main():
     if not cameras:
         raise SystemExit("No CAM_* entries found in .env")
 
-    print(f"Connecting to {len(cameras)} camera(s)...")
+    print(f"Starting {len(cameras)} camera(s)...")
     streams = [Camera(label, url) for label, url in cameras]
-
     for cam in streams:
-        state = "ok" if cam.cap.isOpened() else "FAILED"
-        print(f"  {cam.label}: {state}")
+        print(f"  {cam.label}: {'ok' if cam.stream.alive else 'FAILED'}")
 
     interface = ui.Interface()
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(WINDOW, interface.on_mouse)
     cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
+    last_prune = time.monotonic()
 
     while True:
         panels = []
@@ -185,15 +166,21 @@ def main():
             motion_boxes = cam.motion.detect(frame)
             subjects = cam.subjects.detect(frame, motion_boxes)
 
-            saved = cam.recorder.update(frame, subjects, cam.fps)
+            saved = cam.recorder.update(frame, subjects)
             if saved:
                 names = ", ".join(saved["labels"]) or "?"
-                print(f"  saved {saved['path'].name} [{names}] "
-                      f"({saved['frames']} frames, {saved['seconds']}s, {saved['reason']})")
+                print(f"  event {saved['path'].name} [{names}] "
+                      f"{saved['seconds']}s, {saved['reason']}")
 
             panels.append(make_panel(frame, cam.status(motion_boxes, subjects),
                                      PANEL_HEIGHT, motion_boxes, subjects,
                                      cam.recorder.recording))
+
+        now = time.monotonic()
+        if now - last_prune > PRUNE_SECONDS:
+            last_prune = now
+            for cam in streams:
+                cam.prune()
 
         live = np.hstack(panels)
         cv2.imshow(WINDOW, interface.render(live, window_size(live)))
@@ -207,11 +194,12 @@ def main():
     for cam in streams:
         saved = cam.recorder.stop("shutdown")
         if saved:
-            print(f"  saved {saved['path'].name} ({saved['frames']} frames)")
-        cam.cap.release()
+            print(f"  event {saved['path'].name}")
 
-    print("Finishing video compression...")
-    wait_for_compression()
+    print("Assembling pending clips...")
+    wait_for_jobs()
+    for cam in streams:
+        cam.close()
     cv2.destroyAllWindows()
 
 

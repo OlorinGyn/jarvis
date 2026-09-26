@@ -1,11 +1,15 @@
-"""Records a video whenever a person or animal is present, plus a thumbnail.
+"""Turns detections into saved events, assembled from the camera's own packets.
+
+Nothing is re-encoded. The clip is built by concatenating whole segments from
+the rolling buffer with ffmpeg's stream copy, so the saved video is bit for bit
+what the camera produced.
 
 Each event produces three files sharing one basename:
-    19-17-30.mp4    the video, re-encoded to H.264
+    19-17-30.mp4    the video, assembled losslessly from segments
     19-17-30.jpg    the first frame where the subject appeared
     19-17-30.json   metadata, so the Records screen never decodes a video
 
-See docs/ARQUITETURA.md for the ring-buffer, compression and metadata design.
+See docs/ARQUITETURA.md sections 5 and 8.
 """
 
 import json
@@ -13,23 +17,20 @@ import os
 import subprocess
 import threading
 import time
-from collections import deque
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import cv2
-import imageio_ffmpeg
+
+from capture import SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = Path("clips")
-PRE_FRAMES = 30
+BUFFER_DIR = CLIP_DIR / "_buffer"
+PRE_SECONDS = 6.0
 POST_SECONDS = 5.0
 MAX_SECONDS = 60.0
-FOURCC = "mp4v"
-DEFAULT_FPS = 12.0
 THUMB_WIDTH = 480
-COMPRESS = True
-CRF = 26
-PRESET = "veryfast"
+ASSEMBLY_DELAY = SEGMENT_SECONDS + 2.0
 
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
@@ -37,39 +38,42 @@ CYAN = (255, 200, 0)
 _jobs = []
 
 
-def _ffmpeg():
-    return imageio_ffmpeg.get_ffmpeg_exe()
-
-
-def _compress(raw, final):
-    """Re-encode to H.264, then remove the raw file."""
-    command = [
-        _ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
-        "-i", str(raw),
-        "-c:v", "libx264", "-preset", PRESET, "-crf", str(CRF),
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-        str(final),
-    ]
-    try:
-        subprocess.run(command, check=True, capture_output=True)
-        raw.unlink(missing_ok=True)
-    except Exception:
-        raw.replace(final)
-
-
-def wait_for_compression():
-    """Block until every background encode has finished."""
+def wait_for_jobs():
+    """Block until every pending clip assembly has finished."""
     for job in list(_jobs):
         job.join()
     _jobs.clear()
 
 
-def available_days():
-    """Every day that has at least one recording with metadata.
+def _concat(segments, destination):
+    """Join whole segments into one file without re-encoding."""
+    listing = destination.with_suffix(".txt")
+    listing.write_text(
+        "".join(f"file '{p.resolve().as_posix()}'\n" for p in segments),
+        encoding="utf-8")
+    try:
+        subprocess.run(
+            [ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
+             "-f", "concat", "-safe", "0", "-i", str(listing),
+             "-c", "copy", "-movflags", "+faststart", str(destination)],
+            check=True, capture_output=True)
+    except (subprocess.CalledProcessError, OSError):
+        pass
+    finally:
+        listing.unlink(missing_ok=True)
 
-    Counts .json sidecars rather than folders, so clips predating the metadata
-    format do not mark a day the Records screen would then show as empty.
-    """
+
+def _assemble(camera, start, end, destination):
+    """Wait for the final segment to close, then build the clip."""
+    time.sleep(ASSEMBLY_DELAY)
+    segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
+                               end + timedelta(seconds=POST_SECONDS))
+    if segments:
+        _concat(segments, destination)
+
+
+def available_days():
+    """Every day that has at least one recording with metadata."""
     days = set()
     for sidecar in CLIP_DIR.glob("*/*/*.json"):
         try:
@@ -82,8 +86,8 @@ def available_days():
 def reveal(path):
     """Open the system file browser with this file selected."""
     path = Path(path)
-    candidates = (path, path.with_name(path.stem + ".raw.mp4"), path.parent)
-    target = next((c for c in candidates if c.exists()), path.parent).resolve()
+    target = next((c for c in (path, path.parent) if c.exists()), path.parent)
+    target = target.resolve()
     try:
         if os.name == "nt":
             subprocess.Popen(f'explorer /select,"{target}"')
@@ -110,37 +114,34 @@ def list_clips(day=None):
     return entries
 
 
-class ClipRecorder:
-    """Records clips for ONE camera."""
+class EventRecorder:
+    """Decides when an event starts and ends, then has its clip assembled."""
 
-    def __init__(self, label, directory=CLIP_DIR):
-        self.label = label
+    def __init__(self, camera, directory=CLIP_DIR):
+        self.camera = camera
+        self.label = camera.label
         self.directory = Path(directory)
-        self.buffer = deque(maxlen=PRE_FRAMES)
-        self.writer = None
-        self.raw_path = None
-        self.final_path = None
-        self.started = 0.0
+        self.recording = False
         self.started_at = None
+        self.started = 0.0
         self.last_subject = 0.0
-        self.frames_written = 0
-        self.fps = DEFAULT_FPS
+        self.base = None
         self.labels = set()
         self.best_confidence = 0.0
 
     @property
-    def recording(self):
-        return self.writer is not None
+    def protect_from(self):
+        """Segments newer than this must survive pruning."""
+        return self.started_at if self.recording else None
 
-    def update(self, frame, subjects, fps=DEFAULT_FPS):
-        """Feed one frame. Returns a summary dict when a clip has just closed."""
+    def update(self, frame, subjects):
+        """Feed one analysis frame. Returns a summary when an event closes."""
         now = time.monotonic()
-        self.buffer.append(frame)
 
         if subjects:
             self.last_subject = now
             if not self.recording:
-                self._start(frame, subjects, fps)
+                self._start(frame, subjects)
             self.labels.update(s.label for s in subjects)
             self.best_confidence = max(
                 [self.best_confidence] + [s.confidence for s in subjects])
@@ -148,96 +149,73 @@ class ClipRecorder:
         if not self.recording:
             return None
 
-        self.writer.write(frame)
-        self.frames_written += 1
-
         quiet = now - self.last_subject > POST_SECONDS
         too_long = now - self.started > MAX_SECONDS
         if quiet or too_long:
             return self.stop("max length" if too_long else "subject left")
         return None
 
-    def _start(self, frame, subjects, fps):
-        """Open the file, save the thumbnail, write the pre-roll."""
+    def _start(self, frame, subjects):
         stamp = datetime.now()
         folder = self.directory / self.label / stamp.strftime("%Y-%m-%d")
         folder.mkdir(parents=True, exist_ok=True)
-        base = folder / stamp.strftime("%H-%M-%S")
+        self.base = folder / stamp.strftime("%H-%M-%S")
 
-        self.final_path = base.with_suffix(".mp4")
-        self.raw_path = base.with_suffix(".raw.mp4")
         self.started_at = stamp
-        self.fps = fps
+        self.started = time.monotonic()
+        self.recording = True
         self.labels = set()
         self.best_confidence = 0.0
+        self._save_thumbnail(frame, subjects)
 
-        self._save_thumbnail(frame, subjects, base.with_suffix(".jpg"))
-
-        height, width = frame.shape[:2]
-        target = self.raw_path if COMPRESS else self.final_path
-        self.writer = cv2.VideoWriter(
-            str(target), cv2.VideoWriter_fourcc(*FOURCC),
-            max(round(fps), 1), (width, height))
-
-        self.started = time.monotonic()
-        self.frames_written = 0
-
-        for past in list(self.buffer)[:-1]:
-            if past.shape == frame.shape:
-                self.writer.write(past)
-                self.frames_written += 1
-
-    def _save_thumbnail(self, frame, subjects, path):
-        """Save the first frame the subject appeared in, with its boxes marked."""
+    def _save_thumbnail(self, frame, subjects):
         shot = frame.copy()
+        height, width = shot.shape[:2]
         for subject in subjects:
             colour = GREEN if subject.is_person else CYAN
             cv2.rectangle(shot, (subject.x, subject.y),
-                          (subject.x + subject.w, subject.y + subject.h), colour, 4)
+                          (subject.x + subject.w, subject.y + subject.h), colour, 3)
             cv2.putText(shot, f"{subject.label} {subject.confidence:.2f}",
-                        (subject.x, max(subject.y - 12, 26)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, colour, 3)
+                        (subject.x, max(subject.y - 8, 20)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, colour, 2)
 
-        height, width = shot.shape[:2]
         scale = THUMB_WIDTH / width
         shot = cv2.resize(shot, (THUMB_WIDTH, int(height * scale)))
-        cv2.imwrite(str(path), shot, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        cv2.imwrite(str(self.base.with_suffix(".jpg")), shot,
+                    [cv2.IMWRITE_JPEG_QUALITY, 88])
 
-    def _write_metadata(self, seconds, reason):
+    def _write_metadata(self, ended_at, reason):
+        seconds = (ended_at - self.started_at).total_seconds() + PRE_SECONDS
         meta = {
             "camera": self.label,
             "started_at": self.started_at.isoformat(timespec="seconds"),
             "time": self.started_at.strftime("%H:%M:%S"),
             "seconds": round(seconds, 1),
-            "frames": self.frames_written,
-            "fps": round(self.fps, 1),
             "labels": sorted(self.labels),
             "best_confidence": round(self.best_confidence, 2),
-            "video": self.final_path.name,
-            "thumbnail": self.final_path.with_suffix(".jpg").name,
+            "video": self.base.with_suffix(".mp4").name,
+            "thumbnail": self.base.with_suffix(".jpg").name,
             "reason": reason,
         }
-        self.final_path.with_suffix(".json").write_text(
+        self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
 
     def stop(self, reason="stopped"):
-        """Finalise the file. Returns a summary, or None if not recording."""
+        """Close the event and queue its clip for assembly."""
         if not self.recording:
             return None
-        self.writer.release()
-        seconds = time.monotonic() - self.started
-        meta = self._write_metadata(seconds, reason)
+        ended_at = datetime.now()
+        meta = self._write_metadata(ended_at, reason)
+        destination = self.base.with_suffix(".mp4")
 
-        if COMPRESS:
-            job = threading.Thread(target=_compress,
-                                   args=(self.raw_path, self.final_path))
-            job.start()
-            _jobs.append(job)
+        job = threading.Thread(target=_assemble,
+                               args=(self.camera, self.started_at, ended_at,
+                                     destination))
+        job.start()
+        _jobs.append(job)
 
-        self.writer = None
+        self.recording = False
         summary = dict(meta)
-        summary["path"] = self.final_path
-        self.raw_path = None
-        self.final_path = None
+        summary["path"] = destination
         return summary

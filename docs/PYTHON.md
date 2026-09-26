@@ -638,6 +638,31 @@ Vindo de Java, o análogo é a diferença entre `ProcessBuilder(List<String>)` e
 Regra prática: **lista por padrão; string só quando o programa de destino tem
 sintaxe própria** que o quoting automático estragaria.
 
+## 17.6 Ler binário de um pipe e virar array sem copiar
+
+A captura lê frames crus da saída do ffmpeg. O padrão vale conhecer:
+
+```python
+data = self.process.stdout.read(self.frame_bytes)
+frame = np.frombuffer(data, np.uint8).reshape(HEIGHT, WIDTH, 3).copy()
+```
+
+Três pontos:
+
+**`read(n)` num pipe binário devolve exatamente `n` bytes** ou menos só no fim
+do stream. Como cada frame tem tamanho fixo (`960*540*3`), pedir esse número
+sincroniza o leitor com o produtor sem precisar de cabeçalho ou delimitador.
+
+**`np.frombuffer` não copia nada.** Ele cria um array que *aponta* para os bytes
+já em memória — diferente de `np.array(data)`, que copiaria. Para 1,5 MB por
+frame a 10 fps, a diferença importa.
+
+**Justamente por não copiar, o array é somente leitura**, porque `bytes` é
+imutável em Python. Qualquer tentativa de desenhar nele levanta exceção, e é por
+isso que há um `.copy()` explícito no fim. É o inverso da intuição de Java:
+aqui o "cast" barato vem com imutabilidade, e você paga a cópia só quando
+precisa escrever.
+
 ## 18. Memória
 
 Python usa contagem de referências **mais** um coletor para ciclos. Objetos
