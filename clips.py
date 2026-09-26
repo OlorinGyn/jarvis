@@ -9,6 +9,7 @@ See docs/ARQUITETURA.md for the ring-buffer, compression and metadata design.
 """
 
 import json
+import os
 import subprocess
 import threading
 import time
@@ -61,6 +62,34 @@ def wait_for_compression():
     for job in list(_jobs):
         job.join()
     _jobs.clear()
+
+
+def available_days():
+    """Every day that has at least one recording with metadata.
+
+    Counts .json sidecars rather than folders, so clips predating the metadata
+    format do not mark a day the Records screen would then show as empty.
+    """
+    days = set()
+    for sidecar in CLIP_DIR.glob("*/*/*.json"):
+        try:
+            days.add(datetime.strptime(sidecar.parent.name, "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    return days
+
+
+def reveal(path):
+    """Open the system file browser with this file selected."""
+    path = Path(path)
+    target = path if path.exists() else path.parent
+    try:
+        if os.name == "nt":
+            subprocess.Popen(["explorer", f"/select,{target.resolve()}"])
+        else:
+            subprocess.Popen(["xdg-open", str(target.parent)])
+    except OSError:
+        pass
 
 
 def list_clips(day=None):

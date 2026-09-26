@@ -564,17 +564,59 @@ próximo passo.
 A janela inteira é uma única imagem numpy, montada assim:
 
 ```
-┌──────────┬────────────────────────────────────┐
-│ J.A.R.V. │                                    │
-│          │   conteúdo: Live  ou  Records      │
-│ ▸ Live   │                                    │
-│   Records│                                    │
-└──────────┴────────────────────────────────────┘
-  190 px            largura dos painéis
+┌──────────┬──────────────────────────┬──────────┐
+│ J.A.R.V. │                          │ 09/2026  │
+│          │   Live (letterbox)       │ D S T Q  │
+│ ▸ Live   │        ou                │  1 2 3 4 │
+│   Records│   grade de gravações     │  5 6 7 8 │
+└──────────┴──────────────────────────┴──────────┘
+  190 px                                 250 px
+                                      (só em Records)
 ```
 
 O HighGUI do OpenCV **não tem widgets**: não existe botão, lista, scroll nem
 gerenciador de layout. Tudo é retângulo e texto desenhados à mão.
+
+### 9.0 Proporção ao redimensionar a janela
+
+**Problema:** esticar a janela esticava o vídeo, deformando a imagem.
+
+A causa é que o backend do HighGUI escala a imagem recebida para preencher a
+janela, sem respeitar proporção. A flag que deveria resolver não serve:
+
+```python
+cv2.WINDOW_KEEPRATIO   # vale 0 — idêntico a WINDOW_NORMAL
+cv2.WINDOW_FREERATIO   # vale 256
+```
+
+`WINDOW_KEEPRATIO` ser `0` significa que combiná-la com `WINDOW_NORMAL` não
+muda nada; ela só tem efeito no backend Qt, e aqui o backend é o Win32.
+
+**Solução:** perguntar o tamanho da janela e devolver uma imagem **exatamente
+daquele tamanho**. Se a imagem já tem a dimensão da janela, não há nada para o
+backend escalar:
+
+```python
+_, _, width, height = cv2.getWindowImageRect(WINDOW)
+```
+
+Dentro dessa tela, `letterbox()` desenha o vídeo na maior escala que couber
+preservando a proporção, centralizado, com barras escuras nas sobras:
+
+```python
+scale = min(area_w / w, area_h / h)
+```
+
+Medido: numa janela 1000×900, o vídeo de proporção 3,554 é desenhado como
+810×227 — proporção 3,568, a diferença vindo só do arredondamento a pixel
+inteiro.
+
+**Benefício colateral importante:** como a imagem tem o tamanho exato da
+janela, as coordenadas do mouse passam a mapear 1:1 com o que é desenhado. Sem
+isso, os cliques sairiam deslocados sempre que a janela fosse redimensionada.
+
+`getWindowImageRect` devolve valores inválidos antes da janela existir, então
+`window_size()` cai para o tamanho natural do layout nesse caso.
 
 ### 9.1 Modo imediato: nada persiste
 
@@ -602,33 +644,38 @@ recalculado 15 vezes por segundo — daí os cuidados de cache da seção 9.3.
 
 ### 9.2 Cliques: coordenadas cruas e uma pegadinha
 
-`cv2.setMouseCallback(WINDOW, sidebar.on_mouse)` entrega `(event, x, y, flags,
-param)`. Nenhum elemento "sabe" que foi clicado: chega o pixel e você mesmo
-descobre o que há ali.
+`cv2.setMouseCallback(WINDOW, interface.on_mouse)` entrega `(event, x, y,
+flags, param)`. Nenhum elemento "sabe" que foi clicado: chega o pixel e você
+mesmo descobre o que há ali.
 
-Passar um **método ligado** (`sidebar.on_mouse`, não uma função solta) é o
-truque que evita variável global: o `self` já carrega o estado da seleção.
+Passar um **método ligado** (`interface.on_mouse`, não uma função solta) é o
+truque que evita variável global: o `self` já carrega todo o estado da tela.
+
+Com menu, calendário e cartões, o teste de clique por aritmética não escala.
+A `Interface` usa então **regiões de clique registradas no desenho** — o padrão
+clássico de interface em modo imediato:
 
 ```python
-if event != cv2.EVENT_LBUTTONDOWN or x > SIDEBAR_WIDTH:
-    return
-index = (y - ITEM_TOP) // ITEM_HEIGHT
-if 0 <= index < len(ITEMS):
-    self.view = ITEMS[index]
+self._region((x, y, x + card_w, bottom), "open", entry["video_path"])
 ```
 
-A divisão inteira transforma o `y` em índice de item. E aqui mora uma diferença
-real entre Python e Java:
+Cada elemento, ao ser desenhado, grava seu retângulo e a ação correspondente.
+A lista é zerada a cada frame, no início do `render()`, e o clique percorre as
+regiões procurando a primeira que o contém. Medido: a tela Records registra
+**41 regiões** (2 do menu, 2 setas de mês, 30 dias, 7 cartões).
 
-| Clique em `y=80` (acima do primeiro item) | Resultado |
+As ações são pares `(tipo, payload)`:
+
+| Ação | Efeito |
 |---|---|
-| Python: `(80 - 92) // 54` | **-1** — rejeitado pelo `0 <= index` |
-| Java/C#: `(80 - 92) / 54` | **0** — selecionaria "Live" por engano |
+| `view` | Troca entre Live e Records |
+| `day` | Seleciona o dia exibido |
+| `month` | Avança ou volta um mês no calendário |
+| `open` | Abre o arquivo no Explorer |
 
-O `//` do Python arredonda para baixo (para menos infinito); o `/` de Java e C#
-trunca para zero. Se este código fosse traduzido literalmente para Java,
-qualquer clique na faixa entre o título e o primeiro item ativaria "Live".
-Ver também PYTHON.md seção 19.
+A vantagem é que layout e interação nunca saem de sincronia: quem move um
+cartão move automaticamente sua área clicável, porque é a mesma linha de código
+que faz as duas coisas.
 
 ### 9.3 Tela Live
 
@@ -648,8 +695,48 @@ razão de `make_panel` redimensionar.
 
 ### 9.4 Tela Records
 
-Mostra as gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
+Abre nas gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
 vídeo é aberto ou decodificado, o que era o requisito.
+
+Cada cartão mostra:
+
+| Campo | Onde |
+|---|---|
+| **Hora de início** (`HH:MM:SS`) | em destaque, fonte maior |
+| Câmera | à direita, na mesma linha |
+| Rótulos (`person`, `dog`) | verde para pessoa, ciano para animal |
+| Duração em segundos | ao lado dos rótulos |
+
+**Clicar num cartão abre o arquivo no Explorer**, já selecionado na pasta:
+
+```python
+subprocess.Popen(["explorer", f"/select,{target.resolve()}"])
+```
+
+O `/select` faz o Explorer abrir a pasta **com o arquivo destacado**, em vez de
+apenas abrir o diretório. É preciso caminho absoluto, daí o `resolve()`. O
+Explorer retorna código de saída 1 mesmo quando funciona, então usamos `Popen`
+e ignoramos o retorno em vez de `run(check=True)`.
+
+### 9.4.1 Calendário
+
+À direita, 250 px fixos, para alcançar dias anteriores:
+
+- Setas `<` e `>` navegam meses. `shift_month()` faz a conta em meses absolutos
+  para atravessar a virada de ano corretamente — testado: 01/2026 menos 1 dá
+  12/2025, e 12/2026 mais 1 dá 01/2027.
+- Semana começa no **domingo** (`calendar.Calendar(firstweekday=6)`), seguindo
+  a convenção brasileira. `monthdayscalendar()` devolve as semanas já com zeros
+  no lugar dos dias de fora do mês.
+- **Dia selecionado:** preenchido em verde.
+- **Hoje:** contorno azul.
+- **Dias com gravação:** número em branco, negrito, com um ponto verde abaixo.
+  Os demais ficam apagados.
+
+`available_days()` conta **os arquivos `.json`**, não as pastas. Isso é
+deliberado: clipes gravados antes do formato de metadados existir deixariam a
+pasta do dia no disco, o calendário marcaria o dia como tendo gravação, e ao
+clicar a tela apareceria vazia.
 
 **Colar uma imagem dentro de outra é atribuição de slice**, não uma API de
 blit:

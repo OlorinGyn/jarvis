@@ -144,6 +144,17 @@ def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=Fal
     return frame
 
 
+def window_size(live):
+    """The window's current pixel size, falling back to the natural layout."""
+    try:
+        _, _, width, height = cv2.getWindowImageRect(WINDOW)
+    except cv2.error:
+        width = height = 0
+    if width < 240 or height < 160:
+        return ui.SIDEBAR_WIDTH + live.shape[1], live.shape[0]
+    return width, height
+
+
 def main():
     env = load_env()
     cameras = build_camera_list(env)
@@ -158,10 +169,10 @@ def main():
         state = "ok" if cam.cap.isOpened() else "FAILED"
         print(f"  {cam.label}: {state}")
 
-    sidebar = ui.Sidebar()
-    records = ui.RecordsView()
+    interface = ui.Interface()
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
-    cv2.setMouseCallback(WINDOW, sidebar.on_mouse)
+    cv2.setMouseCallback(WINDOW, interface.on_mouse)
+    cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
 
     while True:
         panels = []
@@ -185,12 +196,7 @@ def main():
                                      cam.recorder.recording))
 
         live = np.hstack(panels)
-        if sidebar.view == "Records":
-            content = records.render(live.shape[1], live.shape[0])
-        else:
-            content = live
-
-        cv2.imshow(WINDOW, ui.with_sidebar(content, sidebar))
+        cv2.imshow(WINDOW, interface.render(live, window_size(live)))
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
