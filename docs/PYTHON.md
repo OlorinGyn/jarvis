@@ -623,10 +623,32 @@ então a liberação fica manual.
 
 ---
 
-## 19. Armadilhas resumidas
+## 19. Diferenças finais e armadilhas
+
+### 19.1 `//` arredonda para baixo, não trunca
+
+A diferença mais silenciosa desta lista. Python tem dois operadores de divisão:
+`/` sempre devolve `float`, e `//` devolve inteiro **arredondado para menos
+infinito**. Java e C# truncam em direção ao zero.
+
+```python
+-12 // 54    # Python: -1
+(-12) / 54   # Java:    0
+```
+
+Isso não é teórico: o teste de clique do menu lateral em `ui.py` depende disso.
+Um clique acima do primeiro item gera `(80 - 92) // 54 == -1`, rejeitado pela
+checagem `0 <= index`. Traduzido literalmente para Java, o mesmo clique daria
+`0` e selecionaria "Live" por engano.
+
+Para truncar como em Java, use `int(a / b)`. Para o resto, `%` segue o sinal do
+divisor em Python (`-1 % 5 == 4`), ao contrário de Java (`-1 % 5 == -1`).
+
+### 19.2 Armadilhas resumidas
 
 | Armadilha | Detalhe |
 |---|---|
+| `//` | Arredonda para baixo; Java trunca para zero. |
 | `if not array` | Levanta exceção em numpy. Use `is None`. |
 | `shape` | É `(altura, largura)`, não `(largura, altura)`. |
 | Slice numpy | É *view*; escrever nele altera o original. |

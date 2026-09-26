@@ -573,16 +573,64 @@ A janela inteira é uma única imagem numpy, montada assim:
   190 px            largura dos painéis
 ```
 
-O HighGUI do OpenCV **não tem widgets**: não existe botão, lista ou scroll.
-Tudo é retângulo e texto desenhados à mão, e o clique chega por
-`cv2.setMouseCallback`. A classe `Sidebar` guarda qual tela está ativa e
-converte a coordenada do clique em índice de item:
+O HighGUI do OpenCV **não tem widgets**: não existe botão, lista, scroll nem
+gerenciador de layout. Tudo é retângulo e texto desenhados à mão.
+
+### 9.1 Modo imediato: nada persiste
+
+Vindo de Swing, WinForms ou WPF, o instinto é criar controles uma vez e deixar
+o framework mantê-los. Aqui é o oposto — é o modelo que jogos usam:
+
+**A cada volta do laço a janela é redesenhada do zero.** Não existe objeto
+"botão" guardado em lugar algum; existe apenas um array numpy que nasce, recebe
+pixels e é jogado na tela. No frame seguinte, outro array.
+
+A composição é literalmente concatenação de imagens:
 
 ```python
-index = (y - ITEM_TOP) // ITEM_HEIGHT
+bar = sidebar.draw(content.shape[0])
+return np.hstack([bar, content])
 ```
 
-### 9.1 Tela Live
+A barra nasce como um bloco de cor sólida, e o conteúdo é a tela Live ou a
+Records. As primitivas são todas chamadas do `cv2` sobre o array:
+`rectangle` (com espessura `-1` para preenchido), `putText`, `line`, `circle`.
+
+Consequência prática: **não há estado de interface para dessincronizar**. O que
+aparece é função direta dos dados daquele instante. Em troca, tudo é
+recalculado 15 vezes por segundo — daí os cuidados de cache da seção 9.3.
+
+### 9.2 Cliques: coordenadas cruas e uma pegadinha
+
+`cv2.setMouseCallback(WINDOW, sidebar.on_mouse)` entrega `(event, x, y, flags,
+param)`. Nenhum elemento "sabe" que foi clicado: chega o pixel e você mesmo
+descobre o que há ali.
+
+Passar um **método ligado** (`sidebar.on_mouse`, não uma função solta) é o
+truque que evita variável global: o `self` já carrega o estado da seleção.
+
+```python
+if event != cv2.EVENT_LBUTTONDOWN or x > SIDEBAR_WIDTH:
+    return
+index = (y - ITEM_TOP) // ITEM_HEIGHT
+if 0 <= index < len(ITEMS):
+    self.view = ITEMS[index]
+```
+
+A divisão inteira transforma o `y` em índice de item. E aqui mora uma diferença
+real entre Python e Java:
+
+| Clique em `y=80` (acima do primeiro item) | Resultado |
+|---|---|
+| Python: `(80 - 92) // 54` | **-1** — rejeitado pelo `0 <= index` |
+| Java/C#: `(80 - 92) / 54` | **0** — selecionaria "Live" por engano |
+
+O `//` do Python arredonda para baixo (para menos infinito); o `/` de Java e C#
+trunca para zero. Se este código fosse traduzido literalmente para Java,
+qualquer clique na faixa entre o título e o primeiro item ativaria "Live".
+Ver também PYTHON.md seção 19.
+
+### 9.3 Tela Live
 
 `make_panel()` redimensiona cada frame para 480 px de altura e desenha por
 cima. As caixas chegam em pixels do frame original, então são multiplicadas
@@ -598,27 +646,59 @@ por `scale` para caber no painel.
 `np.hstack` cola os painéis lado a lado e **exige altura idêntica** — é a única
 razão de `make_panel` redimensionar.
 
-### 9.2 Tela Records
+### 9.4 Tela Records
 
 Mostra as gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
 vídeo é aberto ou decodificado, o que era o requisito.
 
-Dois cuidados de desempenho, porque isso redesenha a 15 fps:
+**Colar uma imagem dentro de outra é atribuição de slice**, não uma API de
+blit:
+
+```python
+canvas[y:y + thumb_h, x:x + card_w] = self._thumbnail(entry, card_w, thumb_h)
+```
+
+O numpy exige que as formas coincidam exatamente, e é justamente por isso que
+`_thumbnail` redimensiona para `(card_w, thumb_h)` antes de devolver. Lembre
+que a indexação é `[linha, coluna]`, ou seja `y` antes de `x`.
+
+**O grid sai de aritmética simples.** A largura do cartão é o espaço livre
+dividido pelas colunas, descontando os vãos — para 5 colunas há 6 vãos (um em
+cada borda mais os internos):
+
+```python
+card_w = (width - CARD_GAP * (CARD_COLUMNS + 1)) // CARD_COLUMNS
+thumb_h = int(card_w * 9 / 16)
+```
+
+Medido: conteúdo de 1706 px gera cartões de 326 px com miniatura de 183 px.
+
+A posição de cada cartão vem de `divmod`, que devolve quociente e resto numa
+só chamada — o 8º cartão (índice 7) com 5 colunas cai em linha 1, coluna 2:
+
+```python
+row, column = divmod(index, CARD_COLUMNS)
+x = CARD_GAP + column * (card_w + CARD_GAP)
+y = top_offset + row * (card_h + CARD_GAP)
+```
+
+O número de linhas sai da altura disponível, então o grid se adapta se a janela
+mudar de tamanho. Se houver mais gravações do que cabem, aparece `+N mais` no
+canto — paginação é um próximo passo.
+
+**Dois cuidados de desempenho**, porque isso é redesenhado a 15 fps:
 
 - **Cache de miniaturas.** Decodificar JPEG a cada frame seria absurdo; as
-  imagens já redimensionadas ficam num dicionário indexado por caminho e
-  tamanho.
+  imagens já redimensionadas ficam num dicionário indexado por caminho **e
+  tamanho** — o tamanho entra na chave porque redimensionar a janela muda
+  `card_w` e invalidaria as imagens antigas.
 - **Rescan periódico.** A pasta só é relida a cada `RESCAN_SECONDS = 2.0`, não
   a cada frame.
-
-O grid é adaptativo: `CARD_COLUMNS = 5` e o número de linhas sai da altura
-disponível. Se houver mais gravações do que cabem, aparece `+N mais` no canto —
-paginação é um próximo passo.
 
 **As câmeras continuam sendo processadas enquanto a tela Records está aberta.**
 Detecção e gravação não param por causa da navegação; só a imagem exibida muda.
 
-### 9.3 Limitação: `cv2.putText` é só ASCII
+### 9.5 Limitação: `cv2.putText` é só ASCII
 
 As fontes Hershey do OpenCV não têm acentuação. Escrever `"gravação"` renderiza
 caracteres quebrados, e por isso todo texto da interface está **sem acento** de
@@ -627,7 +707,7 @@ propósito ("gravacao", "Nenhuma gravacao hoje").
 Acentos exigiriam desenhar texto com PIL (Pillow, já presente como dependência
 do ultralytics) e converter para numpy — possível, mas é uma camada extra.
 
-### 9.4 Fechar a janela no X
+### 9.6 Fechar a janela no X
 
 O HighGUI do OpenCV não tem evento de fechamento. Ao clicar no X a janela é
 destruída, mas o `imshow` seguinte **cria outra**. Por isso perguntamos a cada
