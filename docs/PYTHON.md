@@ -352,7 +352,25 @@ class ClipRecorder:
   campos como em Java.
 - Não há construtores sobrecarregados — use valores padrão.
 
-### 13.1 Armadilha: argumento padrão mutável
+### 13.1 `__slots__`
+
+```python
+class _Candidate:
+    __slots__ = ("box", "hits", "misses")
+```
+
+Por padrão, todo objeto Python carrega um `__dict__` — um dicionário de
+atributos — o que permite criar campos novos em tempo de execução. Isso custa
+memória e uma busca de hash a cada acesso.
+
+`__slots__` declara os campos de antemão: o objeto passa a usar posições fixas,
+como um campo de classe em Java. Fica menor e mais rápido, e atribuir um
+atributo não declarado vira `AttributeError` em vez de funcionar silenciosamente.
+
+Vale a pena quando há muitas instâncias pequenas e efêmeras — exatamente o caso
+dos candidatos a blob, criados e descartados a cada frame.
+
+### 13.2 Armadilha: argumento padrão mutável
 
 O valor padrão é avaliado **uma única vez**, na definição da função. Isto é um
 bug clássico:

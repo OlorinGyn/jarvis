@@ -61,6 +61,7 @@ jarvis/
 ├── motion.py         camada 1: detecção de movimento
 ├── people.py         camada 2: detecção de humanos
 ├── clips.py          camada 3: gravação de vídeo
+├── geometry.py       utilitários de caixas (sobreposição, IoU)
 ├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
 ├── .env              credenciais das câmeras (NÃO versionado)
 ├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
@@ -181,26 +182,73 @@ exemplo. Pixel que não combina com nenhuma delas é movimento.
    É também por isso que a caixa fica um pouco maior que o objeto.
 7. **Contornos + `boundingRect`.** Blobs com área menor que `MIN_AREA` são
    ignorados. As coordenadas voltam para a escala do frame original.
+8. **Confirmação temporal.** Ver 6.3 — nada é reportado antes de persistir.
 
-### 6.3 Aquecimento
+### 6.3 Confirmação temporal (o filtro contra insetos)
+
+O problema real medido em campo: à noite o infravermelho ilumina insetos
+próximos à lente, que viram blobs **grandes e brilhantes**. Medição de 30 s na
+câmera Front mostrou 12 blobs com área acima de 3200 — maiores que uma pessoa
+distante. Ou seja, **aumentar `MIN_AREA` nunca resolveria**: tamanho não separa
+inseto de pessoa.
+
+O que separa é **persistência**. Uma pessoa continua aproximadamente no mesmo
+lugar por vários frames; um inseto aparece, salta e some.
+
+`_confirm()` implementa um mini-rastreador:
+
+- Cada blob vira um `_Candidate` com contador de acertos (`hits`) e falhas
+  (`misses`).
+- A cada frame, os blobs novos são casados com os candidatos existentes por
+  **maior sobreposição**. Quem casa ganha `hits += 1`.
+- Candidato que não casa ganha `misses += 1` e é descartado após
+  `FORGET_FRAMES`.
+- Só é reportado quem atingiu `CONFIRM_FRAMES` acertos.
+
+Custo: uma pessoa é reportada 3 frames (~0,2 s) depois de aparecer. Como o
+gravador tem pré-gravação de 30 frames, nada de útil se perde no vídeo.
+
+**Limitação conhecida:** um inseto que fique pairando exatamente no mesmo ponto
+por vários frames acaba confirmado. O YOLO rejeita esse caso.
+
+Este também é o embrião do *tracking* que virá depois.
+
+### 6.4 Aquecimento
 
 `WARMUP_FRAMES = 60` (~4 s). Antes disso tudo é "novidade" e o detector
 reportaria a cena inteira. O painel mostra `learning background`.
 
-### 6.4 Ajustes
+### 6.5 Ajustes
 
 | Constante | Efeito |
 |---|---|
 | `MIN_AREA` | Aumentar ignora objetos pequenos/distantes. |
+| `CONFIRM_FRAMES` | Aumentar exige mais persistência: menos ruído, mais atraso. |
+| `FORGET_FRAMES` | Quanto tempo um candidato sobrevive sumindo (oclusão). |
+| `OPEN_ITERATIONS` | Aumentar apaga mais pontos isolados. |
 | `varThreshold` | Aumentar deixa menos sensível a variação. |
 | `DETECT_WIDTH` | Aumentar melhora objetos distantes, custa CPU. |
 | `MAX_MOTION_FRACTION` | Tolerância a mudanças globais de iluminação. |
 
-### 6.5 Observação de campo
+**Para ficar ainda menos sensível:** suba `CONFIRM_FRAMES` para 5. Para
+recuperar pessoas distantes, baixe `MIN_AREA` de volta para 400 — a confirmação
+temporal já segura o ruído sozinha.
 
-Na sua câmera **Front**, medimos movimento em **80% dos frames** (vegetação,
-chuva ou ruído do infravermelho noturno). A camada de pessoa filtrou 100%
-disso. É exatamente o papel dela.
+### 6.6 Resultados medidos
+
+Teste A/B sobre **exatamente os mesmos frames ao vivo**, 404 frames por câmera,
+à noite:
+
+| Câmera | Frames com movimento (antes) | Depois | Redução |
+|---|---|---|---|
+| Back | 2,5% | 1,2% | 50% |
+| Front | 8,7% | 1,5% | **83%** |
+
+Caixas totais na Front: **54 → 6**.
+
+Como o YOLO só roda quando há movimento, isso significa cerca de **6× menos
+inferências** na Front. Reduzir a sensibilidade aqui não custa desempenho: ela
+o melhora.
 
 ---
 
@@ -254,6 +302,10 @@ Duas caixas podem descrever a mesma pessoa. "Mesma" é medido por **IoU**
 (*Intersection over Union*): área compartilhada dividida pela área combinada.
 0 = sem sobreposição, 1 = idênticas. Acima de 0.5, tratamos como uma só e
 mantemos a de maior confiança.
+
+A função `iou()` vive em `geometry.py`, compartilhada com o rastreador de
+movimento, que usa `overlap_area()` do mesmo módulo para casar candidatos entre
+frames.
 
 ### 7.6 Um modelo, várias câmeras
 
