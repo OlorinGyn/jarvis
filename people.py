@@ -1,6 +1,9 @@
-"""Human detection with YOLO11, triggered by motion.
+"""Subject detection with YOLO11, triggered by motion.
 
-Detects bodies, never faces, so a covered face still counts as human.
+Detects people and animals by body shape, never by face, so a covered face
+still counts as human. Animal identity (which dog) is a separate problem and
+is not attempted here.
+
 See docs/ARQUITETURA.md for the design and its trade-offs.
 """
 
@@ -9,14 +12,17 @@ from functools import lru_cache
 
 from ultralytics import YOLO
 
-from geometry import iou, overlap_area
+from geometry import Detection, iou, overlap_area
 
 MODEL = "yolo11s.pt"
 PERSON_CLASS = 0
+ANIMAL_CLASSES = (14, 15, 16, 17, 18, 19)
+WANTED_CLASSES = (PERSON_CLASS,) + ANIMAL_CLASSES
 CONFIDENCE = 0.35
+ANIMAL_CONFIDENCE = 0.45
 IMG_SIZE = 640
 MIN_INTERVAL = 0.25
-SAME_PERSON_IOU = 0.5
+SAME_SUBJECT_IOU = 0.5
 REQUIRE_MOTION_OVERLAP = True
 STATIC_CENTRE_TOLERANCE = 12
 STATIC_SIZE_TOLERANCE = 0.30
@@ -46,21 +52,21 @@ def _same_place(a, b):
     return True
 
 
-def drop_duplicates(people):
-    """Keep the most confident box when two of them describe the same person."""
-    people = sorted(people, key=lambda p: p[4], reverse=True)
+def drop_duplicates(subjects):
+    """Keep the most confident box when two of them describe the same subject."""
+    subjects = sorted(subjects, key=lambda d: d.confidence, reverse=True)
     kept = []
-    for person in people:
+    for subject in subjects:
         for other in kept:
-            if iou(person, other) > SAME_PERSON_IOU:
+            if subject.label == other.label and iou(subject, other) > SAME_SUBJECT_IOU:
                 break
         else:
-            kept.append(person)
+            kept.append(subject)
     return kept
 
 
 class _StaticSpot:
-    """A place where a person-shaped thing keeps being detected without moving."""
+    """A place where a subject-shaped thing keeps being detected without moving."""
 
     __slots__ = ("box", "hits", "last_seen", "last_cycle")
 
@@ -75,62 +81,71 @@ class _StaticSpot:
         return self.hits >= STATIC_HITS
 
 
-class PersonDetector:
-    """Decides whether the motion on ONE camera is a human."""
+class SubjectDetector:
+    """Decides whether the motion on ONE camera is a person or an animal."""
 
     def __init__(self):
         self.model = load_model()
         self.last_run = 0.0
-        self.people = []
+        self.subjects = []
         self.static = []
         self.cycle = 0
 
-    def _note_position(self, person, now):
+    def _note_position(self, subject, now):
         """Record where this detection is, and return its static-spot record."""
         for spot in self.static:
-            if _same_place(spot.box, person):
+            if _same_place(spot.box, subject):
                 spot.hits += 1
                 spot.last_seen = now
                 spot.last_cycle = self.cycle
-                spot.box = person[:4]
+                spot.box = tuple(subject[:4])
                 return spot
-        spot = _StaticSpot(person[:4], now, self.cycle)
+        spot = _StaticSpot(tuple(subject[:4]), now, self.cycle)
         self.static.append(spot)
         return spot
 
-    def _reject_scenery(self, people, now):
+    def _reject_scenery(self, subjects, now):
         """Drop detections pinned to a spot that has not moved for STATIC_HITS cycles."""
         self.cycle += 1
         self.static = [s for s in self.static if now - s.last_seen < STATIC_TTL]
-        kept = [p for p in people if not self._note_position(p, now).is_scenery]
+        kept = [s for s in subjects if not self._note_position(s, now).is_scenery]
         for spot in self.static:
             if spot.last_cycle != self.cycle:
                 spot.hits = 0
         return kept
 
     def detect(self, frame, motion_boxes):
-        """Return a list of (x, y, w, h, confidence) in full-frame pixels."""
+        """Return a list of Detection in full-frame pixels."""
         if not motion_boxes:
-            self.people = []
-            return self.people
+            self.subjects = []
+            return self.subjects
 
         now = time.monotonic()
         if now - self.last_run < MIN_INTERVAL:
-            return self.people
+            return self.subjects
         self.last_run = now
 
-        result = self.model.predict(frame, classes=[PERSON_CLASS],
+        result = self.model.predict(frame, classes=list(WANTED_CLASSES),
                                     conf=CONFIDENCE, imgsz=IMG_SIZE,
                                     verbose=False)[0]
 
-        people = []
-        for (x1, y1, x2, y2), confidence in zip(result.boxes.xyxy.tolist(),
-                                                result.boxes.conf.tolist()):
+        found = []
+        for (x1, y1, x2, y2), confidence, class_id in zip(
+                result.boxes.xyxy.tolist(),
+                result.boxes.conf.tolist(),
+                result.boxes.cls.tolist()):
+            class_id = int(class_id)
+            if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
+                continue
             box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
             if REQUIRE_MOTION_OVERLAP and not any(
                     overlap_area(box, m) for m in motion_boxes):
                 continue
-            people.append(box + (float(confidence),))
+            found.append(Detection(*box, float(confidence),
+                                   self.model.names[class_id]))
 
-        self.people = self._reject_scenery(drop_duplicates(people), now)
-        return self.people
+        self.subjects = self._reject_scenery(drop_duplicates(found), now)
+        return self.subjects
+
+
+PersonDetector = SubjectDetector

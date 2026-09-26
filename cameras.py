@@ -14,9 +14,10 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 import cv2
 import numpy as np
 
-from clips import ClipRecorder, DEFAULT_FPS
+import ui
+from clips import ClipRecorder, DEFAULT_FPS, wait_for_compression
 from motion import MotionDetector
-from people import PersonDetector
+from people import SubjectDetector
 
 STREAM = "stream1"
 PANEL_HEIGHT = 480
@@ -25,6 +26,7 @@ WINDOW = "J.A.R.V.I.S."
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
 YELLOW = (0, 220, 255)
+CYAN = (255, 200, 0)
 
 
 def load_env(path=".env"):
@@ -71,7 +73,7 @@ class Camera:
         self.label = label
         self.cap = open_camera(url)
         self.motion = MotionDetector()
-        self.people = PersonDetector()
+        self.subjects = SubjectDetector()
         self.recorder = ClipRecorder(label)
         self.fps = DEFAULT_FPS
         self._reads = 0
@@ -93,18 +95,19 @@ class Camera:
                 self.fps = min(max(self._reads / elapsed, 1.0), 60.0)
         return frame
 
-    def status(self, motion_boxes, people):
+    def status(self, motion_boxes, subjects):
         """Build the caption shown on this camera's panel."""
         if self.motion.warming_up:
             return f"{self.label} - learning background"
-        if people:
-            return f"{self.label} - HUMAN ({len(people)})"
+        if subjects:
+            names = ", ".join(sorted({s.label for s in subjects}))
+            return f"{self.label} - {names.upper()} ({len(subjects)})"
         if motion_boxes:
             return f"{self.label} - motion ({len(motion_boxes)})"
         return self.label
 
 
-def make_panel(frame, label, height, motion_boxes=(), people=(), recording=False):
+def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=False):
     """Scale a frame to a fixed height and draw the label, boxes and REC dot."""
     if frame is None:
         frame = np.zeros((height, height * 16 // 9, 3), dtype=np.uint8)
@@ -124,12 +127,13 @@ def make_panel(frame, label, height, motion_boxes=(), people=(), recording=False
         top_left, bottom_right = to_panel(x, y, bw, bh)
         cv2.rectangle(frame, top_left, bottom_right, YELLOW, 1)
 
-    for x, y, bw, bh, confidence in people:
-        top_left, bottom_right = to_panel(x, y, bw, bh)
-        cv2.rectangle(frame, top_left, bottom_right, GREEN, 3)
-        cv2.putText(frame, f"person {confidence:.2f}",
+    for subject in subjects:
+        top_left, bottom_right = to_panel(subject.x, subject.y, subject.w, subject.h)
+        colour = GREEN if subject.is_person else CYAN
+        cv2.rectangle(frame, top_left, bottom_right, colour, 3)
+        cv2.putText(frame, f"{subject.label} {subject.confidence:.2f}",
                     (top_left[0], max(top_left[1] - 8, 14)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, GREEN, 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, colour, 2)
 
     cv2.putText(frame, label, (12, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.9, GREEN, 2)
 
@@ -154,7 +158,10 @@ def main():
         state = "ok" if cam.cap.isOpened() else "FAILED"
         print(f"  {cam.label}: {state}")
 
+    sidebar = ui.Sidebar()
+    records = ui.RecordsView()
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
+    cv2.setMouseCallback(WINDOW, sidebar.on_mouse)
 
     while True:
         panels = []
@@ -165,18 +172,25 @@ def main():
                 continue
 
             motion_boxes = cam.motion.detect(frame)
-            people = cam.people.detect(frame, motion_boxes)
+            subjects = cam.subjects.detect(frame, motion_boxes)
 
-            saved = cam.recorder.update(frame, people, cam.fps)
+            saved = cam.recorder.update(frame, subjects, cam.fps)
             if saved:
-                print(f"  saved {saved['path']} "
-                      f"({saved['frames']} frames, {saved['seconds']:.1f}s, {saved['reason']})")
+                names = ", ".join(saved["labels"]) or "?"
+                print(f"  saved {saved['path'].name} [{names}] "
+                      f"({saved['frames']} frames, {saved['seconds']}s, {saved['reason']})")
 
-            panels.append(make_panel(frame, cam.status(motion_boxes, people),
-                                     PANEL_HEIGHT, motion_boxes, people,
+            panels.append(make_panel(frame, cam.status(motion_boxes, subjects),
+                                     PANEL_HEIGHT, motion_boxes, subjects,
                                      cam.recorder.recording))
 
-        cv2.imshow(WINDOW, np.hstack(panels))
+        live = np.hstack(panels)
+        if sidebar.view == "Records":
+            content = records.render(live.shape[1], live.shape[0])
+        else:
+            content = live
+
+        cv2.imshow(WINDOW, ui.with_sidebar(content, sidebar))
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
@@ -187,8 +201,11 @@ def main():
     for cam in streams:
         saved = cam.recorder.stop("shutdown")
         if saved:
-            print(f"  saved {saved['path']} ({saved['frames']} frames)")
+            print(f"  saved {saved['path'].name} ({saved['frames']} frames)")
         cam.cap.release()
+
+    print("Finishing video compression...")
+    wait_for_compression()
     cv2.destroyAllWindows()
 
 

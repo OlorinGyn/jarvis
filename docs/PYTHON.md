@@ -174,7 +174,39 @@ return {"camera": self.label, "path": self.path, "frames": self.frames_written}
 Vindo de C#, é tentador criar uma classe para isso. Em Python, dict é aceitável
 e comum para dados de passagem.
 
-### 5.4 `deque` — o ring buffer
+### 5.4 `NamedTuple` — o `record` do Python
+
+```python
+class Detection(NamedTuple):
+    x: int
+    y: int
+    w: int
+    h: int
+    confidence: float
+    label: str
+
+    @property
+    def is_person(self):
+        return self.label == "person"
+```
+
+É o equivalente mais próximo de um `record` do Java ou de um `readonly struct`
+do C#: imutável, comparável por valor, com campos nomeados. E pode ter métodos
+e properties, como qualquer classe.
+
+O detalhe que importa aqui: **continua sendo uma tupla de verdade**. Indexação
+(`d[4]`), desempacotamento (`x, y, w, h, c, l = d`) e slicing (`d[:4]`) todos
+funcionam. Foi isso que permitiu introduzir o rótulo sem reescrever o código
+que já tratava detecções como `(x, y, w, h, conf)`.
+
+Os `x: int` são *type hints* — ignorados em runtime, como descrito na seção 3.
+Nada impede guardar uma string ali.
+
+Alternativa: `@dataclass`, que é mutável e não se comporta como tupla. Use
+`NamedTuple` quando o valor for um registro imutável; `dataclass` quando for um
+objeto com estado que muda.
+
+### 5.5 `deque` — o ring buffer
 
 ```python
 from collections import deque
@@ -405,6 +437,27 @@ separados, cada um com seu interpretador) — não threads.
 
 ---
 
+## 14.1 Threads valem a pena para subprocessos
+
+O GIL impede paralelismo de *bytecode Python*, mas não atrapalha em nada
+esperar por um processo externo. A compressão de vídeo usa isso:
+
+```python
+job = threading.Thread(target=_compress, args=(raw, final))
+job.start()
+```
+
+`_compress` chama `subprocess.run(ffmpeg...)`. O trabalho real acontece noutro
+processo, com seus próprios núcleos; a thread apenas bloqueia esperando. É o
+caso em que threading em Python funciona exatamente como você esperaria de
+Java ou C#.
+
+**Threads não-daemon.** Por padrão o interpretador **espera** as threads
+terminarem antes de encerrar. É desejável aqui (não queremos um vídeo pela
+metade), e é o oposto do padrão de `Thread` em Java, onde a JVM só espera
+threads não-daemon que você marcou como tal. Ainda assim chamamos
+`wait_for_compression()` explicitamente na saída, para poder avisar o usuário.
+
 ## 15. numpy — o tipo mais importante do projeto
 
 Uma imagem **é** um `numpy.ndarray`. Não existe classe `Image`.
@@ -532,6 +585,23 @@ A conversão é explícita em `people.py` — vale conferir sempre qual convenç
 uma API usa, porque as duas são comuns.
 
 ---
+
+## 17.4 `pathlib` em vez de concatenar strings
+
+```python
+base = folder / stamp.strftime("%H-%M-%S")
+self.final_path = base.with_suffix(".mp4")
+path.with_suffix(".jpg")
+folder.mkdir(parents=True, exist_ok=True)
+```
+
+O operador `/` é sobrecarregado para juntar caminhos, e `with_suffix()` troca a
+extensão — é assim que os três arquivos de um evento compartilham o nome base.
+`Path` é o equivalente de `java.nio.file.Path`, e substitui completamente a
+manipulação de strings com `os.path.join`.
+
+Um detalhe: `Path` não é string. Ao passar para uma API C++ como o
+`cv2.VideoWriter`, é preciso `str(path)`.
 
 ## 18. Memória
 

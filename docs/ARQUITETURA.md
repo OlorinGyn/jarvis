@@ -34,13 +34,18 @@ continua sendo detectado como humano.
          │ caixas de movimento                  │
          ▼                                      │
    ┌───────────┐                                │
-   │ people.py │  YOLO11: isso é uma pessoa?    │
+   │ people.py │  YOLO11: pessoa ou animal?     │
    └─────┬─────┘                                │
-         │ caixas de pessoa + confiança         │
+         │ Detection(x,y,w,h,conf,label)        │
          ▼                                      ▼
    ┌───────────────────────────────────────────────┐
-   │ clips.py   grava vídeo (com pré-gravação)     │
-   └───────────────────────────────────────────────┘
+   │ clips.py   vídeo H.264 + miniatura + JSON     │
+   └─────────────────────┬─────────────────────────┘
+                         │ metadados
+                         ▼
+                   ┌───────────┐
+                   │   ui.py   │  menu lateral, tela Records
+                   └───────────┘
 ```
 
 A lógica central é **funil de custo**: cada camada é mais cara que a anterior
@@ -59,9 +64,10 @@ e só roda se a anterior encontrou algo.
 jarvis/
 ├── cameras.py        aplicação principal (loop, exibição, orquestração)
 ├── motion.py         camada 1: detecção de movimento
-├── people.py         camada 2: detecção de humanos
-├── clips.py          camada 3: gravação de vídeo
-├── geometry.py       utilitários de caixas (sobreposição, IoU)
+├── people.py         camada 2: detecção de pessoas e animais
+├── clips.py          camada 3: gravação, miniatura, compressão, metadados
+├── ui.py             menu lateral e tela de gravações
+├── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
 ├── .env              credenciais das câmeras (NÃO versionado)
 ├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
@@ -98,9 +104,9 @@ Uma câmera = três linhas. O nome do rótulo vira o nome exibido e a pasta dos
 clipes.
 
 ```
-CAM_FRONT_IP=192.168.0.116
-CAM_FRONT_USER=camerafront
-CAM_FRONT_PASSWORD=camerafront999
+CAM_FRONT_IP=192.168.0.10
+CAM_FRONT_USER=<usuario-da-conta-da-camera>
+CAM_FRONT_PASSWORD=<senha-da-conta-da-camera>
 ```
 
 `build_camera_list()` varre as chaves procurando o padrão `CAM_<X>_IP` e monta
@@ -273,17 +279,64 @@ o melhora.
 
 ---
 
-## 7. Camada de pessoas — `people.py`
+## 7. Camada de sujeitos — `people.py`
 
 ### 7.1 O que o YOLO faz aqui
 
-YOLO11 foi treinado com corpos humanos inteiros: forma, postura, membros,
-proporções. **Ele não tem noção de rosto.** Por isso máscara, capacete, capuz
-ou pessoa de costas continuam sendo detectados.
+YOLO11 foi treinado com corpos inteiros: forma, postura, membros, proporções.
+**Ele não tem noção de rosto.** Por isso máscara, capacete, capuz ou pessoa de
+costas continuam sendo detectados.
 
-`PERSON_CLASS = 0` é a classe `person` do dataset COCO (80 classes no total).
+O COCO tem 80 classes. Vigiamos estas:
 
-### 7.2 Decisão de projeto: frame inteiro, não recorte
+```python
+PERSON_CLASS = 0
+ANIMAL_CLASSES = (14, 15, 16, 17, 18, 19)
+```
+
+Ou seja: `person`, `bird`, `cat`, `dog`, `horse`, `sheep`, `cow`. Bear, elephant
+e zebra existem no COCO e foram deixados de fora por serem implausíveis aqui —
+incluí-los só criaria falsos positivos exóticos.
+
+Animais usam um limiar de confiança mais alto (`ANIMAL_CONFIDENCE = 0.45` contra
+`CONFIDENCE = 0.35`), porque objetos de cena são confundidos com animais com
+mais facilidade que com pessoas.
+
+### 7.2 O tipo `Detection`
+
+Detecções deixaram de ser tuplas anônimas e viraram um `NamedTuple` em
+`geometry.py`:
+
+```python
+Detection(x, y, w, h, confidence, label)
+```
+
+Continua sendo uma tupla (indexável, desempacotável), então `d[:4]` ainda é a
+caixa, mas agora carrega o rótulo e expõe `d.is_person`. Foi o que permitiu o
+mesmo pipeline tratar pessoas e animais sem duplicar código.
+
+`drop_duplicates` só funde caixas **do mesmo rótulo** — um cachorro ao lado de
+uma pessoa se sobrepõe muito, e antes um dos dois seria descartado.
+
+### 7.3 Rosto de cachorro não funciona
+
+Registro explícito, porque é uma pergunta natural: **a camada de rosto planejada
+(SCRFD + ArcFace) não detecta rosto de animal.** Os dois modelos são treinados
+exclusivamente em faces humanas; o SCRFD procura a geometria de olhos/nariz/boca
+humanos, e o embedding do ArcFace não tem significado para outra espécie.
+
+Portanto:
+
+| Objetivo | Situação |
+|---|---|
+| Detectar que existe um cachorro | Funciona hoje (COCO classe 16) |
+| Saber *qual* cachorro | Problema separado (pet re-ID), sem modelo pronto bom |
+| Rosto humano | SCRFD + ArcFace, camada futura |
+
+Identificar cães individualmente exigiria um classificador treinado com fotos
+dos seus próprios animais — viável, mas é outra camada.
+
+### 7.4 Decisão de projeto: frame inteiro, não recorte
 
 A primeira versão recortava o frame na região do movimento e rodava o YOLO só
 nesse recorte. Teste revelou a falha:
@@ -300,7 +353,7 @@ futura camada de rosto precisa.
 (b) filtro de relevância. Reteste com o mesmo blob minúsculo: caixa completa
 `120,202 → 1109,712`, confiança 0.92, batendo com o *ground truth*.
 
-### 7.3 Throttle
+### 7.5 Throttle
 
 YOLO custa ~24 ms nesta CPU. Rodar em todo frame comeria o orçamento e
 travaria o vídeo. `MIN_INTERVAL = 0.25` limita a 4 execuções por segundo por
@@ -309,7 +362,7 @@ câmera, **reaproveitando a resposta anterior** no intervalo.
 Evidência de que funciona: a taxa de frames ficou em 12,7 fps antes e depois de
 adicionar o YOLO.
 
-### 7.4 Filtro de sobreposição
+### 7.6 Filtro de sobreposição
 
 `REQUIRE_MOTION_OVERLAP = True` descarta pessoas detectadas que não encostam em
 nenhuma caixa de movimento. Isso amarra a resposta ao evento que a disparou.
@@ -317,7 +370,7 @@ nenhuma caixa de movimento. Isso amarra a resposta ao evento que a disparou.
 **Limitação conhecida:** quem parar de se mover é absorvido pelo modelo de
 fundo e deixa de ser reportado. A solução é *tracking*, próxima camada.
 
-### 7.5 `drop_duplicates` e IoU
+### 7.7 `drop_duplicates` e IoU
 
 Duas caixas podem descrever a mesma pessoa. "Mesma" é medido por **IoU**
 (*Intersection over Union*): área compartilhada dividida pela área combinada.
@@ -328,7 +381,7 @@ A função `iou()` vive em `geometry.py`, compartilhada com o rastreador de
 movimento, que usa `overlap_area()` do mesmo módulo para casar candidatos entre
 frames.
 
-### 7.6 Supressão de cenário estático
+### 7.8 Supressão de cenário estático
 
 **O problema observado em campo (2026-09-26):** a câmera Front gravou dois
 clipes marcados como `person left`. Reanalisando os vídeos, o YOLO apontava
@@ -368,7 +421,7 @@ qualquer movimento a libera no mesmo instante. Para ser mais conservador, suba
 grava um clipe do objeto estático antes de aprendê-lo. Persistir a lista em
 disco resolveria isso e é um próximo passo natural.
 
-### 7.6 Um modelo, várias câmeras
+### 7.9 Um modelo, várias câmeras
 
 `@lru_cache(maxsize=1)` em `load_model()` garante uma única instância do YOLO
 na memória. É o oposto do `MotionDetector`:
@@ -416,39 +469,120 @@ de arquivos.
 - `POST_SECONDS = 5.0` — continua gravando por 5 s sem ninguém à vista.
 - `MAX_SECONDS = 60.0` — teto rígido, para um clipe nunca crescer sem controle.
 
-### 8.3 Codec
+### 8.3 Três arquivos por evento
 
-`FOURCC = "mp4v"`. Testado e funcional.
+Cada gravação produz três arquivos com o mesmo nome base:
 
-`avc1` (H.264) **não está disponível** nesta instalação: falta a DLL do
-OpenH264. O `mp4v` gera arquivos maiores que o H.264 geraria. Instalar a DLL é
-a otimização de maior impacto se o disco apertar.
+```
+19-17-30.mp4     vídeo já em H.264
+19-17-30.jpg     o primeiro frame em que o sujeito apareceu
+19-17-30.json    metadados
+```
 
-### 8.4 `release()` é obrigatório
+O `.jpg` é gravado no instante do `_start()`, ou seja, **é exatamente o frame
+que disparou a gravação** — com as caixas desenhadas e reduzido para
+`THUMB_WIDTH = 480` px (~20 KB). É o que a tela Records usa.
+
+O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
+
+```json
+{
+  "camera": "Front",
+  "started_at": "2026-09-26T19:52:06",
+  "time": "19:52:06",
+  "seconds": 6.9,
+  "frames": 134,
+  "fps": 15.0,
+  "labels": ["dog", "person"],
+  "best_confidence": 0.88,
+  "video": "19-52-06.mp4",
+  "thumbnail": "19-52-06.jpg",
+  "reason": "subject left"
+}
+```
+
+`labels` acumula tudo que apareceu durante o clipe, não só no primeiro frame.
+
+Um JSON por clipe é deliberadamente simples e inspecionável — o passo natural
+depois é SQLite, quando houver busca por pessoa e por período.
+
+### 8.4 Compressão
+
+O `VideoWriter` do OpenCV grava em `mp4v` (MPEG-4 Parte 2), que é ineficiente.
+`avc1` (H.264) **não funciona** aqui: falta a DLL do OpenH264.
+
+A solução foi o pacote `imageio-ffmpeg`, que empacota um binário estático do
+FFmpeg 7.1 com `libx264`. O fluxo:
+
+1. Grava em `<nome>.raw.mp4` com `mp4v` (rápido, sem travar o loop).
+2. Ao fechar o clipe, uma **thread** recodifica para H.264 e apaga o raw.
+
+```
+ffmpeg -i raw.mp4 -c:v libx264 -preset veryfast -crf 26 -movflags +faststart
+```
+
+**Medido: 1017 KB → 336 KB, 3,0× menor**, com o vídeo final reproduzindo os
+mesmos 64 frames.
+
+A recodificação roda em thread porque levaria 1–3 s e congelaria a imagem ao
+vivo. Aqui o GIL não estorva: o trabalho está num **subprocesso**, então a
+thread só espera. As threads não são daemon, e `wait_for_compression()` é
+chamado na saída para nenhum arquivo ficar pela metade.
+
+`CRF = 26` controla a qualidade (menor = melhor e maior); `PRESET = "veryfast"`
+troca compressão por CPU. No M900 vale medir e possivelmente subir o preset.
+
+### 8.5 `release()` é obrigatório
 
 Um MP4 precisa do índice escrito no final. Encerrar o processo sem chamar
 `writer.release()` deixa o arquivo **inutilizável**. Por isso a saída do
 programa fecha qualquer clipe aberto antes de terminar.
 
-### 8.5 O gravador recebe o frame limpo
+### 8.6 O vídeo recebe o frame limpo
 
-Antes de qualquer caixa ser desenhada. O vídeo salvo não tem retângulos
-queimados na imagem — importante porque a camada de rosto vai reanalisar esse
-material.
+O **vídeo** é gravado antes de qualquer caixa ser desenhada, porque a camada de
+rosto vai reanalisar esse material e retângulos queimados o corromperiam.
 
-### 8.6 Armazenamento
+A **miniatura** é a exceção: nela as caixas são desenhadas de propósito, já que
+sua função é ser folheada por um humano na tela Records.
 
-Medido: **6,4 MB para ~7 segundos** em 1080p com `mp4v` ≈ 1 MB/s.
+### 8.7 Armazenamento
+
+Com `mp4v` eram ~1 MB/s. Com H.264 a 3× menos, cerca de **0,33 MB/s**:
 
 | Atividade diária | Por dia | Por ano |
 |---|---|---|
-| 5 min | ~285 MB | ~100 GB |
+| 5 min | ~95 MB | ~35 GB |
 
-Cabe nos 512 GB do M900, mas vai precisar de política de retenção.
+Os 512 GB do M900 comportam anos disso, mas retenção automática segue sendo um
+próximo passo.
 
 ---
 
-## 9. Exibição
+## 9. Interface — `ui.py`
+
+A janela inteira é uma única imagem numpy, montada assim:
+
+```
+┌──────────┬────────────────────────────────────┐
+│ J.A.R.V. │                                    │
+│          │   conteúdo: Live  ou  Records      │
+│ ▸ Live   │                                    │
+│   Records│                                    │
+└──────────┴────────────────────────────────────┘
+  190 px            largura dos painéis
+```
+
+O HighGUI do OpenCV **não tem widgets**: não existe botão, lista ou scroll.
+Tudo é retângulo e texto desenhados à mão, e o clique chega por
+`cv2.setMouseCallback`. A classe `Sidebar` guarda qual tela está ativa e
+converte a coordenada do clique em índice de item:
+
+```python
+index = (y - ITEM_TOP) // ITEM_HEIGHT
+```
+
+### 9.1 Tela Live
 
 `make_panel()` redimensiona cada frame para 480 px de altura e desenha por
 cima. As caixas chegam em pixels do frame original, então são multiplicadas
@@ -457,13 +591,43 @@ por `scale` para caber no painel.
 | Elemento | Significado |
 |---|---|
 | Retângulo amarelo fino | Algo se moveu |
-| Retângulo verde grosso + confiança | Isso é uma pessoa |
+| Retângulo verde grosso | Pessoa, com confiança |
+| Retângulo ciano grosso | Animal, com espécie e confiança |
 | Ponto vermelho + `REC` | Gravando |
 
 `np.hstack` cola os painéis lado a lado e **exige altura idêntica** — é a única
 razão de `make_panel` redimensionar.
 
-### 9.1 Fechar a janela no X
+### 9.2 Tela Records
+
+Mostra as gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
+vídeo é aberto ou decodificado, o que era o requisito.
+
+Dois cuidados de desempenho, porque isso redesenha a 15 fps:
+
+- **Cache de miniaturas.** Decodificar JPEG a cada frame seria absurdo; as
+  imagens já redimensionadas ficam num dicionário indexado por caminho e
+  tamanho.
+- **Rescan periódico.** A pasta só é relida a cada `RESCAN_SECONDS = 2.0`, não
+  a cada frame.
+
+O grid é adaptativo: `CARD_COLUMNS = 5` e o número de linhas sai da altura
+disponível. Se houver mais gravações do que cabem, aparece `+N mais` no canto —
+paginação é um próximo passo.
+
+**As câmeras continuam sendo processadas enquanto a tela Records está aberta.**
+Detecção e gravação não param por causa da navegação; só a imagem exibida muda.
+
+### 9.3 Limitação: `cv2.putText` é só ASCII
+
+As fontes Hershey do OpenCV não têm acentuação. Escrever `"gravação"` renderiza
+caracteres quebrados, e por isso todo texto da interface está **sem acento** de
+propósito ("gravacao", "Nenhuma gravacao hoje").
+
+Acentos exigiriam desenhar texto com PIL (Pillow, já presente como dependência
+do ultralytics) e converter para numpy — possível, mas é uma camada extra.
+
+### 9.4 Fechar a janela no X
 
 O HighGUI do OpenCV não tem evento de fechamento. Ao clicar no X a janela é
 destruída, mas o `imshow` seguinte **cria outra**. Por isso perguntamos a cada
@@ -497,21 +661,27 @@ fisicamente.** Alternativa: desligar o Tapo Care.
 `probe_rtsp.py` diagnostica isso mostrando cada etapa do handshake:
 
 ```
-uv run probe_rtsp.py 192.168.0.116 camerafront camerafront999 stream1
+uv run probe_rtsp.py <ip> <usuario> <senha> stream1
 ```
 
 ---
 
 ## 11. Estado atual e próximos passos
 
-**Funcionando:** captura RTSP, movimento, detecção de humanos, gravação com
-pré-roll, interface lado a lado.
+**Funcionando:** captura RTSP, movimento com confirmação temporal, detecção de
+pessoas e animais, supressão de cenário estático, gravação com pré-roll em
+H.264, miniatura e metadados por evento, menu lateral com Live e Records.
 
 **Próximos passos naturais:**
 
 1. **Tracking** — manter a identidade de uma pessoa entre frames. Resolve o
    caso de quem para de se mover e faz um clipe corresponder a uma pessoa.
-2. **Banco de eventos** (SQLite) — tornar os clipes pesquisáveis.
+2. **Banco de eventos** (SQLite) — substituir os JSON quando houver busca por
+   pessoa e período.
 3. **Retenção** — apagar clipes antigos automaticamente.
-4. **Reconhecimento facial** — SCRFD + ArcFace sobre as caixas de pessoa.
-5. **Deploy no M900** — exportar o modelo para OpenVINO INT8.
+4. **Reprodução no Records** — clicar num cartão e assistir ao clipe.
+5. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
+   então o primeiro clipe falso da noite ainda é gravado.
+6. **Reconhecimento facial** — SCRFD + ArcFace sobre as caixas de pessoa.
+   Não serve para animais (ver 7.3); identidade de pets seria outra camada.
+7. **Deploy no M900** — exportar o modelo para OpenVINO INT8.
