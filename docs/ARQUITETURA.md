@@ -710,13 +710,34 @@ Cada cartão mostra:
 **Clicar num cartão abre o arquivo no Explorer**, já selecionado na pasta:
 
 ```python
-subprocess.Popen(["explorer", f"/select,{target.resolve()}"])
+subprocess.Popen(f'explorer /select,"{target}"')
 ```
 
 O `/select` faz o Explorer abrir a pasta **com o arquivo destacado**, em vez de
 apenas abrir o diretório. É preciso caminho absoluto, daí o `resolve()`. O
 Explorer retorna código de saída 1 mesmo quando funciona, então usamos `Popen`
 e ignoramos o retorno em vez de `run(check=True)`.
+
+**A string aqui é obrigatória, e a lista não funciona.** A primeira versão
+usava a forma de lista, que é a recomendada em geral, e o clique abria a pasta
+Documentos em vez do arquivo. A razão:
+
+```python
+subprocess.list2cmdline(["explorer", f"/select,{alvo}"])
+# explorer "/select,D:\Personal Projects\...\19-17-30.mp4"
+```
+
+No Windows o `subprocess` monta a linha de comando com `list2cmdline`, que
+envolve em aspas qualquer argumento contendo espaço. Como o caminho tem
+espaço ("Personal Projects"), **o `/select,` foi para dentro das aspas**. O
+Explorer não reconhece a opção assim, desiste e abre a pasta padrão.
+
+O Explorer precisa de `explorer /select,"<caminho>"` — só o caminho entre
+aspas. Passar uma string ao `Popen` no Windows a entrega ao `CreateProcess`
+sem reformatação, que é o que resolve. Ver PYTHON.md seção 17.5.
+
+Se o `.mp4` final ainda não existir (a compressão roda em thread), `reveal()`
+tenta o `.raw.mp4` e, em último caso, a pasta do dia.
 
 ### 9.4.1 Calendário
 

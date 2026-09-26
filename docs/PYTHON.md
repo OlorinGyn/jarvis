@@ -603,6 +603,41 @@ manipulação de strings com `os.path.join`.
 Um detalhe: `Path` não é string. Ao passar para uma API C++ como o
 `cv2.VideoWriter`, é preciso `str(path)`.
 
+## 17.5 `subprocess`: lista ou string, e por que importa no Windows
+
+A regra geral é passar uma **lista** de argumentos, nunca uma string: evita
+problemas de quoting e de injeção, já que não há shell envolvido.
+
+```python
+subprocess.run([exe, "-i", str(raw), "-c:v", "libx264"])
+```
+
+No Windows, porém, o sistema operacional não aceita uma lista: o `CreateProcess`
+recebe **uma única linha de comando**. O `subprocess` então converte sua lista
+com `list2cmdline()`, que envolve em aspas todo argumento contendo espaço.
+
+Isso quebra programas cuja sintaxe não segue a convenção padrão — o
+`explorer.exe` é o caso clássico:
+
+```python
+subprocess.list2cmdline(["explorer", "/select,D:\\Personal Projects\\a.mp4"])
+# explorer "/select,D:\Personal Projects\a.mp4"     <- opcao dentro das aspas
+```
+
+O Explorer precisa de `/select,"caminho"`, com aspas apenas no caminho. Para
+controlar o formato exato, passe **a string pronta**, que no Windows vai direta
+ao `CreateProcess`:
+
+```python
+subprocess.Popen(f'explorer /select,"{target}"')
+```
+
+Vindo de Java, o análogo é a diferença entre `ProcessBuilder(List<String>)` e
+`Runtime.exec(String)` — com a mesma armadilha de quoting no Windows.
+
+Regra prática: **lista por padrão; string só quando o programa de destino tem
+sintaxe própria** que o quoting automático estragaria.
+
 ## 18. Memória
 
 Python usa contagem de referências **mais** um coletor para ciclos. Objetos

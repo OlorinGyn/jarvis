@@ -82,12 +82,14 @@ def available_days():
 def reveal(path):
     """Open the system file browser with this file selected."""
     path = Path(path)
-    target = path if path.exists() else path.parent
+    candidates = (path, path.with_name(path.stem + ".raw.mp4"), path.parent)
+    target = next((c for c in candidates if c.exists()), path.parent).resolve()
     try:
         if os.name == "nt":
-            subprocess.Popen(["explorer", f"/select,{target.resolve()}"])
+            subprocess.Popen(f'explorer /select,"{target}"')
         else:
-            subprocess.Popen(["xdg-open", str(target.parent)])
+            subprocess.Popen(["xdg-open", str(target if target.is_dir()
+                                             else target.parent)])
     except OSError:
         pass
 
