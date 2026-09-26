@@ -71,6 +71,27 @@ jarvis/
     └── PYTHON.md
 ```
 
+### 3.1 O projeto não é um pacote
+
+`pyproject.toml` declara:
+
+```toml
+[tool.uv]
+package = false
+```
+
+O `uv init` originalmente configurou o projeto como pacote instalável
+(`[build-system]` + `[project.scripts]`). Consequência: **todo `uv run`
+reconstruía e reinstalava o `jarvis`**, imprimindo `Built jarvis`,
+`Uninstalled 1 package`, `Installing wheels` e um aviso de hardlink — o cache
+do `uv` fica no C: e o projeto no D:, e hardlink não atravessa volumes.
+
+Nada disso era necessário: os scripts rodam direto (`uv run cameras.py`), sem
+precisar do projeto instalado. Com `package = false` o `uv` apenas garante as
+dependências, e a saída fica limpa.
+
+A pasta `src/jarvis/` é resto do andaime do `uv init` e não é usada.
+
 ## 4. Configuração — `.env`
 
 Uma câmera = três linhas. O nome do rótulo vira o nome exibido e a pasta dos
@@ -306,6 +327,46 @@ mantemos a de maior confiança.
 A função `iou()` vive em `geometry.py`, compartilhada com o rastreador de
 movimento, que usa `overlap_area()` do mesmo módulo para casar candidatos entre
 frames.
+
+### 7.6 Supressão de cenário estático
+
+**O problema observado em campo (2026-09-26):** a câmera Front gravou dois
+clipes marcados como `person left`. Reanalisando os vídeos, o YOLO apontava
+pessoa em 100% dos frames, com confiança 0,80 — e **exatamente a mesma caixa**
+nos dois clipes, gravados com 90 s de diferença: 68×82 px em (1391, 311).
+
+Era um objeto fixo na parede. Um segundo ponto em (364, 285) fazia o mesmo.
+
+O detalhe revelador: **nos clipes diurnos do mesmo enquadramento o YOLO não
+detecta pessoa alguma.** O falso positivo é específico do infravermelho, que
+transforma o objeto numa silhueta escura contra a parede clara.
+
+**A solução:** um objeto de cenário não se move; uma pessoa sim. `_reject_scenery`
+mantém uma lista de pontos onde detecções continuam surgindo:
+
+- Duas caixas são "o mesmo lugar" quando os centros estão a até
+  `STATIC_CENTRE_TOLERANCE` px e os tamanhos diferem menos de
+  `STATIC_SIZE_TOLERANCE`. Casar por centro (e não por IoU) foi necessário
+  porque a caixa do segundo objeto **oscilava de tamanho** — 73×65, 68×68,
+  71×74 — e nunca atingia IoU alto, embora o centro ficasse parado.
+- A contagem é **consecutiva**: qualquer ciclo em que o ponto não reaparece
+  zera `hits`. Sem isso, alguém que fica parado, anda e volta acabaria somando
+  acertos ao longo do tempo.
+- Ao atingir `STATIC_HITS` ciclos seguidos, o ponto vira cenário e é ignorado.
+- Pontos somem da lista após `STATIC_TTL` sem aparecer.
+
+**Resultado no clipe real:** os dois objetos foram aprendidos como dois pontos
+e silenciados a partir do ciclo 49. Uma pessoa que se mexe a cada 10 ciclos
+continua detectada.
+
+**Custo consciente:** alguém absolutamente imóvel por ~12 s (50 ciclos a 4/s) é
+suprimido. É aceitável porque o clipe já capturou a chegada dessa pessoa, e
+qualquer movimento a libera no mesmo instante. Para ser mais conservador, suba
+`STATIC_HITS`.
+
+**Custo no arranque:** a lista nasce vazia a cada execução, então o programa
+grava um clipe do objeto estático antes de aprendê-lo. Persistir a lista em
+disco resolveria isso e é um próximo passo natural.
 
 ### 7.6 Um modelo, várias câmeras
 
