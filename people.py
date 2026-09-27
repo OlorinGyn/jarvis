@@ -20,6 +20,7 @@ ANIMAL_CLASSES = (14, 15, 16, 17, 18, 19)
 WANTED_CLASSES = (PERSON_CLASS,) + ANIMAL_CLASSES
 CONFIDENCE = 0.35
 ANIMAL_CONFIDENCE = 0.45
+MIN_PERSON_HEIGHT_FRACTION = 0.20
 IMG_SIZE = 640
 MIN_INTERVAL = 0.25
 SAME_SUBJECT_IOU = 0.5
@@ -129,6 +130,7 @@ class SubjectDetector:
                                     conf=CONFIDENCE, imgsz=IMG_SIZE,
                                     verbose=False)[0]
 
+        minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
         found = []
         for (x1, y1, x2, y2), confidence, class_id in zip(
                 result.boxes.xyxy.tolist(),
@@ -138,6 +140,8 @@ class SubjectDetector:
             if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
                 continue
             box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
+            if class_id == PERSON_CLASS and box[3] < minimum_person:
+                continue
             if REQUIRE_MOTION_OVERLAP and not any(
                     overlap_area(box, m) for m in motion_boxes):
                 continue

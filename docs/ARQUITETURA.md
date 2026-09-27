@@ -479,7 +479,47 @@ qualquer movimento a libera no mesmo instante. Para ser mais conservador, suba
 grava um clipe do objeto estático antes de aprendê-lo. Persistir a lista em
 disco resolveria isso e é um próximo passo natural.
 
-### 7.9 Um modelo, várias câmeras
+### 7.9 Altura mínima para pessoa
+
+Na noite de 26/09/2026 a câmera Front gravou **19 eventos**, dos quais só 3 eram
+pessoas de verdade. Os outros 16 eram caixinhas na parede acima do carro, com
+confiança entre 0,36 e 0,79 — alta o bastante para passar pelo limiar.
+
+A supressão de cenário estático (7.8) **não pega esse caso**: os falsos
+positivos aparecem separados por minutos, então a contagem consecutiva zera
+entre um evento e outro e nunca chega aos 50 ciclos.
+
+A medição das caixas de todas as 18 miniaturas resolveu:
+
+| | Altura da caixa | Razão alt/larg |
+|---|---|---|
+| **Pessoas reais** (3) | 294–306 px | 1,55–2,32 |
+| **Falsos positivos** (15) | **36–86 px** | 0,91–1,59 |
+
+A altura separa os dois grupos com folga de **3,4×** (86 contra 294). A razão
+largura/altura se sobrepõe (1,59 contra 1,55) e por isso foi descartada como
+critério.
+
+```python
+MIN_PERSON_HEIGHT_FRACTION = 0.20
+```
+
+Fração da altura do frame, não pixels absolutos, para sobreviver a mudanças de
+`ANALYSIS_HEIGHT`. A 540 px isso dá 108 px: 26% acima do maior falso positivo e
+2,7× abaixo da menor pessoa real.
+
+**Verificado contra as 18 gravações reais: 18 acertos, 0 erros.**
+
+Duas ressalvas honestas:
+
+- **É específico da cena.** Numa cena onde pessoas apareçam pequenas ao longe,
+  108 px descartaria gente de verdade. Aqui a garagem é estreita e mesmo no
+  fundo uma pessoa passa dos 150 px.
+- **Só vale para `person`.** Animais são naturalmente mais baixos que largos, e
+  aplicar o mesmo piso rejeitaria um cachorro legítimo. Ainda não há dados de
+  detecção real de animais para calibrar um limiar próprio.
+
+### 7.10 Um modelo, várias câmeras
 
 `@lru_cache(maxsize=1)` em `load_model()` garante uma única instância do YOLO
 na memória. É o oposto do `MotionDetector`:
@@ -857,8 +897,43 @@ y = top_offset + row * (card_h + CARD_GAP)
 ```
 
 O número de linhas sai da altura disponível, então o grid se adapta se a janela
-mudar de tamanho. Se houver mais gravações do que cabem, aparece `+N mais` no
-canto — paginação é um próximo passo.
+mudar de tamanho.
+
+**Rolagem.** Uma noite movimentada produz mais gravações do que cabem — 19 num
+único dia, contra 10 visíveis. A tela rola com a **roda do mouse**.
+
+O OpenCV expõe o evento `EVENT_MOUSEWHEEL`, mas **não** expõe o
+`getMouseWheelDelta` ao Python. O delta vem empacotado nos 16 bits altos de
+`flags` e precisa ser desempacotado à mão, com correção de sinal:
+
+```python
+delta = flags >> 16
+if delta > 32767:
+    delta -= 65536
+```
+
+O estado é uma variável só, `self.scroll`, medida **em linhas** e não em pixels,
+o que dispensa qualquer conta de posição parcial:
+
+```python
+total_rows = -(-len(self.entries) // columns)
+self.max_scroll = max(0, total_rows - rows)
+first = self.scroll * columns
+```
+
+`-(-a // b)` é divisão com arredondamento **para cima** usando só inteiros:
+como `//` arredonda para baixo (PYTHON.md 19.1), negar duas vezes inverte o
+sentido do arredondamento.
+
+Os cartões também encolheram (`MIN_CARD_WIDTH` de 210 para 168), então mais
+gravações cabem antes de precisar rolar.
+
+A barra à direita **não é clicável**: indica apenas posição e proporção, e seu
+tamanho reflete quanto do total está visível.
+
+**A ordem de desenho importa:** os cartões são desenhados **antes** do
+cabeçalho, porque é `_draw_cards` que calcula `max_scroll`, e o cabeçalho
+precisa desse valor para decidir se mostra a dica "roda do mouse para rolar".
 
 **Dois cuidados de desempenho**, porque isso é redesenhado a 15 fps:
 

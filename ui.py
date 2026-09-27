@@ -24,11 +24,12 @@ ITEM_HEIGHT = 54
 ITEMS = ("Live", "Records")
 
 CALENDAR_WIDTH = 250
-CARD_GAP = 12
-CAPTION_HEIGHT = 58
+CARD_GAP = 10
+CAPTION_HEIGHT = 52
 HEADER_HEIGHT = 46
 RESCAN_SECONDS = 2.0
-MIN_CARD_WIDTH = 210
+MIN_CARD_WIDTH = 168
+SCROLLBAR_WIDTH = 8
 
 BACKGROUND = (24, 24, 24)
 PANEL = (38, 38, 38)
@@ -78,17 +79,31 @@ class Interface:
         self.days_with_clips = set()
         self.last_scan = 0.0
         self.thumbnails = {}
+        self.scroll = 0
+        self.max_scroll = 0
 
     def _region(self, box, action, payload=None):
         self.regions.append((box, action, payload))
 
     def on_mouse(self, event, x, y, flags, param):
+        if event == cv2.EVENT_MOUSEWHEEL:
+            self._wheel(flags)
+            return
         if event != cv2.EVENT_LBUTTONDOWN:
             return
         for (x0, y0, x1, y1), action, payload in self.regions:
             if x0 <= x <= x1 and y0 <= y <= y1:
                 self._activate(action, payload)
                 return
+
+    def _wheel(self, flags):
+        """OpenCV packs the wheel delta into the high 16 bits of flags."""
+        delta = flags >> 16
+        if delta > 32767:
+            delta -= 65536
+        if delta:
+            step = -1 if delta > 0 else 1
+            self.scroll = max(0, min(self.scroll + step, self.max_scroll))
 
     def _activate(self, action, payload):
         if action == "view":
@@ -97,6 +112,7 @@ class Interface:
             self.day = payload
             self.month = payload.replace(day=1)
             self.last_scan = 0.0
+            self.scroll = 0
         elif action == "month":
             self.month = shift_month(self.month, payload)
         elif action == "open":
@@ -147,8 +163,8 @@ class Interface:
 
         calendar_x = max(x1 - CALENDAR_WIDTH, x0 + MIN_CARD_WIDTH)
         self._draw_calendar(canvas, (calendar_x, y0, x1, y1))
-        self._draw_header(canvas, x0, y0, calendar_x)
         self._draw_cards(canvas, (x0, y0 + HEADER_HEIGHT, calendar_x, y1))
+        self._draw_header(canvas, x0, y0, calendar_x)
 
     def _draw_header(self, canvas, x0, y0, right):
         when = self.day.strftime("%d/%m/%Y")
@@ -157,8 +173,11 @@ class Interface:
         title = f"{when}  -  {len(self.entries)} gravacao(oes)"
         cv2.putText(canvas, title, (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
         if self.entries:
-            cv2.putText(canvas, "clique num cartao para abrir na pasta",
-                        (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2), FONT, 0.42, MUTED, 1)
+            dica = "clique num cartao para abrir na pasta"
+            if self.max_scroll:
+                dica += "   |   roda do mouse para rolar"
+            cv2.putText(canvas, dica, (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2),
+                        FONT, 0.42, MUTED, 1)
 
     def _thumbnail(self, entry, width, height):
         path = entry["thumbnail_path"]
@@ -178,8 +197,9 @@ class Interface:
 
     def _draw_cards(self, canvas, area):
         x0, y0, x1, y1 = area
-        width = x1 - x0
+        width = x1 - x0 - SCROLLBAR_WIDTH
         if not self.entries:
+            self.max_scroll = 0
             cv2.putText(canvas, "Nenhuma gravacao neste dia.",
                         (x0 + CARD_GAP, y0 + 40), FONT, 0.6, MUTED, 1)
             return
@@ -191,7 +211,13 @@ class Interface:
         top = y0 + 14
         rows = max((y1 - top - CARD_GAP) // (card_h + CARD_GAP), 1)
 
-        for index, entry in enumerate(self.entries[:rows * columns]):
+        total_rows = -(-len(self.entries) // columns)
+        self.max_scroll = max(0, total_rows - rows)
+        self.scroll = min(self.scroll, self.max_scroll)
+        first = self.scroll * columns
+        visible = self.entries[first:first + rows * columns]
+
+        for index, entry in enumerate(visible):
             row, column = divmod(index, columns)
             x = x0 + CARD_GAP + column * (card_w + CARD_GAP)
             y = top + row * (card_h + CARD_GAP)
@@ -216,10 +242,18 @@ class Interface:
             self._region((x, y, x + card_w, caption_top + CAPTION_HEIGHT),
                          "open", entry["video_path"])
 
-        shown = min(len(self.entries), rows * columns)
-        if shown < len(self.entries):
-            cv2.putText(canvas, f"+{len(self.entries) - shown} mais",
-                        (x1 - 130, y1 - 14), FONT, 0.5, MUTED, 1)
+        if self.max_scroll:
+            self._draw_scrollbar(canvas, (x1 - SCROLLBAR_WIDTH, top, x1, y1),
+                                 total_rows, rows)
+
+    def _draw_scrollbar(self, canvas, area, total_rows, rows):
+        x0, y0, x1, y1 = area
+        track = y1 - y0
+        cv2.rectangle(canvas, (x0, y0), (x1 - 2, y1), PANEL, -1)
+        thumb = max(int(track * rows / total_rows), 24)
+        offset = int((track - thumb) * self.scroll / self.max_scroll)
+        cv2.rectangle(canvas, (x0, y0 + offset), (x1 - 2, y0 + offset + thumb),
+                      ACTIVE, -1)
 
     def _draw_calendar(self, canvas, area):
         x0, y0, x1, y1 = area
