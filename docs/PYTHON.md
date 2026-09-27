@@ -56,8 +56,8 @@ exigiria `static import` de uma constante dentro de alguma classe.
 
 ### 2.1 Imports executam código
 
-Um `import` roda o arquivo inteiro na primeira vez. É por isso que esta ordem
-importa e é frágil:
+Um `import` roda o arquivo inteiro na primeira vez, e isso permite acoplamentos
+que em Java não existiriam. O projeto tinha um caso instrutivo:
 
 ```python
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
@@ -65,9 +65,15 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 import cv2
 ```
 
-O FFmpeg lê essa variável **durante o carregamento do módulo**. Mover o import
-para cima quebra silenciosamente. Em Java, imports são declarações resolvidas
-em compilação e nunca teriam esse efeito colateral.
+O FFmpeg lia essa variável **durante o carregamento do módulo `cv2`**, então
+mover o import para cima — como qualquer linter sugeriria — quebrava o RTSP
+silenciosamente. Em Java, imports são declarações resolvidas em compilação e
+nunca teriam esse efeito colateral.
+
+Esse trecho **não existe mais**: a captura passou a usar ffmpeg diretamente e o
+transporte virou um argumento de linha de comando (ARQUITETURA 5.5). A lição
+fica: em Python, a **ordem** dos imports pode ser semântica, e nada no arquivo
+avisa quando é.
 
 ### 2.2 `if __name__ == "__main__"`
 
@@ -206,16 +212,28 @@ Alternativa: `@dataclass`, que é mutável e não se comporta como tupla. Use
 `NamedTuple` quando o valor for um registro imutável; `dataclass` quando for um
 objeto com estado que muda.
 
-### 5.5 `deque` — o ring buffer
+### 5.5 `set` — com sintaxe de primeira classe
+
+Conjuntos têm literal próprio e operadores, não só métodos:
 
 ```python
-from collections import deque
-self.buffer = deque(maxlen=PRE_FRAMES)
+self.labels = set()
+self.labels.update(s.label for s in subjects)
+
+names = ", ".join(sorted({s.label for s in subjects}))
 ```
 
-Com `maxlen`, o append num deque cheio **descarta o mais antigo silenciosamente**.
-É um buffer circular pronto, sem lógica de índice. Não há equivalente direto
-tão conciso na biblioteca padrão do Java.
+`{expressão for x in y}` é uma **set comprehension** — irmã da list
+comprehension, mas eliminando duplicatas. A linha acima resolve "quais espécies
+distintas estão em cena" sem laço nem `HashSet` explícito.
+
+`days_with_clips` também é um `set`, usado só por pertencimento
+(`this_day in self.days_with_clips`), que é O(1) — mesma razão de um `HashSet`
+em Java, só sem a cerimônia.
+
+> Nota histórica: aqui havia uma seção sobre `deque(maxlen=...)` como ring
+> buffer, usada pela pré-gravação em memória. Essa estrutura deixou de existir
+> quando a pré-gravação passou a vir dos segmentos em disco (ARQUITETURA 5.4).
 
 ---
 
@@ -440,23 +458,24 @@ separados, cada um com seu interpretador) — não threads.
 ## 14.1 Threads valem a pena para subprocessos
 
 O GIL impede paralelismo de *bytecode Python*, mas não atrapalha em nada
-esperar por um processo externo. A compressão de vídeo usa isso:
+esperar por um processo externo. A montagem do clipe usa isso:
 
 ```python
-job = threading.Thread(target=_compress, args=(raw, final))
+job = threading.Thread(target=_assemble,
+                       args=(self.camera, self.started_at, ended_at, destination))
 job.start()
 ```
 
-`_compress` chama `subprocess.run(ffmpeg...)`. O trabalho real acontece noutro
-processo, com seus próprios núcleos; a thread apenas bloqueia esperando. É o
-caso em que threading em Python funciona exatamente como você esperaria de
-Java ou C#.
+`_assemble` dorme até o último segmento fechar e então chama
+`subprocess.run(ffmpeg...)`. O trabalho real acontece noutro processo, com seus
+próprios núcleos; a thread apenas bloqueia esperando. É o caso em que threading
+em Python funciona exatamente como você esperaria de Java ou C#.
 
 **Threads não-daemon.** Por padrão o interpretador **espera** as threads
-terminarem antes de encerrar. É desejável aqui (não queremos um vídeo pela
+terminarem antes de encerrar. É desejável aqui (não queremos um clipe pela
 metade), e é o oposto do padrão de `Thread` em Java, onde a JVM só espera
 threads não-daemon que você marcou como tal. Ainda assim chamamos
-`wait_for_compression()` explicitamente na saída, para poder avisar o usuário.
+`wait_for_jobs()` explicitamente na saída, para poder avisar o usuário.
 
 ## 15. numpy — o tipo mais importante do projeto
 
@@ -538,8 +557,11 @@ RED = (0, 0, 255)      # parece azul em RGB
 **A documentação é de C++.** Ao procurar `cv::VideoCapture`, traduza mentalmente
 para `cv2.VideoCapture`; os parâmetros são os mesmos.
 
-**Erros costumam ser silenciosos.** `VideoCapture` que falha não lança exceção —
-retorna um objeto com `isOpened() == False`. Sempre verifique.
+**Erros costumam ser silenciosos.** Nada de exceções: `cv2.imread` de um arquivo
+inexistente devolve `None`, e `cv2.imwrite` devolve `False` em vez de reclamar.
+Em Java você receberia uma `IOException`. Aqui é preciso conferir o retorno —
+`ui.py` faz isso ao carregar miniaturas, caindo para um cartão cinza quando a
+imagem não abre.
 
 **`waitKey` faz duas coisas:** espera tecla **e** processa a fila de eventos da
 janela. Sem ele a janela nunca redesenha. É a peça que substitui o event loop
@@ -589,10 +611,10 @@ uma API usa, porque as duas são comuns.
 ## 17.4 `pathlib` em vez de concatenar strings
 
 ```python
-base = folder / stamp.strftime("%H-%M-%S")
-self.final_path = base.with_suffix(".mp4")
-path.with_suffix(".jpg")
+folder = self.directory / self.label / stamp.strftime("%Y-%m-%d")
 folder.mkdir(parents=True, exist_ok=True)
+self.base = folder / stamp.strftime("%H-%M-%S")
+self.base.with_suffix(".jpg")
 ```
 
 O operador `/` é sobrecarregado para juntar caminhos, e `with_suffix()` troca a
@@ -601,7 +623,7 @@ extensão — é assim que os três arquivos de um evento compartilham o nome ba
 manipulação de strings com `os.path.join`.
 
 Um detalhe: `Path` não é string. Ao passar para uma API C++ como o
-`cv2.VideoWriter`, é preciso `str(path)`.
+`cv2.imwrite`, ou para o `subprocess`, é preciso `str(path)`.
 
 ## 17.5 `subprocess`: lista ou string, e por que importa no Windows
 
@@ -669,17 +691,22 @@ Python usa contagem de referências **mais** um coletor para ciclos. Objetos
 morrem determinística e imediatamente quando a última referência some — mais
 previsível que o GC da JVM.
 
-Mas recursos nativos não são liberados sozinhos de forma confiável. Por isso
-`release()` é explícito:
+Mas recursos externos não são liberados sozinhos. O processo ffmpeg de cada
+câmera tem que ser encerrado à mão:
 
 ```python
-self.writer.release()
-cam.cap.release()
+self.process.terminate()
+self.process.wait(timeout=5)
 ```
 
+Sem isso, o ffmpeg sobreviveria ao Python e continuaria ocupando a única sessão
+RTSP da câmera — o que impediria a próxima execução de conectar. O `except`
+cai para `kill()` se o processo ignorar o `terminate()`.
+
 O `with` (context manager) é o equivalente de `try-with-resources` e seria o
-idiomático — mas `VideoCapture` e `VideoWriter` do OpenCV não o implementam,
-então a liberação fica manual.
+idiomático. `subprocess.Popen` até o implementa, mas aqui o processo tem que
+viver por toda a execução do programa, não por um bloco — então a liberação
+fica explícita no encerramento.
 
 ---
 
