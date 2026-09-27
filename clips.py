@@ -17,7 +17,6 @@ import os
 import subprocess
 import threading
 import time
-import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -32,8 +31,6 @@ POST_SECONDS = 5.0
 MAX_SECONDS = 60.0
 THUMB_WIDTH = 480
 ASSEMBLY_DELAY = SEGMENT_SECONDS + 2.0
-ARCHIVE = True
-ARCHIVE_LEVEL = 9
 
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
@@ -66,50 +63,13 @@ def _concat(segments, destination):
         listing.unlink(missing_ok=True)
 
 
-def archive_path(video):
-    return Path(video).with_suffix(".zip")
-
-
-def _archive(video):
-    """Pack the finished clip into a zip and drop the loose mp4."""
-    destination = archive_path(video)
-    try:
-        with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED,
-                             compresslevel=ARCHIVE_LEVEL) as bundle:
-            bundle.write(video, video.name)
-    except OSError:
-        destination.unlink(missing_ok=True)
-        return None
-    video.unlink(missing_ok=True)
-    return destination
-
-
-def extract(video):
-    """Restore the mp4 from its archive. Returns the playable file."""
-    video = Path(video)
-    if video.exists():
-        return video
-    bundle = archive_path(video)
-    if not bundle.exists():
-        return None
-    try:
-        with zipfile.ZipFile(bundle) as opened:
-            opened.extract(video.name, path=video.parent)
-    except (OSError, KeyError, zipfile.BadZipFile):
-        return None
-    return video if video.exists() else None
-
-
 def _assemble(camera, start, end, destination):
     """Wait for the final segment to close, then build the clip."""
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
                                end + timedelta(seconds=POST_SECONDS))
-    if not segments:
-        return
-    _concat(segments, destination)
-    if ARCHIVE and destination.exists():
-        _archive(destination)
+    if segments:
+        _concat(segments, destination)
 
 
 def available_days():
@@ -124,15 +84,9 @@ def available_days():
 
 
 def reveal(path):
-    """Open the file browser with this clip selected, unpacking it if needed.
-
-    Decompression happens on access, which is the whole point of archiving.
-    """
+    """Open the system file browser with this clip selected."""
     path = Path(path)
-    target = extract(path)
-    if target is None:
-        target = next((c for c in (archive_path(path), path.parent) if c.exists()),
-                      path.parent)
+    target = next((c for c in (path, path.parent) if c.exists()), path.parent)
     target = target.resolve()
     try:
         if os.name == "nt":
@@ -155,8 +109,6 @@ def list_clips(day=None):
             continue
         entry["thumbnail_path"] = path.with_suffix(".jpg")
         entry["video_path"] = path.with_suffix(".mp4")
-        entry["archive_path"] = path.with_suffix(".zip")
-        entry["archived"] = entry["archive_path"].exists()
         entries.append(entry)
     entries.sort(key=lambda e: e.get("started_at", ""), reverse=True)
     return entries
@@ -242,7 +194,6 @@ class EventRecorder:
             "labels": sorted(self.labels),
             "best_confidence": round(self.best_confidence, 2),
             "video": self.base.with_suffix(".mp4").name,
-            "archive": self.base.with_suffix(".zip").name if ARCHIVE else None,
             "thumbnail": self.base.with_suffix(".jpg").name,
             "reason": reason,
         }
