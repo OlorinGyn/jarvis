@@ -39,6 +39,7 @@ MUTED = (150, 150, 150)
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
 TODAY = (90, 150, 220)
+ZIP_BADGE = (120, 90, 40)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 WEEKDAYS = ("D", "S", "T", "Q", "Q", "S", "S")
 
@@ -157,7 +158,7 @@ class Interface:
         title = f"{when}  -  {len(self.entries)} gravacao(oes)"
         cv2.putText(canvas, title, (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
         if self.entries:
-            cv2.putText(canvas, "clique num cartao para abrir na pasta",
+            cv2.putText(canvas, "clique num cartao para descompactar e abrir na pasta",
                         (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2), FONT, 0.42, MUTED, 1)
 
     def _thumbnail(self, entry, width, height):
@@ -210,6 +211,12 @@ class Interface:
                         (x + card_w - 76, caption_top + 22), FONT, 0.45, MUTED, 1)
             cv2.putText(canvas, f"{labels}   {entry.get('seconds', 0)}s",
                         (x + 8, caption_top + 45), FONT, 0.45, colour, 1)
+            if entry.get("archived"):
+                badge = (x + card_w - 52, caption_top + 30)
+                cv2.rectangle(canvas, badge, (badge[0] + 44, badge[1] + 18),
+                              ZIP_BADGE, -1)
+                cv2.putText(canvas, "ZIP", (badge[0] + 6, badge[1] + 14),
+                            FONT, 0.42, TEXT, 1)
             cv2.rectangle(canvas, (x, y), (x + card_w, caption_top + CAPTION_HEIGHT),
                           LINE, 1)
 

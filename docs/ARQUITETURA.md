@@ -587,6 +587,53 @@ Medido no clipe real montado: **859 KB para 18 s** = ~48 KB/s.
 O buffer rotativo custa à parte: ~1 MB por câmera para 20 s, ou ~12 MB por
 câmera com `BUFFER_SECONDS = 240`.
 
+### 8.7 Arquivamento em zip
+
+`ARCHIVE = True` faz o clipe ser empacotado num `.zip` depois da montagem, e o
+`.mp4` solto é apagado. O `.zip` é o que fica em disco.
+
+Como isso é **sem perda**, a qualidade continua idêntica à da câmera. E a
+descompactação acontece **no acesso**: `reveal()` chama `extract()`, que restaura
+o `.mp4` ao lado do arquivo e então o seleciona no Explorer. Clicar no cartão
+faz tudo isso; o cartão mostra um selo `ZIP` quando a gravação está arquivada.
+
+**O ganho medido é 0,2%.** Vale registrar por que, para ninguém tentar de novo:
+
+| Método | 1302 KB de mp4 vira | Ganho |
+|---|---|---|
+| deflate (usado) | 1299 KB | **0,2%** |
+| bzip2 | 1304 KB | −0,2% (maior) |
+| lzma | 1313 KB | −0,9% (maior) |
+
+Vídeo H.264 já é codificado por entropia: a redundância que um compactador
+procura foi removida pelo codec. Dois dos métodos produzem arquivo **maior**,
+porque o overhead do container supera qualquer economia.
+
+Uma medição anterior neste documento indicava 5–11%, e estava correta **para o
+formato antigo** — aquele arquivo era recodificado em CRF 26 e ainda tinha
+redundância. Os arquivos atuais vêm do encoder de hardware da câmera e estão
+muito mais apertados. A conclusão mudou junto com o formato.
+
+O `deflate` foi escolhido em vez do lzma porque é o único que o Explorer do
+Windows abre com duplo clique, e porque os outros são piores aqui de qualquer
+forma.
+
+Para desligar: `ARCHIVE = False`. Os clipes voltam a ficar como `.mp4` direto,
+e a tela Records continua funcionando — `extract()` devolve o próprio arquivo
+quando ele já existe.
+
+**Atenção:** os `.mp4` extraídos ficam no disco ao lado do `.zip`. Eles são
+cópias descartáveis; apagar recupera o espaço, e o `.zip` segue sendo o
+arquivo de referência. Uma limpeza automática deles é um próximo passo.
+
+**O que realmente reduz disco** neste projeto, em ordem de impacto:
+
+1. Não gravar o que não é evento — já feito (movimento, confirmação temporal,
+   supressão de cenário estático).
+2. Não recodificar — já feito (seção 5.1), foi de 100 GB/ano para ~5 GB/ano.
+3. **Retenção automática** — ainda não feito, e é o único lever grande que resta.
+4. Compactar — 0,2%.
+
 ---
 
 ## 9. Interface — `ui.py`
