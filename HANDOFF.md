@@ -4,6 +4,11 @@ Este arquivo existe para uma sessão nova do Claude Code pegar o fio sem repetir
 o que já foi decidido e descartado. **Leia isto primeiro**, depois
 `docs/ARQUITETURA.md`.
 
+> **Precisa de mais contexto?** `CONTEXTO.md` traz o histórico completo do
+> projeto: todas as decisões com seus porquês, os bugs já corrigidos que não
+> devem voltar, as medições de referência, as limitações aceitas e os próximos
+> passos planejados.
+
 Apague este arquivo quando o problema descrito na seção 4 estiver resolvido.
 
 ---
