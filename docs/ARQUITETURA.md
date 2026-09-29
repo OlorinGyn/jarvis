@@ -163,6 +163,12 @@ CAM_FRONT_PASSWORD=<senha-da-conta-da-camera>
 `build_camera_list()` varre as chaves procurando o padrão `CAM_<X>_IP` e monta
 a URL RTSP. Adicionar uma terceira câmera não exige mudança de código.
 
+O `.env.example` traz `ip-da-camera` no lugar do IP, e `build_camera_list()`
+encerra o programa com uma instrução se encontrar esse texto. Antes o modelo
+trazia IPs de aparência real (`.10`, `.11`); no M900 eles ficaram no `.env`
+sem ninguém perceber, e o sintoma foi um "nenhum frame recebido" sem erro
+(5.7). Sem a checagem, o texto de exemplo daria só `I/O error`.
+
 A senha passa por `urllib.parse.quote()` porque caracteres como `@ : / #` são
 estruturais numa URL e quebrariam o parsing.
 
@@ -347,9 +353,9 @@ informação.
 
 **Toda conexão tem prazo: `-timeout`.** Sem ele, um IP onde não existe nada
 deixa o ffmpeg esperando a conexão TCP para sempre, **sem escrever nenhum
-erro**. Foi o que aconteceu no M900: a casa nova tinha outro roteador, o DHCP
-deu às câmeras os endereços `.116` e `.42`, e o `.env` ainda apontava para `.10`
-e `.11`. O painel dizia só "nenhum frame recebido", e a investigação foi atrás
+erro**. Foi o que aconteceu no M900: as câmeras estão em `.116` e `.42`, e o
+`.env` de lá apontava para `.10` e `.11` — os valores de exemplo do
+`.env.example`, de onde o `instalar.bat` cria o `.env`. O painel dizia só "nenhum frame recebido", e a investigação foi atrás
 de decode, pipe e antivírus antes de alguém rodar `Test-NetConnection`. A única
 linha do log, mesmo em `-loglevel verbose`, era `Starting connection attempt`.
 

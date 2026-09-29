@@ -182,8 +182,8 @@ segurando a câmera.
 
 **"Tempo esgotado. Confira a rede e o IP da camera"**
 
-Nada responde no IP do `.env`. Numa rede nova é quase certo que o roteador deu
-outro endereço à câmera. Confirme e procure quem tem a porta RTSP aberta:
+Nada responde no IP do `.env`. Ou o IP nunca foi preenchido, ou o roteador deu
+outro endereço à câmera. Confirme:
 
 ```powershell
 Test-NetConnection 192.168.0.116 -Port 554

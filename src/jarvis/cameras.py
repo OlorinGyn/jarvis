@@ -21,6 +21,7 @@ from jarvis.motion import MotionDetector
 from jarvis.people import SubjectDetector
 
 STREAM = "stream1"
+PLACEHOLDER_IP = "ip-da-camera"
 PANEL_HEIGHT = 480
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
@@ -51,6 +52,9 @@ def build_camera_list(env):
         if not (key.startswith("CAM_") and key.endswith("_IP")):
             continue
         label = key[len("CAM_"):-len("_IP")]
+        if env[key] == PLACEHOLDER_IP:
+            raise SystemExit(f"Preencha {key} no .env com o IP da camera "
+                             f"(app Tapo > engrenagem > Informacoes do dispositivo).")
         user = env.get(f"CAM_{label}_USER", "")
         password = env.get(f"CAM_{label}_PASSWORD", "")
         credentials = f"{quote(user, safe='')}:{quote(password, safe='')}"

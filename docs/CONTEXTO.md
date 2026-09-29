@@ -117,7 +117,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | "sem sinal" sem motivo | `stderr` do ffmpeg ia para `DEVNULL`, e o `ok` do arranque checava `poll()` antes de o processo ter tempo de falhar | Capturar stderr, esperar o primeiro frame de verdade, traduzir erros conhecidos |
 | Falsos positivos de pessoa | Objetos de parede sob infravermelho | Altura mínima (medido: falsos 36–86 px, pessoas reais 294–306 px, **18/18 corretos**) |
 | Mosquitos disparando gravação | Insetos perto da lente ficam grandes no IR | Confirmação temporal: só reporta o que persiste 3 frames no mesmo lugar (**83% menos disparos**) |
-| "nenhum frame recebido" no M900, sem erro | IP das câmeras mudou na rede nova; sem timeout o ffmpeg espera o TCP para sempre em silêncio | `-timeout` no RTSP e tradução do `Error number -138` (seção 6) |
+| "nenhum frame recebido" no M900, sem erro | `.env` com os IPs de exemplo do `.env.example`; sem timeout o ffmpeg espera o TCP para sempre em silêncio | `-timeout` no RTSP e tradução do `Error number -138` (seção 6) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 
 ## 5. Medições de referência
@@ -140,9 +140,11 @@ Guardadas porque conclusões mudam quando o formato muda.
 **Sintoma:** no M900, `FALHOU - nenhum frame recebido`, painel "sem sinal",
 nenhuma mensagem de erro do ffmpeg. O mesmo commit funcionava no dev.
 
-**Causa:** o M900 está noutra casa, com outro roteador. O DHCP deu às câmeras
-`192.168.0.116` (Front) e `192.168.0.42` (Back), e o `.env` ainda apontava para
-`.10` e `.11`, onde nada responde. Sem timeout, o ffmpeg espera a conexão TCP
+**Causa:** as câmeras estão em `192.168.0.116` (Front) e `192.168.0.42`
+(Back), e o `.env` do M900 apontava para `.10` e `.11`, onde nada responde. As
+duas máquinas estão na **mesma rede**; `.10` e `.11` eram os valores de
+exemplo do `.env.example`, que o `instalar.bat` copia para criar o `.env`. O
+`.env` do dev, não versionado, tem os IPs certos. Sem timeout, o ffmpeg espera a conexão TCP
 para sempre e **não escreve nada**. A única linha, mesmo em `-loglevel
 verbose`, era `Starting connection attempt to 192.168.0.10 port 554`.
 
@@ -158,9 +160,10 @@ verbose`, era `Starting connection attempt to 192.168.0.10 port 554`.
    `14-EB-B6` (TP-Link). As credenciais identificaram cada câmera: cada uma só
    aceita a própria Conta da Câmera e responde `401` às outras
 
-**Lição:** as hipóteses descartadas antes estavam erradas porque o
-`probe_rtsp.py` que "passou" tinha sido rodado com outro IP, digitado à mão.
-Numa máquina ou rede nova, **teste o IP do `.env` primeiro**.
+**Lição:** o `probe_rtsp.py` que "passou" recebe o IP digitado à mão, então
+não testava o `.env`. Numa máquina nova, **teste o IP do `.env` primeiro**.
+Para não repetir, o `.env.example` agora traz o texto `ip-da-camera` no lugar
+do IP, e o programa se recusa a iniciar enquanto ele estiver lá.
 
 **Correção:** `-timeout` no RTSP (ARQUITETURA 5.7). Hoje um IP errado aparece
 em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
