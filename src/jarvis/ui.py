@@ -25,6 +25,7 @@ ITEM_HEIGHT = 54
 ITEMS = ("Live", "Records", "People")
 FACE_CARD = 150
 NAME_MAX = 40
+NOTICE_SECONDS = 6.0
 
 CALENDAR_WIDTH = 250
 CARD_GAP = 10
@@ -88,6 +89,7 @@ class Interface:
         self.sightings = []
         self.naming = None
         self.typed = ""
+        self.notice = ("", 0.0)
 
     def _region(self, box, action, payload=None):
         self.regions.append((box, action, payload))
@@ -123,7 +125,10 @@ class Interface:
             return
         if key in (13, 10):
             if self.typed.strip():
-                faces.Gallery().rename(self.naming, self.typed)
+                merged = faces.Gallery().rename(self.naming, self.typed)
+                self.notice = (f"{self.typed.strip()}: salvo"
+                               + (f", {merged} rosto(s) agrupado(s)" if merged else ""),
+                               time.monotonic() + NOTICE_SECONDS)
                 self.last_scan = 0.0
             self.naming, self.typed = None, ""
         elif key == 27:
@@ -231,7 +236,9 @@ class Interface:
             image = np.full((height, width, 3), (60, 60, 60), dtype=np.uint8)
             cv2.putText(image, "sem imagem", (10, height // 2), FONT, 0.45, MUTED, 1)
         else:
-            image = cv2.resize(image, (width, height))
+            shrinking = image.shape[1] > width
+            image = cv2.resize(image, (width, height),
+                               interpolation=cv2.INTER_AREA if shrinking else cv2.INTER_LINEAR)
         self.thumbnails[key] = image
         return image
 
@@ -310,8 +317,13 @@ class Interface:
         cv2.putText(canvas, f"{when}  -  {len(self.sightings)} rosto(s), "
                             f"{desconhecidos} sem nome",
                     (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
-        if self.sightings:
-            cv2.putText(canvas, "clique em [+ Nomear] para cadastrar um rosto",
+        text, until = self.notice
+        if text and time.monotonic() < until:
+            cv2.putText(canvas, text, (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2),
+                        FONT, 0.45, GREEN, 1)
+        elif self.sightings:
+            cv2.putText(canvas, "clique em [+ Nomear]; o mesmo nome em outro rosto "
+                                "junta os dois",
                         (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2), FONT, 0.42, MUTED, 1)
 
     def _draw_face_cards(self, canvas, area):

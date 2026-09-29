@@ -97,6 +97,12 @@ def _raw_detections(net, frame):
     return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
 
 
+def person_boxes(frame):
+    """Every person YOLO sees in a frame, as (x, y, w, h), with no other filtering."""
+    return [box for box, _, class_id in _raw_detections(load_model(), frame)
+            if class_id == PERSON_CLASS]
+
+
 def _centre(box):
     return box[0] + box[2] / 2, box[1] + box[3] / 2
 

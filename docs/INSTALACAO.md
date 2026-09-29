@@ -248,6 +248,18 @@ leitura roda em thread separada (ARQUITETURA 5.4).
 Se voltar a acontecer, é sinal de que algo novo passou a bloquear o laço
 principal — desconfie de operação de disco ou rede feita dentro dele.
 
+**Rostos errados ou repetidos na tela People**
+
+Com o programa **fechado**:
+
+```bat
+uv run tools/refazer_rostos.py
+```
+
+Move o `faces/` atual para `faces_antigo_<data-hora>/` e reconstrói tudo a
+partir dos clipes gravados. Os nomes precisam ser dados de novo, mas basta um
+cartão por pessoa: os outros dela recebem o nome junto (ARQUITETURA 10.4).
+
 **Painel mostra `sem sinal`**
 
 O motivo aparece **em amarelo no próprio painel**. Os mais comuns:

@@ -408,14 +408,19 @@ exemplo. Pixel que não combina com nenhuma delas é movimento.
    modelo nunca aprende.
 4. **Limiar em 200.** A máscara usa 255 para movimento, 127 para sombra, 0 para
    fundo. O corte em 200 descarta as sombras.
-5. **Descarta o frame se mais de 50% "mudou".** Isso não é um objeto se
+5. **Apaga o relógio da câmera.** A Tapo escreve data e hora no canto superior
+   esquerdo, e os dígitos mudam a cada segundo. `OVERLAY_BOX` (frações da
+   imagem) zera essa faixa da máscara.
+6. **Descarta o frame se mais de 50% "mudou".** Isso não é um objeto se
    movendo: é nuvem, sol ou a câmera entrando em modo noturno.
-6. **Abertura e dilatação.** A abertura apaga pontos isolados; a dilatação
+7. **Abertura e dilatação.** A abertura apaga pontos isolados; a dilatação
    cresce o que sobrou, unindo os fragmentos de uma mesma pessoa num só blob.
    É também por isso que a caixa fica um pouco maior que o objeto.
-7. **Contornos + `boundingRect`.** Blobs com área menor que `MIN_AREA` são
+8. **Contornos + `boundingRect`.** Blobs com área menor que `MIN_AREA` são
    ignorados. As coordenadas voltam para a escala do frame original.
-8. **Confirmação temporal.** Ver 6.3 — nada é reportado antes de persistir.
+9. **Filtro de luz.** Blob cujo conteúdo ainda se parece com o fundo é luz
+   mudando, não objeto. Ver 6.7.
+10. **Confirmação temporal.** Ver 6.3 — nada é reportado antes de persistir.
 
 ### 6.3 Confirmação temporal (o filtro contra insetos)
 
@@ -462,6 +467,8 @@ reportaria a cena inteira. O painel mostra `learning background`.
 | `varThreshold` | Aumentar deixa menos sensível a variação. |
 | `DETECT_WIDTH` | Aumentar melhora objetos distantes, custa CPU. |
 | `MAX_MOTION_FRACTION` | Tolerância a mudanças globais de iluminação. |
+| `LIGHTING_CORRELATION` | Baixar descarta mais mudanças de luz, mas começa a perder pessoa (6.7). |
+| `OVERLAY_BOX` | Região do relógio da câmera, ignorada. |
 
 **Para ficar ainda menos sensível:** suba `CONFIRM_FRAMES` para 5. Para
 recuperar pessoas distantes, baixe `MIN_AREA` de volta para 400 — a confirmação
@@ -482,6 +489,63 @@ Caixas totais na Front: **54 → 6**.
 Como o YOLO só roda quando há movimento, isso significa cerca de **6× menos
 inferências** na Front. Reduzir a sensibilidade aqui não custa desempenho: ela
 o melhora.
+
+### 6.7 Luz do sol não é movimento
+
+**O problema, medido de dia no M900.** A Front mostrava caixas amarelas sem
+ninguém na cena. Em 4 minutos de buffer, 99 de 2671 frames tinham movimento,
+quase todos numa rajada de 12 s com até 15 caixas espalhadas por parede, portão
+e chão. O brilho médio da imagem mal mudou (89 → 92): não era a cena inteira
+escurecendo, e sim **manchas de sol** aparecendo e se intensificando em partes
+da parede, mais a sombra das folhas balançando no chão. O passo 6 não pega isso,
+porque a área total mudada fica bem abaixo de 50%.
+
+O MOG2 marca como movimento qualquer pixel que ficou diferente do fundo. Ele não
+sabe distinguir "outra coisa apareceu aqui" de "a mesma coisa ficou mais clara".
+
+**A ideia.** Luz muda o brilho, mas não o conteúdo: as bordas, a textura do
+reboco, o desenho do portão continuam no mesmo lugar. Uma pessoa troca o
+conteúdo. A **correlação cruzada normalizada** mede exatamente isso:
+
+```python
+a = a - a.mean()
+b = b - b.mean()
+correlation = (a * b).sum() / sqrt((a * a).sum() * (b * b).sum())
+```
+
+Subtrair a média remove o "mais claro ou mais escuro"; dividir pelas normas
+remove o "mais contraste ou menos". O que sobra é 1,0 para o mesmo desenho e
+perto de 0 para desenhos sem relação. Em Java seria um laço sobre dois arrays;
+com NumPy cada linha opera sobre o patch inteiro de uma vez (PYTHON.md).
+
+Para cada blob, `_raw_boxes()` compara o frame atual com
+`subtractor.getBackgroundImage()` — a imagem de fundo que o próprio MOG2
+aprendeu — e descarta o blob se a correlação passar de `LIGHTING_CORRELATION`.
+
+**Só os pixels que mudaram.** A primeira versão comparava o retângulo inteiro.
+Mas o retângulo de uma pessoa é em boa parte fundo intacto, que puxa a
+correlação para cima, e a pessoa era descartada junto com a luz. A versão atual
+compara só os pixels que a máscara marcou como mudados, antes da dilatação
+(`changed`).
+
+**Medição** sobre os mesmos frames: 4 minutos da Front sem ninguém, e os 10
+clipes gravados com pessoa (273 frames em que o YOLO vê a pessoa):
+
+| Versão | Frames com movimento sem ninguém | Pessoa coberta por movimento |
+|---|---|---|
+| Sem filtro | 99 | 262 |
+| Retângulo inteiro, 0,75 | 1 | 216 |
+| Só pixels mudados, 0,85 | 39 | 261 |
+| Só pixels mudados, 0,75 | 22 | 259 |
+| **Só pixels mudados, 0,65** | **15** | **258** |
+| Só pixels mudados, 0,55 | 14 | 245 |
+
+0,65 corta 85% do falso movimento e perde 4 de 273 frames de pessoa. Abaixo
+disso o ganho acaba e a perda cresce. Todos os clipes continuam disparando
+gravação.
+
+O fundo só é calculado quando existe algum blob, então frame parado não paga
+nada a mais.
 
 ---
 
@@ -1250,21 +1314,67 @@ pela própria similaridade dos embeddings (`SAME_FACE_THRESHOLD = 0.40`) e
 guarda, de cada grupo, a **melhor** visão — a de maior `largura x score`, já que
 rosto maior e mais confiante gera embedding melhor.
 
+Se dois grupos do mesmo clipe casarem com a mesma pessoa da galeria, só o de
+maior peso vira aparição (`seen_here`). E `list_sightings()` mostra um cartão
+por pessoa por clipe, porque depois de uma junção (10.4) dois cartões antigos
+podem passar a apontar para a mesma pessoa.
+
 Resultado: um evento com uma pessoa gera uma aparição, não trinta.
 
-### 10.4 A galeria e o nome retroativo
+### 10.4 O nome é uma referência, não um rótulo
 
-`faces/gallery.json` guarda as pessoas; cada aparição vira um par
-`.jpg` + `.json` em `faces/<data>/`, no mesmo padrão dos clipes.
+O objetivo da tela People: **nomear uma pessoa uma vez e ela ser reconhecida
+sozinha dali em diante.**
 
-Rosto que não casa com ninguém **entra na galeria como desconhecido**, com o
-embedding guardado. É isso que permite o comportamento mais útil da tela: ao
-cadastrar o nome, **todas as aparições passadas daquela pessoa passam a exibi-lo**,
-porque o nome é resolvido na hora da exibição a partir do `person_id`, não
-copiado para dentro de cada aparição.
+`faces/gallery.json` guarda as pessoas, cada uma com uma lista de embeddings
+(as "visões" de referência). Cada aparição vira um par `.jpg` + `.json` em
+`faces/<data>/` que aponta para a pessoa pelo `person_id`. O nome é resolvido
+na hora de exibir, então nomear uma pessoa renomeia **todas** as aparições
+dela, passadas e futuras.
 
-`reinforce()` acumula até `MAX_EMBEDDINGS = 12` visões por pessoa, para cobrir
-ângulos e iluminações diferentes.
+**Como era, e por que não funcionava.** Medido no M900 em 15 minutos de uso:
+**14 "pessoas"**, cada uma com **uma** visão, para 3 pessoas reais. Três causas:
+
+1. Todo rosto que não casava com ninguém virava uma pessoa nova — inclusive
+   perfis, nucas e um braço (10.9).
+2. Dar o mesmo nome a dois cartões criava **duas** pessoas com o mesmo nome;
+   cada uma continuava só com a sua visão.
+3. A pessoa só aprendia visões novas com rostos de 80 px ou mais, e as
+   câmeras entregam 40 a 60 px. Na prática ninguém aprendia nada.
+
+**Como é hoje.**
+
+| Momento | O que acontece |
+|---|---|
+| Rosto novo que não casa com ninguém | Vira desconhecido **só se apareceu em 2+ frames** do clipe (`MIN_VIEWS_FOR_NEW`), já com até 4 visões |
+| Rosto que casa (≥ `MATCH_THRESHOLD` 0.363) | A aparição recebe aquela pessoa. Se a semelhança passa de `LEARN_THRESHOLD` (0.45), a visão é **aprendida** |
+| Casa com um nomeado e um desconhecido | O **nomeado** vence: o nome é o que o usuário pediu para o sistema aprender |
+| Usuário nomeia um cartão | `rename()` dá o nome e **absorve** todo desconhecido parecido (≥ 0.45) |
+| Usuário dá um nome que já existe | As duas pessoas **viram uma**, somando as visões |
+
+Absorver e juntar (`_merge`) move as visões para a pessoa nomeada e reescreve
+o `person_id` das aparições antigas. Até `MAX_EMBEDDINGS = 40` visões por
+pessoa.
+
+Medido no mesmo conjunto de clipes, com o pipeline novo: **3 pessoas**. Nomear
+um cartão da senhora absorveu a outra identidade dela e pôs o nome em 3
+cartões; nomear um cartão do Gustavo nomeou também o da outra câmera.
+
+`LEARN_THRESHOLD` é mais alto que o de casamento de propósito: o limiar de
+0.363 do OpenCV vale para rostos de 112 px nítidos. Com rostos de 40 px, uma
+semelhança de 0.37 pode ser acaso, e **aprender** com acaso contaminaria a
+referência de todo mundo dali para frente. Exibir um nome errado é corrigível;
+aprender errado se propaga.
+
+**Duas instâncias da galeria.** A interface e a thread que varre clipes têm
+cada uma o seu `Gallery`. Se uma salvasse a cópia que carregou antes, apagaria
+o que a outra fez — um nome recém-dado sumiria. Toda escrita agora recarrega o
+arquivo sob `_GALLERY_LOCK` antes de mudar.
+
+**Limitação:** não há como desfazer uma junção pela tela. Um nome dado ao cartão
+errado junta duas pessoas; hoje a saída é rodar `tools/refazer_rostos.py`, que
+guarda o `faces/` atual de lado e reconstrói tudo a partir dos clipes — os nomes
+precisam ser dados de novo, um cartão por pessoa.
 
 ### 10.5 A realidade do infravermelho noturno
 
@@ -1283,9 +1393,11 @@ MIN_FACE_WIDTH = 36     # abaixo disso nem entra
 GOOD_FACE_WIDTH = 80    # abaixo disso entra, mas nao reforca a galeria
 ```
 
-Rostos pequenos aparecem na tela People com a largura em vermelho, podem ser
-nomeados, mas **nunca são adicionados aos embeddings de referência** — senão
-contaminariam a galeria e degradariam os reconhecimentos futuros.
+Rostos pequenos aparecem na tela People com a largura em vermelho e podem ser
+nomeados. Até setembro de 2026 eles **nunca** entravam nas referências, para não
+contaminar a galeria. Na prática isso impedia qualquer aprendizado, porque de
+dia as câmeras também entregam 40 a 60 px (10.4). Hoje o que protege a galeria
+é o filtro de qualidade (10.9) e o `LEARN_THRESHOLD`, não a largura.
 
 Expectativa honesta: identificação boa de dia e a curta distância; à noite o
 sistema detecta que *há* um rosto, mas dizer de quem é será instável.
@@ -1341,6 +1453,52 @@ infraestrutura já está pronta quando essa camada for feita.
 
 Ressalva: à noite, um cachorro escuro vira silhueta no infravermelho. A precisão
 será sempre bem menor que a de rostos humanos.
+
+### 10.9 Só rosto de frente, e só em cima de uma pessoa
+
+Uma folha com as 19 aparições dos primeiros 15 minutos no M900 mostrou que
+várias **nem eram rosto**: um braço (106 px, marcado como confiável), perfis,
+nucas. Um embedding de perfil não descreve ninguém — e cada um virava uma
+"pessoa" nova.
+
+Foram medidos 72 rostos detectados nos 10 clipes gravados, com três números
+tirados da própria detecção do YuNet, que devolve 5 pontos: olhos, ponta do
+nariz e cantos da boca.
+
+| Medida | Rosto de frente | Perfil, nuca, espelho do carro, mancha de sol |
+|---|---|---|
+| Confiança do YuNet | 0,81 a 0,92 | muitas vezes 0,6 a 0,7 |
+| Nariz fora do centro dos olhos (÷ distância entre olhos) | até 0,3 | 0,5 a 2,3 |
+| Distância entre olhos ÷ largura da caixa | 0,38 a 0,50 | 0,1 a 0,33 |
+
+`is_frontal()` exige os três: confiança ≥ `IDENTITY_SCORE` (0,75), nariz a no
+máximo `MAX_NOSE_OFFSET` (0,35) e olhos abertos pelo menos `MIN_EYE_SPREAD`
+(0,38). Num perfil o nariz sai para o lado e os olhos quase se sobrepõem.
+
+Sobraram quatro falsos na Front, pequenos (36 a 42 px), que passavam nos três
+critérios — um deles era uma mancha de sol no chão. Por isso, nos frames em que
+aparece um rosto de frente, `scan_clip()` roda também o YOLO
+(`people.person_boxes()`) e só aceita o rosto se o centro dele estiver **na
+metade de cima do corpo de uma pessoa**. O YOLO só roda nesses poucos frames,
+então o custo é pequeno: cada clipe leva 9 a 17 s no M900, fora do caminho
+crítico.
+
+`MAX_SAMPLES` subiu de 30 para 60 frames por clipe: com o filtro, sobram menos
+rostos por frame, e mais amostras dão mais chance de uma visão boa e de chegar
+às 2 que um desconhecido exige.
+
+### 10.10 A foto do cartão
+
+A miniatura era o recorte alinhado de 112 px que o SFace usa, ampliado para 160.
+Esse recorte serve para o reconhecedor, não para uma pessoa olhar: é cortado
+rente (sem cabelo nem queixo) e, de um rosto de 45 px, já vem ampliado uma vez —
+a ampliação para o cartão borrava pela segunda vez.
+
+Hoje `context_crop()` recorta direto do frame original um quadrado de
+`THUMB_CONTEXT` (2,2) vezes o tamanho do rosto, com cabelo e ombros, e grava a
+300 px com interpolação cúbica. A tela reduz para 150 px com `INTER_AREA`, a
+interpolação certa para diminuir. O embedding continua saindo do recorte
+alinhado; só a foto mudou.
 
 ---
 

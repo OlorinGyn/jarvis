@@ -20,6 +20,7 @@ clips/
 
 # rostos detectados e galeria
 faces/
+faces_antigo_*/
 
 # modelos ONNX (baixados sob demanda)
 models/

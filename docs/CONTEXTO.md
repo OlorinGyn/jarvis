@@ -118,6 +118,9 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Falsos positivos de pessoa | Objetos de parede sob infravermelho | Altura mínima (medido: falsos 36–86 px, pessoas reais 294–306 px, **18/18 corretos**) |
 | Mosquitos disparando gravação | Insetos perto da lente ficam grandes no IR | Confirmação temporal: só reporta o que persiste 3 frames no mesmo lugar (**83% menos disparos**) |
 | "nenhum frame recebido" no M900, sem erro | `.env` com os IPs de exemplo do `.env.example`; sem timeout o ffmpeg espera o TCP para sempre em silêncio | `-timeout` no RTSP e tradução do `Error number -138` (seção 6) |
+| Falso movimento de dia na Front | Manchas de sol e sombra de folhas; o relógio da câmera no canto | Filtro de luz por correlação com o fundo e máscara do relógio: **99 → 15 frames**, pessoa coberta 262 → 258 de 273 (ARQUITETURA 6.7) |
+| 14 "pessoas" para 3 reais; nome não reconhecia depois | Todo rosto não casado virava pessoa (inclusive perfil, nuca, braço); mesmo nome criava gêmeos; só aprendia com ≥ 80 px | Filtro de rosto de frente + YOLO, junção por nome, absorção ao nomear, aprendizado por semelhança (ARQUITETURA 10.4, 10.9) |
+| Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 
 ## 5. Medições de referência
@@ -134,6 +137,8 @@ Guardadas porque conclusões mudam quando o formato muda.
 | Rosto à noite | 44 px (desejável ~112 px) |
 | Primeiro frame do ffmpeg | ~2,5 s |
 | Laço da interface | mediana 19,9 ms, pior 88,8 ms |
+| Varredura de rostos por clipe (M900) | 9 a 17 s, fora do caminho crítico |
+| Rostos de dia no M900 | 36 a 80 px, a maioria abaixo de 60 |
 
 ## 6. Resolvido: M900 sem frames (29/09/2026)
 
@@ -197,7 +202,9 @@ em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
 4. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
 5. **Reprodução no Records** — clicar num cartão e assistir
 6. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução
-7. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
+7. **Desfazer junção na tela People** — hoje um nome dado ao cartão errado só
+   se corrige com `tools/refazer_rostos.py`
+8. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
    recuperar a velocidade perdida ao sair do PyTorch
 
 ## 9. Mapa do repositório
@@ -216,6 +223,7 @@ src/jarvis/
 tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
   probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
+  refazer_rostos.py  reconstrói faces/ a partir dos clipes gravados
 docs/             ARQUITETURA, INSTALACAO, PYTHON e este arquivo
 instalar.bat      instalação numa máquina nova
 jarvis.bat        atalho para iniciar (uv run jarvis)
@@ -235,10 +243,11 @@ uv run tools/diagnostico.py Front                       testar variantes de capt
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
 uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
 powershell Test-NetConnection <ip> -Port 554            a câmera responde nesse IP?
+uv run tools/refazer_rostos.py                          refazer faces/ (feche o programa antes)
 tasklist | findstr ffmpeg                               procurar ffmpeg órfão
 ```
 
 Constantes de ajuste: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`,
 `SEGMENT_SECONDS`), `people.py` (`MIN_INTERVAL`, `MIN_PERSON_HEIGHT_FRACTION`),
-`motion.py` (`MIN_AREA`, `CONFIRM_FRAMES`), `faces.py` (`MATCH_THRESHOLD`,
-`GOOD_FACE_WIDTH`).
+`motion.py` (`MIN_AREA`, `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py`
+(`MATCH_THRESHOLD`, `LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`).
