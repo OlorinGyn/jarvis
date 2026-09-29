@@ -1,6 +1,7 @@
 """Find a working ffmpeg capture command for this machine.
 
 Usage: uv run diagnostico.py [rotulo]
+       uv run diagnostico.py --local     testa o ffmpeg sem nenhuma camera
 
 Tries the current command and several variants, reporting how many analysis
 frames each one delivers. A camera that connects but sends no frames stops
@@ -92,7 +93,57 @@ def tentar(nome, comando, buffer):
     return frames
 
 
+def teste_local():
+    """Decode a video ffmpeg makes itself, with no camera involved.
+
+    Separates 'ffmpeg cannot decode on this machine' from anything to do with
+    the cameras or the network.
+    """
+    import tempfile
+
+    pasta = Path(tempfile.mkdtemp(prefix="local_"))
+    amostra = pasta / "amostra.mp4"
+    print("1) gerando um video de teste 1920x1080 h264...")
+    criar = subprocess.run(
+        [capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "testsrc=size=1920x1080:rate=15", "-t", "2",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(amostra)],
+        capture_output=True)
+    if not amostra.exists():
+        print("   FALHOU ao gerar. O ffmpeg nao consegue codificar aqui.")
+        print("   " + criar.stderr.decode(errors="replace")[:300])
+        return
+    print(f"   ok, {amostra.stat().st_size/1024:.0f} KB")
+
+    print("2) decodificando para rawvideo 960x540, como o programa faz...")
+    esperado = 5 * FRAME_BYTES
+    decodificar = subprocess.run(
+        [capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "error",
+         "-i", str(amostra), "-frames:v", "5",
+         "-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}",
+         "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
+        capture_output=True)
+    recebido = len(decodificar.stdout)
+    print(f"   recebido {recebido} bytes, esperado {esperado}")
+    if decodificar.stderr:
+        print("   " + decodificar.stderr.decode(errors="replace")[:300])
+
+    print()
+    if recebido == esperado:
+        print("VEREDITO: o ffmpeg decodifica e escreve no pipe normalmente.")
+        print("O problema esta na captura RTSP, nao no decode. Rode sem --local.")
+    elif recebido == 0:
+        print("VEREDITO: o ffmpeg NAO decodifica nesta maquina.")
+        print("Nao tem relacao com as cameras. Suspeite do binario do")
+        print("imageio-ffmpeg, de antivirus, ou de politica do Windows.")
+    else:
+        print("VEREDITO: decode parcial. Leia o stderr acima.")
+
+
 def main():
+    if "--local" in sys.argv:
+        teste_local()
+        return
     wanted = sys.argv[1].capitalize() if len(sys.argv) > 1 else None
     env = cameras.load_env()
     todas = cameras.build_camera_list(env)
