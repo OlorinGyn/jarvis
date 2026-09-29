@@ -8,7 +8,7 @@ See docs/ARQUITETURA.md for how each step works and how to tune it.
 
 import cv2
 
-from geometry import overlap_area
+from jarvis.geometry import overlap_area
 
 DETECT_WIDTH = 640
 MIN_AREA = 600

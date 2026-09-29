@@ -24,12 +24,13 @@ interpretador e suas próprias bibliotecas. Sem venv, tudo é instalado
 globalmente e projetos conflitam.
 
 ```bash
-uv run cameras.py
+uv run jarvis
 ```
 
 `uv run` executa usando o venv do projeto sem precisar "ativar" nada. É por
 isso que `import cv2` funciona nesse comando e falharia com um `python` do
-sistema.
+sistema. O `jarvis` depois dele é o comando declarado em `[project.scripts]`
+no `pyproject.toml` — o equivalente ao `Main-Class` de um JAR executável.
 
 **Não existe compilação.** Não há `javac` nem build. O erro de digitação numa
 linha só aparece quando aquela linha executa — o que torna testes bem mais
@@ -44,15 +45,36 @@ Em Java, a unidade é a classe e o arquivo precisa ter o nome dela. Em Python:
 - **Um arquivo `.py` = um módulo.**
 - Funções e variáveis podem viver soltas no módulo. Não precisa de classe para
   agrupar nada.
-- `motion.py` define `MotionDetector`; `import motion` traz o módulo,
-  `from motion import MotionDetector` traz o nome direto.
+- `motion.py` define `MotionDetector`; `from jarvis import motion` traz o
+  módulo, `from jarvis.motion import MotionDetector` traz o nome direto.
 
 ```python
-from clips import ClipRecorder, DEFAULT_FPS
+from jarvis.clips import BUFFER_DIR, EventRecorder
 ```
 
-Isso importa uma classe **e** uma constante do mesmo módulo — algo que em Java
+Isso importa uma constante **e** uma classe do mesmo módulo — algo que em Java
 exigiria `static import` de uma constante dentro de alguma classe.
+
+### 2.0 Pacote: uma pasta de módulos
+
+Uma pasta com `__init__.py` é um **pacote**, o equivalente a um `package` Java
+ou a um `namespace` C#. O código do projeto vive em `src/jarvis/`, então cada
+módulo tem nome completo `jarvis.<arquivo>`.
+
+| Arquivo | Papel | Paralelo |
+|---|---|---|
+| `__init__.py` | roda no primeiro `import jarvis`; aqui define `ROOT` | construtor estático do namespace |
+| `__main__.py` | roda com `python -m jarvis` | a classe com `main` |
+| `cameras.py` | módulo `jarvis.cameras` | uma classe dentro do package |
+
+Por que `src/` no meio? Sem ele, rodar `python` da raiz do projeto importaria
+a pasta `jarvis/` direto do disco, e um erro de instalação passaria
+despercebido. Com `src/`, o `jarvis` só é encontrado se estiver **instalado**
+no venv — o `uv sync` faz isso em modo editável, apontando para os arquivos em
+vez de copiá-los. Ver ARQUITETURA 3.1.
+
+As ferramentas de `tools/` ficam fora do pacote, mas usam ele igual a qualquer
+biblioteca: `from jarvis import cameras, capture`.
 
 ### 2.1 Imports executam código
 

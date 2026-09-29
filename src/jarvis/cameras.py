@@ -14,11 +14,11 @@ from urllib.parse import quote
 import cv2
 import numpy as np
 
-import ui
-from capture import FFmpegCamera
-from clips import BUFFER_DIR, EventRecorder, wait_for_jobs
-from motion import MotionDetector
-from people import SubjectDetector
+from jarvis import ROOT, ui
+from jarvis.capture import FFmpegCamera
+from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
+from jarvis.motion import MotionDetector
+from jarvis.people import SubjectDetector
 
 STREAM = "stream1"
 PANEL_HEIGHT = 480
@@ -32,10 +32,10 @@ YELLOW = (0, 220, 255)
 CYAN = (255, 200, 0)
 
 
-def load_env(path=".env"):
+def load_env(path=None):
     """Read KEY=value lines from a .env file into a dict."""
     values = {}
-    for line in Path(path).read_text().splitlines():
+    for line in Path(path or ROOT / ".env").read_text().splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue

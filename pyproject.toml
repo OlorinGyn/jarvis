@@ -1,7 +1,7 @@
 [project]
 name = "jarvis"
 version = "0.1.0"
-description = "Add your description here"
+description = "Vigilancia domestica com cameras Tapo: movimento, pessoas, gravacao e rostos"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -9,5 +9,12 @@ dependencies = [
     "opencv-python>=5.0.0.93",
 ]
 
+[project.scripts]
+jarvis = "jarvis.cameras:main"
+
 [tool.uv]
-package = false
+link-mode = "copy"
+
+[build-system]
+requires = ["uv_build>=0.8,<1"]
+build-backend = "uv_build"

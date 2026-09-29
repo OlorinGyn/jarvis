@@ -9,7 +9,7 @@ if not exist ".env" (
     exit /b 1
 )
 
-uv run cameras.py
+uv run jarvis
 set CODIGO=%errorlevel%
 
 if not "%CODIGO%"=="0" (

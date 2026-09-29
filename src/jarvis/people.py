@@ -10,14 +10,14 @@ docs/ARQUITETURA.md section 7.11 for why.
 import time
 import urllib.request
 from functools import lru_cache
-from pathlib import Path
 
 import cv2
 import numpy as np
 
-from geometry import Detection, iou, overlap_area
+from jarvis import ROOT
+from jarvis.geometry import Detection, iou, overlap_area
 
-MODEL_DIR = Path("models")
+MODEL_DIR = ROOT / "models"
 MODEL_FILE = MODEL_DIR / "yolo11s.onnx"
 MODEL_URL = ("https://github.com/ultralytics/assets/releases/download/"
              f"v8.4.0/{MODEL_FILE.name}")

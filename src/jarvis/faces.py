@@ -19,7 +19,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-MODEL_DIR = Path("models")
+from jarvis import ROOT
+
+MODEL_DIR = ROOT / "models"
 DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
 RECOGNISER_MODEL = MODEL_DIR / "face_recognition_sface_2021dec.onnx"
 MODEL_SOURCE = "https://github.com/opencv/opencv_zoo/raw/main/models"
@@ -27,7 +29,7 @@ MODEL_URLS = {
     DETECTOR_MODEL: f"{MODEL_SOURCE}/face_detection_yunet/{DETECTOR_MODEL.name}",
     RECOGNISER_MODEL: f"{MODEL_SOURCE}/face_recognition_sface/{RECOGNISER_MODEL.name}",
 }
-FACE_DIR = Path("faces")
+FACE_DIR = ROOT / "faces"
 GALLERY_FILE = FACE_DIR / "gallery.json"
 
 DETECT_SCORE = 0.6
@@ -152,7 +154,7 @@ class Gallery:
             "id": f"p_{uuid.uuid4().hex[:8]}",
             "name": "",
             "embeddings": [embedding],
-            "thumbnail": str(thumbnail),
+            "thumbnail": _portable(thumbnail),
             "first_seen": datetime.now().isoformat(timespec="seconds"),
         }
         self.people.append(person)
@@ -181,6 +183,14 @@ class Gallery:
         if person is None:
             return "?"
         return person["name"] or "Desconhecido"
+
+
+def _portable(path):
+    """Store paths relative to the project, so the folder can be moved."""
+    try:
+        return str(Path(path).resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
 
 
 def _sighting_folder(when):
@@ -243,7 +253,7 @@ def scan_clip(clip, camera, started_at, gallery=None):
             "frames": group["count"],
             "face_width": group["width"],
             "reliable": reliable,
-            "clip": str(clip),
+            "clip": _portable(clip),
             "thumbnail": thumbnail.name,
         }
         (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2),

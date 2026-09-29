@@ -8,9 +8,9 @@ Complementa, não substitui:
 
 | Documento | Para quê |
 |---|---|
-| `docs/ARQUITETURA.md` | Como o sistema funciona e por quê, camada por camada |
-| `docs/INSTALACAO.md` | Instalar e operar numa máquina nova, solução de problemas |
-| `docs/PYTHON.md` | Python e bibliotecas para quem vem de Java/C# |
+| `ARQUITETURA.md` | Como o sistema funciona e por quê, camada por camada |
+| `INSTALACAO.md` | Instalar e operar numa máquina nova, solução de problemas |
+| `PYTHON.md` | Python e bibliotecas para quem vem de Java/C# |
 | **este arquivo** | Histórico, preferências do usuário, caminhos já descartados |
 
 ---
@@ -30,7 +30,7 @@ e rolagem) e **People** (rostos, com cadastro de nome).
 |---|---|---|
 | Máquina | Ryzen 9 7950X, 64 GB, RTX 4080 | Lenovo M900, i5 Skylake 4 núcleos, 16 GB |
 | Caminho | `D:\Personal Projects\J.A.R.V.I.S\jarvis` | `C:\Personal Projects\jarvis` |
-| Estado | Tudo funciona | Conecta mas não recebe frames (seção 6) |
+| Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **A RTX 4080 é deliberadamente ignorada.** Nada aqui é treinado, e desenvolver
 no mesmo caminho de CPU que o M900 usará evita divergência entre as máquinas.
@@ -43,8 +43,10 @@ Quatro regras que ele estabeleceu explicitamente:
 de uma linha são aceitas. Confira antes de commitar:
 
 ```bat
-uv run python -c "import tokenize,pathlib; print(sum(sum(1 for t in tokenize.generate_tokens(tokenize.open(f).readline) if t.type==tokenize.COMMENT) for f in pathlib.Path('.').glob('*.py')))"
+uv run python -c "import tokenize,pathlib; print(sum(sum(1 for t in tokenize.generate_tokens(tokenize.open(f).readline) if t.type==tokenize.COMMENT) for d in ('src','tools') for f in pathlib.Path(d).rglob('*.py')))"
 ```
+
+Olha só `src/` e `tools/`; o `.venv` tem milhares de comentários de terceiros.
 
 **Toda mudança termina em commit + documentação atualizada.** Sem exceção, e sem
 precisar pedir. A mensagem de commit explica o **porquê**, não só o quê.
@@ -115,6 +117,8 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | "sem sinal" sem motivo | `stderr` do ffmpeg ia para `DEVNULL`, e o `ok` do arranque checava `poll()` antes de o processo ter tempo de falhar | Capturar stderr, esperar o primeiro frame de verdade, traduzir erros conhecidos |
 | Falsos positivos de pessoa | Objetos de parede sob infravermelho | Altura mínima (medido: falsos 36–86 px, pessoas reais 294–306 px, **18/18 corretos**) |
 | Mosquitos disparando gravação | Insetos perto da lente ficam grandes no IR | Confirmação temporal: só reporta o que persiste 3 frames no mesmo lugar (**83% menos disparos**) |
+| "nenhum frame recebido" no M900, sem erro | IP das câmeras mudou na rede nova; sem timeout o ffmpeg espera o TCP para sempre em silêncio | `-timeout` no RTSP e tradução do `Error number -138` (seção 6) |
+| Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 
 ## 5. Medições de referência
 
@@ -131,45 +135,37 @@ Guardadas porque conclusões mudam quando o formato muda.
 | Primeiro frame do ffmpeg | ~2,5 s |
 | Laço da interface | mediana 19,9 ms, pior 88,8 ms |
 
-## 6. O PROBLEMA ATUAL
+## 6. Resolvido: M900 sem frames (29/09/2026)
 
-**No M900 o ffmpeg conecta nas câmeras mas nunca entrega frames de análise.**
+**Sintoma:** no M900, `FALHOU - nenhum frame recebido`, painel "sem sinal",
+nenhuma mensagem de erro do ffmpeg. O mesmo commit funcionava no dev.
 
-Sintoma: `FALHOU - nenhum frame recebido`, painel em "sem sinal", **sem nenhuma
-mensagem de erro do ffmpeg**. O mesmo commit funciona na máquina de
-desenvolvimento.
+**Causa:** o M900 está noutra casa, com outro roteador. O DHCP deu às câmeras
+`192.168.0.116` (Front) e `192.168.0.42` (Back), e o `.env` ainda apontava para
+`.10` e `.11`, onde nada responde. Sem timeout, o ffmpeg espera a conexão TCP
+para sempre e **não escreve nada**. A única linha, mesmo em `-loglevel
+verbose`, era `Starting connection attempt to 192.168.0.10 port 554`.
 
-### Já descartado
+**Como foi achado, em ordem:**
 
-| Hipótese | Como foi descartada |
-|---|---|
-| Rede, credenciais, RTSP | `probe_rtsp.py` passa nos três estágios com RTP fluindo |
-| Duas instâncias competindo | O usuário confirmou que não estavam juntas |
-| Código | O mesmo commit funciona na outra máquina |
-| Parâmetros do ffmpeg | `diagnostico.py` testa cinco variantes; **todas falharam** no M900, todas entregam 118–176 frames no dev |
-| Visual C++ Redistributable | Instalado pelo `instalar.bat` |
+1. `tools/diagnostico.py --local` deu 7776000 de 7776000 bytes: decode, pipe,
+   binário e antivírus descartados de uma vez
+2. Comando de captura à mão com log detalhado: zero frames **e zero
+   segmentos**, então nem conectava. O log parava na tentativa de conexão
+3. `Test-NetConnection` na porta 554 também falhava, e o ARP mostrava os dois
+   IPs como `Unreachable`: não era o ffmpeg, não havia ninguém lá
+4. Varredura da sub-rede pela porta 554 achou três hosts; dois com MAC
+   `14-EB-B6` (TP-Link). As credenciais identificaram cada câmera: cada uma só
+   aceita a própria Conta da Câmera e responde `401` às outras
 
-Que **todas** as variantes falhem, inclusive a que só decodifica e não grava
-segmentos, aponta para o decode ou para o pipe — não para a câmera.
+**Lição:** as hipóteses descartadas antes estavam erradas porque o
+`probe_rtsp.py` que "passou" tinha sido rodado com outro IP, digitado à mão.
+Numa máquina ou rede nova, **teste o IP do `.env` primeiro**.
 
-### Próximo passo
+**Correção:** `-timeout` no RTSP (ARQUITETURA 5.7). Hoje um IP errado aparece
+em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
 
-```bat
-uv run diagnostico.py --local
-```
-
-Gera um vídeo 1080p H.264 com o próprio ffmpeg e decodifica para rawvideo, **sem
-envolver câmera nenhuma**. No dev imprime `recebido 7776000 bytes, esperado
-7776000`.
-
-- **Se der 0:** o problema não tem relação com as câmeras. Suspeite do binário
-  do `imageio-ffmpeg`, de antivírus, ou de política do Windows.
-- **Se der 7776000:** o decode está bom e a investigação volta para o RTSP via
-  ffmpeg — note que o `probe_rtsp.py` usa sockets Python puros, então ele
-  **não** prova que o RTSP do ffmpeg funciona.
-
-Depois: rodar o comando de captura à mão com `-loglevel debug` e ler tudo. O
-`diagnostico.py` usa `warning`, que pode estar escondendo a pista.
+**Pendente do usuário:** reservar `.116` e `.42` por MAC no roteador do M900.
 
 ## 7. Limitações conhecidas e aceitas
 
@@ -190,7 +186,8 @@ Depois: rodar o comando de captura à mão com `-loglevel debug` e ler tudo. O
 
 ## 8. Próximos passos planejados
 
-1. Resolver o problema da seção 6
+1. **Medir o M900 rodando** — CPU com as duas câmeras, e se `HWACCEL` ajuda
+   (INSTALACAO seção 6)
 2. **Retenção automática** — o único lever grande que resta para disco
 3. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
    um clipe corresponder a uma pessoa
@@ -203,19 +200,25 @@ Depois: rodar o comando de captura à mão com `-loglevel debug` e ler tudo. O
 ## 9. Mapa do repositório
 
 ```
-cameras.py      aplicação principal: laço, exibição, orquestração
-capture.py      ffmpeg por câmera: segmentos originais + frames de análise
-motion.py       camada 1: MOG2 + confirmação temporal
-people.py       camada 2: YOLO via cv2.dnn, pessoas e animais
-clips.py        camada 3: eventos, montagem sem perda, metadados
-faces.py        camada 4: YuNet + SFace, galeria, cadastro de nome
-ui.py           menu lateral e as três telas
-geometry.py     tipo Detection e utilitários de caixas
-probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
-diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
-instalar.bat    instalação numa máquina nova
-jarvis.bat      atalho para iniciar
+src/jarvis/
+  __init__.py     ROOT, a raiz do projeto
+  cameras.py      aplicação principal: laço, exibição, orquestração
+  capture.py      ffmpeg por câmera: segmentos originais + frames de análise
+  motion.py       camada 1: MOG2 + confirmação temporal
+  people.py       camada 2: YOLO via cv2.dnn, pessoas e animais
+  clips.py        camada 3: eventos, montagem sem perda, metadados
+  faces.py        camada 4: YuNet + SFace, galeria, cadastro de nome
+  ui.py           menu lateral e as três telas
+  geometry.py     tipo Detection e utilitários de caixas
+tools/
+  diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
+  probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
+docs/             ARQUITETURA, INSTALACAO, PYTHON e este arquivo
+instalar.bat      instalação numa máquina nova
+jarvis.bat        atalho para iniciar (uv run jarvis)
 ```
+
+Estrutura explicada em ARQUITETURA seção 3.
 
 Não versionados: `.env` (credenciais), `models/` (~95 MB, baixados sob demanda),
 `clips/`, `faces/`.
@@ -223,11 +226,13 @@ Não versionados: `.env` (credenciais), `models/` (~95 MB, baixados sob demanda)
 ## 10. Comandos úteis
 
 ```bat
-jarvis.bat                                        iniciar
-uv run diagnostico.py Front                       testar variantes de captura
-uv run diagnostico.py --local                     testar ffmpeg sem câmera
-uv run probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
-tasklist | findstr ffmpeg                         procurar ffmpeg órfão
+jarvis.bat                                              iniciar
+uv run jarvis                                           iniciar, sem o .bat
+uv run tools/diagnostico.py Front                       testar variantes de captura
+uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
+uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
+powershell Test-NetConnection <ip> -Port 554            a câmera responde nesse IP?
+tasklist | findstr ffmpeg                               procurar ffmpeg órfão
 ```
 
 Constantes de ajuste: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`,

@@ -22,10 +22,10 @@ from pathlib import Path
 
 import cv2
 
-import faces
-from capture import SEGMENT_SECONDS, ffmpeg_exe
+from jarvis import ROOT, faces
+from jarvis.capture import SEGMENT_SECONDS, ffmpeg_exe
 
-CLIP_DIR = Path("clips")
+CLIP_DIR = ROOT / "clips"
 BUFFER_DIR = CLIP_DIR / "_buffer"
 PRE_SECONDS = 6.0
 POST_SECONDS = 5.0

@@ -59,7 +59,7 @@ O `instalar.bat` faz cinco coisas:
    PATH só atualiza numa janela nova)
 2. Garante o Visual C++ Redistributable (ver 1.1)
 3. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
-   exatas que foram testadas
+   exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
 4. Baixa os modelos de visão (~60 MB no total)
 5. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
 
@@ -72,6 +72,10 @@ Preencha o `.env` e inicie:
 ```bat
 jarvis.bat
 ```
+
+O `.bat` só confere se o `.env` existe e chama `uv run jarvis`. Os dois são
+equivalentes; o `.bat` existe para dar para abrir com dois cliques e para a
+janela não fechar sozinha quando algo dá errado.
 
 ## 3. O que é baixado automaticamente
 
@@ -94,7 +98,7 @@ O `.env` guarda uma câmera por trio de linhas. O rótulo vira o nome na tela e 
 nome da pasta das gravações.
 
 ```
-CAM_FRONT_IP=192.168.0.10
+CAM_FRONT_IP=192.168.0.116
 CAM_FRONT_USER=usuario
 CAM_FRONT_PASSWORD=senha
 ```
@@ -155,7 +159,12 @@ uv sync
 ```
 
 O `uv sync` é necessário só quando as dependências mudam, mas rodar sempre não
-faz mal.
+faz mal. O `uv run` também sincroniza sozinho antes de executar.
+
+**Ao atualizar uma cópia anterior a 29/09/2026:** o código saiu da raiz para
+`src/jarvis/` e `tools/`. O `git pull` move os arquivos; se sobrar uma pasta
+`__pycache__/` na raiz, pode apagar. O `.env`, `models/`, `clips/` e `faces/`
+continuam onde estão.
 
 ## 8. Quando algo não funciona
 
@@ -177,7 +186,7 @@ Nada responde no IP do `.env`. Numa rede nova é quase certo que o roteador deu
 outro endereço à câmera. Confirme e procure quem tem a porta RTSP aberta:
 
 ```powershell
-Test-NetConnection 192.168.0.10 -Port 554
+Test-NetConnection 192.168.0.116 -Port 554
 ```
 
 Se falhar, descubra o IP atual no app Tapo (câmera → engrenagem → Informações
@@ -194,7 +203,7 @@ Antes de tudo, faça o teste de IP acima: versões antigas do `capture.py`, sem
 O RTSP está bom mas o ffmpeg não entrega frames para análise. Rode:
 
 ```bat
-uv run diagnostico.py Front
+uv run tools/diagnostico.py Front
 ```
 
 Ele testa cinco variantes do comando de captura, 14 segundos cada, e informa
@@ -216,7 +225,7 @@ de análise.
 **Diagnóstico completo de uma câmera**
 
 ```bat
-uv run probe_rtsp.py 192.168.0.10 usuario senha stream1
+uv run tools/probe_rtsp.py 192.168.0.116 usuario senha stream1
 ```
 
 Mostra cada etapa do handshake. O esperado é `200 OK` nas três:

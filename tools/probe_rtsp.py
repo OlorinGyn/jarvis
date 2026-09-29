@@ -1,6 +1,6 @@
 """Diagnose a camera: walk DESCRIBE -> SETUP -> PLAY and print each status.
 
-Usage: uv run probe_rtsp.py <ip> <user> <password> stream1
+Usage: uv run tools/probe_rtsp.py <ip> <user> <password> stream1
 """
 import hashlib, re, socket, sys
 

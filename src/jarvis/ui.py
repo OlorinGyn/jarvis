@@ -16,8 +16,8 @@ from datetime import date
 import cv2
 import numpy as np
 
-import faces
-from clips import available_days, list_clips, reveal
+from jarvis import faces
+from jarvis.clips import available_days, list_clips, reveal
 
 SIDEBAR_WIDTH = 190
 ITEM_TOP = 92

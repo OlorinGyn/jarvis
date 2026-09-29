@@ -43,7 +43,7 @@ if errorlevel 1 (
 )
 
 echo [4/5] Baixando modelos de visao ^(~95 MB^)...
-uv run python -c "import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
+uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
 if errorlevel 1 (
     echo.
     echo ERRO: falha ao preparar os modelos.

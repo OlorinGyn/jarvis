@@ -72,53 +72,82 @@ e só roda se a anterior encontrou algo.
 
 ```
 jarvis/
-├── cameras.py        aplicação principal (loop, exibição, orquestração)
-├── capture.py        ffmpeg por câmera: segmentos originais + frames
-├── motion.py         camada 1: detecção de movimento
-├── people.py         camada 2: detecção de pessoas e animais
-├── clips.py          camada 3: eventos, montagem sem perda, metadados
-├── faces.py          camada 4: detecção de rosto, embedding, galeria
-├── ui.py             menu lateral, telas Live, Records e People
-├── geometry.py       tipo Detection e utilitários de caixas (IoU)
-├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
-├── instalar.bat      instalação em máquina nova (roda uma vez)
-├── jarvis.bat        atalho para iniciar o programa
-├── .env.example      modelo de configuração, versionado
-├── .env              credenciais das câmeras (NÃO versionado)
-├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
-├── clips/            gravações (não versionado)
-│   ├── _buffer/      segmentos rotativos por câmera, apagados sozinhos
+├── src/jarvis/           o programa, como pacote Python
+│   ├── __init__.py       ROOT: a raiz do projeto, base de todo caminho
+│   ├── __main__.py       permite `python -m jarvis`
+│   ├── cameras.py        aplicação principal (loop, exibição, orquestração)
+│   ├── capture.py        ffmpeg por câmera: segmentos originais + frames
+│   ├── motion.py         camada 1: detecção de movimento
+│   ├── people.py         camada 2: detecção de pessoas e animais
+│   ├── clips.py          camada 3: eventos, montagem sem perda, metadados
+│   ├── faces.py          camada 4: detecção de rosto, embedding, galeria
+│   ├── ui.py             menu lateral, telas Live, Records e People
+│   └── geometry.py       tipo Detection e utilitários de caixas (IoU)
+├── tools/                diagnóstico, fora do programa
+│   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
+│   └── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
+├── docs/
+│   ├── ARQUITETURA.md    como funciona e por quê
+│   ├── INSTALACAO.md     como instalar e operar numa máquina nova
+│   ├── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
+│   └── CONTEXTO.md       histórico, decisões, caminhos descartados
+├── instalar.bat          instalação em máquina nova (roda uma vez)
+├── jarvis.bat            atalho para iniciar o programa
+├── .env.example          modelo de configuração, versionado
+├── .env                  credenciais das câmeras (NÃO versionado)
+├── models/               ONNX do YOLO, YuNet e SFace (baixados, não versionado)
+├── clips/                gravações (não versionado)
+│   ├── _buffer/          segmentos rotativos por câmera, apagados sozinhos
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
-├── faces/            rostos e galeria (não versionado)
-│   ├── gallery.json  pessoas conhecidas e desconhecidas
-│   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
-├── models/           ONNX do YuNet e SFace (baixados, não versionado)
-└── docs/
-    ├── ARQUITETURA.md    como funciona e por quê
-    ├── INSTALACAO.md     como instalar e operar numa máquina nova
-    └── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
+└── faces/                rostos e galeria (não versionado)
+    ├── gallery.json      pessoas conhecidas e desconhecidas
+    └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
 ```
 
-### 3.1 O projeto não é um pacote
+Na raiz ficam só o que o usuário abre ou edita (os `.bat`, o `.env`) e o que
+as ferramentas exigem ali (`pyproject.toml`, `uv.lock`, `.python-version`).
 
-`pyproject.toml` declara:
+### 3.1 O projeto é um pacote instalável
+
+`pyproject.toml` declara um `[build-system]` com o `uv_build` e um comando:
 
 ```toml
-[tool.uv]
-package = false
+[project.scripts]
+jarvis = "jarvis.cameras:main"
 ```
 
-O `uv init` originalmente configurou o projeto como pacote instalável
-(`[build-system]` + `[project.scripts]`). Consequência: **todo `uv run`
-reconstruía e reinstalava o `jarvis`**, imprimindo `Built jarvis`,
-`Uninstalled 1 package`, `Installing wheels` e um aviso de hardlink — o cache
-do `uv` fica no C: e o projeto no D:, e hardlink não atravessa volumes.
+O `uv sync` instala o pacote em **modo editável**: o `.venv` aponta para
+`src/jarvis/` em vez de copiar os arquivos, então editar o código vale na hora,
+sem reinstalar. `uv run jarvis` executa `main()` de `cameras.py`.
 
-Nada disso era necessário: os scripts rodam direto (`uv run cameras.py`), sem
-precisar do projeto instalado. Com `package = false` o `uv` apenas garante as
-dependências, e a saída fica limpa.
+Os módulos se importam pelo nome do pacote (`from jarvis.capture import
+FFmpegCamera`), igual a um `namespace` em C# ou um `package` em Java. Ver
+PYTHON.md.
 
-A pasta `src/jarvis/` é resto do andaime do `uv init` e não é usada.
+**Isso reverte uma decisão antiga, com motivo.** Até setembro de 2026 havia
+`package = false`, porque o backend que o `uv init` escolheu **reconstruía e
+reinstalava o `jarvis` a cada `uv run`**. Com o `uv_build` isso não acontece
+mais: medido no M900, o segundo `uv run` diz `Requirement already installed` e
+não constrói nada. Com os módulos soltos na raiz, cada script dependia de ser
+executado a partir da pasta certa, e a raiz acumulava arquivos de naturezas
+diferentes — código, ferramentas, histórico.
+
+`link-mode = "copy"` resolve o outro sintoma antigo: na máquina de
+desenvolvimento o cache do `uv` fica no C: e o projeto no D:, e hardlink não
+atravessa volumes.
+
+### 3.2 Caminhos partem da raiz, não da pasta atual
+
+`jarvis/__init__.py` define `ROOT = Path(__file__).resolve().parents[2]`: o
+arquivo está em `src/jarvis/`, dois níveis abaixo da raiz. `models/`,
+`clips/`, `faces/` e `.env` são sempre `ROOT / ...`.
+
+Antes eram relativos (`Path("clips")`), o que significa "relativo à pasta de
+onde o comando foi executado". Rodar de outra pasta criava um `clips/` novo no
+lugar errado ou não achava o `.env`.
+
+Os caminhos **gravados** nos JSON de rostos continuam relativos à raiz
+(`faces\2026-09-28\...`), para a pasta do projeto poder mudar de lugar.
 
 ## 4. Configuração — `.env`
 
@@ -126,7 +155,7 @@ Uma câmera = três linhas. O nome do rótulo vira o nome exibido e a pasta dos
 clipes.
 
 ```
-CAM_FRONT_IP=192.168.0.10
+CAM_FRONT_IP=192.168.0.116
 CAM_FRONT_USER=<usuario-da-conta-da-camera>
 CAM_FRONT_PASSWORD=<senha-da-conta-da-camera>
 ```
@@ -1327,7 +1356,7 @@ fisicamente.** Alternativa: desligar o Tapo Care.
 `probe_rtsp.py` diagnostica isso mostrando cada etapa do handshake:
 
 ```
-uv run probe_rtsp.py <ip> <usuario> <senha> stream1
+uv run tools/probe_rtsp.py <ip> <usuario> <senha> stream1
 ```
 
 ---
@@ -1339,6 +1368,7 @@ temporal, detecção de pessoas e animais, supressão de cenário estático, alt
 mínima para pessoa, gravação com pré-roll montada dos segmentos originais,
 miniatura e metadados por evento, reconhecimento facial com galeria e cadastro
 de nome, e a interface com Live, Records (calendário e rolagem) e People.
+Rodando no M900 desde 29/09/2026, depois da correção do IP (5.7).
 
 **Próximos passos naturais:**
 
@@ -1355,4 +1385,5 @@ de nome, e a interface com Live, Records (calendário e rolagem) e People.
    rosto de ~44 px cinzentos para algo utilizável (ver 10.5).
 7. **Re-ID de animais** — classificador sobre o corpo inteiro do cachorro,
    usando recortes coletados pela própria tela People (ver 10.8).
-8. **Deploy no M900** — exportar os modelos para OpenVINO INT8.
+8. **OpenVINO no M900** — exportar os modelos para OpenVINO INT8 e recuperar a
+   velocidade perdida ao sair do PyTorch.
