@@ -311,9 +311,24 @@ mapeia os casos conhecidos para instruções:
 | `not one of 40` / `406` | Camera ocupada, aceita uma conexao RTSP por vez |
 | `Connection refused` | Confira o IP e se a camera esta ligada |
 | `timed out` | Confira a rede e o IP |
+| `Error number -138` | Confira a rede e o IP, o roteador pode ter trocado o IP |
 
 Erro desconhecido passa cru, em vez de virar uma mensagem genérica que esconde
 informação.
+
+**Toda conexão tem prazo: `-timeout`.** Sem ele, um IP onde não existe nada
+deixa o ffmpeg esperando a conexão TCP para sempre, **sem escrever nenhum
+erro**. Foi o que aconteceu no M900: a casa nova tinha outro roteador, o DHCP
+deu às câmeras os endereços `.116` e `.42`, e o `.env` ainda apontava para `.10`
+e `.11`. O painel dizia só "nenhum frame recebido", e a investigação foi atrás
+de decode, pipe e antivírus antes de alguém rodar `Test-NetConnection`. A única
+linha do log, mesmo em `-loglevel verbose`, era `Starting connection attempt`.
+
+Com `-timeout` (em microssegundos, `SOCKET_TIMEOUT_SECONDS` no `capture.py`) o
+ffmpeg desiste em ~6 s. No Windows o erro sai como `Error number -138`, que é o
+`ETIMEDOUT` da biblioteca C, sem as palavras "timed out" — por isso a linha
+própria na tabela. O mesmo prazo vale para leituras: câmera que para de mandar
+dados por 5 s derruba o processo, e o reinício automático (5.8) reconecta.
 
 O painel "sem sinal" mostra esse texto quebrado em linhas, então o motivo fica
 visível sem abrir o terminal.

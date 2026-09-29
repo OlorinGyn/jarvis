@@ -171,7 +171,25 @@ tasklist | findstr ffmpeg
 Se o programa foi encerrado à força, o ffmpeg pode ter sobrevivido e estar
 segurando a câmera.
 
+**"Tempo esgotado. Confira a rede e o IP da camera"**
+
+Nada responde no IP do `.env`. Numa rede nova é quase certo que o roteador deu
+outro endereço à câmera. Confirme e procure quem tem a porta RTSP aberta:
+
+```powershell
+Test-NetConnection 192.168.0.10 -Port 554
+```
+
+Se falhar, descubra o IP atual no app Tapo (câmera → engrenagem → Informações
+do dispositivo) ou na lista de clientes do roteador, atualize o `.env` e
+reserve o IP (seção 4). As Tapo têm MAC começando com `14-EB-B6`. As
+credenciais identificam qual é qual: cada câmera só aceita a própria Conta da
+Câmera e responde `401` às outras.
+
 **Conecta mas nunca aparece imagem ("nenhum frame recebido")**
+
+Antes de tudo, faça o teste de IP acima: versões antigas do `capture.py`, sem
+`-timeout`, mostravam esta mensagem também para IP errado (ARQUITETURA 5.7).
 
 O RTSP está bom mas o ffmpeg não entrega frames para análise. Rode:
 
@@ -229,7 +247,7 @@ O motivo aparece **em amarelo no próprio painel**. Os mais comuns:
 |---|---|
 | Camera ocupada | Outra coisa está usando a câmera. Ver abaixo. |
 | Credenciais incorretas | Confira a Conta da Câmera no app Tapo |
-| Confira o IP | A câmera mudou de endereço ou está desligada |
+| Confira o IP / Tempo esgotado | A câmera mudou de endereço ou está desligada. Ver "Tempo esgotado" acima |
 
 **"Camera ocupada" é o caso mais frequente numa instalação nova.** A Tapo aceita
 **uma conexão RTSP por vez**. Se o J.A.R.V.I.S. estiver rodando noutra máquina —

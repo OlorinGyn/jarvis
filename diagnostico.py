@@ -25,6 +25,7 @@ def base(url, buffer, segments=True, wallclock=True, rate="-r"):
     comando = [
         capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "warning", "-nostdin",
         "-rtsp_transport", "tcp",
+        "-timeout", str(capture.SOCKET_TIMEOUT_SECONDS * 1_000_000),
     ]
     if wallclock:
         comando += ["-use_wallclock_as_timestamps", "1"]

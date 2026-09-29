@@ -28,6 +28,7 @@ SEGMENT_SECONDS = 4
 BUFFER_SECONDS = 240
 RESTART_SECONDS = 5.0
 STARTUP_SECONDS = 25.0
+SOCKET_TIMEOUT_SECONDS = 5
 HWACCEL = ""
 SEGMENT_NAME = "%Y%m%d-%H%M%S.mp4"
 SEGMENT_FORMAT = "%Y%m%d-%H%M%S"
@@ -40,6 +41,8 @@ TRANSLATIONS = (
     ("406", "Camera ocupada. Ela aceita uma conexao RTSP por vez."),
     ("Connection refused", "Conexao recusada. Confira o IP e se a camera esta ligada."),
     ("timed out", "Tempo esgotado. Confira a rede e o IP da camera."),
+    ("Error number -138", "Tempo esgotado. Confira a rede e o IP da camera - "
+                          "o roteador pode ter trocado o IP dela."),
     ("No route to host", "Camera inalcancavel pela rede. Confira o IP."),
     ("404", "Caminho do stream invalido. Esperado /stream1 ou /stream2."),
 )
@@ -83,6 +86,7 @@ class FFmpegCamera:
         return [
             ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-nostdin",
             "-rtsp_transport", "tcp",
+            "-timeout", str(SOCKET_TIMEOUT_SECONDS * 1_000_000),
             "-use_wallclock_as_timestamps", "1",
             *acceleration,
             "-i", self.url,
