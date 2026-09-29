@@ -41,12 +41,18 @@ continua sendo detectado como humano.
          ▼                                 ▼
    ┌───────────────────────────────────────────────┐
    │ clips.py   concat -c copy + miniatura + JSON  │
-   └─────────────────────┬─────────────────────────┘
-                         │ metadados
-                         ▼
-                   ┌───────────┐
-                   │   ui.py   │  menu lateral, tela Records
-                   └───────────┘
+   └────────────┬──────────────────┬───────────────┘
+                │ clipe 1080p      │ metadados
+                ▼                  │
+         ┌───────────┐             │
+         │ faces.py  │  YuNet +    │
+         │           │  SFace      │
+         └─────┬─────┘             │
+               │ galeria           │
+               ▼                   ▼
+         ┌─────────────────────────────────┐
+         │  ui.py   Live | Records | People│
+         └─────────────────────────────────┘
 ```
 
 O vídeo salvo **nunca passa pelo Python**: ele vai dos pacotes da câmera direto
@@ -71,7 +77,8 @@ jarvis/
 ├── motion.py         camada 1: detecção de movimento
 ├── people.py         camada 2: detecção de pessoas e animais
 ├── clips.py          camada 3: eventos, montagem sem perda, metadados
-├── ui.py             menu lateral e tela de gravações
+├── faces.py          camada 4: detecção de rosto, embedding, galeria
+├── ui.py             menu lateral, telas Live, Records e People
 ├── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
 ├── .env              credenciais das câmeras (NÃO versionado)
@@ -79,6 +86,10 @@ jarvis/
 ├── clips/            gravações (não versionado)
 │   ├── _buffer/      segmentos rotativos por câmera, apagados sozinhos
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
+├── faces/            rostos e galeria (não versionado)
+│   ├── gallery.json  pessoas conhecidas e desconhecidas
+│   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
+├── models/           ONNX do YuNet e SFace (baixados, não versionado)
 └── docs/
     ├── ARQUITETURA.md
     └── PYTHON.md
@@ -972,7 +983,151 @@ que processa a fila de eventos da interface — inclusive o clique no X.
 
 ---
 
-## 10. Restrição importante das câmeras Tapo
+## 10. Camada de rostos — `faces.py`
+
+### 10.1 Roda no clipe, não no ao vivo
+
+Um rosto que tem 60 px no 1080p original fica com 30 px nos frames de análise de
+960x540. O reconhecedor quer ~112 px. Reconhecer rosto nos frames de análise
+simplesmente não funciona.
+
+Por isso `scan_clip()` roda **no clipe já montado**, dentro da mesma thread que
+faz a montagem (seção 8.3). Ganhos:
+
+- Resolução original, a melhor disponível
+- Fora do caminho crítico: não rouba CPU do ao vivo
+- Só roda quando o evento teve `person` entre os rótulos
+
+O custo é o rosto aparecer na tela People alguns segundos após o evento.
+
+### 10.2 YuNet e SFace, sem dependência nova
+
+O OpenCV traz os dois modelos embutidos:
+
+| Papel | Modelo | Tamanho |
+|---|---|---|
+| Detectar rosto | `cv2.FaceDetectorYN` (YuNet) | 227 KB |
+| Gerar embedding | `cv2.FaceRecognizerSF` (SFace) | 37 MB |
+
+Os `.onnx` são baixados do repositório oficial `opencv/opencv_zoo` para
+`models/`, que não é versionado. `alignCrop()` já devolve o recorte alinhado em
+112x112 — exatamente o que o SFace espera — usando os 5 pontos faciais que o
+YuNet retorna junto com a caixa.
+
+O embedding tem **128 dimensões**. A comparação é por cosseno.
+
+Medido com rostos nítidos:
+
+| Comparação | Similaridade |
+|---|---|
+| Mesmo rosto | **1.000** |
+| Rostos diferentes | **0.045** |
+
+`MATCH_THRESHOLD = 0.363` é o valor recomendado pela documentação do OpenCV
+para o SFace com cosseno.
+
+### 10.3 Um rosto por pessoa por evento
+
+Um clipe tem dezenas de frames da mesma pessoa. `_group()` junta as observações
+pela própria similaridade dos embeddings (`SAME_FACE_THRESHOLD = 0.40`) e
+guarda, de cada grupo, a **melhor** visão — a de maior `largura x score`, já que
+rosto maior e mais confiante gera embedding melhor.
+
+Resultado: um evento com uma pessoa gera uma aparição, não trinta.
+
+### 10.4 A galeria e o nome retroativo
+
+`faces/gallery.json` guarda as pessoas; cada aparição vira um par
+`.jpg` + `.json` em `faces/<data>/`, no mesmo padrão dos clipes.
+
+Rosto que não casa com ninguém **entra na galeria como desconhecido**, com o
+embedding guardado. É isso que permite o comportamento mais útil da tela: ao
+cadastrar o nome, **todas as aparições passadas daquela pessoa passam a exibi-lo**,
+porque o nome é resolvido na hora da exibição a partir do `person_id`, não
+copiado para dentro de cada aparição.
+
+`reinforce()` acumula até `MAX_EMBEDDINGS = 12` visões por pessoa, para cobrir
+ângulos e iluminações diferentes.
+
+### 10.5 A realidade do infravermelho noturno
+
+Testado no clipe noturno real, onde o YOLO detecta a pessoa com 0,92:
+
+| Medida | Valor |
+|---|---|
+| Rosto encontrado pelo YuNet | **44 px de largura** |
+| Largura desejável para o SFace | ~112 px |
+
+O rosto é detectado, mas um embedding tirado de 44 px é pouco confiável. A
+solução foi não descartar e sim **marcar**:
+
+```python
+MIN_FACE_WIDTH = 36     # abaixo disso nem entra
+GOOD_FACE_WIDTH = 80    # abaixo disso entra, mas nao reforca a galeria
+```
+
+Rostos pequenos aparecem na tela People com a largura em vermelho, podem ser
+nomeados, mas **nunca são adicionados aos embeddings de referência** — senão
+contaminariam a galeria e degradariam os reconhecimentos futuros.
+
+Expectativa honesta: identificação boa de dia e a curta distância; à noite o
+sistema detecta que *há* um rosto, mas dizer de quem é será instável.
+
+### 10.6 Dois bugs que o teste revelou
+
+**Amostragem no lugar errado.** A primeira versão lia os primeiros frames do
+clipe. Como existe pré-gravação (seção 8.2), o começo do clipe é justamente
+**antes** da pessoa chegar — e o resultado era zero rostos num clipe que
+claramente tinha uma pessoa. Agora o passo é calculado a partir do total de
+frames, espalhando as amostras pelo clipe inteiro:
+
+```python
+step = max(total // MAX_SAMPLES, SAMPLE_EVERY)
+```
+
+**Piso alto demais.** `MIN_FACE_WIDTH` estava em 55 e descartava silenciosamente
+o rosto de 44 px. O detector estava certo; o filtro é que estava errado.
+
+### 10.7 Cadastro de nome sem widget
+
+O HighGUI não tem campo de texto. O prompt é desenhado à mão e as teclas chegam
+pelo `waitKey` do laço principal, que as encaminha para a interface enquanto
+`interface.capturing` for verdadeiro:
+
+```python
+key = cv2.waitKey(1) & 0xFF
+if interface.capturing:
+    interface.on_key(key)
+elif key == ord("q"):
+    break
+```
+
+Repare que o `q` deixa de encerrar o programa durante a digitação — senão seria
+impossível escrever um nome com a letra q. Enter salva, Esc cancela, Backspace
+apaga, e só caracteres imprimíveis (32 a 126) entram no texto.
+
+### 10.8 Animais: por que não dá com esta camada
+
+O SFace é treinado exclusivamente em faces humanas. Um cachorro não tem rosto
+detectável pelo YuNet, e mesmo que tivesse, o embedding não teria significado.
+
+Identificar *qual* cachorro exigiria outra camada, de *animal re-ID*, sobre o
+**corpo inteiro** e não sobre o rosto. Dois caminhos:
+
+| Caminho | Precisão | Custo |
+|---|---|---|
+| Classificador treinado com fotos dos próprios cães | Boa para poucos cães conhecidos | ~50-100 recortes por cão |
+| Embedding genérico de re-ID animal (MegaDescriptor) | Menor | Só baixar o modelo |
+
+A tela People é exatamente a ferramenta que coletaria esses recortes, então a
+infraestrutura já está pronta quando essa camada for feita.
+
+Ressalva: à noite, um cachorro escuro vira silhueta no infravermelho. A precisão
+será sempre bem menor que a de rostos humanos.
+
+---
+
+## 11. Restrição importante das câmeras Tapo
 
 **A câmera suporta apenas duas destas três funções ao mesmo tempo:**
 
@@ -995,12 +1150,13 @@ uv run probe_rtsp.py <ip> <usuario> <senha> stream1
 
 ---
 
-## 11. Estado atual e próximos passos
+## 12. Estado atual e próximos passos
 
 **Funcionando:** captura via ffmpeg sem recodificar, movimento com confirmação
-temporal, detecção de pessoas e animais, supressão de cenário estático,
-gravação com pré-roll montada dos segmentos originais, miniatura e metadados
-por evento, menu lateral com Live e Records com calendário.
+temporal, detecção de pessoas e animais, supressão de cenário estático, altura
+mínima para pessoa, gravação com pré-roll montada dos segmentos originais,
+miniatura e metadados por evento, reconhecimento facial com galeria e cadastro
+de nome, e a interface com Live, Records (calendário e rolagem) e People.
 
 **Próximos passos naturais:**
 
@@ -1012,6 +1168,9 @@ por evento, menu lateral com Live e Records com calendário.
 4. **Reprodução no Records** — clicar num cartão e assistir ao clipe.
 5. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
    então o primeiro clipe falso da noite ainda é gravado.
-6. **Reconhecimento facial** — SCRFD + ArcFace sobre as caixas de pessoa.
-   Não serve para animais (ver 7.3); identidade de pets seria outra camada.
-7. **Deploy no M900** — exportar o modelo para OpenVINO INT8.
+6. **Iluminação na área da Front** — o maior ganho possível de precisão facial.
+   Uma luz acionada por movimento tira a câmera do modo infravermelho e leva o
+   rosto de ~44 px cinzentos para algo utilizável (ver 10.5).
+7. **Re-ID de animais** — classificador sobre o corpo inteiro do cachorro,
+   usando recortes coletados pela própria tela People (ver 10.8).
+8. **Deploy no M900** — exportar os modelos para OpenVINO INT8.

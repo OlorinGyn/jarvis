@@ -17,3 +17,9 @@ wheels/
 
 # recorded clips
 clips/
+
+# rostos detectados e galeria
+faces/
+
+# modelos ONNX (baixados sob demanda)
+models/

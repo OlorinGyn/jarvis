@@ -185,7 +185,10 @@ def main():
         live = np.hstack(panels)
         cv2.imshow(WINDOW, interface.render(live, window_size(live)))
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        key = cv2.waitKey(1) & 0xFF
+        if interface.capturing:
+            interface.on_key(key)
+        elif key == ord("q"):
             break
 
         if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:

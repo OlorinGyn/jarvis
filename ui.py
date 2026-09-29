@@ -16,12 +16,15 @@ from datetime import date
 import cv2
 import numpy as np
 
+import faces
 from clips import available_days, list_clips, reveal
 
 SIDEBAR_WIDTH = 190
 ITEM_TOP = 92
 ITEM_HEIGHT = 54
-ITEMS = ("Live", "Records")
+ITEMS = ("Live", "Records", "People")
+FACE_CARD = 150
+NAME_MAX = 40
 
 CALENDAR_WIDTH = 250
 CARD_GAP = 10
@@ -39,6 +42,7 @@ TEXT = (235, 235, 235)
 MUTED = (150, 150, 150)
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
+RED = (70, 70, 230)
 TODAY = (90, 150, 220)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 WEEKDAYS = ("D", "S", "T", "Q", "Q", "S", "S")
@@ -81,6 +85,9 @@ class Interface:
         self.thumbnails = {}
         self.scroll = 0
         self.max_scroll = 0
+        self.sightings = []
+        self.naming = None
+        self.typed = ""
 
     def _region(self, box, action, payload=None):
         self.regions.append((box, action, payload))
@@ -105,9 +112,36 @@ class Interface:
             step = -1 if delta > 0 else 1
             self.scroll = max(0, min(self.scroll + step, self.max_scroll))
 
+    @property
+    def capturing(self):
+        """True while the name prompt owns the keyboard."""
+        return self.naming is not None
+
+    def on_key(self, key):
+        """Feed one keypress to the name prompt."""
+        if not self.capturing:
+            return
+        if key in (13, 10):
+            if self.typed.strip():
+                faces.Gallery().rename(self.naming, self.typed)
+                self.last_scan = 0.0
+            self.naming, self.typed = None, ""
+        elif key == 27:
+            self.naming, self.typed = None, ""
+        elif key == 8:
+            self.typed = self.typed[:-1]
+        elif 32 <= key < 127 and len(self.typed) < NAME_MAX:
+            self.typed += chr(key)
+
     def _activate(self, action, payload):
+        if action == "name":
+            self.naming, self.typed = payload, ""
+            return
+        if self.capturing:
+            return
         if action == "view":
             self.view = payload
+            self.scroll = 0
         elif action == "day":
             self.day = payload
             self.month = payload.replace(day=1)
@@ -125,7 +159,8 @@ class Interface:
             self.last_scan = now
             self.entries_day = self.day
             self.entries = list_clips(self.day)
-            self.days_with_clips = available_days()
+            self.sightings = faces.list_sightings(self.day)
+            self.days_with_clips = available_days() | faces.days_with_faces()
 
     def render(self, live, size):
         """Build the whole window at exactly the requested (width, height)."""
@@ -137,8 +172,13 @@ class Interface:
         area = (SIDEBAR_WIDTH, 0, width, height)
         if self.view == "Records":
             self._draw_records(canvas, area)
+        elif self.view == "People":
+            self._draw_people(canvas, area)
         elif live is not None:
             letterbox(canvas, area, live)
+
+        if self.capturing:
+            self._draw_name_prompt(canvas)
         return canvas
 
     def _draw_sidebar(self, canvas, height):
@@ -254,6 +294,104 @@ class Interface:
         offset = int((track - thumb) * self.scroll / self.max_scroll)
         cv2.rectangle(canvas, (x0, y0 + offset), (x1 - 2, y0 + offset + thumb),
                       ACTIVE, -1)
+
+    def _draw_people(self, canvas, area):
+        self.refresh()
+        x0, y0, x1, y1 = area
+
+        calendar_x = max(x1 - CALENDAR_WIDTH, x0 + MIN_CARD_WIDTH)
+        self._draw_calendar(canvas, (calendar_x, y0, x1, y1))
+        self._draw_face_cards(canvas, (x0, y0 + HEADER_HEIGHT, calendar_x, y1))
+
+        when = self.day.strftime("%d/%m/%Y")
+        if self.day == date.today():
+            when += " (hoje)"
+        desconhecidos = sum(1 for s in self.sightings if not s["named"])
+        cv2.putText(canvas, f"{when}  -  {len(self.sightings)} rosto(s), "
+                            f"{desconhecidos} sem nome",
+                    (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
+        if self.sightings:
+            cv2.putText(canvas, "clique em [+ Nomear] para cadastrar um rosto",
+                        (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2), FONT, 0.42, MUTED, 1)
+
+    def _draw_face_cards(self, canvas, area):
+        x0, y0, x1, y1 = area
+        width = x1 - x0 - SCROLLBAR_WIDTH
+        if not self.sightings:
+            self.max_scroll = 0
+            cv2.putText(canvas, "Nenhum rosto reconhecido neste dia.",
+                        (x0 + CARD_GAP, y0 + 40), FONT, 0.6, MUTED, 1)
+            return
+
+        card_w = FACE_CARD
+        card_h = FACE_CARD + 64
+        columns = max((width - CARD_GAP) // (card_w + CARD_GAP), 1)
+        top = y0 + 14
+        rows = max((y1 - top - CARD_GAP) // (card_h + CARD_GAP), 1)
+
+        total_rows = -(-len(self.sightings) // columns)
+        self.max_scroll = max(0, total_rows - rows)
+        self.scroll = min(self.scroll, self.max_scroll)
+        first = self.scroll * columns
+
+        for index, face in enumerate(self.sightings[first:first + rows * columns]):
+            row, column = divmod(index, columns)
+            x = x0 + CARD_GAP + column * (card_w + CARD_GAP)
+            y = top + row * (card_h + CARD_GAP)
+
+            canvas[y:y + card_w, x:x + card_w] = self._thumbnail(face, card_w, card_w)
+            base = y + card_w
+            cv2.rectangle(canvas, (x, base), (x + card_w, base + 64), PANEL, -1)
+
+            nomeado = face["named"]
+            cv2.putText(canvas, face["name"][:18], (x + 6, base + 18), FONT, 0.46,
+                        GREEN if nomeado else MUTED, 1)
+            cv2.putText(canvas, f"{face['time']}  {face['camera'][:6]}",
+                        (x + 6, base + 36), FONT, 0.42, TEXT, 1)
+
+            if not nomeado:
+                botao = (x + 6, base + 42, x + card_w - 6, base + 60)
+                cv2.rectangle(canvas, (botao[0], botao[1]), (botao[2], botao[3]),
+                              ACTIVE, -1)
+                cv2.putText(canvas, "+ Nomear", (botao[0] + 8, botao[1] + 14),
+                            FONT, 0.42, TEXT, 1)
+                self._region(botao, "name", face["person_id"])
+            else:
+                cv2.putText(canvas, f"conf {face.get('score', 0):.2f}",
+                            (x + 6, base + 56), FONT, 0.4, MUTED, 1)
+
+            if not face.get("reliable", True):
+                cv2.putText(canvas, f"{face.get('face_width', 0)}px",
+                            (x + card_w - 44, base + 18), FONT, 0.4, RED, 1)
+
+            cv2.rectangle(canvas, (x, y), (x + card_w, base + 64), LINE, 1)
+
+        if self.max_scroll:
+            self._draw_scrollbar(canvas, (x1 - SCROLLBAR_WIDTH, top, x1, y1),
+                                 total_rows, rows)
+
+    def _draw_name_prompt(self, canvas):
+        height, width = canvas.shape[:2]
+        box_w, box_h = min(560, width - 40), 170
+        x = (width - box_w) // 2
+        y = (height - box_h) // 2
+
+        shade = canvas.copy()
+        cv2.rectangle(shade, (0, 0), (width, height), (0, 0, 0), -1)
+        cv2.addWeighted(shade, 0.6, canvas, 0.4, 0, canvas)
+
+        cv2.rectangle(canvas, (x, y), (x + box_w, y + box_h), PANEL, -1)
+        cv2.rectangle(canvas, (x, y), (x + box_w, y + box_h), ACTIVE, 2)
+        cv2.putText(canvas, "Nome completo", (x + 20, y + 36), FONT, 0.62, TEXT, 2)
+
+        field = (x + 20, y + 58, x + box_w - 20, y + 98)
+        cv2.rectangle(canvas, (field[0], field[1]), (field[2], field[3]),
+                      BACKGROUND, -1)
+        cursor = "_" if int(time.time() * 2) % 2 else " "
+        cv2.putText(canvas, self.typed + cursor, (field[0] + 10, field[1] + 27),
+                    FONT, 0.6, TEXT, 1)
+        cv2.putText(canvas, "Enter para salvar    Esc para cancelar",
+                    (x + 20, y + 130), FONT, 0.45, MUTED, 1)
 
     def _draw_calendar(self, canvas, area):
         x0, y0, x1, y1 = area

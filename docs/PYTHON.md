@@ -420,7 +420,36 @@ atributo não declarado vira `AttributeError` em vez de funcionar silenciosament
 Vale a pena quando há muitas instâncias pequenas e efêmeras — exatamente o caso
 dos candidatos a blob, criados e descartados a cada frame.
 
-### 13.2 Armadilha: argumento padrão mutável
+### 13.2 Armadilha: argumento padrão avaliado uma vez só
+
+O valor padrão é avaliado **na definição da função**, não a cada chamada. A
+forma famosa dessa armadilha envolve listas, mas ela morde de um jeito mais
+sutil também. Este bug apareceu de verdade em `faces.py`:
+
+```python
+GALLERY_FILE = Path("faces/gallery.json")
+
+class Gallery:
+    def __init__(self, path=GALLERY_FILE):   # ERRADO
+        ...
+```
+
+O padrão **congela** o valor que `GALLERY_FILE` tinha quando a classe foi
+definida. Trocar `faces.GALLERY_FILE` depois — num teste, por exemplo — não
+tem efeito nenhum, e o objeto continua lendo o arquivo antigo, em silêncio.
+
+A correção é ler o global em tempo de execução:
+
+```python
+    def __init__(self, path=None):
+        self.path = Path(path or GALLERY_FILE)
+```
+
+Em Java o equivalente seria um valor default capturado numa constante estática
+inicializada uma vez — só que em Python qualquer expressão pode estar ali, o que
+torna o efeito bem menos óbvio.
+
+### 13.3 Armadilha: argumento padrão mutável
 
 O valor padrão é avaliado **uma única vez**, na definição da função. Isto é um
 bug clássico:

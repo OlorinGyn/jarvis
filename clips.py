@@ -22,6 +22,7 @@ from pathlib import Path
 
 import cv2
 
+import faces
 from capture import SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = Path("clips")
@@ -63,13 +64,19 @@ def _concat(segments, destination):
         listing.unlink(missing_ok=True)
 
 
-def _assemble(camera, start, end, destination):
-    """Wait for the final segment to close, then build the clip."""
+def _assemble(camera, start, end, destination, labels):
+    """Wait for the final segment to close, build the clip, then read faces."""
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
                                end + timedelta(seconds=POST_SECONDS))
-    if segments:
-        _concat(segments, destination)
+    if not segments:
+        return
+    _concat(segments, destination)
+    if "person" in labels and destination.exists():
+        try:
+            faces.scan_clip(destination, camera.label, start)
+        except Exception:
+            pass
 
 
 def available_days():
@@ -211,7 +218,7 @@ class EventRecorder:
 
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
-                                     destination))
+                                     destination, set(self.labels)))
         job.start()
         _jobs.append(job)
 
