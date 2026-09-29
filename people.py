@@ -1,27 +1,37 @@
 """Subject detection with YOLO11, triggered by motion.
 
 Detects people and animals by body shape, never by face, so a covered face
-still counts as human. Animal identity (which dog) is a separate problem and
-is not attempted here.
+still counts as human. Animal identity is a separate problem, not attempted.
 
-See docs/ARQUITETURA.md for the design and its trade-offs.
+Runs the ONNX export through OpenCV's dnn module rather than PyTorch. See
+docs/ARQUITETURA.md section 7.11 for why.
 """
 
 import time
+import urllib.request
 from functools import lru_cache
+from pathlib import Path
 
-from ultralytics import YOLO
+import cv2
+import numpy as np
 
 from geometry import Detection, iou, overlap_area
 
-MODEL = "yolo11s.pt"
+MODEL_DIR = Path("models")
+MODEL_FILE = MODEL_DIR / "yolo11s.onnx"
+MODEL_URL = ("https://github.com/ultralytics/assets/releases/download/"
+             f"v8.4.0/{MODEL_FILE.name}")
+
 PERSON_CLASS = 0
-ANIMAL_CLASSES = (14, 15, 16, 17, 18, 19)
-WANTED_CLASSES = (PERSON_CLASS,) + ANIMAL_CLASSES
+CLASS_NAMES = {0: "person", 14: "bird", 15: "cat", 16: "dog",
+               17: "horse", 18: "sheep", 19: "cow"}
+WANTED_CLASSES = tuple(CLASS_NAMES)
+
 CONFIDENCE = 0.35
 ANIMAL_CONFIDENCE = 0.45
 MIN_PERSON_HEIGHT_FRACTION = 0.20
 IMG_SIZE = 640
+NMS_THRESHOLD = 0.45
 MIN_INTERVAL = 0.25
 SAME_SUBJECT_IOU = 0.5
 REQUIRE_MOTION_OVERLAP = True
@@ -31,10 +41,63 @@ STATIC_HITS = 50
 STATIC_TTL = 600.0
 
 
+def ensure_model():
+    """Download the ONNX export on first use."""
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    if MODEL_FILE.exists() and MODEL_FILE.stat().st_size > 1024:
+        return
+    print(f"Downloading {MODEL_FILE.name}...")
+    urllib.request.urlretrieve(MODEL_URL, MODEL_FILE)
+
+
 @lru_cache(maxsize=1)
 def load_model():
-    """Load YOLO once; the model is stateless, so all cameras share it."""
-    return YOLO(MODEL)
+    """Load YOLO once; the network is stateless, so all cameras share it."""
+    ensure_model()
+    net = cv2.dnn.readNetFromONNX(str(MODEL_FILE))
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+    return net
+
+
+def _letterbox(frame):
+    """Fit the frame into a square without distorting it. Returns the scale."""
+    height, width = frame.shape[:2]
+    scale = IMG_SIZE / max(height, width)
+    new_h, new_w = int(round(height * scale)), int(round(width * scale))
+    canvas = np.zeros((IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8)
+    canvas[:new_h, :new_w] = cv2.resize(frame, (new_w, new_h))
+    return canvas, scale
+
+
+def _raw_detections(net, frame):
+    """Run the network and return (box, confidence, class id) triples."""
+    canvas, scale = _letterbox(frame)
+    blob = cv2.dnn.blobFromImage(canvas, 1 / 255.0, (IMG_SIZE, IMG_SIZE),
+                                 swapRB=True, crop=False)
+    net.setInput(blob)
+    predictions = net.forward()[0].T
+
+    boxes, scores, classes = [], [], []
+    for row in predictions:
+        class_scores = row[4:]
+        class_id = int(np.argmax(class_scores))
+        if class_id not in CLASS_NAMES:
+            continue
+        confidence = float(class_scores[class_id])
+        if confidence < CONFIDENCE:
+            continue
+        cx, cy, width, height = row[:4]
+        boxes.append([int((cx - width / 2) / scale), int((cy - height / 2) / scale),
+                      int(width / scale), int(height / scale)])
+        scores.append(confidence)
+        classes.append(class_id)
+
+    if not boxes:
+        return []
+
+    keep = cv2.dnn.NMSBoxes(boxes, scores, CONFIDENCE, NMS_THRESHOLD)
+    return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
 
 
 def _centre(box):
@@ -126,30 +189,17 @@ class SubjectDetector:
             return self.subjects
         self.last_run = now
 
-        result = self.model.predict(frame, classes=list(WANTED_CLASSES),
-                                    conf=CONFIDENCE, imgsz=IMG_SIZE,
-                                    verbose=False)[0]
-
         minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
         found = []
-        for (x1, y1, x2, y2), confidence, class_id in zip(
-                result.boxes.xyxy.tolist(),
-                result.boxes.conf.tolist(),
-                result.boxes.cls.tolist()):
-            class_id = int(class_id)
+        for box, confidence, class_id in _raw_detections(self.model, frame):
             if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
                 continue
-            box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
             if class_id == PERSON_CLASS and box[3] < minimum_person:
                 continue
             if REQUIRE_MOTION_OVERLAP and not any(
                     overlap_area(box, m) for m in motion_boxes):
                 continue
-            found.append(Detection(*box, float(confidence),
-                                   self.model.names[class_id]))
+            found.append(Detection(*box, confidence, CLASS_NAMES[class_id]))
 
         self.subjects = self._reject_scenery(drop_duplicates(found), now)
         return self.subjects
-
-
-PersonDetector = SubjectDetector

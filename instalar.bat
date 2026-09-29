@@ -29,7 +29,7 @@ if errorlevel 1 (
 )
 
 echo [2/5] Verificando o Visual C++ Redistributable...
-echo       ^(o PyTorch depende dele e nao o empacota^)
+echo       ^(o OpenCV depende dele e nao o empacota^)
 winget install --id=Microsoft.VCRedist.2015+.x64 -e --accept-source-agreements --accept-package-agreements >nul 2>&1
 echo       pronto.
 
@@ -42,28 +42,18 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/5] Baixando modelos de visao...
-uv run python -c "import faces; faces.ensure_models()"
+echo [4/5] Baixando modelos de visao ^(~95 MB^)...
+uv run python -c "import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
 if errorlevel 1 (
     echo.
-    echo ERRO: falha ao baixar os modelos de rosto.
-    echo Verifique a conexao com a internet e rode de novo.
-    pause
-    exit /b 1
-)
-
-uv run python -c "from ultralytics import YOLO; YOLO('yolo11s.pt'); print('      modelos prontos')"
-if errorlevel 1 (
+    echo ERRO: falha ao preparar os modelos.
     echo.
-    echo ERRO: o PyTorch nao carregou.
-    echo.
-    echo Se a mensagem acima menciona DLL, WinError 1114 ou c10.dll,
-    echo falta o Visual C++ Redistributable. Instale manualmente:
+    echo Se a mensagem acima menciona DLL ou WinError 1114, falta o
+    echo Visual C++ Redistributable:
     echo.
     echo    winget install --id Microsoft.VCRedist.2015+.x64 -e
     echo.
-    echo Ou baixe em: https://aka.ms/vs/17/release/vc_redist.x64.exe
-    echo Depois reinicie o computador e rode instalar.bat de novo.
+    echo Qualquer outro erro: verifique a conexao com a internet.
     pause
     exit /b 1
 )

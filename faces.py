@@ -42,7 +42,7 @@ MAX_EMBEDDINGS = 12
 
 
 def ensure_models():
-    """Download the face models on first use, the way ultralytics does."""
+    """Download the face models on first use, like people.ensure_model does."""
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     for target, url in MODEL_URLS.items():
         if target.exists() and target.stat().st_size > 1024:

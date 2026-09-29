@@ -13,18 +13,20 @@ Três coisas:
 |---|---|
 | **git** | Baixar e atualizar o código |
 | **uv** | Instalar o Python e as dependências |
-| **Visual C++ Redistributable** | O PyTorch depende dele |
+| **Visual C++ Redistributable** | O OpenCV depende dele |
 
-**Não é preciso instalar Python, ffmpeg, CUDA nem codecs.** O `uv` traz o
-Python; o ffmpeg vem empacotado na dependência `imageio-ffmpeg`.
+**Não é preciso instalar Python, ffmpeg, CUDA, PyTorch nem codecs.** O `uv` traz
+o Python; o ffmpeg vem empacotado na dependência `imageio-ffmpeg`. O projeto tem
+apenas **duas** dependências Python: `opencv-python` e `imageio-ffmpeg`, cerca de
+90 MB no total.
 
 O `instalar.bat` cuida do `uv` e do Redistributable sozinho.
 
 ### 1.1 Por que o Visual C++ Redistributable
 
-O PyTorch traz nove DLLs próprias (`c10.dll`, `torch_cpu.dll` e outras), mas
-**não empacota o runtime C++ da Microsoft** de que elas dependem. Numa
-instalação limpa do Windows esse runtime não existe, e o erro é:
+Bibliotecas nativas trazem DLLs próprias mas **não empacotam o runtime C++ da
+Microsoft** de que elas dependem. Numa instalação limpa do Windows esse runtime
+não existe, e o erro é:
 
 ```
 OSError: [WinError 1114] A dynamic link library (DLL) initialization
@@ -78,12 +80,12 @@ versionados:
 
 | Arquivo | Tamanho | Origem |
 |---|---|---|
-| `yolo11s.pt` | 19 MB | Ultralytics, na primeira detecção |
+| `models/yolo11s.onnx` | 36 MB | ultralytics/assets (release oficial) |
 | `models/face_detection_yunet_2023mar.onnx` | 227 KB | opencv/opencv_zoo |
 | `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo |
 
-Os dois ONNX são baixados por `faces.ensure_models()` na primeira vez que o
-reconhecimento facial roda. O `instalar.bat` antecipa isso para o primeiro
+Os modelos são baixados por `people.ensure_model()` e `faces.ensure_models()`
+na primeira vez que cada camada roda. O `instalar.bat` antecipa isso para o primeiro
 evento não esperar o download.
 
 ## 4. Configurar as câmeras
@@ -137,7 +139,7 @@ constantes que mais importam, em ordem de impacto:
 | `HWACCEL` | `capture.py` | Decode por hardware. Vazio por padrão. No M900 teste `"dxva2"` ou `"qsv"` — o Quick Sync do Skylake decodifica H.264 em silício e libera CPU |
 | `ANALYSIS_FPS` | `capture.py` | 10 hoje. Baixar para 6 corta quase 40% do trabalho de análise |
 | `MIN_INTERVAL` | `people.py` | 0.25 s entre execuções do YOLO. Subir para 0.5 reduz pela metade |
-| `MODEL` | `people.py` | `yolo11s.pt`. Trocar por `yolo11n.pt` é ~3x mais rápido e um pouco menos preciso |
+| `MODEL_FILE` e `MODEL_URL` | `people.py` | `yolo11s.onnx`. Trocar os dois para `yolo11n.onnx` é bem mais rápido e um pouco menos preciso |
 
 **Meça antes de mexer.** A gravação em si não custa quase nada, porque os
 pacotes da câmera são copiados sem recodificar (ARQUITETURA 5.1). O custo está
@@ -197,9 +199,27 @@ Rostos só são procurados em eventos que tiveram `person`. À noite, no
 infravermelho, um rosto costuma ter ~44 px contra os ~112 px ideais — aparece
 marcado em vermelho e não reforça a galeria. Detalhes em ARQUITETURA 10.5.
 
-**`WinError 1114` ou `Error loading c10.dll`**
+**`WinError 1114` ou `Error loading ... .dll`**
 
 Falta o Visual C++ Redistributable. Ver seção 1.1.
+
+**`WinError 4551: An Application Control policy has blocked this file`**
+
+O Smart App Control do Windows 11 bloqueou uma DLL sem assinatura reconhecida.
+
+Isto **não deve mais acontecer**: o PyTorch, que era o único componente afetado,
+foi removido do projeto justamente por causa disso (ARQUITETURA 7.11). Se
+aparecer em outra biblioteca, **não desligue o Smart App Control** sem pensar —
+ele é irreversível, só volta reinstalando o Windows. Procure primeiro uma
+alternativa assinada.
+
+Para conferir o estado dele:
+
+```bat
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v VerifiedAndReputablePolicyState
+```
+
+`0x1` significa ligado e bloqueando.
 
 **O disco está enchendo**
 

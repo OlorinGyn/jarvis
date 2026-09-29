@@ -551,8 +551,70 @@ na memória. É o oposto do `MotionDetector`:
 | Componente | Estado | Instâncias |
 |---|---|---|
 | `MotionDetector` | modelo de fundo daquela câmera | **uma por câmera** |
-| `PersonDetector` | só throttle e último resultado | uma por câmera |
-| Modelo YOLO | nenhum | **uma compartilhada** |
+| `SubjectDetector` | throttle, último resultado e cenário estático | uma por câmera |
+| Rede YOLO | nenhum | **uma compartilhada** |
+
+---
+
+### 7.11 Por que OpenCV e não PyTorch
+
+O YOLO roda pelo `cv2.dnn` sobre o export ONNX, não pelo `ultralytics`. A troca
+foi forçada por um problema de implantação, em 29/09/2026.
+
+**O sintoma:** na máquina de destino, e horas depois também na de
+desenvolvimento, o PyTorch parou de carregar:
+
+```
+OSError: [WinError 4551] An Application Control policy has blocked this
+file. Error loading "...\torch\lib\shm.dll"
+```
+
+**A causa:** o **Smart App Control** do Windows 11, que bloqueia binários sem
+assinatura reconhecida pela Microsoft. As DLLs do PyTorch não são assinadas.
+Confirmado pelo registro:
+
+```
+HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy
+    VerifiedAndReputablePolicyState = 1    (ligado, bloqueando)
+```
+
+**Por que não desligar o Smart App Control:** ele é **irreversível**. Uma vez
+desligado, só volta reinstalando o Windows. Trocar a segurança do sistema por
+uma dependência é um preço alto e permanente.
+
+**A saída:** o Ultralytics publica o `yolo11s.onnx` oficial no mesmo release de
+onde já vinha o `.pt`, e o OpenCV — cujas DLLs são assinadas e passam — executa
+esse ONNX sem PyTorch nenhum.
+
+Ganhos além de destravar:
+
+| | Antes | Depois |
+|---|---|---|
+| Dependências | opencv, ultralytics, torch, torchvision + 38 | **opencv, imageio-ffmpeg** |
+| Peso | ~2,5 GB | ~90 MB |
+| Inferência (dev) | 24 ms | **50-62 ms** |
+
+O custo é real: cerca de 2x mais lento. Com o portão de movimento e o
+`MIN_INTERVAL` de 0,25 s isso não apareceu nos testes, mas é o número a
+acompanhar no M900. O `cv2.dnn` aceita backend OpenVINO, que já era o plano
+para aquela máquina, então há caminho de volta para a velocidade.
+
+**O que foi preciso escrever à mão.** O `ultralytics` fazia pré e
+pós-processamento por baixo dos panos; agora são explícitos:
+
+- `_letterbox()` encaixa o frame num quadrado de 640 sem distorcer, guardando a
+  escala para desfazer depois
+- A saída é `(1, 84, 8400)`: 8400 caixas candidatas, cada uma com 4 números de
+  geometria e 80 de pontuação por classe. Transpor e percorrer dá as detecções
+- `cv2.dnn.NMSBoxes` elimina as caixas sobrepostas da mesma detecção
+
+Foi exatamente o trabalho que, lá no começo do projeto, eu apontei como o custo
+de usar C++ em vez de Python. Ele apareceu de qualquer forma — só que por um
+motivo que ninguém previu.
+
+**Os nomes das classes** vinham de `model.names`. Sem o ultralytics, o
+`CLASS_NAMES` lista apenas as sete que interessam, e a filtragem por classe usa
+esse mesmo dicionário.
 
 ---
 
