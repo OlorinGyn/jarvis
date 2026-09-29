@@ -81,6 +81,9 @@ jarvis/
 ├── ui.py             menu lateral, telas Live, Records e People
 ├── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── probe_rtsp.py     diagnóstico de RTSP (DESCRIBE → SETUP → PLAY)
+├── instalar.bat      instalação em máquina nova (roda uma vez)
+├── jarvis.bat        atalho para iniciar o programa
+├── .env.example      modelo de configuração, versionado
 ├── .env              credenciais das câmeras (NÃO versionado)
 ├── yolo11s.pt        pesos do modelo (baixado automaticamente, não versionado)
 ├── clips/            gravações (não versionado)
@@ -91,8 +94,9 @@ jarvis/
 │   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
 ├── models/           ONNX do YuNet e SFace (baixados, não versionado)
 └── docs/
-    ├── ARQUITETURA.md
-    └── PYTHON.md
+    ├── ARQUITETURA.md    como funciona e por quê
+    ├── INSTALACAO.md     como instalar e operar numa máquina nova
+    └── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
 ```
 
 ### 3.1 O projeto não é um pacote
@@ -231,7 +235,16 @@ recente** — o ffmpeg ainda está escrevendo nele. Enquanto um evento está abe
 `protect_from` impede que os segmentos dele sejam apagados. Medido: ~1 MB por
 câmera para 20 s de buffer.
 
-### 5.5 Reinício automático
+### 5.5 Decode por hardware
+
+`HWACCEL` insere `-hwaccel <valor>` no comando do ffmpeg. Vem vazio, porque o
+valor certo depende da máquina.
+
+Importa só para a **saída de análise**: a gravação copia pacotes e nunca
+decodifica. No M900, com Quick Sync do Skylake, `"dxva2"` ou `"qsv"` tira o
+decode de 1080p da CPU. Ver INSTALACAO.md seção 6.
+
+### 5.6 Reinício automático
 
 Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
 e o processo é recriado após `RESTART_SECONDS`. O painel mostra `no signal`

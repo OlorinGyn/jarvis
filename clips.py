@@ -75,8 +75,8 @@ def _assemble(camera, start, end, destination, labels):
     if "person" in labels and destination.exists():
         try:
             faces.scan_clip(destination, camera.label, start)
-        except Exception:
-            pass
+        except Exception as problem:
+            print(f"  face scan failed on {destination.name}: {problem}")
 
 
 def available_days():

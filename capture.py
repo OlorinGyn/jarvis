@@ -25,6 +25,7 @@ ANALYSIS_FPS = 10
 SEGMENT_SECONDS = 4
 BUFFER_SECONDS = 240
 RESTART_SECONDS = 5.0
+HWACCEL = ""
 SEGMENT_NAME = "%Y%m%d-%H%M%S.mp4"
 SEGMENT_FORMAT = "%Y%m%d-%H%M%S"
 
@@ -49,10 +50,12 @@ class FFmpegCamera:
         self.start()
 
     def _command(self):
+        acceleration = ["-hwaccel", HWACCEL] if HWACCEL else []
         return [
             ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-nostdin",
             "-rtsp_transport", "tcp",
             "-use_wallclock_as_timestamps", "1",
+            *acceleration,
             "-i", self.url,
             "-map", "0:v", "-an", "-c", "copy",
             "-f", "segment", "-segment_format", "mp4",

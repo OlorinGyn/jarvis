@@ -10,6 +10,7 @@ docs/ARQUITETURA.md section 10.
 """
 
 import json
+import urllib.request
 import uuid
 from datetime import date, datetime
 from functools import lru_cache
@@ -21,6 +22,11 @@ import numpy as np
 MODEL_DIR = Path("models")
 DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
 RECOGNISER_MODEL = MODEL_DIR / "face_recognition_sface_2021dec.onnx"
+MODEL_SOURCE = "https://github.com/opencv/opencv_zoo/raw/main/models"
+MODEL_URLS = {
+    DETECTOR_MODEL: f"{MODEL_SOURCE}/face_detection_yunet/{DETECTOR_MODEL.name}",
+    RECOGNISER_MODEL: f"{MODEL_SOURCE}/face_recognition_sface/{RECOGNISER_MODEL.name}",
+}
 FACE_DIR = Path("faces")
 GALLERY_FILE = FACE_DIR / "gallery.json"
 
@@ -35,14 +41,27 @@ THUMB_SIZE = 160
 MAX_EMBEDDINGS = 12
 
 
+def ensure_models():
+    """Download the face models on first use, the way ultralytics does."""
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    for target, url in MODEL_URLS.items():
+        if target.exists() and target.stat().st_size > 1024:
+            continue
+        print(f"Downloading {target.name}...")
+        urllib.request.urlretrieve(url, target)
+    return True
+
+
 @lru_cache(maxsize=1)
 def _detector():
+    ensure_models()
     return cv2.FaceDetectorYN.create(str(DETECTOR_MODEL), "", (320, 320),
                                      DETECT_SCORE, 0.3, 5000)
 
 
 @lru_cache(maxsize=1)
 def _recogniser():
+    ensure_models()
     return cv2.FaceRecognizerSF.create(str(RECOGNISER_MODEL), "")
 
 
