@@ -14,6 +14,7 @@ exactly what the camera produced. See docs/ARQUITETURA.md section 5.
 import subprocess
 import threading
 import time
+from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -26,9 +27,30 @@ ANALYSIS_FPS = 10
 SEGMENT_SECONDS = 4
 BUFFER_SECONDS = 240
 RESTART_SECONDS = 5.0
+STARTUP_SECONDS = 15.0
 HWACCEL = ""
 SEGMENT_NAME = "%Y%m%d-%H%M%S.mp4"
 SEGMENT_FORMAT = "%Y%m%d-%H%M%S"
+
+
+TRANSLATIONS = (
+    ("401", "Credenciais incorretas. Confira a Conta da Camera no app Tapo."),
+    ("not one of 40", "Camera ocupada. Ela aceita uma conexao RTSP por vez - "
+                      "feche outro J.A.R.V.I.S., o app Tapo ou um ffmpeg orfao."),
+    ("406", "Camera ocupada. Ela aceita uma conexao RTSP por vez."),
+    ("Connection refused", "Conexao recusada. Confira o IP e se a camera esta ligada."),
+    ("timed out", "Tempo esgotado. Confira a rede e o IP da camera."),
+    ("No route to host", "Camera inalcancavel pela rede. Confira o IP."),
+    ("404", "Caminho do stream invalido. Esperado /stream1 ou /stream2."),
+)
+
+
+def _friendly(raw):
+    """Turn ffmpeg's wording into something that says what to do."""
+    for needle, advice in TRANSLATIONS:
+        if needle in raw:
+            return advice
+    return raw
 
 
 def ffmpeg_exe():
@@ -52,6 +74,7 @@ class FFmpegCamera:
         self._pending = None
         self._latest = None
         self._reader = None
+        self._errors = deque(maxlen=12)
         self._stop = threading.Event()
         self.start()
 
@@ -79,10 +102,12 @@ class FFmpegCamera:
         self._stop.clear()
         self.process = subprocess.Popen(
             self._command(), stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, bufsize=self.frame_bytes)
+            stderr=subprocess.PIPE, bufsize=self.frame_bytes)
         self.last_start = time.monotonic()
         self._reader = threading.Thread(target=self._pump, daemon=True)
         self._reader.start()
+        threading.Thread(target=self._drain_errors, args=(self.process,),
+                         daemon=True).start()
 
     def stop(self):
         self._stop.set()
@@ -110,9 +135,42 @@ class FFmpegCamera:
                 self._latest = frame
             self.frames_read += 1
 
+    def _drain_errors(self, process):
+        """Keep ffmpeg's complaints instead of discarding them.
+
+        Without this a camera that never connects looks identical to one that
+        is merely quiet, and the reason is thrown away.
+        """
+        for line in process.stderr:
+            text = line.decode(errors="replace").strip()
+            if text:
+                with self._lock:
+                    self._errors.append(text)
+
     @property
     def alive(self):
         return self.process is not None and self.process.poll() is None
+
+    @property
+    def last_error(self):
+        with self._lock:
+            raw = self._errors[-1] if self._errors else ""
+        return _friendly(raw)
+
+    def wait_ready(self, timeout=STARTUP_SECONDS):
+        """Block until the first frame arrives. Returns a status string."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._lock:
+                if self._latest is not None:
+                    return "ok"
+            if not self.alive:
+                break
+            time.sleep(0.1)
+        problem = self.last_error
+        if problem:
+            return f"FALHOU - {problem}"
+        return "FALHOU - nenhum frame recebido"
 
     @property
     def latest(self):

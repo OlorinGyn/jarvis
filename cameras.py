@@ -90,12 +90,32 @@ class Camera:
         return self.label
 
 
-def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=False):
+def _wrap(text, width):
+    """Split a long message into lines that fit the panel."""
+    words, lines, current = text.split(), [], ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if len(candidate) > width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
+def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=False,
+               reason=""):
     """Scale a frame to a fixed height and draw the label, boxes and REC dot."""
     if frame is None:
-        frame = np.zeros((height, height * 16 // 9, 3), dtype=np.uint8)
-        cv2.putText(frame, f"{label} - no signal", (12, 34),
+        width = height * 16 // 9
+        frame = np.zeros((height, width, 3), dtype=np.uint8)
+        cv2.putText(frame, f"{label} - sem sinal", (12, 34),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, RED, 2)
+        for index, piece in enumerate(_wrap(reason, 52)[:4]):
+            cv2.putText(frame, piece, (12, 70 + index * 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, YELLOW, 1)
         return frame
 
     h, w = frame.shape[:2]
@@ -145,10 +165,10 @@ def main():
     if not cameras:
         raise SystemExit("No CAM_* entries found in .env")
 
-    print(f"Starting {len(cameras)} camera(s)...")
+    print(f"Iniciando {len(cameras)} camera(s)...")
     streams = [Camera(label, url) for label, url in cameras]
     for cam in streams:
-        print(f"  {cam.label}: {'ok' if cam.stream.alive else 'FAILED'}")
+        print(f"  {cam.label}: {cam.stream.wait_ready()}")
 
     interface = ui.Interface()
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
@@ -164,6 +184,10 @@ def main():
         for cam in streams:
             frame = cam.read()
             if frame is None:
+                if cam.stream.latest is None:
+                    panels[cam.label] = make_panel(
+                        None, cam.label, PANEL_HEIGHT,
+                        reason=cam.stream.last_error)
                 continue
             fresh = True
 

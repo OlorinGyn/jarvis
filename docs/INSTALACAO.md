@@ -197,10 +197,24 @@ leitura roda em thread separada (ARQUITETURA 5.4).
 Se voltar a acontecer, é sinal de que algo novo passou a bloquear o laço
 principal — desconfie de operação de disco ou rede feita dentro dele.
 
-**Painel mostra `no signal`**
+**Painel mostra `sem sinal`**
 
-O ffmpeg daquela câmera caiu e será reiniciado sozinho em 5 segundos. Se
-persistir, teste a rede e rode o `probe_rtsp.py`.
+O motivo aparece **em amarelo no próprio painel**. Os mais comuns:
+
+| Texto | O que fazer |
+|---|---|
+| Camera ocupada | Outra coisa está usando a câmera. Ver abaixo. |
+| Credenciais incorretas | Confira a Conta da Câmera no app Tapo |
+| Confira o IP | A câmera mudou de endereço ou está desligada |
+
+**"Camera ocupada" é o caso mais frequente numa instalação nova.** A Tapo aceita
+**uma conexão RTSP por vez**. Se o J.A.R.V.I.S. estiver rodando noutra máquina —
+a de desenvolvimento, por exemplo — a segunda não conecta. Feche a outra
+instância, o app Tapo, ou um ffmpeg órfão:
+
+```bat
+tasklist | findstr ffmpeg
+```
 
 **Nenhum rosto aparece na aba People**
 

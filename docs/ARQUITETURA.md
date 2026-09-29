@@ -281,7 +281,44 @@ Importa só para a **saída de análise**: a gravação copia pacotes e nunca
 decodifica. No M900, com Quick Sync do Skylake, `"dxva2"` ou `"qsv"` tira o
 decode de 1080p da CPU. Ver INSTALACAO.md seção 6.
 
-### 5.7 Reinício automático
+### 5.7 Erros do ffmpeg viram texto na tela
+
+A primeira versão mandava o `stderr` do ffmpeg para `DEVNULL`. Consequência: uma
+câmera que **nunca conectava** ficava idêntica a uma câmera apenas quieta — o
+painel dizia "sem sinal" e o motivo era descartado.
+
+Isso apareceu na implantação: no M900 as duas câmeras diziam `ok` no arranque e
+depois ficavam em "no signal" para sempre, sem nenhuma pista. A causa era a
+máquina de desenvolvimento estar rodando ao mesmo tempo e ocupando as sessões.
+
+Três mudanças:
+
+**O `stderr` é capturado** por uma thread que guarda as últimas linhas. É
+preciso drenar continuamente: um pipe de erro cheio bloquearia o ffmpeg.
+
+**O `ok` do arranque virou honesto.** Antes ele checava `process.poll()` logo
+depois do `Popen`, o que é sempre verdadeiro — o processo ainda não teve tempo
+de falhar. Agora `wait_ready()` espera o **primeiro frame** de verdade, até
+`STARTUP_SECONDS`, e devolve o motivo quando não vem.
+
+**As mensagens são traduzidas.** O ffmpeg diz `Server returned 4XX Client Error,
+but not one of 40{0,1,3,4}`, que é o 406 e não ajuda ninguém. `TRANSLATIONS`
+mapeia os casos conhecidos para instruções:
+
+| ffmpeg | Texto exibido |
+|---|---|
+| `401` | Credenciais incorretas, confira a Conta da Camera |
+| `not one of 40` / `406` | Camera ocupada, aceita uma conexao RTSP por vez |
+| `Connection refused` | Confira o IP e se a camera esta ligada |
+| `timed out` | Confira a rede e o IP |
+
+Erro desconhecido passa cru, em vez de virar uma mensagem genérica que esconde
+informação.
+
+O painel "sem sinal" mostra esse texto quebrado em linhas, então o motivo fica
+visível sem abrir o terminal.
+
+### 5.8 Reinício automático
 
 Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
 e o processo é recriado após `RESTART_SECONDS`. O painel mostra `no signal`
