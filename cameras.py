@@ -24,6 +24,7 @@ STREAM = "stream1"
 PANEL_HEIGHT = 480
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
+REDRAW_SECONDS = 0.15
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
@@ -154,14 +155,17 @@ def main():
     cv2.setMouseCallback(WINDOW, interface.on_mouse)
     cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
     last_prune = time.monotonic()
+    last_render = 0.0
+    panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
+              for cam in streams}
 
     while True:
-        panels = []
+        fresh = False
         for cam in streams:
             frame = cam.read()
             if frame is None:
-                panels.append(make_panel(None, cam.label, PANEL_HEIGHT))
                 continue
+            fresh = True
 
             motion_boxes = cam.motion.detect(frame)
             subjects = cam.subjects.detect(frame, motion_boxes)
@@ -172,9 +176,9 @@ def main():
                 print(f"  event {saved['path'].name} [{names}] "
                       f"{saved['seconds']}s, {saved['reason']}")
 
-            panels.append(make_panel(frame, cam.status(motion_boxes, subjects),
-                                     PANEL_HEIGHT, motion_boxes, subjects,
-                                     cam.recorder.recording))
+            panels[cam.label] = make_panel(
+                frame, cam.status(motion_boxes, subjects), PANEL_HEIGHT,
+                motion_boxes, subjects, cam.recorder.recording)
 
         now = time.monotonic()
         if now - last_prune > PRUNE_SECONDS:
@@ -182,10 +186,12 @@ def main():
             for cam in streams:
                 cam.prune()
 
-        live = np.hstack(panels)
-        cv2.imshow(WINDOW, interface.render(live, window_size(live)))
+        if fresh or now - last_render > REDRAW_SECONDS:
+            last_render = now
+            live = np.hstack([panels[cam.label] for cam in streams])
+            cv2.imshow(WINDOW, interface.render(live, window_size(live)))
 
-        key = cv2.waitKey(1) & 0xFF
+        key = cv2.waitKey(15) & 0xFF
         if interface.capturing:
             interface.on_key(key)
         elif key == ord("q"):

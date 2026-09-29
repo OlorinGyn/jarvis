@@ -215,7 +215,44 @@ para o ArcFace. Quando essa camada chegar, o recorte em alta resolução deve
 sair **do segmento gravado**, usando o horário exato do evento. Os segmentos
 são a fonte de alta qualidade.
 
-### 5.4 Buffer rotativo de segmentos
+### 5.4 Leitura em thread: a interface nunca espera
+
+A primeira versão lia o pipe dentro do laço da interface. O `read()` de um pipe
+**bloqueia** até o frame inteiro chegar, e no arranque o ffmpeg leva alguns
+segundos para negociar o RTSP e encher o buffer.
+
+Medido: **o primeiro frame demora 2,45 s**. Durante esse tempo o `waitKey` não
+era chamado, e o Windows marcava a janela como **"Não Responde"**, mostrando um
+retângulo cinza que nunca era desenhado.
+
+Agora cada câmera tem uma **thread leitora** que consome o pipe sem parar e
+guarda o frame mais recente. O laço da interface pega o que estiver pronto:
+
+```python
+def read(self):
+    """Return the newest frame not yet analysed, or None. Never blocks."""
+    with self._lock:
+        frame, self._pending = self._pending, None
+    return frame
+```
+
+O detalhe importante é o `_pending` virar `None` na leitura. Sem isso o mesmo
+frame seria analisado várias vezes, inflando o aquecimento do MOG2 e a contagem
+de confirmação temporal com frames repetidos. `_latest` guarda o último frame
+separadamente, para desenho.
+
+Como o GIL é liberado durante a leitura do pipe, essa thread realmente roda em
+paralelo — é o caso descrito em PYTHON.md 14.1.
+
+Resultado medido depois da mudança, incluindo o arranque:
+
+| | |
+|---|---|
+| Intervalo mediano do laço | 19,9 ms |
+| Pior intervalo | 88,8 ms |
+| Limite do "Não Responde" | ~5000 ms |
+
+### 5.5 Buffer rotativo de segmentos
 
 Os segmentos têm nome de horário (`-strftime 1`), o que torna a seleção
 trivial. `covering(start, end)` devolve os segmentos **inteiros** que
@@ -235,7 +272,7 @@ recente** — o ffmpeg ainda está escrevendo nele. Enquanto um evento está abe
 `protect_from` impede que os segmentos dele sejam apagados. Medido: ~1 MB por
 câmera para 20 s de buffer.
 
-### 5.5 Decode por hardware
+### 5.6 Decode por hardware
 
 `HWACCEL` insere `-hwaccel <valor>` no comando do ffmpeg. Vem vazio, porque o
 valor certo depende da máquina.
@@ -244,7 +281,7 @@ Importa só para a **saída de análise**: a gravação copia pacotes e nunca
 decodifica. No M900, com Quick Sync do Skylake, `"dxva2"` ou `"qsv"` tira o
 decode de 1080p da CPU. Ver INSTALACAO.md seção 6.
 
-### 5.6 Reinício automático
+### 5.7 Reinício automático
 
 Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
 e o processo é recriado após `RESTART_SECONDS`. O painel mostra `no signal`
@@ -809,6 +846,24 @@ isso, os cliques sairiam deslocados sempre que a janela fosse redimensionada.
 
 `getWindowImageRect` devolve valores inválidos antes da janela existir, então
 `window_size()` cai para o tamanho natural do layout nesse caso.
+
+### 9.0 Só redesenha quando vale a pena
+
+As câmeras entregam ~10 frames por segundo, mas o laço gira a cada ~20 ms. A
+maioria das voltas não tem frame novo, e redesenhar a tela inteira nelas seria
+desperdício puro — num M900 de quatro núcleos, desperdício caro.
+
+O redesenho acontece quando **alguma câmera trouxe frame novo**, ou quando
+passaram `REDRAW_SECONDS = 0.15` sem nada. O segundo caso existe para a
+interface continuar viva: o cursor do campo de nome pisca, e a tela Records
+precisa reler a pasta de tempos em tempos.
+
+O `cv2.waitKey(15)` continua sendo chamado em **toda** volta, com frame novo ou
+sem. É ele que mantém a janela respondendo (ver 9.5), e os 15 ms também evitam
+que o laço gire a mil por segundo sem fazer nada.
+
+Os painéis ficam guardados por câmera num dicionário. Câmera sem frame novo
+reaproveita o painel anterior, em vez de virar "no signal" a cada volta.
 
 ### 9.1 Modo imediato: nada persiste
 

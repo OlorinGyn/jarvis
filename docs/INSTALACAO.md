@@ -188,6 +188,15 @@ PLAY      -> RTSP/1.0 200 OK
 Se `DESCRIBE` passa e `SETUP` fecha a conexão, é a regra das duas funções da
 seção 4.
 
+**A janela abre cinza e diz "Não Responde"**
+
+Isto **não deve mais acontecer**. Era causado pela leitura do pipe bloquear o
+laço da interface enquanto o ffmpeg negociava o RTSP, o que leva ~2,5 s. Hoje a
+leitura roda em thread separada (ARQUITETURA 5.4).
+
+Se voltar a acontecer, é sinal de que algo novo passou a bloquear o laço
+principal — desconfie de operação de disco ou rede feita dentro dele.
+
 **Painel mostra `no signal`**
 
 O ffmpeg daquela câmera caiu e será reiniciado sozinho em 5 segundos. Se

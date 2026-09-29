@@ -12,6 +12,7 @@ exactly what the camera produced. See docs/ARQUITETURA.md section 5.
 """
 
 import subprocess
+import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -47,6 +48,11 @@ class FFmpegCamera:
         self.last_start = 0.0
         self.frames_read = 0
         self.fps = float(ANALYSIS_FPS)
+        self._lock = threading.Lock()
+        self._pending = None
+        self._latest = None
+        self._reader = None
+        self._stop = threading.Event()
         self.start()
 
     def _command(self):
@@ -70,12 +76,16 @@ class FFmpegCamera:
 
     def start(self):
         self.stop()
+        self._stop.clear()
         self.process = subprocess.Popen(
             self._command(), stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, bufsize=self.frame_bytes)
         self.last_start = time.monotonic()
+        self._reader = threading.Thread(target=self._pump, daemon=True)
+        self._reader.start()
 
     def stop(self):
+        self._stop.set()
         if self.process is None:
             return
         try:
@@ -84,25 +94,39 @@ class FFmpegCamera:
         except (OSError, subprocess.TimeoutExpired):
             self.process.kill()
         self.process = None
+        self._reader = None
+
+    def _pump(self):
+        """Read frames off the pipe forever, so the interface never blocks."""
+        process = self.process
+        while not self._stop.is_set() and process.poll() is None:
+            data = process.stdout.read(self.frame_bytes)
+            if not data or len(data) < self.frame_bytes:
+                break
+            frame = np.frombuffer(data, np.uint8).reshape(
+                ANALYSIS_HEIGHT, ANALYSIS_WIDTH, 3).copy()
+            with self._lock:
+                self._pending = frame
+                self._latest = frame
+            self.frames_read += 1
 
     @property
     def alive(self):
         return self.process is not None and self.process.poll() is None
 
+    @property
+    def latest(self):
+        """The most recent frame, for drawing. None until the first arrives."""
+        with self._lock:
+            return self._latest
+
     def read(self):
-        """Return one analysis frame, or None when the stream is unavailable."""
-        if not self.alive:
-            if time.monotonic() - self.last_start > RESTART_SECONDS:
-                self.start()
-            return None
-
-        data = self.process.stdout.read(self.frame_bytes)
-        if not data or len(data) < self.frame_bytes:
-            return None
-
-        self.frames_read += 1
-        frame = np.frombuffer(data, np.uint8)
-        return frame.reshape(ANALYSIS_HEIGHT, ANALYSIS_WIDTH, 3).copy()
+        """Return the newest frame not yet analysed, or None. Never blocks."""
+        if not self.alive and time.monotonic() - self.last_start > RESTART_SECONDS:
+            self.start()
+        with self._lock:
+            frame, self._pending = self._pending, None
+        return frame
 
     def segments(self):
         """Every finished segment as (start time, path), oldest first."""
