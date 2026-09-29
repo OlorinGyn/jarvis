@@ -54,10 +54,7 @@ def ensure_model():
 def load_model():
     """Load YOLO once; the network is stateless, so all cameras share it."""
     ensure_model()
-    net = cv2.dnn.readNetFromONNX(str(MODEL_FILE))
-    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-    return net
+    return cv2.dnn.readNetFromONNX(str(MODEL_FILE))
 
 
 def _letterbox(frame):

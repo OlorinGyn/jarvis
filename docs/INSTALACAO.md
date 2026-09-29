@@ -171,6 +171,30 @@ tasklist | findstr ffmpeg
 Se o programa foi encerrado à força, o ffmpeg pode ter sobrevivido e estar
 segurando a câmera.
 
+**Conecta mas nunca aparece imagem ("nenhum frame recebido")**
+
+O RTSP está bom mas o ffmpeg não entrega frames para análise. Rode:
+
+```bat
+uv run diagnostico.py Front
+```
+
+Ele testa cinco variantes do comando de captura, 14 segundos cada, e informa
+quantos frames cada uma entregou nesta máquina:
+
+```
+  OK atual (como o programa roda)        118.0 frames  1o em 2.5s  segmentos 3
+  OK sem use_wallclock_as_timestamps     118.0 frames  1o em 2.8s  segmentos 3
+  -- fps por filtro em vez de -r           0.0 frames  1o em nunca segmentos 3
+```
+
+Se alguma variante entregar frames e a atual não, é ela que deve ir para o
+`capture.py`. Se nenhuma entregar, as linhas de erro do ffmpeg aparecem junto.
+
+A coluna `segmentos` separa os dois casos: segmentos sendo gravados com zero
+frames significa que a câmera e a rede estão bem, e o problema está só na saída
+de análise.
+
 **Diagnóstico completo de uma câmera**
 
 ```bat
