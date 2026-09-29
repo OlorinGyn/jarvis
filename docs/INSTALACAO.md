@@ -7,18 +7,41 @@ funciona, veja [ARQUITETURA.md](ARQUITETURA.md).
 
 ## 1. O que precisa estar instalado
 
-Só duas coisas:
+Três coisas:
 
 | Programa | Para quê |
 |---|---|
 | **git** | Baixar e atualizar o código |
 | **uv** | Instalar o Python e as dependências |
+| **Visual C++ Redistributable** | O PyTorch depende dele |
 
 **Não é preciso instalar Python, ffmpeg, CUDA nem codecs.** O `uv` traz o
-Python; o ffmpeg vem empacotado na dependência `imageio-ffmpeg`. Foi uma
-decisão de projeto: nada de dependência de sistema para esquecer de instalar.
+Python; o ffmpeg vem empacotado na dependência `imageio-ffmpeg`.
 
-O `instalar.bat` instala o `uv` sozinho se ele não estiver presente.
+O `instalar.bat` cuida do `uv` e do Redistributable sozinho.
+
+### 1.1 Por que o Visual C++ Redistributable
+
+O PyTorch traz nove DLLs próprias (`c10.dll`, `torch_cpu.dll` e outras), mas
+**não empacota o runtime C++ da Microsoft** de que elas dependem. Numa
+instalação limpa do Windows esse runtime não existe, e o erro é:
+
+```
+OSError: [WinError 1114] A dynamic link library (DLL) initialization
+routine failed. Error loading "...\torch\lib\c10.dll"
+```
+
+A mensagem não diz o que falta. A correção:
+
+```bat
+winget install --id Microsoft.VCRedist.2015+.x64 -e
+```
+
+Ou baixe <https://aka.ms/vs/17/release/vc_redist.x64.exe>. Reinicie depois de
+instalar.
+
+Na máquina de desenvolvimento isso já estava presente por causa de outros
+programas, e por isso o problema só apareceu na máquina de destino.
 
 ## 2. Passo a passo
 
@@ -28,14 +51,19 @@ cd jarvis
 instalar.bat
 ```
 
-O `instalar.bat` faz quatro coisas:
+O `instalar.bat` faz cinco coisas:
 
 1. Instala o `uv` se faltar (se instalar, **feche a janela e rode de novo** — o
    PATH só atualiza numa janela nova)
-2. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
+2. Garante o Visual C++ Redistributable (ver 1.1)
+3. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
    exatas que foram testadas
-3. Baixa os modelos de visão (~60 MB no total)
-4. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
+4. Baixa os modelos de visão (~60 MB no total)
+5. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
+
+Cada passo tem sua própria mensagem de erro. A primeira versão juntava o
+download dos modelos com a carga do PyTorch e, quando o PyTorch falhava,
+culpava a conexão de internet — que estava perfeita.
 
 Preencha o `.env` e inicie:
 
@@ -168,6 +196,10 @@ persistir, teste a rede e rode o `probe_rtsp.py`.
 Rostos só são procurados em eventos que tiveram `person`. À noite, no
 infravermelho, um rosto costuma ter ~44 px contra os ~112 px ideais — aparece
 marcado em vermelho e não reforça a galeria. Detalhes em ARQUITETURA 10.5.
+
+**`WinError 1114` ou `Error loading c10.dll`**
+
+Falta o Visual C++ Redistributable. Ver seção 1.1.
 
 **O disco está enchendo**
 
