@@ -1,3 +1,5 @@
+<img src="assets/jarvis.png" width="96" align="right" alt="">
+
 # J.A.R.V.I.S.
 
 Vigilância doméstica com câmeras TP-Link Tapo via RTSP. Detecta movimento,
@@ -24,7 +26,8 @@ vão o IP e as credenciais de cada câmera. Detalhes em
 
 ```
 src/jarvis/   o programa
-tools/        diagnóstico de câmera e de captura
+tools/        diagnóstico, ícone e manutenção dos rostos
+assets/       ícone
 docs/         toda a documentação
 ```
 

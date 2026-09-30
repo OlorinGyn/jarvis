@@ -224,6 +224,9 @@ tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
   probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
   refazer_rostos.py  reconstrói faces/ a partir dos clipes gravados
+  gerar_icone.py  desenha o ícone do olho robótico em assets/jarvis.ico
+  criar_atalho.ps1   atalho com ícone na Área de Trabalho
+assets/           jarvis.ico e prévia PNG (gerados, mas versionados)
 docs/             ARQUITETURA, INSTALACAO, PYTHON e este arquivo
 instalar.bat      instalação numa máquina nova
 jarvis.bat        atalho para iniciar (uv run jarvis)

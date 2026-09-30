@@ -53,7 +53,7 @@ cd jarvis
 instalar.bat
 ```
 
-O `instalar.bat` faz cinco coisas:
+O `instalar.bat` faz seis coisas:
 
 1. Instala o `uv` se faltar (se instalar, **feche a janela e rode de novo** — o
    PATH só atualiza numa janela nova)
@@ -61,16 +61,24 @@ O `instalar.bat` faz cinco coisas:
 3. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
    exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
 4. Baixa os modelos de visão (~60 MB no total)
-5. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
+5. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
+   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 13)
+6. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
 
 Cada passo tem sua própria mensagem de erro. A primeira versão juntava o
 download dos modelos com a carga do PyTorch e, quando o PyTorch falhava,
 culpava a conexão de internet — que estava perfeita.
 
-Preencha o `.env` e inicie:
+Preencha o `.env` e inicie pelo atalho da Área de Trabalho, ou:
 
 ```bat
 jarvis.bat
+```
+
+Para recriar só o atalho:
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
 ```
 
 O `.bat` só confere se o `.env` existe e chama `uv run jarvis`. Os dois são
@@ -127,7 +135,8 @@ Tarefas, não a pasta Inicializar — o Agendador reinicia o programa se ele cai
    precisar ver a janela. Para ver a interface, deixe "Executar somente quando o
    usuário estiver conectado"
 3. **Disparadores:** Ao fazer logon
-4. **Ações:** Iniciar um programa → o caminho completo do `jarvis.bat`
+4. **Ações:** Iniciar um programa → o caminho completo do `jarvis.bat` (não o
+   atalho: o Agendador precisa do arquivo de verdade)
 5. **Configurações:** marque "Se a tarefa falhar, reiniciar a cada 1 minuto"
 
 A interface precisa de uma sessão gráfica ativa; ela não roda como serviço do

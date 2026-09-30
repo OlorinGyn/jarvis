@@ -83,9 +83,13 @@ jarvis/
 │   ├── faces.py          camada 4: detecção de rosto, embedding, galeria
 │   ├── ui.py             menu lateral, telas Live, Records e People
 │   └── geometry.py       tipo Detection e utilitários de caixas (IoU)
-├── tools/                diagnóstico, fora do programa
+├── tools/                ferramentas, fora do programa
 │   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
-│   └── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
+│   ├── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
+│   ├── refazer_rostos.py reconstrói faces/ a partir dos clipes
+│   ├── gerar_icone.py    desenha o ícone (seção 13)
+│   └── criar_atalho.ps1  atalho na Área de Trabalho com o ícone
+├── assets/               jarvis.ico e uma prévia em PNG
 ├── docs/
 │   ├── ARQUITETURA.md    como funciona e por quê
 │   ├── INSTALACAO.md     como instalar e operar numa máquina nova
@@ -1551,3 +1555,41 @@ Rodando no M900 desde 29/09/2026, depois da correção do IP (5.7).
    usando recortes coletados pela própria tela People (ver 10.8).
 8. **OpenVINO no M900** — exportar os modelos para OpenVINO INT8 e recuperar a
    velocidade perdida ao sair do PyTorch.
+
+---
+
+## 13. Ícone e atalho
+
+**Um `.bat` não tem ícone próprio.** O Windows desenha o ícone de um arquivo
+pelo tipo dele, e todo `.bat` usa o mesmo. Quem pode ter ícone é um **atalho**
+(`.lnk`), que aponta para o `.bat` e guarda o caminho de um `.ico`.
+`tools/criar_atalho.ps1` cria esse atalho na Área de Trabalho pelo objeto COM
+`WScript.Shell` — o mesmo que o Windows usa em "Criar atalho". O
+`instalar.bat` roda o script no passo 5.
+
+**O ícone é código.** `tools/gerar_icone.py` desenha um olho robótico com
+NumPy, sem nenhum programa de desenho:
+
+| Camada | Como |
+|---|---|
+| Carcaça de aço | Círculo com brilho variando pelo ângulo (`cos`), simulando luz vinda do alto à esquerda |
+| Anel segmentado e parafusos | 12 setores alternados pelo ângulo; 12 círculos pequenos |
+| Íris | Gradiente radial do ciano quase branco no centro ao azul na borda, com 36 raios e dois anéis finos |
+| Pupila | Obturador de 6 lâminas: o raio cresce dentro de cada setor, o que dá o contorno em hélice |
+| Reflexo | Um círculo branco fora do centro |
+
+Cada camada é uma **máscara** de 0 a 1 por pixel, calculada de uma vez sobre a
+imagem inteira a partir de dois mapas: a distância de cada pixel ao centro e o
+ângulo dele. `edge()` transforma "dentro do círculo de raio R" nessa máscara,
+com 2 px de transição para a borda não serrilhar. Em Java seria um laço duplo
+sobre x e y; aqui cada linha opera sobre o milhão de pixels de uma vez.
+
+O desenho é feito a 1024 px e reduzido com `INTER_AREA` para os 7 tamanhos que
+o Windows usa (16 a 256). O `.ico` é escrito à mão: um cabeçalho de 6 bytes,
+uma entrada de 16 bytes por tamanho, e cada imagem como PNG — o formato que o
+Windows aceita desde o Vista. O OpenCV lê e grava PNG mas não `.ico`, e montar
+os bytes com `struct.pack` evita uma dependência nova só para isso.
+
+Para mudar o desenho, edite as cores e raios em `gerar_icone.py`, rode
+`uv run tools/gerar_icone.py` e depois o `criar_atalho.ps1` de novo (o Windows
+guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
