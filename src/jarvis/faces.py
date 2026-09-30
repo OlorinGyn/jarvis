@@ -50,6 +50,7 @@ THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
 
 _GALLERY_LOCK = threading.Lock()
+_SCAN_LOCK = threading.Lock()
 
 
 def ensure_models():
@@ -333,7 +334,16 @@ def _sighting_folder(when):
 
 
 def scan_clip(clip, camera, started_at, gallery=None):
-    """Find every distinct face in a finished clip and record the sightings."""
+    """Find every distinct face in a finished clip and record the sightings.
+
+    One scan at a time: each event assembles in its own thread, and the face
+    and YOLO networks are shared objects that cannot run concurrently.
+    """
+    with _SCAN_LOCK:
+        return _scan_clip(clip, camera, started_at, gallery)
+
+
+def _scan_clip(clip, camera, started_at, gallery):
     clip = Path(clip)
     if not clip.exists():
         return []

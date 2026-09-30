@@ -1487,6 +1487,28 @@ metade de cima do corpo de uma pessoa**. O YOLO só roda nesses poucos frames,
 então o custo é pequeno: cada clipe leva 9 a 17 s no M900, fora do caminho
 crítico.
 
+**Uma rede por thread, uma varredura por vez.** Na primeira versão
+`person_boxes()` usava `load_model()`, a mesma rede do laço ao vivo. A
+varredura roda na thread que monta o clipe (8.3), então as duas threads
+chamavam `net.forward()` no mesmo objeto ao mesmo tempo. Um `cv2.dnn.Net`
+guarda buffers internos entre chamadas e não pode fazer isso: o programa caiu
+com `buf.shape() == m.shape()` no meio do ao vivo, logo depois de um evento.
+
+Correção: `load_background_model()` carrega uma **segunda cópia** da rede
+(~40 MB a mais de memória), usada só fora do laço principal. E `scan_clip()`
+roda sob `_SCAN_LOCK`: cada evento monta o clipe na própria thread, e dois
+eventos seguidos disputariam também o YuNet e o SFace, que são compartilhados.
+As varreduras ficam em fila, o que também evita duas varreduras pesadas ao
+mesmo tempo na CPU do M900.
+
+Testado com o laço principal fazendo inferências enquanto 4 varreduras rodam
+em paralelo: o código antigo reproduz o erro exato; o novo passa sem erros.
+
+Em C# a situação seria a mesma de um objeto que não é *thread-safe*
+compartilhado sem `lock`. Python tem o GIL, mas ele só protege o interpretador:
+o OpenCV solta o GIL dentro do código C++, e duas chamadas rodam de verdade em
+paralelo.
+
 `MAX_SAMPLES` subiu de 30 para 60 frames por clipe: com o filtro, sobram menos
 rostos por frame, e mais amostras dão mais chance de uma visão boa e de chegar
 às 2 que um desconhecido exige.

@@ -120,6 +120,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | "nenhum frame recebido" no M900, sem erro | `.env` com os IPs de exemplo do `.env.example`; sem timeout o ffmpeg espera o TCP para sempre em silêncio | `-timeout` no RTSP e tradução do `Error number -138` (seção 6) |
 | Falso movimento de dia na Front | Manchas de sol e sombra de folhas; o relógio da câmera no canto | Filtro de luz por correlação com o fundo e máscara do relógio: **99 → 15 frames**, pessoa coberta 262 → 258 de 273 (ARQUITETURA 6.7) |
 | 14 "pessoas" para 3 reais; nome não reconhecia depois | Todo rosto não casado virava pessoa (inclusive perfil, nuca, braço); mesmo nome criava gêmeos; só aprendia com ≥ 80 px | Filtro de rosto de frente + YOLO, junção por nome, absorção ao nomear, aprendizado por semelhança (ARQUITETURA 10.4, 10.9) |
+| Programa caía logo após um evento (`buf.shape() == m.shape()`) | A varredura de rostos usava a mesma rede YOLO do laço ao vivo, em outra thread | Rede própria para threads de fundo e varreduras em fila (ARQUITETURA 10.9) |
 | Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 

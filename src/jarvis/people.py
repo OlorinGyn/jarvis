@@ -97,9 +97,21 @@ def _raw_detections(net, frame):
     return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
 
 
+@lru_cache(maxsize=1)
+def load_background_model():
+    """A second copy of the network for work outside the main loop.
+
+    A cv2.dnn.Net keeps internal buffers between calls and must never run in
+    two threads at once; sharing load_model() with the clip thread crashed the
+    live loop mid-inference.
+    """
+    ensure_model()
+    return cv2.dnn.readNetFromONNX(str(MODEL_FILE))
+
+
 def person_boxes(frame):
-    """Every person YOLO sees in a frame, as (x, y, w, h), with no other filtering."""
-    return [box for box, _, class_id in _raw_detections(load_model(), frame)
+    """Every person YOLO sees in a frame, as (x, y, w, h). Background threads only."""
+    return [box for box, _, class_id in _raw_detections(load_background_model(), frame)
             if class_id == PERSON_CLASS]
 
 
