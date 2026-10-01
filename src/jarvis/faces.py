@@ -10,6 +10,8 @@ docs/ARQUITETURA.md section 10.
 """
 
 import json
+import re
+import subprocess
 import threading
 import urllib.request
 import uuid
@@ -21,6 +23,7 @@ import cv2
 import numpy as np
 
 from jarvis import ROOT, people
+from jarvis.capture import ffmpeg_exe
 
 MODEL_DIR = ROOT / "models"
 DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
@@ -333,6 +336,60 @@ def _sighting_folder(when):
     return folder
 
 
+def _describe(clip):
+    """(width, height, approximate frame count) read from ffmpeg's header text.
+
+    Running ffmpeg with only an input makes it print the stream description
+    and stop, without decoding the video.
+    """
+    result = subprocess.run([ffmpeg_exe(), "-hide_banner", "-nostdin", "-i", str(clip)],
+                            capture_output=True)
+    header = result.stderr.decode(errors="replace")
+    size = re.search(r"Video:.*?, (\d{2,5})x(\d{2,5})", header)
+    duration = re.search(r"Duration: (\d+):(\d+):([\d.]+)", header)
+    rate = re.search(r"([\d.]+) fps", header)
+    if not size:
+        return 0, 0, 0
+    width, height = int(size.group(1)), int(size.group(2))
+    total = 0
+    if duration and rate:
+        hours, minutes, seconds = duration.groups()
+        total = int((int(hours) * 3600 + int(minutes) * 60 + float(seconds)) * float(rate.group(1)))
+    return width, height, total
+
+
+def _sampled_frames(clip):
+    """Yield up to MAX_SAMPLES frames spread over the whole clip, at full size.
+
+    Decoding goes through our own ffmpeg rather than cv2.VideoCapture: the
+    camera sometimes sends a damaged block, and OpenCV's bundled decoder
+    prints every one to the terminal with no way to silence it. ffmpeg's
+    select filter also drops the unsampled frames before they reach the pipe.
+    """
+    width, height, total = _describe(clip)
+    if not width or not height:
+        return
+    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
+
+    process = subprocess.Popen(
+        [ffmpeg_exe(), "-hide_banner", "-loglevel", "quiet", "-nostdin",
+         "-i", str(clip), "-vf", f"select=not(mod(n\\,{step}))",
+         "-fps_mode", "passthrough", "-frames:v", str(MAX_SAMPLES),
+         "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    size = width * height * 3
+    try:
+        while True:
+            data = process.stdout.read(size)
+            if len(data) < size:
+                break
+            yield np.frombuffer(data, np.uint8).reshape(height, width, 3)
+    finally:
+        process.stdout.close()
+        process.kill()
+        process.wait()
+
+
 def scan_clip(clip, camera, started_at, gallery=None):
     """Find every distinct face in a finished clip and record the sightings.
 
@@ -348,24 +405,12 @@ def _scan_clip(clip, camera, started_at, gallery):
     if not clip.exists():
         return []
 
-    capture = cv2.VideoCapture(str(clip))
-    total = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
-
     observations = []
-    index = samples = 0
-    while samples < MAX_SAMPLES:
-        ok, frame = capture.read()
-        if not ok:
-            break
-        if index % step == 0:
-            found = faces_in(frame)
-            if found:
-                bodies = people.person_boxes(frame)
-                observations.extend(f for f in found if _on_a_person(f["box"], bodies))
-            samples += 1
-        index += 1
-    capture.release()
+    for frame in _sampled_frames(clip):
+        found = faces_in(frame)
+        if found:
+            bodies = people.person_boxes(frame)
+            observations.extend(f for f in found if _on_a_person(f["box"], bodies))
 
     if not observations:
         return []

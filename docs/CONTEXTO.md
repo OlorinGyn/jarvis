@@ -121,6 +121,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Falso movimento de dia na Front | Manchas de sol e sombra de folhas; o relógio da câmera no canto | Filtro de luz por correlação com o fundo e máscara do relógio: **99 → 15 frames**, pessoa coberta 262 → 258 de 273 (ARQUITETURA 6.7) |
 | 14 "pessoas" para 3 reais; nome não reconhecia depois | Todo rosto não casado virava pessoa (inclusive perfil, nuca, braço); mesmo nome criava gêmeos; só aprendia com ≥ 80 px | Filtro de rosto de frente + YOLO, junção por nome, absorção ao nomear, aprendizado por semelhança (ARQUITETURA 10.4, 10.9) |
 | Programa caía logo após um evento (`buf.shape() == m.shape()`) | A varredura de rostos usava a mesma rede YOLO do laço ao vivo, em outra thread | Rede própria para threads de fundo e varreduras em fila (ARQUITETURA 10.9) |
+| Terminal cheio de `[h264] error while decoding MB` | Câmera Back mandando blocos danificados (Wi-Fi), impressos pelo decodificador interno do OpenCV na varredura de rostos | Varredura lê pelo nosso ffmpeg em `-loglevel quiet`, 2× mais rápida; `tools/verificar_clipes.py` mede o dano (ARQUITETURA 10.11) |
 | Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 
@@ -225,6 +226,7 @@ tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
   probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
   refazer_rostos.py  reconstrói faces/ a partir dos clipes gravados
+  verificar_clipes.py  conta blocos danificados por câmera num dia
   gerar_icone.py  desenha o ícone do olho robótico em assets/jarvis.ico
   criar_atalho.ps1   atalho com ícone na Área de Trabalho
 assets/           jarvis.ico e prévia PNG (gerados, mas versionados)
@@ -248,6 +250,7 @@ uv run tools/diagnostico.py --local                     testar ffmpeg sem câmer
 uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
 powershell Test-NetConnection <ip> -Port 554            a câmera responde nesse IP?
 uv run tools/refazer_rostos.py                          refazer faces/ (feche o programa antes)
+uv run tools/verificar_clipes.py [AAAA-MM-DD]           dano de imagem vindo das câmeras
 tasklist | findstr ffmpeg                               procurar ffmpeg órfão
 ```
 

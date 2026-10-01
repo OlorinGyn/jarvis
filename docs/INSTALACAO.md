@@ -257,6 +257,34 @@ leitura roda em thread separada (ARQUITETURA 5.4).
 Se voltar a acontecer, é sinal de que algo novo passou a bloquear o laço
 principal — desconfie de operação de disco ou rede feita dentro dele.
 
+**Linhas `[h264 @ ...] error while decoding MB ...` no terminal**
+
+Não é erro do programa. Quer dizer que a **câmera** mandou um pedaço de imagem
+danificado: um bloco de 16x16 px (o "MB", macrobloco) borrado por uma fração de
+segundo, até o próximo quadro completo. A gravação copia os bytes da câmera sem
+recodificar, então o dano já veio assim. Como a conexão é TCP, a rede não perde
+dados no caminho; quem descarta é a própria câmera, quando o Wi-Fi dela engasga.
+
+Desde 30/09/2026 essas linhas não aparecem mais no terminal (ARQUITETURA 10.11).
+Para ver se uma câmera está com o sinal ruim:
+
+```bat
+uv run tools/verificar_clipes.py 2026-09-30
+```
+
+```
+  Back   13-47-27  5 bloco(s) danificado(s)
+  ...
+2026-09-30:
+  Back   8 de 68 clipes com dano
+  Front  0 de 34 clipes com dano
+```
+
+Se uma câmera tem dano frequente e a outra não, confira o sinal dela no app
+Tapo (câmera → engrenagem → Informações do dispositivo). O que costuma resolver:
+aproximar o roteador ou pôr um repetidor, e preferir a rede de 2,4 GHz, que
+alcança mais longe que a de 5 GHz.
+
 **Rostos errados ou repetidos na tela People**
 
 Com o programa **fechado**:

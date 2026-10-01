@@ -87,6 +87,7 @@ jarvis/
 │   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
 │   ├── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
 │   ├── refazer_rostos.py reconstrói faces/ a partir dos clipes
+│   ├── verificar_clipes.py dano de imagem vindo das câmeras
 │   ├── gerar_icone.py    desenha o ícone (seção 13)
 │   └── criar_atalho.ps1  atalho na Área de Trabalho com o ícone
 ├── assets/               jarvis.ico e uma prévia em PNG
@@ -1525,6 +1526,45 @@ Hoje `context_crop()` recorta direto do frame original um quadrado de
 300 px com interpolação cúbica. A tela reduz para 150 px com `INTER_AREA`, a
 interpolação certa para diminuir. O embedding continua saindo do recorte
 alinhado; só a foto mudou.
+
+### 10.11 O clipe é lido pelo ffmpeg, não pelo OpenCV
+
+`scan_clip()` lia o clipe com `cv2.VideoCapture`. O OpenCV traz um ffmpeg
+próprio dentro dele, e esse decodificador imprime direto no terminal cada bloco
+danificado que encontra (`[h264 @ ...] error while decoding MB 52 20`). Num dia
+com o Wi-Fi da Back ruim, o terminal se encheu dessas linhas, que parecem erro
+do programa mas são só o vídeo da câmera com defeito (INSTALACAO seção 8).
+
+A variável `OPENCV_FFMPEG_LOGLEVEL`, que deveria silenciar isso, **não tem
+efeito** no OpenCV 5.0 — testado. Então a leitura passou para o **nosso**
+ffmpeg, o mesmo de `capture.py`, com `-loglevel quiet`:
+
+```
+ffmpeg -i clipe.mp4 -vf "select=not(mod(n\,STEP))" -fps_mode passthrough
+       -frames:v 60 -pix_fmt bgr24 -f rawvideo pipe:1
+```
+
+O filtro `select` deixa passar só um a cada `STEP` frames (`n` é o número do
+frame, `mod` o resto da divisão). O `-fps_mode passthrough` impede o ffmpeg de
+duplicar frames para "preencher" os que foram descartados. A barra em `\,`
+existe porque a vírgula separa filtros na linguagem do `-vf`.
+
+Ganho de bônus: o `VideoCapture` decodificava e entregava **todos** os frames
+para o Python descartar a maioria; o ffmpeg descarta antes do pipe. Medido no
+clipe de 577 frames: **3,3 s → 1,6 s**, com os mesmos 60 frames (diferença
+média de 2 em 255 por pixel, da conversão de cor feita por outra biblioteca). A
+varredura dos clipes de 29/09 deu as mesmas 3 pessoas com as mesmas
+similaridades.
+
+Tamanho e número de frames vêm de `_describe()`, que roda `ffmpeg -i clipe` sem
+saída: ele imprime o cabeçalho do vídeo e para, sem decodificar nada. Abrir com
+`VideoCapture` só para perguntar o tamanho já decodificava o começo e imprimia
+o dano dali.
+
+O aviso `setPreferableTarget ... not supported by the new graph engine`, que o
+OpenCV imprime ao carregar o detector de rosto, é silenciado por
+`OPENCV_LOG_LEVEL=ERROR` em `jarvis/__init__.py`. Esse arquivo roda antes de
+qualquer `import cv2` do programa, que é quando o OpenCV lê a variável.
 
 ---
 
