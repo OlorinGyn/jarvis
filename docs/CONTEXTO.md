@@ -242,6 +242,8 @@ src/jarvis/
 tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
   probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
+  gerar_epub.py   junta todos os .md num EPUB para e-reader
+  epub.css        estilo do EPUB, legível em tela de 7 polegadas
   refazer_rostos.py  reconstrói faces/ a partir dos clipes gravados
   verificar_clipes.py  conta blocos danificados por câmera num dia
   gerar_icone.py  desenha o ícone do olho robótico em assets/jarvis.ico
@@ -269,8 +271,29 @@ uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
 powershell Test-NetConnection <ip> -Port 554            a câmera responde nesse IP?
 uv run tools/refazer_rostos.py                          refazer faces/ (feche o programa antes)
 uv run tools/verificar_clipes.py [AAAA-MM-DD]           dano de imagem vindo das câmeras
+uv run python tools/gerar_epub.py                       documentação em EPUB para e-reader
 tasklist | findstr ffmpeg                               procurar ffmpeg órfão
 ```
+
+### Documentação em EPUB
+
+`tools/gerar_epub.py` junta **todos** os `.md` do projeto num único EPUB em
+`docs/epub/`, com cada documento virando um capítulo. Isso mantém as
+referências cruzadas entre eles a um toque de distância no leitor — o
+ARQUITETURA e o CONTEXTO se citam o tempo todo.
+
+Documentos novos entram sozinhos: a lista `ORDEM` define a sequência dos
+conhecidos, e qualquer `.md` fora dela é acrescentado ao final.
+
+Os `.md` nunca são alterados, e os EPUBs **não são versionados nem mantidos
+atualizados** — rode quando quiser uma cópia fresca. O script apaga EPUBs
+antigos da pasta e confere, ao final, se a contagem de tabelas e blocos de
+código bate com a dos arquivos de origem.
+
+Precisa do pandoc (`winget install --id JohnMacFarlane.Pandoc -e`), que o
+script localiza mesmo sem estar no PATH. O `tools/epub.css` é o que deixa o
+resultado legível em 7 polegadas: código a 0.68em com quebra forçada, já que
+código não reflui e linhas longas sairiam da tela.
 
 Constantes de ajuste: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`,
 `SEGMENT_SECONDS`, `SOCKET_TIMEOUT_SECONDS`), `people.py` (`MIN_INTERVAL`,
