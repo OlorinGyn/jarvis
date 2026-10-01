@@ -26,3 +26,6 @@ backups/
 
 # modelos ONNX (baixados sob demanda)
 models/
+
+# epub gerados sob demanda, nao versionados
+docs/epub/

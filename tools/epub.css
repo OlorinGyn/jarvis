@@ -1,0 +1,63 @@
+body {
+  font-family: serif;
+  line-height: 1.45;
+  margin: 0 1em;
+}
+
+h1, h2, h3, h4 {
+  font-family: sans-serif;
+  line-height: 1.2;
+  page-break-after: avoid;
+}
+
+h1 { font-size: 1.5em; }
+h2 { font-size: 1.25em; }
+h3 { font-size: 1.1em; }
+
+pre {
+  font-size: 0.68em;
+  line-height: 1.25;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  background: #f2f2f2;
+  padding: 0.4em 0.5em;
+  margin: 0.7em 0;
+  border-left: 3px solid #999;
+}
+
+code {
+  font-family: monospace;
+  font-size: 0.82em;
+  word-wrap: break-word;
+}
+
+pre code {
+  font-size: 1em;
+}
+
+table {
+  font-size: 0.72em;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+}
+
+th, td {
+  border: 1px solid #aaa;
+  padding: 0.25em 0.35em;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+th {
+  background: #e8e8e8;
+  font-family: sans-serif;
+}
+
+blockquote {
+  margin: 0.8em 0;
+  padding-left: 0.8em;
+  border-left: 3px solid #bbb;
+  font-style: italic;
+}
