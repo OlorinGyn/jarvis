@@ -20,7 +20,9 @@ clips/
 
 # rostos detectados e galeria
 faces/
-faces_antigo_*/
+
+# copias de seguranca feitas pelas ferramentas
+backups/
 
 # modelos ONNX (baixados sob demanda)
 models/

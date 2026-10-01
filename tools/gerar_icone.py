@@ -4,7 +4,7 @@ Usage: uv run tools/gerar_icone.py
 
 Everything is drawn with NumPy and OpenCV at 1024px and scaled down, so the
 design lives in code and can be changed and regenerated. See docs/ARQUITETURA.md
-section 13.
+section 12.
 """
 
 import math

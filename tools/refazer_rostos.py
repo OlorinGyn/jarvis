@@ -2,7 +2,7 @@
 
 Usage: uv run tools/refazer_rostos.py
 
-Moves the current faces/ aside to faces_antigo_<data-hora>/ first, so nothing
+Moves the current faces/ aside to backups/faces_<data-hora>/ first, so nothing
 is lost. Names are not carried over: identities are rebuilt from scratch, and
 naming one card per person in the People screen is enough to name the rest.
 Close the J.A.R.V.I.S. before running: it writes to the same folder.
@@ -33,9 +33,10 @@ def recorded_clips():
 def main():
     clips = recorded_clips()
     if faces.FACE_DIR.exists():
-        backup = ROOT / f"faces_antigo_{datetime.now():%Y%m%d-%H%M%S}"
+        backup = ROOT / "backups" / f"faces_{datetime.now():%Y%m%d-%H%M%S}"
+        backup.parent.mkdir(exist_ok=True)
         shutil.move(faces.FACE_DIR, backup)
-        print(f"rostos antigos movidos para {backup.name}")
+        print(f"rostos antigos movidos para {backup.relative_to(ROOT)}")
 
     print(f"{len(clips)} clipe(s) para analisar")
     gallery = faces.Gallery()

@@ -10,11 +10,12 @@ being a mystery, and the output says which setting to change.
 
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
 
-from jarvis import ROOT, cameras, capture
+from jarvis import cameras, capture
 
 SECONDS = 14
 FRAME_BYTES = capture.ANALYSIS_WIDTH * capture.ANALYSIS_HEIGHT * 3
@@ -99,10 +100,11 @@ def teste_local():
     Separates 'ffmpeg cannot decode on this machine' from anything to do with
     the cameras or the network.
     """
-    import tempfile
+    with tempfile.TemporaryDirectory(prefix="jarvis_local_") as pasta:
+        _teste_local(Path(pasta) / "amostra.mp4")
 
-    pasta = Path(tempfile.mkdtemp(prefix="local_"))
-    amostra = pasta / "amostra.mp4"
+
+def _teste_local(amostra):
     print("1) gerando um video de teste 1920x1080 h264...")
     criar = subprocess.run(
         [capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y",
@@ -152,9 +154,11 @@ def main():
         raise SystemExit(f"camera {wanted!r} nao encontrada em {[c[0] for c in todas]}")
 
     label, url = escolhidas[0]
-    buffer = ROOT / "clips" / "_diag" / label
-    buffer.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="jarvis_diag_") as pasta:
+        testar_variantes(label, url, Path(pasta))
 
+
+def testar_variantes(label, url, buffer):
     print(f"camera: {label}   |   {SECONDS}s por variante   |   "
           f"esperado ~{capture.ANALYSIS_FPS * SECONDS} frames\n")
 
@@ -166,25 +170,20 @@ def main():
         ("so analise, sem gravar segmentos", base(url, buffer, segments=False)),
     ]
 
-    melhor = ("", 0.0)
-    for nome, comando in variantes:
-        frames = tentar(nome, comando, buffer)
-        if frames > melhor[1]:
-            melhor = (nome, frames)
+    resultados = [(nome, tentar(nome, comando, buffer)) for nome, comando in variantes]
+    atual = resultados[0][1]
+    melhor = max(resultados, key=lambda r: r[1])
 
     print(f"\n{'=' * 66}")
-    if melhor[1] >= 5:
-        print(f"MELHOR: {melhor[0]}  ({melhor[1]:.0f} frames)")
-        if melhor[0].startswith("atual"):
-            print("O comando atual funciona nesta maquina.")
-        else:
-            print("Mande este resultado que eu ajusto o capture.py.")
+    if atual >= 5:
+        print("O comando atual funciona nesta maquina.")
+    elif melhor[1] >= 5:
+        print(f"O atual falhou, mas '{melhor[0]}' entregou {melhor[1]:.0f} frames.")
+        print("Essa variante deve ir para o capture.py.")
     else:
         print("NENHUMA variante entregou frames.")
-        print("O ffmpeg conecta mas nao decodifica. Veja as linhas de erro acima.")
-
-    for antigo in buffer.glob("*.mp4"):
-        antigo.unlink(missing_ok=True)
+        print("Confira primeiro se a camera responde no IP do .env:")
+        print("  powershell Test-NetConnection <ip> -Port 554")
 
 
 if __name__ == "__main__":

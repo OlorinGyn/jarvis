@@ -26,7 +26,8 @@ O `instalar.bat` cuida do `uv` e do Redistributable sozinho.
 
 Bibliotecas nativas trazem DLLs próprias mas **não empacotam o runtime C++ da
 Microsoft** de que elas dependem. Numa instalação limpa do Windows esse runtime
-não existe, e o erro é:
+não existe, e o erro é parecido com este — que apareceu no M900 quando o
+projeto ainda usava PyTorch; hoje a DLL citada seria a do OpenCV:
 
 ```
 OSError: [WinError 1114] A dynamic link library (DLL) initialization
@@ -60,9 +61,9 @@ O `instalar.bat` faz seis coisas:
 2. Garante o Visual C++ Redistributable (ver 1.1)
 3. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
    exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
-4. Baixa os modelos de visão (~60 MB no total)
+4. Baixa os modelos de visão (~73 MB no total, ver seção 3)
 5. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
-   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 13)
+   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 12)
 6. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
 
 Cada passo tem sua própria mensagem de erro. A primeira versão juntava o
@@ -219,13 +220,16 @@ Ele testa cinco variantes do comando de captura, 14 segundos cada, e informa
 quantos frames cada uma entregou nesta máquina:
 
 ```
-  OK atual (como o programa roda)        118.0 frames  1o em 2.5s  segmentos 3
-  OK sem use_wallclock_as_timestamps     118.0 frames  1o em 2.8s  segmentos 3
-  -- fps por filtro em vez de -r           0.0 frames  1o em nunca segmentos 3
+  OK atual (como o programa roda)        126.0 frames  1o em    2.6s  segmentos 3
+  OK sem use_wallclock_as_timestamps     125.0 frames  1o em    3.0s  segmentos 3
+  ...
+O comando atual funciona nesta maquina.
 ```
 
-Se alguma variante entregar frames e a atual não, é ela que deve ir para o
-`capture.py`. Se nenhuma entregar, as linhas de erro do ffmpeg aparecem junto.
+Se a atual falhar e outra variante entregar frames, ele diz qual — é ela que
+deve ir para o `capture.py`. Se nenhuma entregar, as linhas de erro do ffmpeg
+aparecem junto, e ele lembra de testar o IP primeiro. Os segmentos de teste vão
+para uma pasta temporária do sistema, apagada no fim.
 
 A coluna `segmentos` separa os dois casos: segmentos sendo gravados com zero
 frames significa que a câmera e a rede estão bem, e o problema está só na saída
@@ -293,9 +297,10 @@ Com o programa **fechado**:
 uv run tools/refazer_rostos.py
 ```
 
-Move o `faces/` atual para `faces_antigo_<data-hora>/` e reconstrói tudo a
+Move o `faces/` atual para `backups/faces_<data-hora>/` e reconstrói tudo a
 partir dos clipes gravados. Os nomes precisam ser dados de novo, mas basta um
 cartão por pessoa: os outros dela recebem o nome junto (ARQUITETURA 10.4).
+Depois de conferir que está tudo certo, a cópia em `backups/` pode ser apagada.
 
 **Painel mostra `sem sinal`**
 
@@ -318,9 +323,18 @@ tasklist | findstr ffmpeg
 
 **Nenhum rosto aparece na aba People**
 
-Rostos só são procurados em eventos que tiveram `person`. À noite, no
-infravermelho, um rosto costuma ter ~44 px contra os ~112 px ideais — aparece
-marcado em vermelho e não reforça a galeria. Detalhes em ARQUITETURA 10.5.
+É o comportamento esperado em muitos eventos. Um rosto só entra se cumprir
+tudo isto:
+
+- o evento teve `person` entre os rótulos;
+- o rosto está **de frente** — perfil, nuca e cabeça baixa são ignorados;
+- está em cima de uma pessoa que o YOLO vê no mesmo frame;
+- se for alguém novo, apareceu em pelo menos 2 frames do clipe.
+
+E aparece alguns segundos depois do evento: a varredura roda depois que o
+clipe é montado, uma de cada vez. Detalhes em ARQUITETURA 10.9. À noite, no
+infravermelho, o rosto costuma ter ~44 px contra os ~112 px ideais, e o
+reconhecimento é instável (ARQUITETURA 10.5).
 
 **`WinError 1114` ou `Error loading ... .dll`**
 
@@ -346,5 +360,8 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v VerifiedAndReputa
 
 **O disco está enchendo**
 
-Não há retenção automática ainda. As gravações ficam em `clips/<camera>/<data>/`
-e podem ser apagadas à vontade; o buffer em `clips/_buffer/` se limpa sozinho.
+Não há retenção automática ainda, e o ritmo real é de **~300 MB por dia**
+(medido em 30/09/2026, ARQUITETURA 8.6). As gravações ficam em
+`clips/<camera>/<data>/`, uma pasta por dia, e podem ser apagadas à vontade —
+o mais simples é apagar as pastas de dias antigos. O buffer em `clips/_buffer/`
+se limpa sozinho, e `backups/` só tem o que as ferramentas guardaram.

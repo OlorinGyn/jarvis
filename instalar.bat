@@ -42,7 +42,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/6] Baixando modelos de visao ^(~95 MB^)...
+echo [4/6] Baixando modelos de visao ^(~73 MB^)...
 uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
 if errorlevel 1 (
     echo.

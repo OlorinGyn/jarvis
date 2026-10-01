@@ -55,7 +55,7 @@ from jarvis.clips import BUFFER_DIR, EventRecorder
 Isso importa uma constante **e** uma classe do mesmo módulo — algo que em Java
 exigiria `static import` de uma constante dentro de alguma classe.
 
-### 2.0 Pacote: uma pasta de módulos
+### 2.1 Pacote: uma pasta de módulos
 
 Uma pasta com `__init__.py` é um **pacote**, o equivalente a um `package` Java
 ou a um `namespace` C#. O código do projeto vive em `src/jarvis/`, então cada
@@ -76,28 +76,33 @@ vez de copiá-los. Ver ARQUITETURA 3.1.
 As ferramentas de `tools/` ficam fora do pacote, mas usam ele igual a qualquer
 biblioteca: `from jarvis import cameras, capture`.
 
-### 2.1 Imports executam código
+### 2.2 Imports executam código
 
 Um `import` roda o arquivo inteiro na primeira vez, e isso permite acoplamentos
-que em Java não existiriam. O projeto tinha um caso instrutivo:
+que em Java não existiriam. O projeto tem um caso, em `jarvis/__init__.py`:
 
 ```python
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+import os
+from pathlib import Path
 
-import cv2
+os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")
 ```
 
-O FFmpeg lia essa variável **durante o carregamento do módulo `cv2`**, então
-mover o import para cima — como qualquer linter sugeriria — quebrava o RTSP
-silenciosamente. Em Java, imports são declarações resolvidas em compilação e
-nunca teriam esse efeito colateral.
+O OpenCV lê essa variável **quando o módulo `cv2` é carregado**. Ela só
+funciona porque o `__init__.py` do pacote roda antes de qualquer outro módulo
+do `jarvis` — e todos eles fazem `import cv2` depois. Se alguém importasse
+`cv2` antes de importar o `jarvis`, a variável chegaria tarde e o aviso que ela
+silencia voltaria, sem erro nenhum. Em Java, imports são declarações resolvidas
+em compilação e nunca teriam esse efeito colateral.
 
-Esse trecho **não existe mais**: a captura passou a usar ffmpeg diretamente e o
-transporte virou um argumento de linha de comando (ARQUITETURA 5.5). A lição
-fica: em Python, a **ordem** dos imports pode ser semântica, e nada no arquivo
+Aqui o prejuízo seria só um aviso a mais no terminal. Numa versão antiga do
+projeto a mesma armadilha quebrava o RTSP: `OPENCV_FFMPEG_CAPTURE_OPTIONS` tinha
+que ser atribuída antes do `import cv2`, e mover o import para cima — como
+qualquer linter sugeriria — desligava o TCP em silêncio (ARQUITETURA 5.8). A
+lição: em Python, a **ordem** dos imports pode ser semântica, e nada no arquivo
 avisa quando é.
 
-### 2.2 `if __name__ == "__main__"`
+### 2.3 `if __name__ == "__main__"`
 
 ```python
 if __name__ == "__main__":
@@ -105,8 +110,9 @@ if __name__ == "__main__":
 ```
 
 `__name__` vale `"__main__"` quando o arquivo é executado diretamente, e o nome
-do módulo quando ele é importado. Sem essa guarda, importar `cameras` para
-reaproveitar `load_env()` abriria as câmeras e a janela como efeito colateral.
+do módulo quando ele é importado. Sem essa guarda, `tools/diagnostico.py`
+importar `cameras` para reaproveitar `load_env()` abriria as câmeras e a janela
+como efeito colateral.
 
 É o equivalente do `public static void main`, mas por convenção, não por regra
 da linguagem.
@@ -119,7 +125,8 @@ Não há declaração de tipo obrigatória. A função aceita o que quer que res
 às operações usadas — *duck typing*.
 
 ```python
-def make_panel(frame, label, height, motion_boxes=(), people=(), recording=False):
+def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=False,
+               reason=""):
 ```
 
 Nada aqui garante que `frame` seja uma imagem. Se não for, o erro aparece em
@@ -128,12 +135,15 @@ runtime, dentro de `cv2.resize`.
 **Não existem interfaces.** Você não declara `implements`. Se um objeto tem o
 método certo, serve. Não há `instanceof` idiomático para contratos.
 
-**Não há sobrecarga de métodos.** Não dá para ter dois `detect()` com
+**Não há sobrecarga de métodos.** Não dá para ter duas `scan_clip()` com
 assinaturas diferentes. Usa-se argumentos com valor padrão:
 
 ```python
-def update(self, frame, people, fps=DEFAULT_FPS):
+def scan_clip(clip, camera, started_at, gallery=None):
 ```
+
+O programa chama sem `gallery` e cada varredura carrega a galeria do disco;
+`tools/refazer_rostos.py` passa uma galeria só para todos os clipes.
 
 Type hints (`def f(x: int) -> str`) existem, mas são **anotações ignoradas em
 runtime** — documentação verificada por ferramentas externas (mypy), nunca pelo
@@ -148,15 +158,16 @@ Não existe `private`, `protected` ou `public`. **Tudo é acessível.**
 A convenção é o underscore:
 
 ```python
-self._reads = 0          # "interno, não mexa"
-self.fps = DEFAULT_FPS   # parte da API pública
+self._errors = deque(maxlen=12)   # "interno, não mexa"
+self.frames_read = 0              # parte da API pública
 ```
 
-É só convenção — `cam._reads` funciona perfeitamente. A cultura de Python
-confia no programador em vez de impor barreiras pelo compilador.
+(Trecho do `FFmpegCamera`, em `capture.py`.) É só convenção — `cam._errors`
+funciona perfeitamente. A cultura de Python confia no programador em vez de
+impor barreiras pelo compilador.
 
-O mesmo vale para funções de módulo: `_overlap_area()` em `people.py` sinaliza
-uso interno.
+O mesmo vale para funções de módulo: `_similarity()` em `faces.py` sinaliza
+uso interno, enquanto `cosine()`, no mesmo arquivo, é para quem quiser usar.
 
 ---
 
@@ -174,8 +185,10 @@ uma `struct` do C#:
 
 ```python
 (x, y, w, h)              # caixa de movimento
-(x, y, w, h, confidence)  # caixa de pessoa
 ```
+
+As detecções do YOLO começaram como `(x, y, w, h, confidence)` e viraram um
+`NamedTuple` quando precisaram de rótulo (5.4).
 
 ### 5.2 Desempacotamento
 
@@ -184,19 +197,36 @@ Atribuição múltipla é idiomática e onipresente:
 ```python
 h, w = frame.shape[:2]
 x, y, bw, bh = cv2.boundingRect(contour)
-ok, frame = self.cap.read()
+width, height, total = _describe(clip)
 ```
 
-Esse último é o padrão de Python para "retornar dois valores" — não existe
-`out` parameter como em C#. A função devolve uma tupla e você a desempacota.
+Esse último é o padrão de Python para "retornar vários valores" — não existe
+`out` parameter como em C#. `_describe()` faz `return width, height, total`, o
+que monta uma tupla, e quem chama a desempacota.
+
+O mesmo mecanismo troca valores sem variável temporária. Em `capture.py`:
+
+```python
+frame, self._pending = self._pending, None
+```
+
+O lado direito vira uma tupla **antes** de qualquer atribuição; só depois os
+dois nomes da esquerda recebem os valores. Pega o frame pendente e zera o campo
+numa linha só.
 
 ### 5.3 `dict`
 
 É o `HashMap`/`Dictionary`. Em `clips.py` um dict é usado como objeto de
-retorno anônimo:
+retorno anônimo, e o mesmo dict vira o `.json` do evento:
 
 ```python
-return {"camera": self.label, "path": self.path, "frames": self.frames_written}
+meta = {
+    "camera": self.label,
+    "started_at": self.started_at.isoformat(timespec="seconds"),
+    "seconds": round(seconds, 1),
+    "labels": sorted(self.labels),
+    ...
+}
 ```
 
 Vindo de C#, é tentador criar uma classe para isso. Em Python, dict é aceitável
@@ -255,7 +285,9 @@ em Java, só sem a cerimônia.
 
 > Nota histórica: aqui havia uma seção sobre `deque(maxlen=...)` como ring
 > buffer, usada pela pré-gravação em memória. Essa estrutura deixou de existir
-> quando a pré-gravação passou a vir dos segmentos em disco (ARQUITETURA 5.4).
+> quando a pré-gravação passou a vir dos segmentos em disco (ARQUITETURA 5.5).
+> O `deque(maxlen=12)` que guarda as últimas mensagens de erro do ffmpeg, em
+> `capture.py`, é o mesmo recurso: ao passar de 12, a mais antiga sai sozinha.
 
 ---
 
@@ -267,7 +299,7 @@ início incluído, fim **excluído**.
 ```python
 frame.shape[:2]          # os dois primeiros elementos
 sys.argv[1:5]            # do índice 1 ao 4
-list(self.buffer)[:-1]   # tudo menos o último
+self.segments()[:-1]     # tudo menos o último (o que o ffmpeg ainda escreve)
 key[len("CAM_"):-len("_IP")]   # tira prefixo e sufixo
 ```
 
@@ -289,8 +321,8 @@ Por isso o código escreve:
 
 ```python
 if not motion_boxes:      # lista vazia
-if people:                # lista não vazia
-if not shared:            # área de sobreposição igual a zero
+if subjects:              # lista não vazia
+if not observations:      # nenhum rosto no clipe inteiro
 ```
 
 **Armadilha:** `if not x` é verdadeiro tanto para lista vazia quanto para
@@ -302,8 +334,9 @@ if not frame:             # ERRADO: um numpy array levanta exceção aqui
 ```
 
 Esse caso aparece de verdade no projeto. Um array numpy não tem valor de
-verdade definido e lança `ValueError` — por isso `Camera.read()` devolve `None`
-e o chamador usa `is None`.
+verdade definido e lança `ValueError` — por isso `FFmpegCamera.read()` devolve
+`None` quando não há frame novo, e o laço em `cameras.py` testa
+`if frame is None`.
 
 ---
 
@@ -312,7 +345,7 @@ e o chamador usa `is None`.
 `None` é o `null`, mas é um **objeto singleton**. Compara-se com `is`, não `==`:
 
 ```python
-if self._first_read is None:
+if self.process is None:
 ```
 
 `is` compara identidade (mesmo objeto na memória), `==` compara valor. Para
@@ -325,9 +358,9 @@ if self._first_read is None:
 Interpolação com prefixo `f`:
 
 ```python
-print(f"  {cam.label}: {state}")
-f"{confidence:.2f}"                  # duas casas decimais
-f"{saved['seconds']:.1f}s"           # aspas simples dentro de aspas duplas
+print(f"  {cam.label}: {cam.stream.wait_ready()}")   # chamada dentro da string
+f"{subject.label} {subject.confidence:.2f}"          # duas casas decimais
+f"{saved['seconds']}s, {saved['reason']}"            # aspas simples dentro de duplas
 ```
 
 O que vem depois de `:` é o mesmo mini-formato do `String.format`. É a forma
@@ -341,14 +374,20 @@ Substituem laços de construção de coleção e o papel de Streams do Java:
 
 ```python
 streams = [Camera(label, url) for label, url in cameras]
-crops = [frame[y:y+h, x:x+w] for x, y, w, h in regions if w > 0]
+return [box for box, _, class_id in _raw_detections(load_background_model(), frame)
+        if class_id == PERSON_CLASS]
 ```
+
+O segundo, de `people.person_boxes()`, desempacota cada tupla `(caixa,
+confiança, classe)` direto no `for`, descarta a confiança com `_` e filtra
+pela classe — o que em Java seria um `stream().filter().map().collect()`.
 
 Sem colchetes vira um **generator** — avaliado sob demanda, sem materializar a
 lista:
 
 ```python
-if not any(_overlap_area(box, m) for m in motion_boxes):
+if REQUIRE_MOTION_OVERLAP and not any(
+        overlap_area(box, m) for m in motion_boxes):
 ```
 
 `any()` para no primeiro verdadeiro. Equivale a `stream().anyMatch()`, porém a
@@ -363,10 +402,10 @@ Construção sem equivalente em Java ou C#, e usada de propósito em
 
 ```python
 for other in kept:
-    if muito_parecido:
+    if subject.label == other.label and iou(subject, other) > SAME_SUBJECT_IOU:
         break
 else:
-    kept.append(person)
+    kept.append(subject)
 ```
 
 **O bloco `else` roda somente se o laço terminou sem `break`.** Traduz
@@ -386,35 +425,41 @@ comportamento**, não só metadados.
 
 ```python
 @property
-def recording(self):
-    return self.writer is not None
+def alive(self):
+    return self.process is not None and self.process.poll() is None
 ```
 
-Transforma um método em atributo de leitura: escreve-se `cam.recorder.recording`,
-sem parênteses. É exatamente a *property* do C#, e a razão pela qual Python não
-precisa de getters triviais — um campo público pode virar property depois sem
-quebrar quem o usa.
+Transforma um método em atributo de leitura: em `capture.py` escreve-se
+`if not self.alive:`, sem parênteses. É exatamente a *property* do C#, e a
+razão pela qual Python não precisa de getters triviais — um campo público pode
+virar property depois sem quebrar quem o usa.
 
 ### 12.2 `@lru_cache`
 
 ```python
 @lru_cache(maxsize=1)
 def load_model():
-    return YOLO(MODEL)
+    ensure_model()
+    return cv2.dnn.readNetFromONNX(str(MODEL_FILE))
 ```
 
 Memoriza o retorno por argumentos. Com `maxsize=1` e nenhum argumento, é um
 **singleton preguiçoso**: a primeira chamada carrega o modelo, as seguintes
 devolvem o mesmo objeto. Substitui todo o boilerplate de singleton do Java.
 
+E justamente por ser singleton, ele não serve para duas threads: `people.py`
+tem um segundo, `load_background_model()`, idêntico, para a thread que varre
+rostos ter a própria rede (14.2).
+
 ---
 
 ## 13. Classes
 
 ```python
-class ClipRecorder:
-    def __init__(self, label, directory=CLIP_DIR):
-        self.label = label
+class EventRecorder:
+    def __init__(self, camera, directory=CLIP_DIR):
+        self.camera = camera
+        self.label = camera.label
 ```
 
 - `__init__` é o inicializador (o objeto já existe quando ele roda).
@@ -483,7 +528,8 @@ def f(boxes=[]):     # PERIGO: a mesma lista em todas as chamadas
 Por isso o projeto usa tupla vazia, que é imutável:
 
 ```python
-def make_panel(frame, label, height, motion_boxes=(), people=()):
+def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=False,
+               reason=""):
 ```
 
 ---
@@ -496,24 +542,23 @@ Python por vez**. Threads não usam múltiplos núcleos para código Python puro
 Isso soa fatal para um projeto de vídeo, mas não é, porque as bibliotecas
 liberam o GIL enquanto executam código nativo:
 
-- `cap.read()` libera durante o decode H.264.
+- Ler o pipe do ffmpeg (`process.stdout.read()`) libera enquanto espera.
 - Operações do OpenCV e do numpy liberam durante o processamento.
-- A inferência do PyTorch libera.
+- A inferência do YOLO (`net.forward()`, em C++) libera.
 
 Ou seja, o trabalho pesado **é** paralelo; o Python só orquestra. Quando é
 preciso paralelismo real de código Python, usa-se `multiprocessing` (processos
 separados, cada um com seu interpretador) — não threads.
 
----
-
-## 14.1 Threads valem a pena para subprocessos
+### 14.1 Threads valem a pena para subprocessos
 
 O GIL impede paralelismo de *bytecode Python*, mas não atrapalha em nada
 esperar por um processo externo. A montagem do clipe usa isso:
 
 ```python
 job = threading.Thread(target=_assemble,
-                       args=(self.camera, self.started_at, ended_at, destination))
+                       args=(self.camera, self.started_at, ended_at,
+                             destination, set(self.labels)))
 job.start()
 ```
 
@@ -524,9 +569,36 @@ em Python funciona exatamente como você esperaria de Java ou C#.
 
 **Threads não-daemon.** Por padrão o interpretador **espera** as threads
 terminarem antes de encerrar. É desejável aqui (não queremos um clipe pela
-metade), e é o oposto do padrão de `Thread` em Java, onde a JVM só espera
-threads não-daemon que você marcou como tal. Ainda assim chamamos
+metade). Em Java é igual: uma `Thread` criada a partir do `main` é não-daemon,
+e a JVM espera por ela. Em C# uma `Thread` também segura o processo, mas uma
+`Task` não — ela roda no pool, cujas threads são de fundo. Ainda assim chamamos
 `wait_for_jobs()` explicitamente na saída, para poder avisar o usuário.
+
+### 14.2 Soltar o GIL não torna nada *thread-safe*
+
+O outro lado da lista acima: se o OpenCV solta o GIL dentro do `forward()`, duas
+threads chamando `forward()` **na mesma rede** rodam de verdade ao mesmo tempo.
+E um `cv2.dnn.Net` guarda buffers internos entre chamadas — não foi feito para
+isso.
+
+Aconteceu no projeto: a varredura de rostos, numa thread de fundo, passou a
+usar o YOLO pela mesma `load_model()` do laço ao vivo. O programa caiu com
+`buf.shape() == m.shape()` logo depois de um evento. A correção foi uma segunda
+rede para a thread de fundo e um `threading.Lock` para as varreduras ficarem em
+fila (ARQUITETURA 10.9):
+
+```python
+_SCAN_LOCK = threading.Lock()
+
+def scan_clip(clip, camera, started_at, gallery=None):
+    with _SCAN_LOCK:
+        return _scan_clip(clip, camera, started_at, gallery)
+```
+
+`with lock:` é o `lock (obj) { }` do C# e o `synchronized` do Java: adquire na
+entrada e solta na saída, inclusive se houver exceção. A regra de bolso é a
+mesma das duas linguagens — objeto nativo compartilhado entre threads precisa
+de dono ou de trava. O GIL não é essa trava.
 
 ## 15. numpy — o tipo mais importante do projeto
 
@@ -620,46 +692,93 @@ que em WinForms/Swing seria implícito.
 
 ---
 
-## 17. Ultralytics e PyTorch
+## 17. Rede neural sem PyTorch: `cv2.dnn`
+
+O YOLO roda pelo módulo `dnn` do OpenCV, sobre o arquivo `.onnx` — o formato
+padrão para levar uma rede treinada de uma biblioteca para outra. O PyTorch
+saiu do projeto por causa do Smart App Control (ARQUITETURA 7.11), e com ele a
+biblioteca `ultralytics`, que escondia todo o pré e pós-processamento. Agora
+ele é explícito em `people._raw_detections()`, e cada passo ensina algo de
+numpy.
+
+### 17.1 Entrada: um "blob"
 
 ```python
-result = self.model.predict(frame, classes=[0], conf=0.35, verbose=False)[0]
+canvas, scale = _letterbox(frame)
+blob = cv2.dnn.blobFromImage(canvas, 1 / 255.0, (IMG_SIZE, IMG_SIZE),
+                             swapRB=True, crop=False)
+net.setInput(blob)
 ```
 
-`predict` aceita uma imagem ou uma lista e **sempre devolve uma lista** de
-resultados — daí o `[0]`.
+A rede espera um array `(1, 3, 640, 640)` de floats entre 0 e 1, em RGB:
+1 imagem, 3 canais, altura, largura. O frame do OpenCV é `(540, 960, 3)` de
+inteiros 0–255 em BGR. O `blobFromImage` faz a conversão inteira: escala
+(`1 / 255.0`), troca BGR→RGB (`swapRB=True`) e reordena os eixos para "canais
+primeiro". O `_letterbox` antes encaixa o frame num quadrado sem distorcer, e
+devolve a escala para desfazer depois.
 
-### 17.1 Tensores
-
-`result.boxes.xyxy` é um `torch.Tensor`, não uma lista. É um array
-multidimensional que pode viver em GPU. Para voltar a tipos Python:
+### 17.2 Saída: transpor para iterar
 
 ```python
-result.boxes.xyxy.tolist()
-result.boxes.conf.tolist()
+predictions = net.forward()[0].T
 ```
 
-Sem `.tolist()`, você carrega tensores por todo o código e paga conversões
-implícitas.
+O `forward()` devolve `(1, 84, 8400)`: 8400 caixas candidatas, cada uma
+descrita por 84 números (4 de geometria + 80 pontuações, uma por classe do
+COCO). Só que os 84 números de uma caixa estão numa **coluna**. O `[0]` tira a
+dimensão de lote e o `.T` (transposta) vira a matriz para `(8400, 84)`: agora
+cada **linha** é uma caixa, e um `for row in predictions` percorre caixas.
 
-### 17.2 `zip`
+Em Java isso seria um `float[84][8400]` e um laço de índice trocado. Aqui o
+`.T` não copia nada: é uma *view* (15.3) que lê a mesma memória em outra ordem.
+
+### 17.3 Classe vencedora e formato da caixa
 
 ```python
-for (x1, y1, x2, y2), confidence in zip(boxes.xyxy.tolist(), boxes.conf.tolist()):
+class_scores = row[4:]
+class_id = int(np.argmax(class_scores))
+cx, cy, width, height = row[:4]
+boxes.append([int((cx - width / 2) / scale), int((cy - height / 2) / scale),
+              int(width / scale), int(height / scale)])
 ```
 
-`zip` percorre duas sequências em paralelo, e o desempacotamento aninhado abre
-a caixa em quatro variáveis na própria assinatura do `for`.
+`np.argmax` devolve o **índice** do maior valor — a classe mais provável. A
+geometria vem como **centro + tamanho** (`cx, cy, w, h`), enquanto o projeto
+inteiro usa **canto + tamanho** (`x, y, w, h`); a conversão é tirar metade da
+largura e da altura. Dividir por `scale` desfaz o encaixe do letterbox e devolve
+a caixa em pixels do frame original. Vale conferir sempre qual convenção uma
+API usa: as três (cantos, centro, canto + tamanho) são comuns.
 
-### 17.3 Formato das caixas
+### 17.4 Uma pessoa, várias caixas: NMS
 
-O YOLO devolve `xyxy` (dois cantos). O resto do projeto usa `(x, y, w, h)`.
-A conversão é explícita em `people.py` — vale conferir sempre qual convenção
-uma API usa, porque as duas são comuns.
+A rede costuma propor várias caixas quase iguais para o mesmo objeto.
+`cv2.dnn.NMSBoxes` (*non-maximum suppression*) fica com a de maior confiança e
+descarta as que se sobrepõem a ela além de `NMS_THRESHOLD`. Devolve só os
+índices que sobreviveram:
+
+```python
+keep = cv2.dnn.NMSBoxes(boxes, scores, CONFIDENCE, NMS_THRESHOLD)
+return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
+```
+
+O `np.array(keep).ravel()` está ali porque, conforme a versão do OpenCV, `keep`
+vem como lista simples ou como coluna `[[0], [3]]`; o `ravel()` achata as duas
+formas para `[0, 3]`.
+
+### 17.5 `zip`
+
+`zip` percorre duas sequências em paralelo — em `tools/gerar_icone.py`, cada
+imagem com o PNG correspondente:
+
+```python
+for image, blob in zip(images, blobs):
+```
+
+É o que em Java exigiria um laço de índice sobre duas listas do mesmo tamanho.
 
 ---
 
-## 17.4 `pathlib` em vez de concatenar strings
+## 18. `pathlib` em vez de concatenar strings
 
 ```python
 folder = self.directory / self.label / stamp.strftime("%Y-%m-%d")
@@ -676,14 +795,23 @@ manipulação de strings com `os.path.join`.
 Um detalhe: `Path` não é string. Ao passar para uma API C++ como o
 `cv2.imwrite`, ou para o `subprocess`, é preciso `str(path)`.
 
-## 17.5 `subprocess`: lista ou string, e por que importa no Windows
+## 19. `subprocess`: lista ou string, e por que importa no Windows
 
 A regra geral é passar uma **lista** de argumentos, nunca uma string: evita
-problemas de quoting e de injeção, já que não há shell envolvido.
+problemas de quoting e de injeção, já que não há shell envolvido. A montagem
+de clipes em `clips.py`:
 
 ```python
-subprocess.run([exe, "-i", str(raw), "-c:v", "libx264"])
+subprocess.run(
+    [ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
+     "-f", "concat", "-safe", "0", "-i", str(listing),
+     "-c", "copy", "-movflags", "+faststart", str(destination)],
+    check=True, capture_output=True)
 ```
+
+`check=True` transforma código de saída diferente de zero em exceção
+(`CalledProcessError`); sem ele, uma falha do ffmpeg passaria em silêncio.
+`capture_output=True` guarda stdout e stderr em vez de jogá-los no terminal.
 
 No Windows, porém, o sistema operacional não aceita uma lista: o `CreateProcess`
 recebe **uma única linha de comando**. O `subprocess` então converte sua lista
@@ -711,9 +839,10 @@ Vindo de Java, o análogo é a diferença entre `ProcessBuilder(List<String>)` e
 Regra prática: **lista por padrão; string só quando o programa de destino tem
 sintaxe própria** que o quoting automático estragaria.
 
-## 17.6 Ler binário de um pipe e virar array sem copiar
+## 20. Ler binário de um pipe e virar array sem copiar
 
-A captura lê frames crus da saída do ffmpeg. O padrão vale conhecer:
+A captura lê frames crus da saída do ffmpeg, e a varredura de rostos faz o
+mesmo com o clipe (`faces._sampled_frames`). O padrão vale conhecer:
 
 ```python
 data = self.process.stdout.read(self.frame_bytes)
@@ -736,7 +865,7 @@ isso que há um `.copy()` explícito no fim. É o inverso da intuição de Java:
 aqui o "cast" barato vem com imutabilidade, e você paga a cópia só quando
 precisa escrever.
 
-## 18. Memória
+## 21. Memória e recursos externos
 
 Python usa contagem de referências **mais** um coletor para ciclos. Objetos
 morrem determinística e imediatamente quando a última referência some — mais
@@ -759,11 +888,30 @@ idiomático. `subprocess.Popen` até o implementa, mas aqui o processo tem que
 viver por toda a execução do programa, não por um bloco — então a liberação
 fica explícita no encerramento.
 
+Quando o recurso vive só durante uma função, o projeto usa `try`/`finally`.
+Em `faces._sampled_frames`, que é um *generator* (`yield`), o `finally` roda
+mesmo se quem consome parar no meio:
+
+```python
+try:
+    while True:
+        ...
+        yield frame
+finally:
+    process.stdout.close()
+    process.kill()
+    process.wait()
+```
+
+E `tools/diagnostico.py` usa `with tempfile.TemporaryDirectory() as pasta:`:
+a pasta temporária é apagada ao sair do bloco, com ou sem erro — o
+`try-with-resources` de um diretório.
+
 ---
 
-## 19. Diferenças finais e armadilhas
+## 22. Diferenças finais e armadilhas
 
-### 19.1 `//` arredonda para baixo, não trunca
+### 22.1 `//` arredonda para baixo, não trunca
 
 A diferença mais silenciosa desta lista. Python tem dois operadores de divisão:
 `/` sempre devolve `float`, e `//` devolve inteiro **arredondado para menos
@@ -774,15 +922,21 @@ infinito**. Java e C# truncam em direção ao zero.
 (-12) / 54   # Java:    0
 ```
 
-Isso não é teórico: o teste de clique do menu lateral em `ui.py` depende disso.
-Um clique acima do primeiro item gera `(80 - 92) // 54 == -1`, rejeitado pela
-checagem `0 <= index`. Traduzido literalmente para Java, o mesmo clique daria
-`0` e selecionaria "Live" por engano.
+O projeto tira proveito disso em `ui.py`, para saber quantas linhas de cartões
+existem — divisão **arredondando para cima**, só com inteiros:
+
+```python
+total_rows = -(-len(self.entries) // columns)
+```
+
+Com 11 cartões em 5 colunas: `-11 // 5` dá `-3` (para baixo, rumo a menos
+infinito), e negar de volta dá `3` linhas. Em Java, `-11 / 5` dá `-2` e o
+truque não funciona; lá se usa `Math.ceilDiv` ou `(a + b - 1) / b`.
 
 Para truncar como em Java, use `int(a / b)`. Para o resto, `%` segue o sinal do
 divisor em Python (`-1 % 5 == 4`), ao contrário de Java (`-1 % 5 == -1`).
 
-### 19.2 Armadilhas resumidas
+### 22.2 Armadilhas resumidas
 
 | Armadilha | Detalhe |
 |---|---|
@@ -791,9 +945,10 @@ divisor em Python (`-1 % 5 == 4`), ao contrário de Java (`-1 % 5 == -1`).
 | `shape` | É `(altura, largura)`, não `(largura, altura)`. |
 | Slice numpy | É *view*; escrever nele altera o original. |
 | Padrão mutável | `def f(x=[])` compartilha a lista entre chamadas. |
+| Padrão congelado | `def f(path=CONSTANTE)` lê a constante uma vez só (13.2). |
 | Cores | BGR, não RGB. |
 | `==` vs `is` | `is` só para `None` e singletons. |
-| Ordem de import | Pode ter efeito colateral (caso do FFmpeg). |
-| Falha do OpenCV | Silenciosa; cheque `isOpened()`. |
-| Threads | Não paralelizam código Python puro (GIL). |
+| Ordem de import | Pode ter efeito colateral (`OPENCV_LOG_LEVEL`, 2.2). |
+| Falha do OpenCV | Silenciosa: `imread` devolve `None`, `imwrite` devolve `False`. |
+| Threads | Não paralelizam código Python puro (GIL), mas objetos nativos compartilhados correm risco de verdade (14.2). |
 | Sem compilação | Erro de digitação só aparece ao executar aquela linha. |

@@ -53,7 +53,9 @@ precisar pedir. A mensagem de commit explica o **porquê**, não só o quê.
 
 **Antes de commitar, confira que o `.env` não entrou.** Ele tem as senhas reais
 das câmeras. Eu já vazei essas senhas uma vez, em exemplos dentro da
-documentação, e precisei corrigir. Cheque também `*.onnx`, `*.pt` e `clips/`.
+documentação, e precisei corrigir. Cheque também `models/`, `clips/`, `faces/`
+e `backups/` — todos estão no `.gitignore`, mas um `git add -A` descuidado
+depois de mexer nele pegaria.
 
 **Explique o código, não só o resultado.** O usuário está aprendendo Python e
 OpenCV, vindo de Java e C#. Ele pediu respostas concisas em opções e tangentes,
@@ -111,7 +113,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Vídeo esticava ao redimensionar | `WINDOW_KEEPRATIO` vale 0 no backend Win32 | Gerar imagem do tamanho exato da janela via `getWindowImageRect` e fazer letterbox |
 | Clique no cartão abria Documentos | `subprocess` com lista põe aspas em todo argumento com espaço, e o `/select,` do Explorer ia para dentro delas | Passar a string pronta no Windows |
 | Detecção de rosto dava zero | A amostragem lia os primeiros frames do clipe, e a pré-gravação faz o começo ser **antes** da pessoa chegar | Calcular o passo pelo total de frames |
-| Rosto de 44 px descartado | `MIN_FACE_WIDTH` alto demais | Baixar o piso e **marcar** rostos pequenos em vez de descartar |
+| Rosto de 44 px descartado | `MIN_FACE_WIDTH` alto demais | Baixar o piso e **marcar** rostos pequenos em vez de descartar. Hoje quem filtra é o teste de rosto de frente (ARQUITETURA 10.9), não a largura |
 | Galeria ignorava caminho de teste | `def __init__(self, path=GALLERY_FILE)` congela o valor na definição | `path=None` e resolver dentro |
 | Janela cinza "Não Responde" | O laço bloqueava lendo o pipe; o primeiro frame leva **2,45 s** | Thread leitora por câmera; o laço nunca bloqueia |
 | "sem sinal" sem motivo | `stderr` do ffmpeg ia para `DEVNULL`, e o `ok` do arranque checava `poll()` antes de o processo ter tempo de falhar | Capturar stderr, esperar o primeiro frame de verdade, traduzir erros conhecidos |
@@ -133,7 +135,10 @@ Guardadas porque conclusões mudam quando o formato muda.
 |---|---|
 | Stream original da câmera | 579 KB / 10 s (463 kbps) |
 | Pipeline antigo recodificado | 725 KB / 10 s, **pior qualidade** |
-| Armazenamento hoje | ~48 KB/s, ~5 GB/ano com 5 min/dia de atividade |
+| Armazenamento real (30/09, M900) | 102 eventos, 41 min de clipe, **303 MB/dia**, ~120 KB/s → ~110 GB/ano |
+| Armazenamento à noite (26/09, dev) | ~48 KB/s — a estimativa antiga de ~5 GB/ano partia daqui e está errada |
+| Buffer rotativo | 6 a 8 MB por câmera |
+| Disco livre no M900 (30/09) | 394 GB |
 | Inferência YOLO (dev) | 50–62 ms |
 | Movimento após confirmação temporal | Front 8,7% → 1,5% dos frames |
 | Rosto à noite | 44 px (desejável ~112 px) |
@@ -151,9 +156,9 @@ nenhuma mensagem de erro do ffmpeg. O mesmo commit funcionava no dev.
 (Back), e o `.env` do M900 apontava para `.10` e `.11`, onde nada responde. As
 duas máquinas estão na **mesma rede**; `.10` e `.11` eram os valores de
 exemplo do `.env.example`, que o `instalar.bat` copia para criar o `.env`. O
-`.env` do dev, não versionado, tem os IPs certos. Sem timeout, o ffmpeg espera a conexão TCP
-para sempre e **não escreve nada**. A única linha, mesmo em `-loglevel
-verbose`, era `Starting connection attempt to 192.168.0.10 port 554`.
+`.env` do dev, não versionado, tem os IPs certos. Sem timeout, o ffmpeg espera
+a conexão TCP para sempre e **não escreve nada**. A única linha, mesmo em
+`-loglevel verbose`, era `Starting connection attempt to 192.168.0.10 port 554`.
 
 **Como foi achado, em ordem:**
 
@@ -184,30 +189,42 @@ em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
   ganho possível não é de software: é uma luz acionada por movimento**, que tira
   a câmera do modo infravermelho.
 - **Não identifica *qual* animal.** SFace é treinado só em faces humanas. Exigiria
-  uma camada de re-ID sobre o corpo inteiro. A tela People já é a ferramenta que
-  coletaria os recortes de treino.
+  uma camada de re-ID sobre o corpo inteiro (ARQUITETURA 10.8).
+- **Rótulos de animal trocados.** Eventos com só um cachorro saem como `cat, dog`
+  e às vezes `cow`, `sheep` ou `bird`: o YOLO hesita entre espécies de frame em
+  frame, e `labels` acumula todas (ARQUITETURA 7.1). Não afeta o que é gravado.
 - **Pessoa parada por ~12 s é suprimida** pela supressão de cenário estático, até
   se mexer de novo.
-- **Sem retenção automática.** Gravações acumulam em `clips/`; o buffer em
-  `clips/_buffer/` se limpa sozinho.
+- **Sem retenção automática.** Gravações acumulam em `clips/` a ~300 MB/dia; o
+  buffer em `clips/_buffer/` se limpa sozinho.
+- **Sem desfazer na tela People.** Um nome dado ao cartão errado junta duas
+  pessoas; só se corrige com `tools/refazer_rostos.py`.
 - **Texto da interface sem acentos.** `cv2.putText` usa fontes Hershey, que não
   têm glifos acentuados.
 - **A interface precisa de sessão gráfica.** Não roda como serviço invisível.
 
 ## 8. Próximos passos planejados
 
-1. **Medir o M900 rodando** — CPU com as duas câmeras, e se `HWACCEL` ajuda
-   (INSTALACAO seção 6)
-2. **Retenção automática** — o único lever grande que resta para disco
-3. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
+Esta é a lista única; a ARQUITETURA aponta para cá.
+
+1. **Retenção automática** — com ~300 MB/dia é o mais urgente. Apagar dias
+   mais antigos que N, ou o mais antigo quando o disco passar de um limite
+2. **Medir o M900 rodando** — CPU com as duas câmeras em movimento, e se
+   `HWACCEL` ajuda (INSTALACAO seção 6)
+3. **Rótulos de animal** — só aceitar uma espécie que se repita no evento, em
+   vez de acumular cada hesitação do YOLO
+4. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
    um clipe corresponder a uma pessoa
-4. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
 5. **Reprodução no Records** — clicar num cartão e assistir
-6. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução
-7. **Desfazer junção na tela People** — hoje um nome dado ao cartão errado só
-   se corrige com `tools/refazer_rostos.py`
-8. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
-   recuperar a velocidade perdida ao sair do PyTorch
+6. **Desfazer junção na tela People**
+7. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
+   então o primeiro clipe falso da noite ainda é gravado
+8. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
+9. **Luz acionada por movimento na Front** — não é software, mas é o maior
+   ganho possível para rosto à noite (ARQUITETURA 10.5)
+10. **Re-ID de animais** — classificador sobre o corpo inteiro (ARQUITETURA 10.8)
+11. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
+    recuperar a velocidade perdida ao sair do PyTorch
 
 ## 9. Mapa do repositório
 
@@ -237,8 +254,9 @@ jarvis.bat        atalho para iniciar (uv run jarvis)
 
 Estrutura explicada em ARQUITETURA seção 3.
 
-Não versionados: `.env` (credenciais), `models/` (~95 MB, baixados sob demanda),
-`clips/`, `faces/`.
+Não versionados: `.env` (credenciais), `models/` (~73 MB, baixados sob demanda),
+`clips/`, `faces/`, `backups/` (cópias que as ferramentas fazem antes de mexer
+em dados).
 
 ## 10. Comandos úteis
 
@@ -255,6 +273,7 @@ tasklist | findstr ffmpeg                               procurar ffmpeg órfão
 ```
 
 Constantes de ajuste: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`,
-`SEGMENT_SECONDS`), `people.py` (`MIN_INTERVAL`, `MIN_PERSON_HEIGHT_FRACTION`),
+`SEGMENT_SECONDS`, `SOCKET_TIMEOUT_SECONDS`), `people.py` (`MIN_INTERVAL`,
+`MIN_PERSON_HEIGHT_FRACTION`, `ANIMAL_CONFIDENCE`),
 `motion.py` (`MIN_AREA`, `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py`
 (`MATCH_THRESHOLD`, `LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`).

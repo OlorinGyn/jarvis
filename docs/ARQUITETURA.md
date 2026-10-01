@@ -10,11 +10,12 @@ Para aspectos de linguagem e bibliotecas, veja [PYTHON.md](PYTHON.md).
 ## 1. O que o sistema faz
 
 Monitora câmeras Tapo pela rede local, identifica quando há **movimento**,
-decide se esse movimento é uma **pessoa**, e grava um **vídeo** do evento.
+decide se esse movimento é uma **pessoa ou um animal**, grava um **vídeo** do
+evento e, quando há pessoa, procura **rostos** e diz de quem são.
 
-O objetivo final é reconhecimento facial, mas a camada de pessoa é
-deliberadamente independente disso: alguém de máscara, capacete ou de costas
-continua sendo detectado como humano.
+A detecção de pessoa é deliberadamente independente do rosto: alguém de
+máscara, capacete ou de costas continua sendo detectado como humano e
+gravado. O rosto é uma camada a mais, que roda depois, sobre o clipe (seção 10).
 
 ## 2. Pipeline
 
@@ -64,9 +65,10 @@ e só roda se a anterior encontrou algo.
 | Camada | Custo | Frequência |
 |---|---|---|
 | Captura + decode | baixo | todo frame |
-| MOG2 | ~3 ms | todo frame |
-| YOLO11 | ~24 ms | só com movimento, no máximo 4×/s |
-| Gravação | ~2 ms | só com pessoa |
+| MOG2 + filtro de luz | ~3 ms | todo frame |
+| YOLO11 | 50–62 ms (dev) | só com movimento, no máximo 4×/s por câmera |
+| Gravação | ~2 ms | só com pessoa ou animal |
+| Rostos | 9–17 s por clipe (M900) | só em clipe com pessoa, fora do laço ao vivo |
 
 ## 3. Estrutura de arquivos
 
@@ -90,27 +92,38 @@ jarvis/
 │   ├── verificar_clipes.py dano de imagem vindo das câmeras
 │   ├── gerar_icone.py    desenha o ícone (seção 13)
 │   └── criar_atalho.ps1  atalho na Área de Trabalho com o ícone
-├── assets/               jarvis.ico e uma prévia em PNG
+├── assets/               jarvis.ico e uma prévia em PNG (gerados, versionados)
 ├── docs/
 │   ├── ARQUITETURA.md    como funciona e por quê
 │   ├── INSTALACAO.md     como instalar e operar numa máquina nova
 │   ├── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
 │   └── CONTEXTO.md       histórico, decisões, caminhos descartados
 ├── instalar.bat          instalação em máquina nova (roda uma vez)
-├── jarvis.bat            atalho para iniciar o programa
+├── jarvis.bat            inicia o programa (o atalho da Área de Trabalho aponta para ele)
+├── CLAUDE.md             regras de trabalho, lidas por toda sessão do Claude Code
+├── README.md             apresentação e links para docs/
 ├── .env.example          modelo de configuração, versionado
-├── .env                  credenciais das câmeras (NÃO versionado)
-├── models/               ONNX do YOLO, YuNet e SFace (baixados, não versionado)
-├── clips/                gravações (não versionado)
+│
+│   ── daqui para baixo, nada é versionado ──
+├── .env                  IP e credenciais das câmeras
+├── models/               ONNX do YOLO, YuNet e SFace (~73 MB, baixados)
+├── clips/                gravações
 │   ├── _buffer/          segmentos rotativos por câmera, apagados sozinhos
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
-└── faces/                rostos e galeria (não versionado)
-    ├── gallery.json      pessoas conhecidas e desconhecidas
-    └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
+├── faces/                rostos e galeria
+│   ├── gallery.json      pessoas conhecidas e desconhecidas
+│   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
+└── backups/              cópias que as ferramentas fazem antes de mexer em dados
 ```
 
-Na raiz ficam só o que o usuário abre ou edita (os `.bat`, o `.env`) e o que
-as ferramentas exigem ali (`pyproject.toml`, `uv.lock`, `.python-version`).
+Na raiz ficam só o que o usuário abre ou edita (os `.bat`, o `.env`), a porta
+de entrada da documentação (`README.md`, `CLAUDE.md`) e o que as ferramentas
+exigem ali (`pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`).
+
+Dados gerados pelo programa ficam em pastas próprias, nunca soltos na raiz.
+Por isso `tools/refazer_rostos.py` guarda o `faces/` antigo em
+`backups/faces_<data-hora>/`, e `tools/diagnostico.py` grava seus segmentos de
+teste numa pasta temporária do sistema, que some quando ele termina.
 
 ### 3.1 O projeto é um pacote instalável
 
@@ -200,10 +213,9 @@ O arquivo antigo era **25% maior que o original e com pior qualidade**. Gastava
 CPU para piorar as duas coisas: a câmera já entrega H.264 a 463 kbps com
 encoder de hardware, e material já comprimido resiste a comprimir de novo.
 
-**Sobre compactar tipo zip:** medido no arquivo real, ZIP ganha 5,2% e LZMA
-11,1%. Vídeo já é comprimido — a entropia foi removida pelo codec, então o
-compactador acha pouca redundância. Guardar o stream original economiza 20% e
-dá qualidade perfeita, sem etapa de descompactar.
+**Sobre compactar tipo zip:** não compensa. No stream original, que é o que se
+grava hoje, o ganho medido é de 0,2% — e dois dos três métodos deixam o
+arquivo maior. Ver 8.7, inclusive por que uma medição antiga dizia 5–11%.
 
 ### 5.2 Uma conexão, duas saídas
 
@@ -251,9 +263,8 @@ pipe), por isso há um `.copy()` — sem ele, qualquer desenho no frame falharia
 
 **Implicação para a camada de rosto:** 960x540 é suficiente para movimento e
 para o YOLO, mas um rosto que tem 60 px em 1080p fica com 30 px aqui, pouco
-para o ArcFace. Quando essa camada chegar, o recorte em alta resolução deve
-sair **do segmento gravado**, usando o horário exato do evento. Os segmentos
-são a fonte de alta qualidade.
+para o reconhecedor. Por isso os rostos são procurados no **clipe gravado**, em
+1080p, e não nos frames de análise (10.1).
 
 ### 5.4 Leitura em thread: a interface nunca espera
 
@@ -309,8 +320,8 @@ anterior ao evento já contém a aproximação da pessoa. Em troca, o clipe tem 
 
 `prune()` apaga segmentos com mais de `BUFFER_SECONDS = 240`, **nunca o mais
 recente** — o ffmpeg ainda está escrevendo nele. Enquanto um evento está aberto,
-`protect_from` impede que os segmentos dele sejam apagados. Medido: ~1 MB por
-câmera para 20 s de buffer.
+`protect_from` impede que os segmentos dele sejam apagados. Medido em
+30/09/2026 no M900: 6 a 8 MB por câmera, cerca de 60 segmentos.
 
 ### 5.6 Decode por hardware
 
@@ -360,9 +371,10 @@ informação.
 deixa o ffmpeg esperando a conexão TCP para sempre, **sem escrever nenhum
 erro**. Foi o que aconteceu no M900: as câmeras estão em `.116` e `.42`, e o
 `.env` de lá apontava para `.10` e `.11` — os valores de exemplo do
-`.env.example`, de onde o `instalar.bat` cria o `.env`. O painel dizia só "nenhum frame recebido", e a investigação foi atrás
-de decode, pipe e antivírus antes de alguém rodar `Test-NetConnection`. A única
-linha do log, mesmo em `-loglevel verbose`, era `Starting connection attempt`.
+`.env.example`, de onde o `instalar.bat` cria o `.env`. O painel dizia só
+"nenhum frame recebido", e a investigação foi atrás de decode, pipe e antivírus
+antes de alguém rodar `Test-NetConnection`. A única linha do log, mesmo em
+`-loglevel verbose`, era `Starting connection attempt`.
 
 Com `-timeout` (em microssegundos, `SOCKET_TIMEOUT_SECONDS` no `capture.py`) o
 ffmpeg desiste em ~6 s. No Windows o erro sai como `Error number -138`, que é o
@@ -376,13 +388,15 @@ visível sem abrir o terminal.
 ### 5.8 Reinício automático
 
 Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
-e o processo é recriado após `RESTART_SECONDS`. O painel mostra `no signal`
-nesse intervalo, e a aplicação não cai.
+e o processo é recriado após `RESTART_SECONDS`. O painel continua mostrando o
+último frame nesse intervalo, e a aplicação não cai. "Sem sinal" só aparece se
+a câmera nunca entregou frame nenhum.
 
 Como o OpenCV não faz mais captura, a variável de ambiente
-`OPENCV_FFMPEG_CAPTURE_OPTIONS` desapareceu — junto com a fragilidade de ter
-uma atribuição obrigatória antes do `import cv2`. O transporte TCP agora é um
-argumento explícito do ffmpeg (`-rtsp_transport tcp`).
+`OPENCV_FFMPEG_CAPTURE_OPTIONS` desapareceu, junto com a fragilidade de ter uma
+atribuição obrigatória antes do `import cv2` (PYTHON.md 2.2). O transporte TCP
+agora é um argumento explícito do ffmpeg (`-rtsp_transport tcp`). A única
+variável que resta é `OPENCV_LOG_LEVEL`, e ela só silencia um aviso (10.11).
 
 ---
 
@@ -448,8 +462,9 @@ lugar por vários frames; um inseto aparece, salta e some.
   `FORGET_FRAMES`.
 - Só é reportado quem atingiu `CONFIRM_FRAMES` acertos.
 
-Custo: uma pessoa é reportada 3 frames (~0,2 s) depois de aparecer. Como o
-gravador tem pré-gravação de 30 frames, nada de útil se perde no vídeo.
+Custo: uma pessoa é reportada 3 frames (~0,3 s) depois de aparecer. Como o
+clipe começa `PRE_SECONDS` (6 s) antes do evento (8.2), nada de útil se perde
+no vídeo.
 
 **Limitação conhecida:** um inseto que fique pairando exatamente no mesmo ponto
 por vários frames acaba confirmado. O YOLO rejeita esse caso.
@@ -458,7 +473,7 @@ Este também é o embrião do *tracking* que virá depois.
 
 ### 6.4 Aquecimento
 
-`WARMUP_FRAMES = 60` (~4 s). Antes disso tudo é "novidade" e o detector
+`WARMUP_FRAMES = 60` (~6 s a 10 fps). Antes disso tudo é "novidade" e o detector
 reportaria a cena inteira. O painel mostra `learning background`.
 
 ### 6.5 Ajustes
@@ -566,7 +581,8 @@ O COCO tem 80 classes. Vigiamos estas:
 
 ```python
 PERSON_CLASS = 0
-ANIMAL_CLASSES = (14, 15, 16, 17, 18, 19)
+CLASS_NAMES = {0: "person", 14: "bird", 15: "cat", 16: "dog",
+               17: "horse", 18: "sheep", 19: "cow"}
 ```
 
 Ou seja: `person`, `bird`, `cat`, `dog`, `horse`, `sheep`, `cow`. Bear, elephant
@@ -576,6 +592,12 @@ incluí-los só criaria falsos positivos exóticos.
 Animais usam um limiar de confiança mais alto (`ANIMAL_CONFIDENCE = 0.45` contra
 `CONFIDENCE = 0.35`), porque objetos de cena são confundidos com animais com
 mais facilidade que com pessoas.
+
+**Observado em 30/09/2026, ainda não tratado:** eventos rotulados `cat`, `cow`,
+`sheep` e `bird` numa casa onde há cachorro e gente. Provavelmente é o YOLO
+hesitando entre espécies para o mesmo cachorro, de frame em frame. Como
+`labels` acumula tudo que apareceu no evento (8.4), uma única hesitação já
+entra no rótulo. Não muda o que é gravado, só o texto do cartão.
 
 ### 7.2 O tipo `Detection`
 
@@ -593,23 +615,13 @@ mesmo pipeline tratar pessoas e animais sem duplicar código.
 `drop_duplicates` só funde caixas **do mesmo rótulo** — um cachorro ao lado de
 uma pessoa se sobrepõe muito, e antes um dos dois seria descartado.
 
-### 7.3 Rosto de cachorro não funciona
-
-Registro explícito, porque é uma pergunta natural: **a camada de rosto planejada
-(SCRFD + ArcFace) não detecta rosto de animal.** Os dois modelos são treinados
-exclusivamente em faces humanas; o SCRFD procura a geometria de olhos/nariz/boca
-humanos, e o embedding do ArcFace não tem significado para outra espécie.
-
-Portanto:
+### 7.3 Saber que é um cachorro, não qual cachorro
 
 | Objetivo | Situação |
 |---|---|
-| Detectar que existe um cachorro | Funciona hoje (COCO classe 16) |
-| Saber *qual* cachorro | Problema separado (pet re-ID), sem modelo pronto bom |
-| Rosto humano | SCRFD + ArcFace, camada futura |
-
-Identificar cães individualmente exigiria um classificador treinado com fotos
-dos seus próprios animais — viável, mas é outra camada.
+| Detectar que existe um cachorro | Funciona (COCO classe 16) |
+| Saber *qual* cachorro | Não feito; a camada de rosto não serve (10.8) |
+| Saber *qual* pessoa | Camada de rosto, YuNet + SFace (seção 10) |
 
 ### 7.4 Decisão de projeto: frame inteiro, não recorte
 
@@ -621,8 +633,9 @@ nesse recorte. Teste revelou a falha:
   153×115 em vez do corpo inteiro.
 
 Isso é um teto estrutural, não questão de ajuste. Pior: se o movimento pegar só
-as pernas, a caixa recortada **nunca** conterá a cabeça — justamente o que a
-futura camada de rosto precisa.
+as pernas, a caixa recortada **nunca** conterá a cabeça — e a camada de rosto
+usa justamente a caixa do corpo para confirmar que um rosto é de uma pessoa
+(10.9).
 
 **Solução:** YOLO roda no frame inteiro. O movimento serve como (a) gatilho e
 (b) filtro de relevância. Reteste com o mesmo blob minúsculo: caixa completa
@@ -630,12 +643,14 @@ futura camada de rosto precisa.
 
 ### 7.5 Throttle
 
-YOLO custa ~24 ms nesta CPU. Rodar em todo frame comeria o orçamento e
-travaria o vídeo. `MIN_INTERVAL = 0.25` limita a 4 execuções por segundo por
-câmera, **reaproveitando a resposta anterior** no intervalo.
+O YOLO custa 50 a 62 ms por inferência na máquina de desenvolvimento (7.11).
+Rodar em todo frame comeria o orçamento e travaria o vídeo. `MIN_INTERVAL =
+0.25` limita a 4 execuções por segundo por câmera, **reaproveitando a resposta
+anterior** no intervalo.
 
-Evidência de que funciona: a taxa de frames ficou em 12,7 fps antes e depois de
-adicionar o YOLO.
+Evidência de que funciona, medida ainda com o PyTorch: a taxa de frames ficou
+em 12,7 fps antes e depois de adicionar o YOLO. No M900 o número a acompanhar é
+o uso de CPU com as duas câmeras em movimento ao mesmo tempo.
 
 ### 7.6 Filtro de sobreposição
 
@@ -739,15 +754,18 @@ Duas ressalvas honestas:
 ### 7.10 Um modelo, várias câmeras
 
 `@lru_cache(maxsize=1)` em `load_model()` garante uma única instância do YOLO
-na memória. É o oposto do `MotionDetector`:
+para o laço ao vivo, compartilhada pelas câmeras. É o oposto do
+`MotionDetector`:
 
 | Componente | Estado | Instâncias |
 |---|---|---|
 | `MotionDetector` | modelo de fundo daquela câmera | **uma por câmera** |
 | `SubjectDetector` | throttle, último resultado e cenário estático | uma por câmera |
-| Rede YOLO | nenhum | **uma compartilhada** |
+| Rede YOLO do laço ao vivo (`load_model`) | buffers internos | **uma, só na thread principal** |
+| Rede YOLO de fundo (`load_background_model`) | buffers internos | uma, só na varredura de rostos |
 
----
+Compartilhar entre câmeras funciona porque todas rodam na mesma thread, uma
+depois da outra. Compartilhar entre **threads** derrubou o programa: ver 10.9.
 
 ### 7.11 Por que OpenCV e não PyTorch
 
@@ -801,9 +819,9 @@ pós-processamento por baixo dos panos; agora são explícitos:
   geometria e 80 de pontuação por classe. Transpor e percorrer dá as detecções
 - `cv2.dnn.NMSBoxes` elimina as caixas sobrepostas da mesma detecção
 
-Foi exatamente o trabalho que, lá no começo do projeto, eu apontei como o custo
-de usar C++ em vez de Python. Ele apareceu de qualquer forma — só que por um
-motivo que ninguém previu.
+Foi exatamente o trabalho apontado, no começo do projeto, como o custo de usar
+C++ em vez de Python. Ele apareceu de qualquer forma — só que por um motivo que
+ninguém previu.
 
 **Os nomes das classes** vinham de `model.names`. Sem o ultralytics, o
 `CLASS_NAMES` lista apenas as sete que interessam, e a filtragem por classe usa
@@ -895,16 +913,28 @@ ninguém lembrar.
 
 ### 8.6 Armazenamento
 
-Medido no clipe real montado: **859 KB para 18 s** = ~48 KB/s.
+A taxa depende do que a câmera está vendo: cena parada comprime muito, cena com
+gente e luz do dia comprime pouco. Duas medições:
 
-| | Antes | Agora |
-|---|---|---|
-| Taxa | 72 KB/s | **48 KB/s** |
-| 5 min/dia | ~285 MB | **~14 MB** |
-| Por ano | ~100 GB | **~5 GB** |
+| Medição | Taxa |
+|---|---|
+| Clipe noturno de 18 s, dev, 26/09 | ~48 KB/s |
+| **Todos os clipes de 30/09 no M900** (dia e noite) | **~120 KB/s** |
 
-O buffer rotativo custa à parte: ~1 MB por câmera para 20 s, ou ~12 MB por
-câmera com `BUFFER_SECONDS = 240`.
+O dia 30/09 é a referência realista: **102 eventos, 41 minutos de clipe,
+303 MB**. Nesse ritmo:
+
+| Período | Espaço |
+|---|---|
+| Por dia | ~300 MB |
+| Por mês | ~9 GB |
+| Por ano | **~110 GB** |
+
+Uma estimativa anterior desta seção dizia ~5 GB/ano. Ela usava a taxa noturna e
+supunha 5 minutos de atividade por dia; a casa real tem 8 vezes mais. Com esse
+volume, **retenção automática** (8.7) deixou de ser opcional.
+
+O buffer rotativo custa à parte e não cresce: 6 a 8 MB por câmera (5.5).
 
 ### 8.7 Arquivamento em zip: implementado, medido e removido
 
@@ -936,10 +966,13 @@ formato mudar de novo, remeça antes de concluir.
 
 **O que realmente reduz disco** neste projeto, em ordem de impacto:
 
-1. Não gravar o que não é evento — feito (movimento, confirmação temporal,
-   supressão de cenário estático).
-2. Não recodificar — feito (seção 5.1). Levou de ~100 GB/ano para ~5 GB/ano.
+1. Não gravar o que não é evento — feito (movimento, filtro de luz,
+   confirmação temporal, supressão de cenário estático).
+2. Não recodificar — feito (seção 5.1). O arquivo antigo era 25% maior que o
+   original e pior.
 3. **Retenção automática** — não feito, e é o único lever grande que resta.
+   Com ~300 MB/dia (8.6), os 394 GB livres do M900 (30/09/2026) acabam em
+   cerca de 3 anos e meio — antes, se houver mais câmeras ou mais movimento.
 4. Compactar — 0,2%, descartado.
 
 ---
@@ -952,17 +985,18 @@ A janela inteira é uma única imagem numpy, montada assim:
 ┌──────────┬──────────────────────────┬──────────┐
 │ J.A.R.V. │                          │ 09/2026  │
 │          │   Live (letterbox)       │ D S T Q  │
-│ ▸ Live   │        ou                │  1 2 3 4 │
-│   Records│   grade de gravações     │  5 6 7 8 │
+│ ▸ Live   │   ou grade de gravações  │  1 2 3 4 │
+│   Records│   ou grade de rostos     │  5 6 7 8 │
+│   People │                          │          │
 └──────────┴──────────────────────────┴──────────┘
   190 px                                 250 px
-                                      (só em Records)
+                                (só em Records e People)
 ```
 
 O HighGUI do OpenCV **não tem widgets**: não existe botão, lista, scroll nem
 gerenciador de layout. Tudo é retângulo e texto desenhados à mão.
 
-### 9.0 Proporção ao redimensionar a janela
+### 9.1 Proporção ao redimensionar a janela
 
 **Problema:** esticar a janela esticava o vídeo, deformando a imagem.
 
@@ -1003,7 +1037,7 @@ isso, os cliques sairiam deslocados sempre que a janela fosse redimensionada.
 `getWindowImageRect` devolve valores inválidos antes da janela existir, então
 `window_size()` cai para o tamanho natural do layout nesse caso.
 
-### 9.0 Só redesenha quando vale a pena
+### 9.2 Só redesenha quando vale a pena
 
 As câmeras entregam ~10 frames por segundo, mas o laço gira a cada ~20 ms. A
 maioria das voltas não tem frame novo, e redesenhar a tela inteira nelas seria
@@ -1015,13 +1049,13 @@ interface continuar viva: o cursor do campo de nome pisca, e a tela Records
 precisa reler a pasta de tempos em tempos.
 
 O `cv2.waitKey(15)` continua sendo chamado em **toda** volta, com frame novo ou
-sem. É ele que mantém a janela respondendo (ver 9.5), e os 15 ms também evitam
-que o laço gire a mil por segundo sem fazer nada.
+sem. É ele que mantém a janela respondendo (PYTHON.md 16), e os 15 ms também
+evitam que o laço gire a mil por segundo sem fazer nada.
 
 Os painéis ficam guardados por câmera num dicionário. Câmera sem frame novo
-reaproveita o painel anterior, em vez de virar "no signal" a cada volta.
+reaproveita o painel anterior, em vez de virar "sem sinal" a cada volta.
 
-### 9.1 Modo imediato: nada persiste
+### 9.3 Modo imediato: nada persiste
 
 Vindo de Swing, WinForms ou WPF, o instinto é criar controles uma vez e deixar
 o framework mantê-los. Aqui é o oposto — é o modelo que jogos usam:
@@ -1030,22 +1064,24 @@ o framework mantê-los. Aqui é o oposto — é o modelo que jogos usam:
 "botão" guardado em lugar algum; existe apenas um array numpy que nasce, recebe
 pixels e é jogado na tela. No frame seguinte, outro array.
 
-A composição é literalmente concatenação de imagens:
+`render()` cria a tela como um array do tamanho exato da janela, preenchido com
+a cor de fundo, e pinta cada parte por cima:
 
 ```python
-bar = sidebar.draw(content.shape[0])
-return np.hstack([bar, content])
+canvas = np.full((height, width, 3), BACKGROUND, dtype=np.uint8)
+self._draw_sidebar(canvas, height)
 ```
 
-A barra nasce como um bloco de cor sólida, e o conteúdo é a tela Live ou a
-Records. As primitivas são todas chamadas do `cv2` sobre o array:
-`rectangle` (com espessura `-1` para preenchido), `putText`, `line`, `circle`.
+O conteúdo à direita do menu é a tela Live, a Records ou a People. As
+primitivas são todas chamadas do `cv2` sobre o array: `rectangle` (com espessura
+`-1` para preenchido), `putText`, `line`, `circle`. Na Live, os painéis das
+câmeras são colados lado a lado com `np.hstack` antes de irem para a tela.
 
 Consequência prática: **não há estado de interface para dessincronizar**. O que
 aparece é função direta dos dados daquele instante. Em troca, tudo é
-recalculado 15 vezes por segundo — daí os cuidados de cache da seção 9.3.
+recalculado várias vezes por segundo — daí os cuidados de cache da seção 9.6.
 
-### 9.2 Cliques: coordenadas cruas e uma pegadinha
+### 9.4 Cliques: coordenadas cruas e uma pegadinha
 
 `cv2.setMouseCallback(WINDOW, interface.on_mouse)` entrega `(event, x, y,
 flags, param)`. Nenhum elemento "sabe" que foi clicado: chega o pixel e você
@@ -1071,16 +1107,17 @@ As ações são pares `(tipo, payload)`:
 
 | Ação | Efeito |
 |---|---|
-| `view` | Troca entre Live e Records |
+| `view` | Troca entre Live, Records e People |
 | `day` | Seleciona o dia exibido |
 | `month` | Avança ou volta um mês no calendário |
 | `open` | Abre o arquivo no Explorer |
+| `name` | Abre o campo de nome para aquele rosto (10.7) |
 
 A vantagem é que layout e interação nunca saem de sincronia: quem move um
 cartão move automaticamente sua área clicável, porque é a mesma linha de código
 que faz as duas coisas.
 
-### 9.3 Tela Live
+### 9.5 Tela Live
 
 `make_panel()` redimensiona cada frame para 480 px de altura e desenha por
 cima. As caixas chegam em pixels do frame original, então são multiplicadas
@@ -1096,7 +1133,7 @@ por `scale` para caber no painel.
 `np.hstack` cola os painéis lado a lado e **exige altura idêntica** — é a única
 razão de `make_panel` redimensionar.
 
-### 9.4 Tela Records
+### 9.6 Tela Records
 
 Abre nas gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
 vídeo é aberto ou decodificado, o que era o requisito.
@@ -1137,12 +1174,12 @@ Explorer não reconhece a opção assim, desiste e abre a pasta padrão.
 
 O Explorer precisa de `explorer /select,"<caminho>"` — só o caminho entre
 aspas. Passar uma string ao `Popen` no Windows a entrega ao `CreateProcess`
-sem reformatação, que é o que resolve. Ver PYTHON.md seção 17.5.
+sem reformatação, que é o que resolve. Ver PYTHON.md seção 19.
 
-Se o `.mp4` final ainda não existir (a compressão roda em thread), `reveal()`
-tenta o `.raw.mp4` e, em último caso, a pasta do dia.
+Se o `.mp4` ainda não existir — a montagem roda em thread e leva alguns
+segundos depois do fim do evento (8.3) —, `reveal()` abre a pasta do dia.
 
-### 9.4.1 Calendário
+### 9.7 Calendário e grade de cartões
 
 À direita, 250 px fixos, para alcançar dias anteriores:
 
@@ -1173,25 +1210,31 @@ O numpy exige que as formas coincidam exatamente, e é justamente por isso que
 `_thumbnail` redimensiona para `(card_w, thumb_h)` antes de devolver. Lembre
 que a indexação é `[linha, coluna]`, ou seja `y` antes de `x`.
 
-**O grid sai de aritmética simples.** A largura do cartão é o espaço livre
-dividido pelas colunas, descontando os vãos — para 5 colunas há 6 vãos (um em
-cada borda mais os internos):
+**O grid sai de aritmética simples.** Primeiro, quantas colunas cabem com o
+cartão na largura mínima; depois a largura real, dividindo o espaço pelas
+colunas e descontando os vãos — para 5 colunas há 6 vãos (um em cada borda
+mais os internos):
 
 ```python
-card_w = (width - CARD_GAP * (CARD_COLUMNS + 1)) // CARD_COLUMNS
+columns = max((width - CARD_GAP) // (MIN_CARD_WIDTH + CARD_GAP), 1)
+card_w = (width - CARD_GAP * (columns + 1)) // columns
 thumb_h = int(card_w * 9 / 16)
 ```
 
-Medido: conteúdo de 1706 px gera cartões de 326 px com miniatura de 183 px.
+Assim os cartões esticam para ocupar a largura toda, e uma coluna a mais
+aparece quando a janela cresce o bastante.
 
 A posição de cada cartão vem de `divmod`, que devolve quociente e resto numa
 só chamada — o 8º cartão (índice 7) com 5 colunas cai em linha 1, coluna 2:
 
 ```python
-row, column = divmod(index, CARD_COLUMNS)
-x = CARD_GAP + column * (card_w + CARD_GAP)
-y = top_offset + row * (card_h + CARD_GAP)
+row, column = divmod(index, columns)
+x = x0 + CARD_GAP + column * (card_w + CARD_GAP)
+y = top + row * (card_h + CARD_GAP)
 ```
+
+A tela People usa a mesma grade, com cartões quadrados de largura fixa
+(`FACE_CARD = 150`).
 
 O número de linhas sai da altura disponível, então o grid se adapta se a janela
 mudar de tamanho.
@@ -1219,7 +1262,7 @@ first = self.scroll * columns
 ```
 
 `-(-a // b)` é divisão com arredondamento **para cima** usando só inteiros:
-como `//` arredonda para baixo (PYTHON.md 19.1), negar duas vezes inverte o
+como `//` arredonda para baixo (PYTHON.md 22.1), negar duas vezes inverte o
 sentido do arredondamento.
 
 Os cartões também encolheram (`MIN_CARD_WIDTH` de 210 para 168), então mais
@@ -1232,7 +1275,8 @@ tamanho reflete quanto do total está visível.
 cabeçalho, porque é `_draw_cards` que calcula `max_scroll`, e o cabeçalho
 precisa desse valor para decidir se mostra a dica "roda do mouse para rolar".
 
-**Dois cuidados de desempenho**, porque isso é redesenhado a 15 fps:
+**Dois cuidados de desempenho**, porque isso é redesenhado várias vezes por
+segundo (9.2):
 
 - **Cache de miniaturas.** Decodificar JPEG a cada frame seria absurdo; as
   imagens já redimensionadas ficam num dicionário indexado por caminho **e
@@ -1244,16 +1288,17 @@ precisa desse valor para decidir se mostra a dica "roda do mouse para rolar".
 **As câmeras continuam sendo processadas enquanto a tela Records está aberta.**
 Detecção e gravação não param por causa da navegação; só a imagem exibida muda.
 
-### 9.5 Limitação: `cv2.putText` é só ASCII
+### 9.8 Limitação: `cv2.putText` é só ASCII
 
 As fontes Hershey do OpenCV não têm acentuação. Escrever `"gravação"` renderiza
 caracteres quebrados, e por isso todo texto da interface está **sem acento** de
-propósito ("gravacao", "Nenhuma gravacao hoje").
+propósito ("gravacao", "Nenhuma gravacao neste dia").
 
-Acentos exigiriam desenhar texto com PIL (Pillow, já presente como dependência
-do ultralytics) e converter para numpy — possível, mas é uma camada extra.
+Acentos exigiriam desenhar texto com o Pillow e converter para numpy. Seria
+uma dependência nova — desde a saída do ultralytics (7.11) o projeto não tem
+mais o Pillow — e uma camada extra de desenho.
 
-### 9.6 Fechar a janela no X
+### 9.9 Fechar a janela no X
 
 O HighGUI do OpenCV não tem evento de fechamento. Ao clicar no X a janela é
 destruída, mas o `imshow` seguinte **cria outra**. Por isso perguntamos a cada
@@ -1264,7 +1309,7 @@ if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
     break
 ```
 
-A verificação precisa vir **depois** de `cv2.waitKey(1)`, porque é o `waitKey`
+A verificação precisa vir **depois** de `cv2.waitKey(15)`, porque é o `waitKey`
 que processa a fila de eventos da interface — inclusive o clique no X.
 
 ---
@@ -1395,7 +1440,7 @@ solução foi não descartar e sim **marcar**:
 
 ```python
 MIN_FACE_WIDTH = 36     # abaixo disso nem entra
-GOOD_FACE_WIDTH = 80    # abaixo disso entra, mas nao reforca a galeria
+GOOD_FACE_WIDTH = 80    # abaixo disso aparece com a largura em vermelho
 ```
 
 Rostos pequenos aparecem na tela People com a largura em vermelho e podem ser
@@ -1429,7 +1474,7 @@ pelo `waitKey` do laço principal, que as encaminha para a interface enquanto
 `interface.capturing` for verdadeiro:
 
 ```python
-key = cv2.waitKey(1) & 0xFF
+key = cv2.waitKey(15) & 0xFF
 if interface.capturing:
     interface.on_key(key)
 elif key == ord("q"):
@@ -1453,8 +1498,9 @@ Identificar *qual* cachorro exigiria outra camada, de *animal re-ID*, sobre o
 | Classificador treinado com fotos dos próprios cães | Boa para poucos cães conhecidos | ~50-100 recortes por cão |
 | Embedding genérico de re-ID animal (MegaDescriptor) | Menor | Só baixar o modelo |
 
-A tela People é exatamente a ferramenta que coletaria esses recortes, então a
-infraestrutura já está pronta quando essa camada for feita.
+O padrão da tela People — cartões com recorte, nome dado uma vez, junção de
+identidades — serviria igual para cães, trocando o recorte do rosto pelo do
+corpo inteiro que o YOLO já entrega.
 
 Ressalva: à noite, um cachorro escuro vira silhueta no infravermelho. A precisão
 será sempre bem menor que a de rostos humanos.
@@ -1591,36 +1637,7 @@ uv run tools/probe_rtsp.py <ip> <usuario> <senha> stream1
 
 ---
 
-## 12. Estado atual e próximos passos
-
-**Funcionando:** captura via ffmpeg sem recodificar, movimento com confirmação
-temporal, detecção de pessoas e animais, supressão de cenário estático, altura
-mínima para pessoa, gravação com pré-roll montada dos segmentos originais,
-miniatura e metadados por evento, reconhecimento facial com galeria e cadastro
-de nome, e a interface com Live, Records (calendário e rolagem) e People.
-Rodando no M900 desde 29/09/2026, depois da correção do IP (5.7).
-
-**Próximos passos naturais:**
-
-1. **Tracking** — manter a identidade de uma pessoa entre frames. Resolve o
-   caso de quem para de se mover e faz um clipe corresponder a uma pessoa.
-2. **Banco de eventos** (SQLite) — substituir os JSON quando houver busca por
-   pessoa e período.
-3. **Retenção** — apagar clipes antigos automaticamente.
-4. **Reprodução no Records** — clicar num cartão e assistir ao clipe.
-5. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
-   então o primeiro clipe falso da noite ainda é gravado.
-6. **Iluminação na área da Front** — o maior ganho possível de precisão facial.
-   Uma luz acionada por movimento tira a câmera do modo infravermelho e leva o
-   rosto de ~44 px cinzentos para algo utilizável (ver 10.5).
-7. **Re-ID de animais** — classificador sobre o corpo inteiro do cachorro,
-   usando recortes coletados pela própria tela People (ver 10.8).
-8. **OpenVINO no M900** — exportar os modelos para OpenVINO INT8 e recuperar a
-   velocidade perdida ao sair do PyTorch.
-
----
-
-## 13. Ícone e atalho
+## 12. Ícone e atalho
 
 **Um `.bat` não tem ícone próprio.** O Windows desenha o ícone de um arquivo
 pelo tipo dele, e todo `.bat` usa o mesmo. Quem pode ter ícone é um **atalho**
@@ -1655,3 +1672,22 @@ os bytes com `struct.pack` evita uma dependência nova só para isso.
 Para mudar o desenho, edite as cores e raios em `gerar_icone.py`, rode
 `uv run tools/gerar_icone.py` e depois o `criar_atalho.ps1` de novo (o Windows
 guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
+
+---
+
+## 13. Estado atual
+
+**Funcionando no M900 desde 29/09/2026:**
+
+| Camada | Seção |
+|---|---|
+| Captura pelo ffmpeg, gravação sem recodificar, timeout de conexão | 5 |
+| Movimento com filtro de luz, máscara do relógio e confirmação temporal | 6 |
+| Pessoas e animais pelo YOLO, cenário estático, altura mínima | 7 |
+| Eventos com pré-gravação, miniatura e metadados | 8 |
+| Interface Live, Records e People, com calendário e rolagem | 9 |
+| Rostos: só de frente e sobre uma pessoa, nome que vira referência | 10 |
+| Ícone e atalho na Área de Trabalho | 12 |
+
+Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
+bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
