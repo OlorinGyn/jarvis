@@ -4,11 +4,14 @@ Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
 on disk is the camera's own stream with no re-encoding.
 
 See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
-Sem opcao: servico e navegador. --sem-janela: so o servico. --janela: a janela
-antiga do OpenCV, ate a web cobrir People e Ajustes. Ctrl+C encerra.
+No option: service plus browser. --headless: the service alone. --window: the
+old OpenCV window, until the web covers People and settings. --stop: ask a
+running service to shut down cleanly. Ctrl+C also stops.
 """
 
+import logging
 import sys
+import threading
 import time
 import webbrowser
 from urllib.parse import quote
@@ -17,23 +20,27 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, ui, web
+from jarvis import ROOT, log, ui, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
 from jarvis.motion import MotionDetector
 from jarvis.people import SubjectDetector
 
-STREAM = "stream1"
+DEFAULT_STREAM = "stream1"
 PLACEHOLDER_IP = "ip-da-camera"
 PANEL_HEIGHT = 480
 LABEL_Y = 62
+STALE_SECONDS = 5.0
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
 REDRAW_SECONDS = 0.15
 IDLE_SLEEP = 0.005
-HEADLESS_FLAG = "--sem-janela"
-WINDOW_FLAG = "--janela"
+HEADLESS_FLAGS = ("--headless", "--sem-janela")
+WINDOW_FLAGS = ("--window", "--janela")
+STOP_FLAG = "--stop"
+
+logger = logging.getLogger(__name__)
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
@@ -42,7 +49,12 @@ CYAN = (255, 200, 0)
 
 
 def build_camera_list(env):
-    """Turn CAM_<LABEL>_IP / _USER / _PASSWORD groups into (label, rtsp_url) pairs."""
+    """Turn CAM_<LABEL>_IP / _USER / _PASSWORD groups into (label, rtsp_url) pairs.
+
+    CAM_STREAM picks the stream for every camera: stream1 (1080p, one client
+    only) for production, stream2 (640x360, several clients) for a test copy.
+    """
+    stream = env.get("CAM_STREAM") or DEFAULT_STREAM
     cameras = []
     for key in env:
         if not (key.startswith("CAM_") and key.endswith("_IP")):
@@ -54,7 +66,7 @@ def build_camera_list(env):
         user = env.get(f"CAM_{label}_USER", "")
         password = env.get(f"CAM_{label}_PASSWORD", "")
         credentials = f"{quote(user, safe='')}:{quote(password, safe='')}"
-        url = f"rtsp://{credentials}@{env[key]}:554/{STREAM}"
+        url = f"rtsp://{credentials}@{env[key]}:554/{stream}"
         cameras.append((label.capitalize(), url))
     return sorted(cameras)
 
@@ -111,7 +123,7 @@ def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=Fal
     if frame is None:
         width = height * 16 // 9
         frame = np.zeros((height, width, 3), dtype=np.uint8)
-        cv2.putText(frame, f"{label} - sem sinal", (12, 34),
+        cv2.putText(frame, f"{label} - no signal", (12, 34),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, RED, 2)
         for index, piece in enumerate(_wrap(reason, 52)[:4]):
             cv2.putText(frame, piece, (12, 70 + index * 22),
@@ -158,18 +170,18 @@ def window_size(live):
     return width, height
 
 
-def start_cameras():
+def start_cameras(env):
     """Open every camera named in the .env and report what each one answered."""
-    env = dotenv_values(ROOT / ".env")
     cameras = build_camera_list(env)
 
     if not cameras:
         raise SystemExit("No CAM_* entries found in .env")
 
-    print(f"Iniciando {len(cameras)} camera(s)...")
+    stream = env.get("CAM_STREAM") or DEFAULT_STREAM
+    logger.info("Starting %d camera(s) on %s...", len(cameras), stream)
     streams = [Camera(label, url) for label, url in cameras]
     for cam in streams:
-        print(f"  {cam.label}: {cam.stream.wait_ready()}")
+        logger.info("  %s: %s", cam.label, cam.stream.wait_ready())
     return streams
 
 
@@ -207,8 +219,8 @@ class Core:
             saved = cam.recorder.update(frame, subjects)
             if saved:
                 names = ", ".join(saved["labels"]) or "?"
-                print(f"  event {saved['path'].name} [{names}] "
-                      f"{saved['seconds']}s, {saved['reason']}")
+                logger.info("  event %s %s [%s] %ss, %s", cam.label, saved["path"].name,
+                            names, saved["seconds"], saved["reason"])
 
             if self.draw:
                 self.panels[cam.label] = make_panel(
@@ -221,10 +233,10 @@ class Core:
             for cam in self.streams:
                 cam.prune()
 
-        feito = self.housekeeper.tick()
-        if feito and (feito["moved"]["moved"] or feito["freed"]["removed"]):
-            print(f"  arquivo: {feito['moved']['moved']} movido(s), "
-                  f"{feito['freed']['removed']} apagado(s) do HD")
+        done = self.housekeeper.tick()
+        if done and (done["moved"]["moved"] or done["freed"]["removed"]):
+            logger.info("  archive: %d moved, %d deleted from the external drive",
+                        done["moved"]["moved"], done["freed"]["removed"])
         return fresh
 
     def mosaic(self):
@@ -235,18 +247,28 @@ class Core:
     def labels(self):
         return [cam.label for cam in self.streams]
 
+    def frame_ages(self):
+        """Seconds since each camera's last frame; None for one that never delivered."""
+        return {cam.label: cam.stream.frame_age for cam in self.streams}
+
     def live_view(self, label):
         """One camera's newest frame with its detections drawn, built on demand.
 
         Called from the web thread. It only reads: the frame is never drawn on
-        in place, because make_panel resizes into a new array first.
+        in place, because make_panel resizes into a new array first. A frame
+        older than STALE_SECONDS is not shown as live: the camera or its ffmpeg
+        stopped, and a frozen picture would look like a quiet scene.
         """
         cam = next((c for c in self.streams if c.label == label), None)
         if cam is None:
             return None
         frame = cam.stream.latest
-        if frame is None:
-            return make_panel(None, cam.label, PANEL_HEIGHT, reason=cam.stream.last_error)
+        age = cam.stream.frame_age
+        if frame is None or age > STALE_SECONDS:
+            reason = cam.stream.last_error
+            if frame is not None:
+                reason = f"no frame for {age:.0f} s. {reason}".strip()
+            return make_panel(None, cam.label, PANEL_HEIGHT, reason=reason)
         return make_panel(frame, cam.label, PANEL_HEIGHT, (), cam.subjects.subjects,
                           cam.recorder.recording)
 
@@ -255,15 +277,16 @@ class Core:
         for cam in self.streams:
             saved = cam.recorder.stop("shutdown")
             if saved:
-                print(f"  event {saved['path'].name}")
+                logger.info("  event %s %s", cam.label, saved["path"].name)
 
-        print("Assembling pending clips...")
+        logger.info("Assembling pending clips...")
         wait_for_jobs()
         for cam in self.streams:
             cam.close()
+        logger.info("Stopped.")
 
 
-def run_window(core):
+def run_window(core, stop):
     """Drives the core from the OpenCV window; cv2.waitKey sets the pace."""
     interface = ui.Interface()
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
@@ -271,7 +294,7 @@ def run_window(core):
     cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
     last_render = 0.0
 
-    while True:
+    while not stop.is_set():
         fresh = core.step()
 
         now = time.monotonic()
@@ -292,34 +315,52 @@ def run_window(core):
     cv2.destroyAllWindows()
 
 
-def run_headless(core):
-    """Drives the core with no window and no drawing. Stops on Ctrl+C."""
-    print("Vigilancia rodando. Ctrl+C para encerrar.")
+def run_headless(core, stop):
+    """Drives the core with no window and no drawing.
+
+    Stops on Ctrl+C or when stop is set, which `--stop` does through the web.
+    """
+    logger.info("Surveillance running. Ctrl+C, or `python -m jarvis --stop`, to stop.")
     try:
-        while True:
+        while not stop.is_set():
             if not core.step():
                 time.sleep(IDLE_SLEEP)
     except KeyboardInterrupt:
-        print()
+        pass
+
+
+def _has(argv, flags):
+    return any(flag in argv for flag in flags)
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    window = WINDOW_FLAG in argv
-    open_browser = not window and HEADLESS_FLAG not in argv
+    log.setup()
+    env = dotenv_values(ROOT / ".env")
+    port = int(env.get("WEB_PORT") or web.PORT)
+    url = web.local_url(port)
 
-    if web.already_running():
-        print(f"O J.A.R.V.I.S. ja esta rodando: {web.LOCAL_URL}")
-        if open_browser:
-            webbrowser.open(web.LOCAL_URL)
+    if STOP_FLAG in argv:
+        logger.info(web.request_stop(port))
         return
 
-    core = Core(start_cameras(), draw=window)
-    server = web.start(core)
+    window = _has(argv, WINDOW_FLAGS)
+    open_browser = not window and not _has(argv, HEADLESS_FLAGS)
+
+    if web.already_running(port):
+        logger.info("J.A.R.V.I.S. is already running: %s", url)
+        if open_browser:
+            webbrowser.open(url)
+        return
+
+    stop = threading.Event()
+    server = web.start(port=port, on_stop=stop.set)
+    core = Core(start_cameras(env), draw=window)
+    web.attach(core)
     if open_browser and server is not None:
-        webbrowser.open(web.LOCAL_URL)
+        webbrowser.open(url)
     try:
-        (run_window if window else run_headless)(core)
+        (run_window if window else run_headless)(core, stop)
     finally:
         web.stop(server)
         core.close()

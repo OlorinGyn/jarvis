@@ -4,15 +4,17 @@ Nothing is re-encoded. The clip is built by concatenating whole segments from
 the rolling buffer with ffmpeg's stream copy, so the saved video is bit for bit
 what the camera produced.
 
-Each event produces three files sharing one basename:
-    19-17-30.mp4    the video, assembled losslessly from segments
-    19-17-30.jpg    the first frame where the subject appeared
-    19-17-30.json   metadata, so the Records screen never decodes a video
+Each event produces three files sharing one basename, plus an optional fourth:
+    19-17-30.mp4        the video, assembled losslessly from segments
+    19-17-30.jpg        the first frame where the subject appeared
+    19-17-30.json       metadata, so the Records screen never decodes a video
+    19-17-30.alert.jpg  only when the notification went out after the start
 
-See docs/ARQUITETURA.md sections 5 and 8.
+See docs/ARQUITETURA.md sections 5, 8 and 19.
 """
 
 import json
+import logging
 import os
 import subprocess
 import threading
@@ -37,6 +39,7 @@ GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
 
 _jobs = []
+logger = logging.getLogger(__name__)
 
 
 def wait_for_jobs():
@@ -77,7 +80,7 @@ def _assemble(camera, start, end, destination, labels, notified=False):
     try:
         found = faces.scan_clip(destination, camera.label, start)
     except Exception as problem:
-        print(f"  face scan failed on {destination.name}: {problem}")
+        logger.exception("  face scan failed on %s: %s", destination.name, problem)
         return
     if notified and found:
         notify.faces_seen(camera.label, start, found)
@@ -140,6 +143,7 @@ class EventRecorder:
         self.labels = set()
         self.best_confidence = 0.0
         self.notified = False
+        self.notify_tried = set()
 
     @property
     def protect_from(self):
@@ -154,6 +158,8 @@ class EventRecorder:
             self.last_subject = now
             if not self.recording:
                 self._start(frame, subjects)
+            else:
+                self._notify_late(frame, subjects)
             self.labels.update(s.label for s in subjects)
             self.best_confidence = max(
                 [self.best_confidence] + [s.confidence for s in subjects])
@@ -178,12 +184,35 @@ class EventRecorder:
         self.recording = True
         self.labels = set()
         self.best_confidence = 0.0
-        self._save_thumbnail(frame, subjects)
+        thumbnail = self.base.with_suffix(".jpg")
+        self._save_thumbnail(frame, subjects, thumbnail)
 
-        self.notified = notify.event(self.label, sorted({s.label for s in subjects}),
-                                     str(self.base.with_suffix(".jpg")))
+        seen = {s.label for s in subjects}
+        self.notify_tried = set(seen)
+        self.notified = notify.event(self.label, sorted(seen), str(thumbnail))
 
-    def _save_thumbnail(self, frame, subjects):
+    def _notify_late(self, frame, subjects):
+        """Notify when a wanted subject shows up after the event began.
+
+        An event that starts with a dog is not announced, because only
+        people notify. Without this, a person arriving a few seconds later
+        would pass in silence. One attempt per new label keeps config.json
+        from being read every frame. The photo is of this moment, saved as
+        HH-MM-SS.alert.jpg so the archive moves it with the rest of the event.
+        """
+        if self.notified:
+            return
+        new = {s.label for s in subjects} - self.notify_tried
+        if not new:
+            return
+        self.notify_tried |= new
+        photo = self.base.with_name(f"{self.base.name}.alert.jpg")
+        self._save_thumbnail(frame, subjects, photo)
+        self.notified = notify.event(self.label, sorted(new), str(photo))
+        if not self.notified:
+            photo.unlink(missing_ok=True)
+
+    def _save_thumbnail(self, frame, subjects, path):
         shot = frame.copy()
         height, width = shot.shape[:2]
         for subject in subjects:
@@ -196,7 +225,7 @@ class EventRecorder:
 
         scale = THUMB_WIDTH / width
         shot = cv2.resize(shot, (THUMB_WIDTH, int(height * scale)))
-        cv2.imwrite(str(self.base.with_suffix(".jpg")), shot,
+        cv2.imwrite(str(path), shot,
                     [cv2.IMWRITE_JPEG_QUALITY, 88])
 
     def _write_metadata(self, ended_at, reason):

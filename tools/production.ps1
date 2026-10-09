@@ -1,0 +1,282 @@
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('install', 'update', 'status', 'start', 'stop')]
+    [string]$Action,
+    [string]$Tag = '',
+    [string]$ProdDir = 'C:\JARVIS',
+    [string]$Repo = '',
+    [switch]$SkipTask
+)
+
+$ErrorActionPreference = 'Stop'
+$TaskName = 'JARVIS'
+$DevDir = Split-Path -Parent $PSScriptRoot
+$HealthSeconds = 90
+$FreshSeconds = 5
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    $env:Path += ';C:\Program Files\Git\cmd'
+}
+if (-not $Repo) {
+    $Repo = (git -C $DevDir remote get-url jarvis)
+}
+
+function Say([string]$Text) { Write-Host "[production] $Text" }
+
+function Invoke-ProdGit { git -C $ProdDir @args; if ($LASTEXITCODE) { throw "git $args failed" } }
+
+function Python { & (Join-Path $ProdDir '.venv\Scripts\python.exe') @args }
+
+function Port {
+    $envFile = Join-Path $ProdDir '.env'
+    if (Test-Path $envFile) {
+        $line = Select-String -Path $envFile -Pattern '^\s*WEB_PORT\s*=\s*(\d+)' | Select-Object -First 1
+        if ($line) { return [int]$line.Matches[0].Groups[1].Value }
+    }
+    return 8765
+}
+
+function CurrentVersion {
+    $exact = git -C $ProdDir describe --tags --exact-match 2>$null
+    if ($LASTEXITCODE -eq 0) { return $exact }
+    return (git -C $ProdDir rev-parse --short HEAD)
+}
+
+function LatestTag {
+    Invoke-ProdGit fetch --tags --quiet
+    $latest = git -C $ProdDir tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+    if (-not $latest) { throw 'No release tag yet. The architect tags a release after a review.' }
+    return $latest
+}
+
+function Status {
+    try {
+        return Invoke-RestMethod "http://127.0.0.1:$(Port)/api/status" -TimeoutSec 3
+    } catch {
+        return $null
+    }
+}
+
+function Healthy {
+    $deadline = (Get-Date).AddSeconds($HealthSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $state = Status
+        if ($state -and @($state.cameras).Count -gt 0) {
+            $ages = $state.frame_age.PSObject.Properties.Value
+            $fresh = @($ages | Where-Object { $_ -ne $null -and $_ -lt $FreshSeconds })
+            if ($fresh.Count -eq @($state.cameras).Count) { return $true }
+        }
+        Start-Sleep 3
+    }
+    return $false
+}
+
+function StopService {
+    if (Status) {
+        Say 'Stopping the service cleanly...'
+        Push-Location $ProdDir
+        try { Python -m jarvis --stop } finally { Pop-Location }
+    }
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    }
+}
+
+function StartService {
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Start-ScheduledTask -TaskName $TaskName
+    } else {
+        Start-Process -FilePath (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') `
+            -ArgumentList '-m', 'jarvis', '--headless' -WorkingDirectory $ProdDir
+    }
+}
+
+function CheckData([string]$When) {
+    Say "Checking that every existing file is still readable ($When)..."
+    Push-Location $ProdDir
+    try { Python tools\check_data.py; $ok = ($LASTEXITCODE -eq 0) } finally { Pop-Location }
+    return $ok
+}
+
+function Sync {
+    Push-Location $ProdDir
+    try {
+        uv sync --frozen
+        if ($LASTEXITCODE) { throw 'uv sync failed' }
+    } finally { Pop-Location }
+    $signature = Get-AuthenticodeSignature (Join-Path $ProdDir '.venv\Scripts\pythonw.exe')
+    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Python Software Foundation') {
+        throw 'The production Python is not the signed python.org build; Smart App Control may block it. See INSTALACAO 1.2.'
+    }
+}
+
+function Notify([string]$Text) {
+    Push-Location $ProdDir
+    try { Python -c "from jarvis import notify; notify.send('$Text')" | Out-Null } catch { } finally { Pop-Location }
+}
+
+function CopyData {
+    foreach ($name in '.env', 'config.json') {
+        $source = Join-Path $DevDir $name
+        $target = Join-Path $ProdDir $name
+        if ((Test-Path $source) -and -not (Test-Path $target)) {
+            Copy-Item $source $target
+            Say "Copied $name"
+        }
+    }
+    foreach ($folder in 'models', 'clips', 'faces') {
+        $source = Join-Path $DevDir $folder
+        if (Test-Path $source) {
+            robocopy $source (Join-Path $ProdDir $folder) /E /XD _buffer _diag /NFL /NDL /NJH /NJS /NP | Out-Null
+            if ($LASTEXITCODE -ge 8) { throw "copying $folder failed (robocopy $LASTEXITCODE)" }
+            Say "Copied $folder\ (the originals stay where they were)"
+        }
+    }
+}
+
+function RegisterTask {
+    $action = New-ScheduledTaskAction -Execute (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') `
+        -Argument '-m jarvis --headless' -WorkingDirectory $ProdDir
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Limited
+    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable `
+        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+        -Principal $principal -Settings $settings -Force | Out-Null
+    Say "Scheduled task '$TaskName' registered: starts with Windows, restarts if it crashes."
+}
+
+function Install {
+    if (Test-Path (Join-Path $ProdDir '.git')) { throw "$ProdDir already has an installation. Use -Action update." }
+    if (-not $SkipTask) {
+        $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator)
+        if (-not $admin) { throw 'Run this from an administrator PowerShell: registering a startup task needs it.' }
+    }
+    Say "Cloning $Repo into $ProdDir..."
+    git clone --quiet $Repo $ProdDir
+    if ($LASTEXITCODE) { throw 'git clone failed' }
+    $target = if ($Tag) { $Tag } else { LatestTag }
+    Invoke-ProdGit checkout --quiet --force $target
+    Say "Version: $target"
+    StopDevCopy
+    CopyData
+    Sync
+    if (-not (CheckData 'copied data, new installation')) { throw 'Existing data is not readable by this version. Nothing was started.' }
+    if (-not $SkipTask) { RegisterTask }
+    StartService
+    if (-not (Healthy)) {
+        throw 'Installed, but the cameras did not deliver frames in time. Read logs\jarvis.log in the production folder.'
+    }
+    Say "Production is running $target, every camera delivering frames."
+    if (-not $SkipTask) { Notify "J.A.R.V.I.S. production installed: $target" }
+    if (-not $SkipTask) {
+        ConfigureTestCopy
+        DesktopShortcut
+    }
+}
+
+function StopDevCopy {
+    $devPython = Join-Path $DevDir '.venv\Scripts\python.exe'
+    if (Test-Path $devPython) {
+        Push-Location $DevDir
+        try { & $devPython -m jarvis --stop | Out-Null } catch { } finally { Pop-Location }
+    }
+}
+
+function SetEnvValue([string]$File, [string]$Key, [string]$Value) {
+    $lines = @(Get-Content $File)
+    if ($lines -match "^\s*$Key\s*=") {
+        $lines = $lines -replace "^\s*$Key\s*=.*", "$Key=$Value"
+    } else {
+        $lines += "$Key=$Value"
+    }
+    Set-Content -Path $File -Value $lines -Encoding UTF8
+}
+
+function ConfigureTestCopy {
+    $envFile = Join-Path $DevDir '.env'
+    if (Test-Path $envFile) {
+        SetEnvValue $envFile 'CAM_STREAM' 'stream2'
+        SetEnvValue $envFile 'WEB_PORT' '8766'
+        Say "Development copy is now the test copy: stream2 (640x360), port 8766."
+    }
+    $devPython = Join-Path $DevDir '.venv\Scripts\python.exe'
+    Push-Location $DevDir
+    try {
+        & $devPython -c "from jarvis import settings; settings.update(notify_token='', notify_prefix='[TEST]')"
+        Say 'Test copy: Telegram off (token removed there; production keeps its own), prefix [TEST].'
+    } finally { Pop-Location }
+}
+
+function DesktopShortcut {
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    $old = Join-Path $desktop 'J.A.R.V.I.S.lnk'
+    if (Test-Path $old) {
+        Move-Item $old (Join-Path $desktop 'J.A.R.V.I.S. (test).lnk') -Force
+    }
+    $icon = Join-Path $ProdDir 'assets\jarvis.ico'
+    $content = "[InternetShortcut]`r`nURL=http://127.0.0.1:$(Port)/`r`nIconFile=$icon`r`nIconIndex=0`r`n"
+    Set-Content -Path (Join-Path $desktop 'J.A.R.V.I.S.url') -Value $content -Encoding ASCII
+    Say "Desktop: 'J.A.R.V.I.S.' opens production; 'J.A.R.V.I.S. (test)' starts the test copy."
+}
+
+function Update {
+    if (-not (Test-Path (Join-Path $ProdDir '.git'))) { throw "Nothing installed in $ProdDir. Use -Action install." }
+    $previous = CurrentVersion
+    $target = if ($Tag) { Invoke-ProdGit fetch --tags --quiet; $Tag } else { LatestTag }
+    if ($target -eq $previous) { Say "Already on $target."; return }
+    Say "Updating $previous -> $target"
+
+    if (-not (CheckData 'before, current version')) { throw 'Data already unreadable before updating; nothing changed. Investigate first.' }
+    StopService
+    $good = $false
+    try {
+        Invoke-ProdGit checkout --quiet --force $target
+        Sync
+        $good = CheckData 'after, new version'
+        if ($good) {
+            StartService
+            $good = Healthy
+        }
+    } catch {
+        Say "Error during the update: $_"
+    }
+    if ($good) {
+        Say "Production is running $target."
+        Notify "J.A.R.V.I.S. production updated: $previous -> $target"
+        return
+    }
+
+    Say "The new version failed. Rolling back to $previous..."
+    StopService
+    Invoke-ProdGit checkout --quiet --force $previous
+    Sync
+    StartService
+    $back = Healthy
+    Notify "J.A.R.V.I.S. update to $target FAILED; rolled back to $previous (running: $back)"
+    throw "Update to $target failed and was rolled back to $previous. Running again: $back."
+}
+
+function ShowStatus {
+    if (-not (Test-Path (Join-Path $ProdDir '.git'))) { Say "Not installed in $ProdDir."; return }
+    Say "Version: $(CurrentVersion)"
+    $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    Say "Startup task: $(if ($task) { $task.State } else { 'not registered' })"
+    $state = Status
+    if ($state) {
+        $ages = ($state.frame_age.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value) s" }) -join ', '
+        Say "Running on port $(Port). Last frame: $ages"
+    } else {
+        Say "Not answering on port $(Port)."
+    }
+}
+
+switch ($Action) {
+    'install' { Install }
+    'update' { Update }
+    'status' { ShowStatus }
+    'start' { StartService; if (Healthy) { Say 'Running.' } else { throw 'Started, but no frames in time.' } }
+    'stop' { StopService; Say 'Stopped.' }
+}

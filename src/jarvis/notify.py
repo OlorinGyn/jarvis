@@ -16,6 +16,7 @@ from pathlib import Path
 
 import requests
 
+from .faces import LEARN_THRESHOLD
 from .settings import load
 
 API = "https://api.telegram.org/bot{token}/{method}"
@@ -65,7 +66,10 @@ def send(text, image=None, settings=None):
     token = (settings.get("notify_token") or "").strip()
     chat = (settings.get("notify_chat") or "").strip()
     if not token or not chat:
-        return False, "notificacao nao configurada"
+        return False, "notifications not configured"
+    prefix = (settings.get("notify_prefix") or "").strip()
+    if prefix:
+        text = f"{prefix} {text}"
 
     if image and Path(image).exists():
         return _call(token, "sendPhoto",
@@ -97,9 +101,9 @@ def event(camera, labels, thumbnail, names=None, settings=None):
     if not _allowed(camera, labels, settings):
         return False
 
-    quem = ", ".join(names) if names else ", ".join(labels)
-    texto = f"{camera}: {quem}\n{time.strftime('%d/%m/%Y %H:%M:%S')}"
-    threading.Thread(target=send, args=(texto, thumbnail, settings),
+    who = ", ".join(names) if names else ", ".join(labels)
+    text = f"{camera}: {who}\n{time.strftime('%d/%m/%Y %H:%M:%S')}"
+    threading.Thread(target=send, args=(text, thumbnail, settings),
                      daemon=True).start()
     return True
 
@@ -118,12 +122,25 @@ def faces_seen(camera, started_at, sightings, settings=None):
     sent = 0
     when = started_at.strftime("%H:%M:%S")
     for sighting in sightings[:MAX_FACES]:
-        name = sighting.get("name") or ""
-        quem = f"{name} reconhecido" if name else "rosto desconhecido"
-        ok, _ = send(f"{camera} {when}: {quem}", sighting.get("thumbnail_path"),
+        ok, _ = send(f"{camera} {when}: {_who(sighting)}", sighting.get("thumbnail_path"),
                      settings)
         sent += ok
     return sent
+
+
+def _who(sighting):
+    """Name the face, and say so when the match is too weak to be sure.
+
+    A match only needs MATCH_THRESHOLD (0.363), the value OpenCV recommends for
+    sharp 112 px faces. Ours are 40-60 px, where a weak match can be chance;
+    LEARN_THRESHOLD is the bar the gallery already trusts to learn from.
+    """
+    name = sighting.get("name") or ""
+    if not name:
+        return "unknown face"
+    if sighting.get("score", 0) < LEARN_THRESHOLD:
+        return f"probably {name}"
+    return f"{name} recognized"
 
 
 def reset_cooldown():

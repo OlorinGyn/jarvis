@@ -21,6 +21,7 @@ DEFAULTS = {
     "notify_chat": "",
     "notify_labels": ["person"],
     "notify_cooldown": 120,
+    "notify_prefix": "",
 }
 
 

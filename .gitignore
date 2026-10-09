@@ -32,3 +32,6 @@ docs/epub/
 
 # configuracao local da maquina
 config.json
+
+# registro do programa (logs/jarvis.log, com rotacao)
+logs/

@@ -4,9 +4,10 @@ Runs uvicorn in a thread next to the Core. Recordings come from what is already
 on disk, the JSON and thumbnails in clips/. Live video comes from
 Core.live_view(), which only reads. The Core does not know the web exists.
 
-See docs/ARQUITETURA.md section 17.
+See docs/ARQUITETURA.md sections 17 and 18.
 """
 
+import logging
 import re
 import socket
 import threading
@@ -17,7 +18,7 @@ from pathlib import Path
 import cv2
 import requests
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -26,21 +27,29 @@ from jarvis.clips import CLIP_DIR, available_days, list_clips
 
 HOST = "0.0.0.0"
 PORT = 8765
-LOCAL_URL = f"http://127.0.0.1:{PORT}"
 STATIC_DIR = Path(__file__).with_name("static")
 LIVE_FPS = 8
 LIVE_QUALITY = 75
 BOUNDARY = "frame"
+LOOPBACK = {"127.0.0.1", "::1"}
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}\.jpg$")
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="J.A.R.V.I.S.", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 _core = None
+_on_stop = None
 _stopping = threading.Event()
+_started = time.time()
+
+
+def local_url(port=PORT):
+    return f"http://127.0.0.1:{port}"
 
 
 def _parse_day(text):
@@ -48,7 +57,7 @@ def _parse_day(text):
     try:
         return datetime.strptime(text, "%Y-%m-%d").date()
     except (TypeError, ValueError):
-        raise HTTPException(400, "dia invalido, use AAAA-MM-DD")
+        raise HTTPException(400, "invalid day, use YYYY-MM-DD")
 
 
 def _event(entry):
@@ -63,7 +72,7 @@ def _event(entry):
         "labels": entry.get("labels", []),
         "confidence": entry.get("best_confidence", 0),
         "reason": entry.get("reason", ""),
-        "thumbnail": f"/miniatura/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
+        "thumbnail": f"/thumbnail/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
     }
 
 
@@ -72,31 +81,43 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
-@app.get("/icone.png")
+@app.get("/icon.png")
 def icon():
     return FileResponse(ROOT / "assets" / "jarvis.png", media_type="image/png")
 
 
 @app.get("/api/cameras")
 def cameras():
-    """The cameras this program is watching."""
+    """The cameras this program is watching; empty while they are still starting."""
     return _core.labels if _core is not None else []
 
 
-@app.get("/api/dias")
+@app.get("/api/status")
+def status():
+    """Cameras, when this server started, and how fresh each camera's last frame is.
+
+    The page uses `started` to notice a restart; the production update script
+    uses `frame_age` to decide whether the new version really sees the cameras.
+    """
+    ages = _core.frame_ages() if _core is not None else {}
+    return {"cameras": cameras(), "started": _started,
+            "frame_age": {k: (round(v, 1) if v is not None else None) for k, v in ages.items()}}
+
+
+@app.get("/api/days")
 def days():
     """Every day with recordings, newest first."""
     return [day.isoformat() for day in sorted(available_days(), reverse=True)]
 
 
-@app.get("/api/eventos")
-def events(dia: str = None):
+@app.get("/api/events")
+def events(day: str = None):
     """The events of one day, newest first. Without a day, today."""
-    day = _parse_day(dia) if dia else date.today()
-    return {"dia": day.isoformat(), "eventos": [_event(e) for e in list_clips(day)]}
+    chosen = _parse_day(day) if day else date.today()
+    return {"day": chosen.isoformat(), "events": [_event(e) for e in list_clips(chosen)]}
 
 
-@app.get("/miniatura/{camera}/{day}/{name}")
+@app.get("/thumbnail/{camera}/{day}/{name}")
 def thumbnail(camera: str, day: str, name: str):
     """One event thumbnail. The checks keep requests inside clips/."""
     if not (SAFE_NAME.match(camera) and SAFE_DAY.match(day) and SAFE_THUMB.match(name)):
@@ -120,13 +141,25 @@ def _mjpeg(label):
         time.sleep(interval)
 
 
-@app.get("/ao-vivo/{camera}")
+@app.get("/live/{camera}")
 def live(camera: str):
     """MJPEG: the browser shows it in a plain <img>, no player needed."""
     if _core is None or camera not in _core.labels:
         raise HTTPException(404)
     return StreamingResponse(_mjpeg(camera),
                              media_type=f"multipart/x-mixed-replace; boundary={BOUNDARY}")
+
+
+@app.post("/api/shutdown")
+def shutdown(request: Request):
+    """Stop the service cleanly. Only from this machine: the port is open to the LAN."""
+    if request.client is None or request.client.host not in LOOPBACK:
+        raise HTTPException(403, "shutdown is only accepted from this machine")
+    if _on_stop is None:
+        raise HTTPException(503, "not ready to stop")
+    logger.info("Shutdown requested through the web.")
+    _on_stop()
+    return {"stopping": True}
 
 
 def lan_address():
@@ -143,12 +176,28 @@ def lan_address():
             return None
 
 
-def already_running():
-    """Whether a J.A.R.V.I.S. is already serving here."""
+def already_running(port=PORT):
+    """Whether a J.A.R.V.I.S. is already serving on this port."""
     try:
-        return requests.get(f"{LOCAL_URL}/api/cameras", timeout=2).ok
+        return requests.get(f"{local_url(port)}/api/cameras", timeout=2).ok
     except requests.RequestException:
         return False
+
+
+def request_stop(port=PORT, timeout=120):
+    """Ask the running service to stop, and wait until it has. Returns a message."""
+    try:
+        answer = requests.post(f"{local_url(port)}/api/shutdown", timeout=5)
+    except requests.RequestException:
+        return f"Nothing is running on port {port}."
+    if not answer.ok:
+        return f"The service refused to stop: {answer.status_code} {answer.text}"
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not already_running(port) and _port_free(HOST, port):
+            return "Stopped."
+        time.sleep(1)
+    return f"Asked to stop, but it was still running after {timeout} s."
 
 
 def _port_free(host, port):
@@ -161,22 +210,33 @@ def _port_free(host, port):
     return True
 
 
-def start(core=None, host=HOST, port=PORT):
-    """Serve the page in a background thread. Returns the server, or None."""
-    global _core
+def start(core=None, host=HOST, port=PORT, on_stop=None):
+    """Serve the page in a background thread. Returns the server, or None.
+
+    Called before the cameras open, so the port works as a lock: a second
+    launch during the slow camera startup sees it taken and does not start.
+    """
+    global _on_stop
     if not _port_free(host, port):
-        print(f"Interface web desligada: a porta {port} ja esta em uso.")
+        logger.warning("Web interface off: port %d is already in use.", port)
         return None
-    _core = core
+    _on_stop = on_stop
     _stopping.clear()
-    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port,
+    attach(core)
+    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_config=None,
                                           log_level="warning", access_log=False))
     threading.Thread(target=server.run, name="web", daemon=True).start()
-    print(f"Interface web: {LOCAL_URL}")
+    logger.info("Web interface: %s", local_url(port))
     address = lan_address()
     if address and host == "0.0.0.0":
-        print(f"  no celular, na mesma rede: http://{address}:{port}")
+        logger.info("  from another device on the same network: http://%s:%d", address, port)
     return server
+
+
+def attach(core):
+    """Hand the Core to the web once the cameras are open."""
+    global _core
+    _core = core
 
 
 def stop(server):

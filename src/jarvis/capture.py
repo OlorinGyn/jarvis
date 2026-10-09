@@ -76,6 +76,7 @@ class FFmpegCamera:
         self._lock = threading.Lock()
         self._pending = None
         self._latest = None
+        self._latest_at = 0.0
         self._reader = None
         self._errors = deque(maxlen=12)
         self._stop = threading.Event()
@@ -137,6 +138,7 @@ class FFmpegCamera:
             with self._lock:
                 self._pending = frame
                 self._latest = frame
+                self._latest_at = time.monotonic()
             self.frames_read += 1
 
     def _drain_errors(self, process):
@@ -181,6 +183,14 @@ class FFmpegCamera:
         """The most recent frame, for drawing. None until the first arrives."""
         with self._lock:
             return self._latest
+
+    @property
+    def frame_age(self):
+        """Seconds since the last frame arrived, or None if none ever did."""
+        with self._lock:
+            if self._latest is None:
+                return None
+            return time.monotonic() - self._latest_at
 
     def read(self):
         """Return the newest frame not yet analysed, or None. Never blocks."""

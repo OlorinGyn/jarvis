@@ -1,12 +1,13 @@
 :root {
-  --fundo: #16181c;
-  --painel: #22252b;
-  --linha: #33373f;
-  --texto: #e8e9eb;
-  --apagado: #9097a3;
-  --pessoa: #4cc36a;
+  --background: #16181c;
+  --panel: #22252b;
+  --line: #33373f;
+  --text: #e8e9eb;
+  --muted: #9097a3;
+  --person: #4cc36a;
   --animal: #3cc3e0;
-  --destaque: #3d7a4f;
+  --accent: #3d7a4f;
+  --alarm: #c0392b;
 }
 
 * {
@@ -15,8 +16,8 @@
 
 body {
   margin: 0;
-  background: var(--fundo);
-  color: var(--texto);
+  background: var(--background);
+  color: var(--text);
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
@@ -26,7 +27,7 @@ header {
   align-items: center;
   gap: 14px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--linha);
+  border-bottom: 1px solid var(--line);
 }
 
 .logo {
@@ -40,29 +41,37 @@ h1 {
   letter-spacing: 0.04em;
 }
 
-.abas {
+.tabs {
   display: flex;
   gap: 4px;
   margin-left: 12px;
 }
 
-.abas a {
-  color: var(--apagado);
+.tabs a {
+  color: var(--muted);
   text-decoration: none;
   padding: 6px 14px;
   border-radius: 6px;
 }
 
-.abas a.ativa {
-  background: var(--destaque);
-  color: var(--texto);
+.tabs a.active {
+  background: var(--accent);
+  color: var(--text);
 }
 
-.aba {
+#connection {
+  margin-left: auto;
+  background: var(--alarm);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.tab {
   display: none;
 }
 
-.aba.ativa {
+.tab.active {
   display: block;
 }
 
@@ -78,20 +87,9 @@ h1 {
   aspect-ratio: 16 / 9;
   object-fit: contain;
   background: #000;
-  border: 1px solid var(--linha);
+  border: 1px solid var(--line);
   border-radius: 8px;
   display: block;
-}
-
-@media (max-width: 480px) {
-  #cameras {
-    grid-template-columns: 1fr;
-    padding: 8px;
-  }
-
-  .abas {
-    margin-left: 0;
-  }
 }
 
 .toolbar {
@@ -104,85 +102,96 @@ h1 {
 
 .toolbar button,
 .toolbar input {
-  background: var(--painel);
-  color: var(--texto);
-  border: 1px solid var(--linha);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 12px;
   font: inherit;
 }
 
 .toolbar button:hover {
-  background: var(--destaque);
+  background: var(--accent);
 }
 
 .toolbar button:disabled {
   opacity: 0.35;
 }
 
-#resumo {
+#summary {
   margin-left: 8px;
-  color: var(--apagado);
+  color: var(--muted);
 }
 
-#eventos {
+#events {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
   padding: 16px 20px 32px;
 }
 
-.cartao {
-  background: var(--painel);
-  border: 1px solid var(--linha);
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
 }
 
-.foto {
+.photo {
   aspect-ratio: 16 / 9;
   background: #000;
 }
 
-.foto img {
+.photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.legenda {
+.caption {
   padding: 8px 10px 10px;
 }
 
-.linha {
+.row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
 }
 
-.hora {
+.time {
   font-size: 1.15rem;
   font-weight: 600;
 }
 
 .camera,
-.duracao {
-  color: var(--apagado);
+.duration {
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
-.rotulos {
+.labels {
   color: var(--animal);
   font-size: 0.9rem;
 }
 
-.rotulos.pessoa {
-  color: var(--pessoa);
+.labels.person {
+  color: var(--person);
 }
 
-.vazio {
+.empty {
   grid-column: 1 / -1;
-  color: var(--apagado);
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  #cameras {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .tabs {
+    margin-left: 0;
+  }
 }

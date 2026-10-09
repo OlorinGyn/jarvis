@@ -1,48 +1,49 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>J.A.R.V.I.S.</title>
-  <link rel="icon" href="/icone.png">
+  <link rel="icon" href="/icon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
-    <img src="/icone.png" alt="" class="logo">
+    <img src="/icon.png" alt="" class="logo">
     <h1>J.A.R.V.I.S.</h1>
-    <nav class="abas">
-      <a href="#ao-vivo" data-aba="ao-vivo">Ao vivo</a>
-      <a href="#gravacoes" data-aba="gravacoes">Gravações</a>
+    <nav class="tabs">
+      <a href="#live" data-tab="live">Live</a>
+      <a href="#recordings" data-tab="recordings">Recordings</a>
     </nav>
+    <span id="connection" hidden>No connection to J.A.R.V.I.S.</span>
   </header>
 
-  <section id="ao-vivo" class="aba">
+  <section id="live" class="tab">
     <div id="cameras"></div>
   </section>
 
-  <section id="gravacoes" class="aba">
+  <section id="recordings" class="tab">
     <nav class="toolbar">
-      <button id="anterior" title="Dia anterior com gravação">◀</button>
-      <input type="date" id="dia">
-      <button id="proximo" title="Próximo dia com gravação">▶</button>
-      <button id="hoje">Hoje</button>
-      <span id="resumo"></span>
+      <button id="previous" title="Previous day with recordings">◀</button>
+      <input type="date" id="day">
+      <button id="next" title="Next day with recordings">▶</button>
+      <button id="today">Today</button>
+      <span id="summary"></span>
     </nav>
-    <main id="eventos"></main>
+    <main id="events"></main>
   </section>
 
-  <template id="cartao">
-    <article class="cartao">
-      <div class="foto"><img alt="" loading="lazy"></div>
-      <div class="legenda">
-        <div class="linha">
-          <span class="hora"></span>
+  <template id="card">
+    <article class="card">
+      <div class="photo"><img alt="" loading="lazy"></div>
+      <div class="caption">
+        <div class="row">
+          <span class="time"></span>
           <span class="camera"></span>
         </div>
-        <div class="linha">
-          <span class="rotulos"></span>
-          <span class="duracao"></span>
+        <div class="row">
+          <span class="labels"></span>
+          <span class="duration"></span>
         </div>
       </div>
     </article>
