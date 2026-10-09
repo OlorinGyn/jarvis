@@ -140,6 +140,22 @@ longer read it (`json.loads` with `utf-8`). The check caught it. That is how
 `config.json` edited in an editor could have silently lost the token; reading
 as `utf-8-sig` now accepts both.
 
+### 5a. Reported by the user after the delivery: LAN access, "Invalid HTTP request"
+
+Locally the page worked; from the other computer the service logged bursts of
+`WARNING uvicorn.error: Invalid HTTP request received.` (3-4 per second, the
+pattern of a browser opening parallel connections). Reproduced here: an
+`https://127.0.0.1:8765/` request produces exactly that warning, `http://`
+answers 200. Cause: the other computer's browser tried **HTTPS** (typed without
+the scheme, or "Always use secure connections" is on); the server speaks only
+HTTP. Told the user to type `http://192.168.0.18:8765` explicitly, or click
+through the browser's warning, or turn that browser setting off.
+
+For INSTALACAO troubleshooting. Possible follow-up for the architect to weigh:
+HTTPS on the LAN needs a certificate the browser trusts; self-signed means a
+warning on every visit, so not recommended now. The user has not yet confirmed
+access works with `http://`.
+
 ### 6. How to run before installation (for INSTALACAO)
 
 Everything runs from this folder, on `stream1`, port 8765:
