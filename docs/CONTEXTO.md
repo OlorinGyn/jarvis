@@ -203,31 +203,83 @@ em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
   têm glifos acentuados.
 - **A interface precisa de sessão gráfica.** Não roda como serviço invisível.
 
-## 8. Próximos passos planejados
+## 8. Backlog
 
-Esta é a lista única; a ARQUITETURA aponta para cá.
+**Esta é a lista única do projeto.** A ARQUITETURA aponta para cá, e as duas
+máquinas a enxergam pelo git — mantenha-a atualizada no mesmo commit da
+mudança, como qualquer documentação.
 
-1. ~~**Retenção automática**~~ — feito, mas com outro desenho: em vez de
-   apagar, o `archive.py` move para um HD externo após 30 dias e só apaga de
-   lá se o HD lotar. Ver ARQUITETURA 11
-2. ~~**Notificação**~~ — feito: Telegram com miniatura, aviso no começo
-   do evento. Ver ARQUITETURA 12
-3. **Medir o M900 rodando** — CPU com as duas câmeras em movimento, e se
-   `HWACCEL` ajuda (INSTALACAO seção 6)
-4. **Rótulos de animal** — só aceitar uma espécie que se repita no evento, em
-   vez de acumular cada hesitação do YOLO
-5. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
-   um clipe corresponder a uma pessoa
-6. **Reprodução no Records** — clicar num cartão e assistir
-7. **Desfazer junção na tela People**
-8. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
-   então o primeiro clipe falso da noite ainda é gravado
-9. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
-10. **Luz acionada por movimento na Front** — não é software, mas é o maior
-   ganho possível para rosto à noite (ARQUITETURA 10.5)
-11. **Re-ID de animais** — classificador sobre o corpo inteiro (ARQUITETURA 10.8)
-12. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
-    recuperar a velocidade perdida ao sair do PyTorch
+Cada item traz a origem, porque a distinção importa:
+
+- **(decidido)** — o usuário pediu ou aprovou
+- **(proposto)** — sugestão do Claude, ainda sem decisão dele
+
+Itens propostos **não são plano**. Não comece um sem perguntar.
+
+### Feito
+
+| | Item | Onde |
+|---|---|---|
+| ✓ | **Armazenamento em camadas** (decidido) — move para HD externo após 30 dias; só apaga de lá se lotar | ARQUITETURA 11 |
+| ✓ | **Notificação no celular** (decidido) — Telegram com miniatura, aviso no começo do evento | ARQUITETURA 12 |
+
+### Crítico
+
+Sem isto o sistema não cumpre bem o próprio objetivo.
+
+1. **Zonas de interesse por câmera** (proposto) — hoje existe só uma máscara
+   fixa no relógio da câmera, no código. Todo concorrente tem zonas
+   desenháveis, e é o maior controle sobre falso positivo que existe. Mosquito,
+   objeto de parede e luz do sol já custaram tempo; uma zona dizendo "só a
+   garagem importa" teria evitado quase tudo. Vale separar **máscara**
+   (ignora a área) de **zona exigida** (detecta tudo, mas só avisa se entrar).
+2. **Saúde do sistema** (proposto) — se uma câmera morrer às 3h da manhã, nada
+   avisa. Há reinício automático, mas nenhum registro de quanto tempo ficou
+   fora. Um resumo diário fecharia isso, agora que existe notificação.
+
+### Importante
+
+Funciona sem, mas incompleto.
+
+3. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
+   e se `HWACCEL` ajuda (INSTALACAO seção 6)
+4. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
+5. **Busca e filtro** (proposto) — com ~100 eventos/dia, só por data é
+   inviável. Por pessoa, câmera, rótulo
+6. **Tracking** (proposto) — manter identidade entre frames; resolve a pessoa
+   parada e faz um clipe corresponder a uma pessoa
+7. **Rótulos de animal** (proposto) — só aceitar espécie que se repita no
+   evento, em vez de acumular cada hesitação do YOLO
+8. **Desfazer junção na tela People** (proposto) — corrigir um merge errado
+9. **Áudio** (proposto) — as câmeras mandam PCM e o `-an` descarta. Latido,
+   grito, vidro quebrando
+
+### Melhoria
+
+10. **Linha do tempo** (proposto) — grade de cartões não responde "o que houve
+    entre 2h e 4h"
+11. **Persistir os spots estáticos** (proposto) — a lista nasce vazia a cada
+    execução, então o primeiro clipe falso da noite ainda é gravado
+12. **Banco de eventos** (proposto) — SQLite no lugar dos JSON, quando houver
+    busca
+13. **OpenVINO no M900** (proposto) — o `cv2.dnn` aceita esse backend, e era o
+    plano para recuperar a velocidade perdida ao sair do PyTorch
+14. **Re-ID de animais** (proposto) — classificador sobre o corpo inteiro
+    (ARQUITETURA 10.8)
+
+### Fora de software
+
+15. **Luz acionada por movimento na Front** (proposto) — não é código, mas é o
+    maior ganho possível para rosto à noite (ARQUITETURA 10.5)
+
+### Fora de escopo, deliberadamente
+
+Os concorrentes têm e **não** fazem sentido aqui: multiusuário com permissões,
+nuvem ou assinatura, suporte a dezenas de marcas de câmera, PTZ, áudio
+bidirecional, leitura de placa, integração com Home Assistant.
+
+São recursos de produto. Este sistema é para uma casa, com duas câmeras. Se
+alguém propuser um deles, a resposta já está aqui.
 
 ## 9. Mapa do repositório
 

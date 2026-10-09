@@ -14,3 +14,8 @@ Regras do usuário, detalhadas em `docs/CONTEXTO.md` seção 2:
 - **Explique o código, não só o resultado.** O usuário está aprendendo Python
   e OpenCV, vindo de Java e C#.
 - Documentação em português; código e identificadores em inglês.
+
+**O backlog é a seção 8 do `docs/CONTEXTO.md`.** É a lista única, e as duas
+máquinas a enxergam pelo git. Ao concluir um item, risque-o no mesmo commit da
+mudança. Itens marcados **(proposto)** são sugestão do Claude sem decisão do
+usuário — não comece nenhum sem perguntar.
