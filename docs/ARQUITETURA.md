@@ -1294,9 +1294,15 @@ As fontes Hershey do OpenCV não têm acentuação. Escrever `"gravação"` rend
 caracteres quebrados, e por isso todo texto da interface está **sem acento** de
 propósito ("gravacao", "Nenhuma gravacao neste dia").
 
-Acentos exigiriam desenhar texto com o Pillow e converter para numpy. Seria
-uma dependência nova — desde a saída do ultralytics (7.11) o projeto não tem
-mais o Pillow — e uma camada extra de desenho.
+Acentos exigiriam desenhar texto com o Pillow e converter para numpy, e eu
+descartei isso por ser "dependência nova". **Foi viés** (CONTEXTO seção 11): o
+Pillow é padrão da indústria e você nunca pediu aplicação pequena. O resultado
+foi uma interface inteira escrita errado em português.
+
+Não vale mais corrigir aqui, porque a interface web (backlog, item 3) resolve
+de graça — o navegador desenha acento sem ninguém pedir. Fica registrado como
+exemplo do custo: o viés não cobrou uma dependência, cobrou a grafia de tudo
+que o usuário lê.
 
 ### 9.9 Fechar a janela no X
 
@@ -1331,9 +1337,10 @@ faz a montagem (seção 8.3). Ganhos:
 
 O custo é o rosto aparecer na tela People alguns segundos após o evento.
 
-### 10.2 YuNet e SFace, sem dependência nova
+### 10.2 YuNet e SFace
 
-O OpenCV traz os dois modelos embutidos:
+São bons modelos para CPU, e o OpenCV já traz os dois embutidos — conveniência
+real, não mérito de contagem de dependências:
 
 | Papel | Modelo | Tamanho |
 |---|---|---|
@@ -1828,8 +1835,12 @@ sobre x e y; aqui cada linha opera sobre o milhão de pixels de uma vez.
 O desenho é feito a 1024 px e reduzido com `INTER_AREA` para os 7 tamanhos que
 o Windows usa (16 a 256). O `.ico` é escrito à mão: um cabeçalho de 6 bytes,
 uma entrada de 16 bytes por tamanho, e cada imagem como PNG — o formato que o
-Windows aceita desde o Vista. O OpenCV lê e grava PNG mas não `.ico`, e montar
-os bytes com `struct.pack` evita uma dependência nova só para isso.
+Windows aceita desde o Vista. O OpenCV lê e grava PNG mas não `.ico`, e o
+`struct.pack` resolve em ~20 linhas.
+
+Aqui o Pillow faria em duas linhas. Mantido à mão porque é ferramenta de uso
+único, roda fora do caminho crítico e já está testada — não porque economiza
+dependência. Se o Pillow entrar por outro motivo, troque.
 
 Para mudar o desenho, edite as cores e raios em `gerar_icone.py`, rode
 `uv run tools/gerar_icone.py` e depois o `criar_atalho.ps1` de novo (o Windows
@@ -1957,3 +1968,84 @@ backlog, porque hoje não há como olhar um núcleo sem janela.
 
 Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
 bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
+
+## 17. Interface web — plano de execução
+
+Decidido em 09/10/2026. Item 3 do backlog. **Nada aqui está implementado
+ainda**; esta seção é o plano, para que a obra possa ser retomada por outra
+sessão ou pela outra máquina sem perder as decisões.
+
+### 17.1 Por que, em uma frase
+
+A vigilância já roda sem janela (seção 15), mas não há como **olhar** um núcleo
+sem janela. A web fecha esse ciclo e, de passagem, entrega acento, reprodução de
+vídeo, rolagem, colar texto e acesso pelo celular — tudo que o HighGUI não tem.
+
+### 17.2 A stack, e por que não a biblioteca padrão
+
+**FastAPI + uvicorn.** Dois requisitos decidem, e nenhum é estético:
+
+| Requisito | Por que o `http.server` não serve |
+|---|---|
+| Vídeo ao vivo (MJPEG) | É uma resposta que nunca termina. O `http.server` é de uma thread; um espectador travaria todo o resto |
+| Arrastar a barra do vídeo | O `<video>` exige HTTP Range. O `FileResponse` já faz; à mão é fácil de errar |
+
+A primeira ideia desta sessão foi `http.server` "sem dependência nova" — era o
+viés da seção 11 voltando pela porta dos fundos, e foi descartada.
+
+**Risco verificado:** o FastAPI traz `pydantic`, cujo núcleo é Rust compilado —
+a mesma categoria de binário que o Smart App Control bloqueou no PyTorch (7.11).
+Testado em 09/10/2026 na máquina de desenvolvimento: `import pydantic_core`
+carrega sem erro. **Falta confirmar no M900**, que é onde o Smart App Control
+mais incomodou:
+
+```bat
+uv run python -c "import pydantic_core, fastapi, uvicorn; print('ok')"
+```
+
+Se falhar lá, o plano muda: Flask com servidor WSGI com threads, que é Python
+puro, em vez de abandonar a web.
+
+### 17.3 Os quatro estágios
+
+Cada um termina em commit que funciona sozinho. **A janela do OpenCV continua
+intacta do começo ao fim** — a comparação é o critério de aceite, e só se
+descarta o HighGUI depois de a web provar que é melhor.
+
+**Estágio 1 — servidor e lista de eventos.** `web.py` novo, subindo o uvicorn
+numa thread ao lado do `Core`. Serve uma página que lista os eventos lendo os
+JSON que já existem em `clips/`. Não toca em nada que funciona hoje. Aceite:
+abrir no navegador e ver os eventos de hoje, com acento.
+
+**Estágio 2 — reprodução.** `FileResponse` nos `.mp4`, `<video>` na página.
+Fecha o item 5 do backlog (hoje clicar abre o Explorer) e o 6 fica barato,
+porque filtrar é JavaScript sobre a lista. Aceite: assistir um evento e arrastar
+a barra, sem abrir player externo.
+
+**Estágio 3 — ao vivo.** `StreamingResponse` com MJPEG a partir dos frames que o
+`Core` já tem em memória. Aceite: duas câmeras ao vivo no navegador, e no
+celular pela rede local.
+
+**Estágio 4 — People e Ajustes.** As telas que mais sofrem com o HighGUI: é
+onde não se consegue colar o token de 46 caracteres nem escrever um nome com
+acento. Aceite: cadastrar nome e colar o token pelo navegador.
+
+### 17.4 Decisões já tomadas, para não reabrir
+
+- **Só rede local.** Sem porta aberta para a internet, sem login. A notificação
+  do Telegram é que atravessa a rede, e já funciona. Autenticação só entra se o
+  acesso de fora algum dia entrar, e aí é decisão nova.
+- **A web lê o que já existe.** Os JSON em `clips/` continuam sendo a fonte. O
+  banco de eventos (item 13) é independente e vem depois, se vier.
+- **O `Core` não muda.** Ele não sabe que existe web, do mesmo jeito que não
+  sabe que existe janela. Quem serve é que lê o `Core`.
+- **Sem framework de frontend.** HTML e JavaScript simples servem para listar,
+  filtrar e tocar vídeo. React aqui seria o oposto do reaproveitamento útil:
+  peso sem problema que justifique.
+
+### 17.5 O que isso fecha no backlog
+
+Itens 5 (reprodução), 6 (busca e filtro), 11 (linha do tempo) e o acesso remoto
+saem quase de graça, porque o navegador já faz o trabalho pesado de cada um.
+
+---

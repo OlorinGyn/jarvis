@@ -96,6 +96,13 @@ desfazer. Ver ARQUITETURA 7.11.
 A contagem baixa de dependências que isso produziu **não é mérito do projeto** —
 ver seção 11.
 
+### Interface web com FastAPI
+A vigilância já roda sem janela, mas não havia como olhar um núcleo sem janela.
+`http.server` foi cogitado e descartado: é de uma thread, então MJPEG ao vivo
+travaria tudo, e não resolve HTTP Range, que o `<video>` exige para arrastar a
+barra. `pydantic_core` (Rust compilado) testado contra o Smart App Control no
+dev: carrega. **Confirmar no M900.** Ver ARQUITETURA 17.
+
 ### Sem compactar os vídeos
 Implementado e removido. Medido em arquivo real: zip economiza **0,2%**, bzip2 e
 lzma deixam o arquivo **maior**. H.264 já é codificado por entropia. Ver
@@ -258,6 +265,8 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    vídeo, rola lista, aceita acento, cola texto e abre no celular. Entregue
    junto, de graça: acesso remoto e os itens 5, 6 e 11. Fazer **ao lado** da
    janela atual, sem removê-la, para comparar antes de descartar.
+   **Stack: FastAPI + uvicorn**, decidido por MJPEG e HTTP Range, não por gosto.
+   Plano em quatro estágios, cada um com critério de aceite: ARQUITETURA 17.
 
 ### Importante
 
