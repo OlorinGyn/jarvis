@@ -140,12 +140,24 @@ jarvis_vigilancia.bat
 receber conexões da rede; é preciso permitir. Sem isso, só o próprio computador
 abre a página.
 
+Para parar de qualquer terminal, sem procurar o console do serviço:
+
+```bat
+uv run python -m jarvis --stop
+```
+
+O que aconteceu fica em `logs\jarvis.log`.
+
 A janela antiga do OpenCV ainda existe, **provisoriamente**, para nomear rostos
 e mexer nos ajustes até a web fazer isso (backlog, item 3):
 
 ```bat
-uv run python -m jarvis --janela
+uv run python -m jarvis --window
 ```
+
+**Since 09/10/2026 the copy that stays on is production, in `C:\JARVIS`**, and
+this folder becomes the test copy. Running the commands above here starts the
+test copy. See section 9.
 
 ## 3. O que é baixado automaticamente
 
@@ -187,23 +199,20 @@ fisicamente.** Ou desligue o Tapo Care. Detalhes em ARQUITETURA seção 11.
 **Reserve o IP por MAC no roteador.** Sem isso o endereço muda numa renovação de
 DHCP e o sistema para de conectar.
 
-## 5. Iniciar junto com o Windows
+## 5. Starting with Windows
 
-Para um sistema de vigilância isso costuma ser o que se quer. Use o Agendador de
-Tarefas, não a pasta Inicializar — o Agendador reinicia o programa se ele cair.
+Do not create the task by hand. `tools\production.ps1 -Action install`
+(section 9) registers it with the settings that matter, and two of them are easy
+to get wrong by hand:
 
-1. Abra o **Agendador de Tarefas** → Criar Tarefa
-2. **Geral:** com `jarvis_vigilancia.bat`, marque "Executar estando o usuário
-   conectado ou não" — não precisa de ninguém logado
-3. **Disparadores:** Ao iniciar o computador
-4. **Ações:** Iniciar um programa → o caminho completo do `jarvis_vigilancia.bat`
-   (não o atalho: o Agendador precisa do arquivo de verdade)
-5. **Configurações:** marque "Se a tarefa falhar, reiniciar a cada 1 minuto"
+- **No execution time limit.** The Task Scheduler default is 72 hours: it
+  would kill the surveillance every three days.
+- **A trigger every 5 minutes**, not "restart on failure", which only acts
+  when the task fails to *start*, not when the program crashes later
+  (ARQUITETURA 18.7).
 
-Com o serviço subindo sozinho, o atalho da Área de Trabalho vira só "abrir a
-página": ele percebe o serviço rodando e abre o navegador. Automatizar esse
-passo, e tirar o console do caminho, está no backlog depois do estágio 4 da
-interface web.
+The task runs production from `C:\JARVIS` without a console, whether or not
+anyone is logged on.
 
 ## 6. Ajustes para o M900
 
@@ -437,3 +446,76 @@ Não há retenção automática ainda, e o ritmo real é de **~300 MB por dia**
 `clips/<camera>/<data>/`, uma pasta por dia, e podem ser apagadas à vontade —
 o mais simples é apagar as pastas de dias antigos. O buffer em `clips/_buffer/`
 se limpa sozinho, e `backups/` só tem o que as ferramentas guardaram.
+
+## 9. Production and test (since 09/10/2026)
+
+Written in English (CLAUDE.md, language). How it works and why: ARQUITETURA
+18.
+
+### 9.1 The two copies
+
+| | Production | Test copy |
+|---|---|---|
+| Folder | `C:\JARVIS` | this project folder |
+| Runs | always, started by Windows | only when you start it |
+| Version | the latest **release tag**, reviewed | whatever is being written |
+| Cameras | `stream1`, 1080p, records in HD | `stream2`, 640x360 |
+| Page | `http://127.0.0.1:8765` (from another computer: `http://192.168.0.18:8765`) | `http://127.0.0.1:8766` |
+| Telegram | on | off, prefix `[TEST]` |
+| Desktop | **J.A.R.V.I.S.** opens it | **J.A.R.V.I.S. (test)** starts it |
+
+Both can run at once: the camera serves `stream1` to one client and `stream2` to
+several (ARQUITETURA 18.2). Each copy has its own recordings, faces and
+settings — a name given in the test copy does not reach production.
+
+### 9.2 Day to day
+
+| Want | Do |
+|---|---|
+| Look at the cameras | the **J.A.R.V.I.S.** desktop shortcut |
+| Is production all right? | `powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action status` |
+| Stop it on purpose | `... -Action stop` — stays stopped, even after a reboot, until `start` |
+| Start it again | `... -Action start` |
+| Are the recordings still readable? | `... -Action check` |
+| What happened? | `C:\JARVIS\logs\jarvis.log` |
+
+Stopping production any other way (Task Manager, ending the task) skips the
+clean shutdown, and a clip being assembled at that moment is lost. Within
+5 minutes Windows starts it again anyway, unless it was stopped with `stop`.
+
+### 9.3 Updating
+
+Updates are run by Claude, on request, after an architect review has tagged a
+release (CONTEXTO 13). Never automatic: a failed update at night is a night
+without surveillance.
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action update
+```
+
+It checks that every recording and face is readable before and after, and if
+the new version fails anything, it puts the previous one back and says so on
+Telegram.
+
+### 9.4 Installing on a new machine
+
+From the project folder, after `instalar.bat` and with the program closed:
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action install
+```
+
+Windows asks once for administrator permission, to register the startup task.
+Refusing it leaves production running now, but it will not come back after a
+reboot; register it later from an administrator PowerShell with
+`-Action register`. If an install fails half-way, delete `C:\JARVIS` and run it
+again.
+
+### 9.5 When something is wrong
+
+| Symptom | Look at |
+|---|---|
+| The page does not open | `-Action status`; if it says HELD, `-Action start`; otherwise `C:\JARVIS\logs\jarvis.log` |
+| Another computer gets nothing, and the log says `Invalid HTTP request received` | the browser is trying `https://`; type `http://192.168.0.18:8765` (ARQUITETURA 17.8) |
+| A camera shows "no signal" | its last frame is over 5 s old; the reason is written under it, and the camera reconnects on its own |
+| Telegram message "update ... FAILED" | the previous version is back; the message says whether it is running |

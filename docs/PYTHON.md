@@ -952,3 +952,80 @@ divisor em Python (`-1 % 5 == 4`), ao contrário de Java (`-1 % 5 == -1`).
 | Falha do OpenCV | Silenciosa: `imread` devolve `None`, `imwrite` devolve `False`. |
 | Threads | Não paralelizam código Python puro (GIL), mas objetos nativos compartilhados correm risco de verdade (14.2). |
 | Sem compilação | Erro de digitação só aparece ao executar aquela linha. |
+
+---
+
+## 23. `logging` instead of `print`
+
+Written in English: the user moved the documentation to English on 09/10/2026.
+
+`print` writes to the console, and a scheduled task has none. The standard
+library's `logging` separates **what** is said from **where** it goes:
+
+```python
+logger = logging.getLogger(__name__)
+logger.info("  event %s %s [%s] %ss, %s", cam.label, saved["path"].name,
+            names, saved["seconds"], saved["reason"])
+```
+
+- **One logger per module**, named after it (`jarvis.cameras`, `jarvis.web`).
+  They form a tree under the root logger, the way `ILogger<T>` does in .NET.
+- **Handlers** decide where messages go. `log.setup()` adds one to the console;
+  `log.to_file()` adds a `RotatingFileHandler` — at 1 MB the file becomes
+  `jarvis.log.1`, the oldest of five is dropped, and the log never fills the
+  disk. In .NET terms: sinks.
+- **`%s` placeholders, not f-strings.** The arguments are only formatted if the
+  message is actually written. Minor here; it is the habit the library expects.
+- **Crashes go to the log too.** `sys.excepthook` is called for an exception
+  nobody caught in the main thread, `threading.excepthook` for one in any other
+  thread. Without the second, a thread that dies — the web server, a clip
+  assembly — disappears with a traceback on a console nobody sees.
+
+Only the running service writes the file. A second process writing it — the
+`--stop` command, say — would break rotation on Windows, which cannot rename a
+file another process holds open.
+
+## 24. `threading.Event`: a stop signal between threads
+
+`--stop` arrives as an HTTP request, handled in a web server thread. The loop
+that has to stop runs in the main thread. They meet through a
+`threading.Event`, created in `main()` and handed to both sides:
+
+```python
+stop = threading.Event()
+server = web.start(port=port, on_stop=stop.set)
+...
+while not stop.is_set():
+    if not core.step():
+        time.sleep(IDLE_SLEEP)
+```
+
+`stop.set` is passed **without parentheses**: the function itself, to be
+called later — a delegate in C#, a `Runnable` method reference in Java. The web
+thread calls it; the main loop sees the flag on its next pass and leaves
+through the same path as Ctrl+C, so the `finally` that assembles pending clips
+still runs.
+
+Why not a global boolean? An `Event` is safe to set from one thread and read
+from another, and it can also be *waited on* (`stop.wait(timeout)`), which a
+plain variable cannot.
+
+## 25. Text encodings: the byte-order mark
+
+UTF-8 files sometimes start with three invisible bytes, `EF BB BF`, the
+**byte-order mark**. Windows tools like to add it: PowerShell's
+`Set-Content -Encoding UTF8` does, and so do some editors. Python reading the
+file as `utf-8` keeps it as a character, `﻿`, and `json.loads` fails on
+it.
+
+That cost something real here: `settings.load()` caught the error and quietly
+returned the defaults, so a `config.json` saved with a BOM **lost the Telegram
+token without any message**. The fix is one word:
+
+```python
+json.loads(FILE.read_text(encoding="utf-8-sig"))
+```
+
+`utf-8-sig` skips the mark if it is there and reads normally if it is not.
+Writing stays plain `utf-8`, without a mark. Java's `InputStreamReader` with
+UTF-8 has the same trap; .NET's `StreamReader` detects the mark by default.

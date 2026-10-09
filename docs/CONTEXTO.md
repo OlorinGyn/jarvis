@@ -48,8 +48,16 @@ uv run python -c "import tokenize,pathlib; print(sum(sum(1 for t in tokenize.gen
 
 Olha só `src/` e `tools/`; o `.venv` tem milhares de comentários de terceiros.
 
-**Toda mudança termina em commit + documentação atualizada.** Sem exceção, e sem
-precisar pedir. A mensagem de commit explica o **porquê**, não só o quê.
+**Toda mudança termina em commit**, sem precisar pedir. A mensagem explica o
+**porquê**, não só o quê. **Who updates the documentation changed on
+09/10/2026:** the developer never does; it writes `HANDOFF.md`, and the
+architect integrates it (section 13.1, `CLAUDE.md`).
+
+**Generated files must never break — decided by the user on 09/10/2026.** A new
+version reads everything an older one wrote. Changes are additive; anything
+else is announced to the user first and ships with a migration.
+`tools/check_data.py` proves it, and every production update runs it
+(ARQUITETURA 19).
 
 **Antes de commitar, confira que o `.env` não entrou.** Ele tem as senhas reais
 das câmeras. Eu já vazei essas senhas uma vez, em exemplos dentro da
@@ -161,6 +169,12 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
 | M900 não subia, `Failed to spawn: python` (`WinError 4551`), 09/10 | O Smart App Control passou a recusar o Python que o uv baixa (sem assinatura) — o mesmo arquivo que rodava em 29–30/09; o veredito de reputação mudou sozinho | Python oficial assinado pela PSF + `python-preference = "system"`; `.bat` chamam `python -m jarvis`, sem o `jarvis.exe` sem assinatura (INSTALACAO 1.2) |
+| A person arriving after an animal was never announced (R1) | Notification tried only on the event's first frame | One attempt per new label during the event, photo `HH-MM-SS.alert.jpg` (ARQUITETURA 12.8) |
+| Two launches a moment apart brought up two copies (R2) | Port checked, then bound later in another thread | Port bound atomically in the main thread, `SO_EXCLUSIVEADDRUSE`, handed to uvicorn (ARQUITETURA 18.8) |
+| Live picture froze when the service restarted (R3) | A dead MJPEG connection keeps its last frame | `frame_age`, "no signal" after 5 s, page reconnects when `started` changes (ARQUITETURA 17.8) |
+| `config.json` saved with a BOM silently lost the token | `json.loads` on `utf-8` fails on the mark; `load()` returned defaults | Every JSON reader uses `utf-8-sig` (ARQUITETURA 19.3) |
+| The production data gate always passed | PowerShell function output joins its return value | `\| Out-Host`; proven with a corrupted file (ARQUITETURA 18.9) |
+| A crash would have ended production until the next reboot | "Restart on failure" only acts on a failed *start* | Task trigger every 5 min + ignore new; `HOLD` file for updates (ARQUITETURA 18.7) |
 
 ## 5. Medições de referência
 
@@ -619,8 +633,16 @@ O usuário divide o trabalho em dois papéis, como numa equipe:
 
 | Papel | Modo do Claude | Faz |
 |---|---|---|
-| **Desenvolvedor** | `high` | implementa, testa, documenta, commita |
-| **Arquiteto** | `ultracode` | revisa o que o desenvolvedor fez, sem pressa de entregar |
+| **Desenvolvedor** | `high` | implementa, testa, commita localmente, escreve `HANDOFF.md` |
+| **Arquiteto** | `ultracode` | revisa, documenta, gerencia backlog, sincroniza com o GitHub, marca releases |
+
+**Refined by the user the same day:** the developer never edits documentation.
+At the end of a delivery it writes `HANDOFF.md` — what changed, data-format
+impact, suggested documentation by section, topics worth teaching, what to
+review hardest — and asks: *"Arquiteto, precisamos da sua análise."* The
+architect decides what is worth documenting, integrates it, empties the file,
+pushes, and tags a release when the code is fit for production. Production only
+ever runs tags (ARQUITETURA 18.7).
 
 **O desenvolvedor avisa quando é hora de revisar.** Ao terminar uma entrega,
 diga ao usuário que há material para revisão e peça para ele ativar o
@@ -649,8 +671,10 @@ decidir.
 | # | Data | Intervalo revisado | Resultado |
 |---|---|---|---|
 | 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARQUITETURA 18) |
+| 2 | 09/10/2026 | `760d68e..67f7d23` — everything before production: logging, clean stop, per-install stream and port, R1–R3, R5, R8, `check_data`, `production.ps1` | 4 code problems fixed in `8a81084` (13.5); full production cycle tested including a forced rollback; HANDOFF integrated; R11–R14 opened; **first release `v2026.10.09` tagged** |
 
-**Última revisão cobre até `456b613`.** A próxima começa do commit seguinte.
+**Last review covers up to the `v2026.10.09` release commit.** The next one
+starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
 
@@ -675,16 +699,20 @@ subir de novo em 09/10.
 
 | | # | Prioridade | Recomendação | Estado |
 |---|---|---|---|---|
-| | R1 | **alta** | Aviso de pessoa que aparece no meio de um evento | aberta |
-| | R2 | média | Corrida no arranque: dois lançamentos seguidos sobem duas instâncias | aberta |
-| | R3 | média | Ao vivo congela sem aviso se o serviço reiniciar | aberta |
+| ✓ | R1 | **alta** | Aviso de pessoa que aparece no meio de um evento | done `760d68e` (ARQUITETURA 12.8) |
+| ✓ | R2 | média | Corrida no arranque: dois lançamentos seguidos sobem duas instâncias | done `760d68e`, made atomic in review 2 `8a81084` (ARQUITETURA 18.8) |
+| ✓ | R3 | média | Ao vivo congela sem aviso se o serviço reiniciar | done `760d68e` (ARQUITETURA 17.8) |
 | ✓ | R4 | média | Exposição na rede Wi-Fi classificada como Pública — **decisão do usuário** | decided 09/10: keep open to the LAN |
-| | R5 | média | "Reconhecido" com semelhança baixa | aberta |
-| | R6 | média | Testes automáticos para as rotas da web e as travas do aviso | aberta |
-| | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | aberta |
-| | R8 | baixa | Falha de rede na página não aparece para o usuário | aberta |
+| ✓ | R5 | média | "Reconhecido" com semelhança baixa | done `760d68e` (ARQUITETURA 12.8) |
+| | R6 | média | Testes automáticos para as rotas da web e as travas do aviso | open; data is covered by `check_data.py`, routes and notify rules still are not |
+| | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | partly: `production.ps1` checks it; `instalar.bat` still does not |
+| ✓ | R8 | baixa | Falha de rede na página não aparece para o usuário | done `760d68e` (ARQUITETURA 17.8) |
 | | R9 | verificação | `python-preference = "system"` na máquina de desenvolvimento | aberta |
-| | R10 | **high** | Move everything except the conversation to English (user decision) | open |
+| | R10 | **high** | Move everything except the conversation to English (user decision) | in progress: web, terminal, flags, notifications and new docs done; see 13.5 |
+| | R11 | **high** | `settings.save()` drops keys it does not know | open |
+| | R12 | medium | Production and test copy on the same M900 double the CPU load | open |
+| | R13 | verification | The startup task survives a reboot, and restarts after a crash | open |
+| | R14 | low | Live MJPEG is encoded once per viewer | open |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -786,3 +814,64 @@ order:
 Data on disk does **not** change: JSON keys are already English, and folder
 names (`clips/`, `faces/`, `backups/`) too. A dedicated session; check the
 cross-references by script afterwards, the way the 30/09 review did.
+
+### 13.5 Review 2 — what was fixed, and the new recommendations
+
+Reviewed `760d68e..67f7d23` (the developer's pre-production delivery) against
+the code and a real run, before the first release.
+
+**Fixed by the architect in `8a81084`:**
+
+- **R2 was only half fixed.** The port was checked in the main thread and bound
+  later in uvicorn's; two launches a moment apart both saw it free. Now bound
+  atomically with `SO_EXCLUSIVEADDRUSE` and handed to uvicorn. Tested: two
+  launches at the same instant, one runs (ARQUITETURA 18.8).
+- **Crash recovery would not have worked.** "Restart on failure" only acts when
+  a task fails to start; a crash after starting would have ended the
+  surveillance until the next reboot. Replaced by a 5-minute trigger with
+  "ignore new", plus a `HOLD` file so the trigger cannot start production
+  mid-update or after a deliberate stop (ARQUITETURA 18.7).
+- **Updates needed admin.** Starting and stopping a scheduled task does; the
+  script now stops through `--stop` and starts `pythonw.exe` directly, and only
+  the task registration asks for elevation.
+- **Several processes wrote `logs/jarvis.log`**, which Windows cannot rotate
+  while another process holds it. Only the service writes it now.
+- Smaller: `.env` written without a BOM; the test copy also loses
+  `archive_path`; the rollback cannot skip its Telegram message; an em dash
+  that PowerShell 5.1 read as a closing quote; unknown `config.json` keys are a
+  warning in `check_data`, not a failure.
+
+**Tested before tagging**, in a temporary folder: install, stop with hold, the
+task's start refused while held, status, start, and an update to a version
+broken on purpose — it failed the health check and rolled back on its own to
+the previous version, both cameras fresh (ARQUITETURA 18.7).
+
+**New recommendations:**
+
+**R11 — `settings.save()` drops keys it does not know (high).** It keeps only
+the keys in `DEFAULTS`. After a rollback, or any older version saving
+`config.json` (the Ajustes tab, `discover_chat`), settings a newer version added
+are erased. That breaks the user's rule from the other direction: the file stays
+readable, but loses content. Fix: `save()` keeps unknown keys as they were.
+Small, and should go in before any version adds a key that matters.
+
+**R12 — Production and the test copy on the same M900 (medium).** Each runs
+its own decode, MOG2 and YOLO. With both on, the 4-core Skylake carries double
+the load, and production is the one that must not drop frames. Until backlog
+item 4 measures it, run the test copy on the other computer, or briefly here.
+
+**R13 — Verify the startup task (verification).** What only the real machine
+can test: production comes back after a reboot with nobody logged on, and
+within 5 minutes after its process is killed. Do both once after the first
+install.
+
+**R14 — Live MJPEG is encoded once per viewer (low).** Two browsers watching
+encode every frame twice. Fine for one household; cache the last JPEG per camera
+if it ever matters.
+
+**R10 progress.** In English now: web routes and page, terminal and log
+messages of the service, command-line flags, notification texts, CLAUDE.md, and
+every section written since 09/10/2026. Still Portuguese: older documentation,
+`capture.py` error messages (`TRANSLATIONS`, "FALHOU - ..."), `ui.py`,
+`notify.discover_chat()`, and the Portuguese file names in `tools/` and the
+`.bat` files.

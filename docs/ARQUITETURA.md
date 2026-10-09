@@ -89,8 +89,11 @@ jarvis/
 │   ├── ui.py             janela OpenCV: Live, Records, People e Ajustes
 │   ├── web.py            interface web: servidor FastAPI (seção 17)
 │   ├── static/           a página da interface web: HTML, CSS e JavaScript
+│   ├── log.py            logging to the console and logs/jarvis.log (18.7)
 │   └── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── tools/                ferramentas, fora do programa
+│   ├── production.ps1    install, update, status, stop, start production (18.7)
+│   ├── check_data.py     reads every file on disk with the current code (19.4)
 │   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
 │   ├── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
 │   ├── refazer_rostos.py reconstrói faces/ a partir dos clipes
@@ -108,6 +111,7 @@ jarvis/
 ├── jarvis.bat            inicia com janela (o atalho da Área de Trabalho aponta para ele)
 ├── jarvis_vigilancia.bat inicia sem janela: só grava, avisa e serve a página web
 ├── CLAUDE.md             regras de trabalho, lidas por toda sessão do Claude Code
+├── HANDOFF.md            developer to architect, emptied after each review
 ├── README.md             apresentação e links para docs/
 ├── .env.example          modelo de configuração, versionado
 │
@@ -121,8 +125,12 @@ jarvis/
 ├── faces/                rostos e galeria
 │   ├── gallery.json      pessoas conhecidas e desconhecidas
 │   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
-└── backups/              cópias que as ferramentas fazem antes de mexer em dados
+├── backups/              cópias que as ferramentas fazem antes de mexer em dados
+├── logs/                 jarvis.log and its rotations (19.2)
+└── HOLD                  only while production is held (18.7)
 ```
+
+Production is a second clone, `C:\JARVIS`, with this same layout (18.7).
 
 Na raiz ficam só o que o usuário abre ou edita (os `.bat`, o `.env`), a porta
 de entrada da documentação (`README.md`, `CLAUDE.md`) e o que as ferramentas
@@ -1833,6 +1841,35 @@ Testado em 09/10/2026 com dois clipes de 29/09 e uma cópia da galeria: as duas
 mensagens chegaram, uma com "Gustavo Henrique Gomes reconhecido" e outra com
 "Izabel reconhecido", cada uma com o recorte do rosto.
 
+### 12.8 A person who arrives after an animal, and other changes (09/10/2026)
+
+**The bug (review 1, R1).** The notification was attempted only on an event's
+first frame, with that frame's labels. An event that began with a dog was not
+announced — only `person` notifies — and nothing tried again, so a person
+arriving seconds later passed in silence, and never got the face message of
+12.7 either, which depends on the first message having gone out. On 30/09, 29
+of the 85 events with a person also had an animal.
+
+**The fix.** `EventRecorder.update()` calls `_notify_late()` on every frame of
+an open event. While the event has not been announced, each label not yet
+tried gets **one** attempt — so `config.json` is not read every frame:
+
+```python
+new = {s.label for s in subjects} - self.notify_tried
+```
+
+The photo is of that moment, not the event thumbnail (which shows the dog),
+saved as `HH-MM-SS.alert.jpg`; if nothing was sent, it is deleted. The name
+matters: see 19.2.
+
+**Wording (R5).** The face message says `X recognized` only when the match is
+at least `LEARN_THRESHOLD` (0.45) — the bar the gallery already trusts to learn
+from (10.4). Between `MATCH_THRESHOLD` (0.363) and 0.45 it says `probably X`;
+no name, `unknown face`. Messages are in English since 09/10/2026 (CLAUDE.md).
+
+**`notify_prefix`** in `config.json`, empty by default, is put in front of every
+message. The test copy uses `[TEST]` (18.7).
+
 ---
 
 ## 13. Restrição importante das câmeras Tapo
@@ -1991,13 +2028,16 @@ motivo é a seção 15.1.
 | Quero | Comando |
 |---|---|
 | Usar o J.A.R.V.I.S. | `jarvis.bat` ou o atalho: serviço + navegador (17.7) |
-| Só o serviço, sem abrir nada | `jarvis_vigilancia.bat` |
-| A janela antiga, provisória | `uv run python -m jarvis --janela` |
+| Só o serviço, sem abrir nada | `jarvis_vigilancia.bat` (`--headless`) |
+| Parar de qualquer terminal | `uv run python -m jarvis --stop` |
+| A janela antiga, provisória | `uv run python -m jarvis --window` |
 | Ver pelo navegador ou celular | `http://127.0.0.1:8765`, ou o endereço de rede que ele imprime |
 
-Sem janela, o encerramento é `Ctrl+C`. No Windows, `Ctrl+C` no terminal vira
-`KeyboardInterrupt` no Python, que o `run_headless` captura — e o `finally` do
-`main()` fecha tudo em ordem.
+Sem janela, o encerramento é `Ctrl+C` ou `--stop`. No Windows, `Ctrl+C` no
+terminal vira `KeyboardInterrupt` no Python, que o `run_headless` captura; o
+`--stop` pede pela web e o laço sai pelo mesmo caminho. Nos dois casos o
+`finally` do `main()` fecha tudo em ordem. Production, since 09/10/2026, runs
+as a scheduled task with no console: 18.7.
 
 **Ainda não é serviço de verdade.** Rodar no boot sem ninguém logado é outro
 assunto (Agendador de Tarefas ou NSSM), e depende da interface web do item 3 do
@@ -2018,10 +2058,12 @@ backlog, porque hoje não há como olhar um núcleo sem janela.
 | Interface Live, Records e People, com calendário e rolagem | 9 |
 | Rostos: só de frente e sobre uma pessoa, nome que vira referência | 10 |
 | Armazenamento em camadas, HD externo após 30 dias | 11 |
-| Aviso no celular pelo Telegram | 12 |
+| Aviso no celular pelo Telegram, inclusive pessoa que chega depois de um animal | 12 |
 | Ícone e atalho na Área de Trabalho | 14 |
-| Vigilância sem janela (`--sem-janela`) | 15 |
-| Interface web: ao vivo e lista de eventos, no navegador e na rede local | 17.6, 17.7 |
+| Vigilância sem janela (`--headless`), parada limpa (`--stop`) | 15 |
+| Interface web: ao vivo e lista de eventos, no navegador e na rede local | 17.6–17.8 |
+| Production in `C:\JARVIS` as a startup task, reviewed releases, update with rollback | 18.7 |
+| Every file ever written stays readable; `check_data.py` proves it | 19 |
 
 Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
 bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
@@ -2248,9 +2290,68 @@ pelo `finally` do `main()` — o Windows mata o processo, e um clipe em montagem
 se perderia. Rodar como serviço de verdade, sem console, é o passo depois do
 estágio 4.
 
+### 17.8 Current state of the web, after the pre-production delivery (09/10/2026)
+
+17.6 and 17.7 record how stages 1 and 3 were built; some names there have
+changed since. This is the current state.
+
+**Routes** (renamed to English while nothing outside the page depended on them):
+
+| Route | Returns |
+|---|---|
+| `/` | the page |
+| `/static/...`, `/icon.png` | CSS, JavaScript, icon |
+| `/api/cameras` | camera names; empty while they are still starting |
+| `/api/status` | `cameras`, `started` (when this server started), `frame_age` (seconds since each camera's last frame, `null` if none ever arrived) |
+| `/api/days` | days with recordings, newest first |
+| `/api/events?day=YYYY-MM-DD` | `{day, events}`; without `day`, today |
+| `/thumbnail/<cam>/<day>/<HH-MM-SS>.jpg` | an event thumbnail, same checks as before (17.6) |
+| `/live/<cam>` | MJPEG (17.7) |
+| `POST /api/shutdown` | clean stop; **only from 127.0.0.1** — the port is open to the LAN, and anyone on the Wi-Fi could otherwise switch the surveillance off. 403 from anywhere else |
+
+**Command line:**
+
+| Command | Does |
+|---|---|
+| `python -m jarvis` | service plus browser (`jarvis.bat`, the shortcut) |
+| `python -m jarvis --headless` | service only (`jarvis_vigilancia.bat`, the startup task) |
+| `python -m jarvis --stop` | asks a running service to stop, waits until it is gone |
+| `python -m jarvis --window` | the old OpenCV window, temporary |
+
+`--sem-janela` and `--janela` still work as aliases.
+
+**The port is the lock (R2).** The web binds its port before the cameras open,
+atomically (18.8), so a second launch during the slow camera startup finds it
+taken. `web.attach(core)` hands the `Core` over once the cameras are up; until
+then `/api/cameras` answers with an empty list.
+
+**No frozen pictures (R3).** `FFmpegCamera.frame_age` says how old the last
+frame is. `Core.live_view()` draws "no signal" instead of a picture older than
+`STALE_SECONDS` (5 s): a stopped camera must not look like a quiet scene. The
+page asks `/api/status` every 5 s; if `started` changes — the service
+restarted — it reopens the streams, because a broken MJPEG connection would
+otherwise sit on its last frame forever.
+
+**Failures are visible (R8).** If `/api/status` stops answering, a red "No
+connection to J.A.R.V.I.S." appears at the top and the live pictures are
+replaced by the same message; everything reconnects on its own.
+
+**The page is in English**, and labels are shown as the system names them
+(`person`, `dog`) — the Portuguese translation table is gone with the language
+decision.
+
+**HTTPS from another computer.** The server speaks plain HTTP. A browser that
+tries `https://` first — typed without the scheme, or with "always use secure
+connections" on — gets nothing, and the service logs `Invalid HTTP request
+received` several times a second. Reproduced on 09/10/2026: an `https://`
+request produces exactly that line, `http://` answers 200. The user confirmed
+`http://192.168.0.18:8765` works from the other computer. HTTPS on a home
+network would need a certificate the browser trusts; a self-signed one means a
+warning on every visit, so it is not worth it now.
+
 ---
 
-## 18. Production and test — design (proposed 09/10/2026)
+## 18. Production and test (designed and built 09/10/2026)
 
 Written in English: the user decided on 09/10/2026 that documentation moves to
 English (CONTEXTO R10). Older sections are still in Portuguese until then.
@@ -2350,9 +2451,201 @@ even if the web thread is stuck.
   never automatically, because an automatic update that fails at 3 a.m. is a
   night without surveillance.
 
+**Where they stand (09/10/2026).** Who updates: **Claude, on request, after a
+review** — that is how the user asked for the first release, and how
+`update` is meant to be run. Where the test copy runs: not decided; the install
+turns the development folder on the M900 into the test copy, which only runs
+when started. Moving it to the other computer later means configuring that
+checkout the same way (`CAM_STREAM=stream2`, `WEB_PORT=8766`, no token).
+
 ### 18.6 Later
 
 A **file source**: point the test copy at a folder of recorded clips instead of
 a camera, and replay them through the whole pipeline. It makes face
 recognition testable at full resolution and makes any bug reproducible with
 the exact footage that caused it.
+
+### 18.7 As built (09/10/2026)
+
+Everything in 18.4 is implemented. Production lives in `C:\JARVIS`, a clone of
+the GitHub repository checked out at a release tag, and is driven by one
+script, run from the development folder:
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action <action>
+```
+
+| Action | Does | Needs admin |
+|---|---|---|
+| `install` | clone, copy data, `uv sync`, check data, start, health check, Telegram, turn the development folder into the test copy, desktop shortcut, register the startup task | only for the task, which it asks for on its own |
+| `update` | update to the newest release tag (or `-Tag vX`), with checks and rollback | no |
+| `status` | version, task, held or not, seconds since each camera's last frame | no |
+| `stop` | stop cleanly **and hold**: the task will not start it again | no |
+| `start` | release the hold, start, health check | no |
+| `check` | run `tools/check_data.py` against production's data | no |
+| `register` | register the startup task only | **yes** |
+
+**The startup task** runs `C:\JARVIS\.venv\Scripts\pythonw.exe -m jarvis
+--headless` directly: no console and no uv in the way. `pythonw.exe` there is
+the venv launcher of the signed python.org build, so Smart App Control lets it
+run (INSTALACAO 1.2); `Sync` refuses to finish if it is not.
+
+| Setting | Value | Why |
+|---|---|---|
+| Logon type | S4U | runs whether or not anyone is logged on, with no password stored. Registering it is what needs admin |
+| Triggers | at startup, **and every 5 min** | see below |
+| Multiple instances | ignore new | the 5-minute trigger does nothing while it runs |
+| Execution time limit | none | **the Task Scheduler default is 72 hours**: left alone it would kill the surveillance every three days |
+
+**Why a 5-minute trigger.** The first version relied on "restart on failure".
+The review found that this setting only acts when the task *fails to start*,
+not when the program, once started, exits with an error — so a crash would
+have ended the surveillance until the next reboot. A trigger every 5 minutes
+with "ignore new" is the reliable form: running, nothing happens; crashed, it
+is back within 5 minutes. A second copy cannot slip in either way, because
+`main()` itself refuses to start next to a running one (17.7, 18.8).
+
+**Why a `HOLD` file.** Starting and stopping a scheduled task needs admin
+rights, and updates run without them. So the script never touches the task: it
+stops the service through `--stop` and starts it directly with `pythonw.exe`.
+That leaves one problem — the 5-minute trigger could start production in the
+middle of an update, on half-switched code. `main()` therefore refuses to start
+while `C:\JARVIS\HOLD` exists. `update` creates it before stopping and
+`start` removes it; `stop` leaves it in place, which is what "stop" should mean.
+
+**An update**, in order, and where it stops:
+
+1. Check the data with the **current** version. Unreadable already → refuse,
+   nothing changed.
+2. Hold, stop cleanly.
+3. `git checkout --force <tag>`, `uv sync --frozen`, signature check.
+4. Check the data with the **new** version.
+5. Release, start, health check: within 90 s every camera's last frame must be
+   under 5 s old (`/api/status`, `frame_age`).
+6. Any failure in 3–5 → hold, stop, check out the previous version, sync,
+   start, health check, and a Telegram message saying the update failed and
+   what is running.
+
+**Tested before the first release**, in a temporary folder with
+`-SkipTask` (no task, no shortcut, no Telegram):
+
+| Test | Result |
+|---|---|
+| install | clone, copy, sync and both cameras fresh in about 30 s |
+| `stop` | clean stop, `HOLD` created |
+| what the task would do while held | "Held: ... Not starting." |
+| `status` | version, held, not answering |
+| `start` | hold released, running |
+| update to a version broken on purpose | failed the health check, rolled back by itself; `status` afterwards showed the previous version with both cameras fresh (0.0 s and 0.1 s) |
+
+What only the real install can test: registering the task (admin), the shortcut,
+turning the development folder into the test copy, and a reboot.
+
+### 18.8 What the review changed (09/10/2026)
+
+The developer's first version was reviewed before the first release (CONTEXTO
+13.2, review 2). Besides the task design above:
+
+- **The port as an atomic lock.** The first version checked whether the port
+  was free and bound it a moment later, in uvicorn's thread; two launches a
+  moment apart could both see it free. `web._bind()` now binds it in the main
+  thread with `SO_EXCLUSIVEADDRUSE` (without it, Windows lets a second process
+  bind the same port) and hands the bound socket to uvicorn
+  (`Server.run(sockets=[...])`). If the port is taken, `main()` waits up to 5 s
+  for a J.A.R.V.I.S. to answer there and leaves if one does; if nothing
+  answers, another program has the port and the surveillance runs without the
+  web rather than not at all. Tested: two launches at the same instant, one
+  runs.
+- **Only the service writes `logs/jarvis.log`.** `--stop` and a duplicate
+  launch log to the console only: on Windows, rotating a log that another
+  process holds open fails.
+- **`.env` written without a BOM** by the install script; with one, the first
+  key of the file would silently stop matching (19.3).
+- **The test copy also loses `archive_path`**: two copies moving recordings
+  into the same external drive would fight over it.
+
+### 18.9 PowerShell traps met while building this
+
+Worth knowing for anyone touching `tools/production.ps1`:
+
+| Trap | What happened |
+|---|---|
+| Everything a function prints is part of its return value | `CheckData` returned the check's output lines plus `$true`/`$false`; a non-empty array is truthy, so **the data gate always passed**. Fixed with `\| Out-Host`, proven with a corrupted file |
+| Names are case-insensitive | a helper named `Git` shadowed `git.exe` and would have called itself forever |
+| Windows PowerShell 5.1 reads a `.ps1` without BOM as ANSI | an em dash in a message became a closing quote, and the script stopped parsing. The script is ASCII-only now |
+| `$ErrorActionPreference = 'Stop'` turns a native program's stderr into an exception | `git describe` on an untagged commit aborted `status` |
+| `Start-Process -Wait` waits for every process the child started too | a test harness hung on the service the install left running (the script itself only waits on the elevated registration, which starts nothing) |
+
+---
+
+## 19. Files on disk, and keeping them readable
+
+### 19.1 The rule
+
+Decided by the user on 09/10/2026: **a new version must never break files
+written by an older one.** The recordings, the face gallery and the names given
+to it are the system's memory; a version that cannot read them has thrown that
+memory away.
+
+So changes to anything below are **additive**: new optional fields, new files.
+A field is never renamed, removed or given a new meaning. If a change cannot be
+additive, the developer stops and tells the user before writing it, and ships a
+migration with it (CLAUDE.md).
+
+### 19.2 What is on disk
+
+| File | Written by | Read by | Content |
+|---|---|---|---|
+| `clips/<cam>/<day>/HH-MM-SS.mp4` | `clips._concat` | the user, the face scan, `tools/verificar_clipes.py` | the camera's own H.264, never re-encoded (8.1) |
+| `clips/<cam>/<day>/HH-MM-SS.jpg` | `EventRecorder._start` | Records, web, notification | first frame with the subject, boxes drawn (8.5) |
+| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason` |
+| `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
+| `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
+| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen` |
+| `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026** |
+| `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
+| `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
+| `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |
+
+Every event file shares the basename `HH-MM-SS`, and that is load-bearing: the
+archive moves an event with `glob(f"{base.name}.*")` (11.2). That is why the
+late alert photo is `HH-MM-SS.alert.jpg` and not `HH-MM-SS_alert.jpg` — the
+second name would be left behind when the event moves to the external drive.
+
+### 19.3 Two traps already met
+
+**`settings.save()` drops keys it does not know.** It keeps only the keys in
+`DEFAULTS`. An older version saving `config.json` erases settings a newer one
+added. Harmless as long as production only moves forward, but it is the reason
+`check_data` warns about unknown keys.
+
+**A byte-order mark makes JSON unreadable.** PowerShell's
+`Set-Content -Encoding UTF8` and some editors start a UTF-8 file with the three
+bytes `EF BB BF`. `json.loads` on a string read as `utf-8` fails on them — and
+`settings.load()` swallowed the error and returned the defaults, so a
+`config.json` saved that way **silently lost the Telegram token**. Found on
+09/10/2026 when a test restore added a BOM and `check_data` caught it. Every
+JSON reader now opens files as `utf-8-sig`, which accepts both; writing is
+unchanged (no BOM).
+
+### 19.4 `tools/check_data.py`
+
+Reads every event, face sighting, the gallery and `config.json` **with the
+current code**, the way the program reads them (including `web._event`, what
+the page shows), plus the archive folder if one is configured and reachable.
+Exit code 1 if any file cannot be read.
+
+```bat
+uv run tools/check_data.py
+```
+
+On the M900 on 09/10/2026: 149 events, 7 people, 20 sightings, all readable.
+
+It is part of every production update, before and after switching versions
+(18.7): the update is refused if the data is already unreadable, and rolled
+back if the new version cannot read it. Proven with a deliberately corrupted
+event JSON (exit 1) and the restored file (exit 0).
+
+Unknown keys in `config.json` are a **warning**, not a failure: the file is
+still readable, and failing would block going back to an older version.
