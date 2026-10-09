@@ -1,0 +1,138 @@
+:root {
+  --fundo: #16181c;
+  --painel: #22252b;
+  --linha: #33373f;
+  --texto: #e8e9eb;
+  --apagado: #9097a3;
+  --pessoa: #4cc36a;
+  --animal: #3cc3e0;
+  --destaque: #3d7a4f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px 8px;
+}
+
+.logo {
+  width: 44px;
+  height: 44px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--apagado);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 16px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.toolbar button,
+.toolbar input {
+  background: var(--painel);
+  color: var(--texto);
+  border: 1px solid var(--linha);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+}
+
+.toolbar button:hover {
+  background: var(--destaque);
+}
+
+.toolbar button:disabled {
+  opacity: 0.35;
+}
+
+#resumo {
+  margin-left: 8px;
+  color: var(--apagado);
+}
+
+#eventos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 16px 20px 32px;
+}
+
+.cartao {
+  background: var(--painel);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.foto {
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.legenda {
+  padding: 8px 10px 10px;
+}
+
+.linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hora {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.camera,
+.duracao {
+  color: var(--apagado);
+  font-size: 0.9rem;
+}
+
+.rotulos {
+  color: var(--animal);
+  font-size: 0.9rem;
+}
+
+.rotulos.pessoa {
+  color: var(--pessoa);
+}
+
+.vazio {
+  grid-column: 1 / -1;
+  color: var(--apagado);
+}

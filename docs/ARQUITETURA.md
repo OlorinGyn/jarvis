@@ -77,20 +77,26 @@ jarvis/
 ├── src/jarvis/           o programa, como pacote Python
 │   ├── __init__.py       ROOT: a raiz do projeto, base de todo caminho
 │   ├── __main__.py       permite `python -m jarvis`
-│   ├── cameras.py        aplicação principal (loop, exibição, orquestração)
+│   ├── cameras.py        Core (vigilância) + run_window / run_headless (seção 15)
 │   ├── capture.py        ffmpeg por câmera: segmentos originais + frames
 │   ├── motion.py         camada 1: detecção de movimento
 │   ├── people.py         camada 2: detecção de pessoas e animais
 │   ├── clips.py          camada 3: eventos, montagem sem perda, metadados
 │   ├── faces.py          camada 4: detecção de rosto, embedding, galeria
-│   ├── ui.py             menu lateral, telas Live, Records e People
+│   ├── archive.py        camada 5: move para o HD externo (seção 11)
+│   ├── notify.py         aviso no celular pelo Telegram (seção 12)
+│   ├── settings.py       config.json, ajustes que mudam com o programa rodando
+│   ├── ui.py             janela OpenCV: Live, Records, People e Ajustes
+│   ├── web.py            interface web: servidor FastAPI (seção 17)
+│   ├── static/           a página da interface web: HTML, CSS e JavaScript
 │   └── geometry.py       tipo Detection e utilitários de caixas (IoU)
 ├── tools/                ferramentas, fora do programa
 │   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
 │   ├── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
 │   ├── refazer_rostos.py reconstrói faces/ a partir dos clipes
 │   ├── verificar_clipes.py dano de imagem vindo das câmeras
-│   ├── gerar_icone.py    desenha o ícone (seção 13)
+│   ├── gerar_epub.py     junta os .md num EPUB para e-reader
+│   ├── gerar_icone.py    desenha o ícone (seção 14)
 │   └── criar_atalho.ps1  atalho na Área de Trabalho com o ícone
 ├── assets/               jarvis.ico e uma prévia em PNG (gerados, versionados)
 ├── docs/
@@ -99,13 +105,15 @@ jarvis/
 │   ├── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
 │   └── CONTEXTO.md       histórico, decisões, caminhos descartados
 ├── instalar.bat          instalação em máquina nova (roda uma vez)
-├── jarvis.bat            inicia o programa (o atalho da Área de Trabalho aponta para ele)
+├── jarvis.bat            inicia com janela (o atalho da Área de Trabalho aponta para ele)
+├── jarvis_vigilancia.bat inicia sem janela: só grava, avisa e serve a página web
 ├── CLAUDE.md             regras de trabalho, lidas por toda sessão do Claude Code
 ├── README.md             apresentação e links para docs/
 ├── .env.example          modelo de configuração, versionado
 │
 │   ── daqui para baixo, nada é versionado ──
 ├── .env                  IP e credenciais das câmeras
+├── config.json           ajustes e token do Telegram (cada máquina tem o seu)
 ├── models/               ONNX do YOLO, YuNet e SFace (~73 MB, baixados)
 ├── clips/                gravações
 │   ├── _buffer/          segmentos rotativos por câmera, apagados sozinhos
@@ -1940,7 +1948,8 @@ motivo é a seção 15.1.
 |---|---|
 | Ver as câmeras | `jarvis.bat` |
 | Só gravar e avisar | `jarvis_vigilancia.bat` |
-| Direto | `uv run jarvis --sem-janela` |
+| Direto | `uv run python -m jarvis --sem-janela` |
+| Ver as gravações no navegador | `http://127.0.0.1:8765`, com qualquer um dos dois rodando (17.6) |
 
 Sem janela, o encerramento é `Ctrl+C`. No Windows, `Ctrl+C` no terminal vira
 `KeyboardInterrupt` no Python, que o `run_headless` captura — e o `finally` do
@@ -1964,16 +1973,20 @@ backlog, porque hoje não há como olhar um núcleo sem janela.
 | Eventos com pré-gravação, miniatura e metadados | 8 |
 | Interface Live, Records e People, com calendário e rolagem | 9 |
 | Rostos: só de frente e sobre uma pessoa, nome que vira referência | 10 |
-| Ícone e atalho na Área de Trabalho | 12 |
+| Armazenamento em camadas, HD externo após 30 dias | 11 |
+| Aviso no celular pelo Telegram | 12 |
+| Ícone e atalho na Área de Trabalho | 14 |
+| Vigilância sem janela (`--sem-janela`) | 15 |
+| Interface web, estágio 1: lista de eventos no navegador | 17.6 |
 
 Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
 bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
 
 ## 17. Interface web — plano de execução
 
-Decidido em 09/10/2026. Item 3 do backlog. **Nada aqui está implementado
-ainda**; esta seção é o plano, para que a obra possa ser retomada por outra
-sessão ou pela outra máquina sem perder as decisões.
+Decidido em 09/10/2026. Item 3 do backlog. Esta seção é o plano, para que a
+obra possa ser retomada por outra sessão ou pela outra máquina sem perder as
+decisões. **Estágio 1 feito em 09/10/2026** (17.6); os estágios 2 a 4 ainda não.
 
 ### 17.1 Por que, em uma frase
 
@@ -2048,5 +2061,72 @@ acento. Aceite: cadastrar nome e colar o token pelo navegador.
 
 Itens 5 (reprodução), 6 (busca e filtro), 11 (linha do tempo) e o acesso remoto
 saem quase de graça, porque o navegador já faz o trabalho pesado de cada um.
+
+### 17.6 Estágio 1, como ficou
+
+**Aceite cumprido no M900:** `http://127.0.0.1:8765` mostrou os 139 eventos de
+30/09 (Front 44, Back 95), com miniatura, hora, câmera, duração e rótulo em
+português com acento.
+
+**Onde roda.** `main()` em `cameras.py` chama `web.start()` logo depois de criar
+o `Core`, com janela ou sem. O servidor sobe numa thread *daemon*:
+
+```python
+server = uvicorn.Server(uvicorn.Config(app, host=host, port=port,
+                                      log_level="warning", access_log=False))
+threading.Thread(target=server.run, name="web", daemon=True).start()
+```
+
+O uvicorn só instala os tratadores de `Ctrl+C` quando roda na thread principal,
+então numa thread de fundo ele não rouba o `Ctrl+C` do `run_headless`. Ao sair,
+o `finally` do `main()` chama `web.stop()`, que só liga `should_exit` — o
+uvicorn termina sozinho na volta seguinte do laço dele. Por ser *daemon*, a
+thread também não segura o processo se algo der errado.
+
+**O que serve.**
+
+| Rota | Devolve |
+|---|---|
+| `/` | `static/index.html` |
+| `/static/...` | CSS e JavaScript da página (`StaticFiles`) |
+| `/icone.png` | o `assets/jarvis.png`, sem duplicar o arquivo |
+| `/api/dias` | dias com gravação, do mais novo ao mais velho |
+| `/api/eventos?dia=AAAA-MM-DD` | os eventos do dia, lidos de `clips.list_clips()`; sem `dia`, hoje |
+| `/miniatura/<câmera>/<dia>/<HH-MM-SS>.jpg` | a miniatura do evento |
+
+A API devolve **URLs, não caminhos de disco**: `_event()` troca o
+`thumbnail_path` por `/miniatura/...`. A página nunca sabe onde os arquivos
+estão.
+
+**Ninguém sai de `clips/`.** A rota de miniatura recebe três pedaços do
+endereço. Cada um tem que casar com uma expressão regular estrita (letras e
+`-`/`_`; `AAAA-MM-DD`; `HH-MM-SS.jpg`), e o caminho final, depois de
+`resolve()`, tem que estar dentro de `CLIP_DIR` (`is_relative_to`). Testado: as
+cinco tentativas de sair com `..` e `%2F` voltaram 404, e um `dia` inválido
+volta 400.
+
+**Porta ocupada não derruba nada.** `_port_free()` tenta abrir a porta antes do
+uvicorn. Se outra instância já estiver servindo, aparece "Interface web
+desligada: a porta 8765 ja esta em uso" e a vigilância segue normalmente —
+porque a interface é opcional e gravar não é.
+
+**Só esta máquina, por enquanto.** `HOST = "127.0.0.1"` escuta só conexões
+locais. Abrir para a rede (`0.0.0.0`) é o estágio 3: o celular precisa disso, e
+o Windows vai pedir permissão no firewall na primeira vez.
+
+**A página.** HTML, CSS e JavaScript simples em `src/jarvis/static/`, sem
+framework (17.4). O JavaScript busca `/api/eventos` e monta os cartões a partir
+de um `<template>`. As setas ◀ ▶ pulam para o dia anterior ou próximo **com
+gravação**, usando `/api/dias`. Vendo o dia de hoje, a lista se atualiza a cada
+15 s, e para quando a aba não está visível (`document.hidden`).
+
+Os rótulos chegam em inglês (`person`, `dog`), porque é o que o YOLO e os JSON
+usam, e a página traduz na exibição: o dado continua o mesmo, só a apresentação
+é em português. O mesmo vale para a data: o `<input type="date">` mostra no
+formato do navegador, enquanto a API fala `AAAA-MM-DD`.
+
+**O que ainda não faz:** clicar no cartão não abre o vídeo (estágio 2), não há
+ao vivo (estágio 3), e só lista o que está em `clips/` — eventos já movidos para
+o HD externo (seção 11) não aparecem, igual à janela.
 
 ---

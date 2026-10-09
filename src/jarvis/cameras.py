@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, ui
+from jarvis import ROOT, ui, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -284,9 +284,11 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     headless = HEADLESS_FLAG in argv
     core = Core(start_cameras(), draw=not headless)
+    server = web.start()
     try:
         (run_headless if headless else run_window)(core)
     finally:
+        web.stop(server)
         core.close()
 
 

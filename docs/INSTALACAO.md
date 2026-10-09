@@ -94,7 +94,7 @@ O `instalar.bat` faz sete coisas:
    exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
 5. Baixa os modelos de visão (~73 MB no total, ver seção 3)
 6. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
-   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 12)
+   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 14)
 7. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
 
 Cada passo tem sua própria mensagem de erro. A primeira versão juntava o

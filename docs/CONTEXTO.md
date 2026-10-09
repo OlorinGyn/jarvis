@@ -274,6 +274,9 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    usuário aprovou e acrescentou o motivo decisivo: ele nem sempre vai querer
    acompanhar ao vivo, e o software precisa rodar o tempo todo sem janela de
    usuário. A metade de baixo já está feita (item acima); falta o cliente.
+   **Estágio 1 feito em 09/10/2026** no M900: lista de eventos em
+   `http://127.0.0.1:8765` (ARQUITETURA 17.6). **Próximo: estágio 2**,
+   reprodução do vídeo na página.
    Serve uma página local, e o navegador passa a ser o toolkit: reproduz
    vídeo, rola lista, aceita acento, cola texto e abre no celular. Entregue
    junto, de graça: acesso remoto e os itens 5, 6 e 11. Fazer **ao lado** da
@@ -339,7 +342,9 @@ src/jarvis/
   archive.py      camada 5: move para o HD externo, apaga só lá se lotar
   settings.py     configuração editável pela interface (config.json)
   notify.py       aviso no celular via Telegram, com miniatura
-  ui.py           menu lateral e as quatro telas
+  ui.py           janela OpenCV: menu lateral e as quatro telas
+  web.py          interface web: FastAPI numa thread ao lado do Core
+  static/         a página web: index.html, style.css, app.js
   geometry.py     tipo Detection e utilitários de caixas
 tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
@@ -367,6 +372,7 @@ em dados).
 
 ```bat
 jarvis.bat                                              iniciar
+http://127.0.0.1:8765                                   gravações no navegador (com o programa rodando)
 uv run jarvis                                           iniciar, sem o .bat
 uv run tools/diagnostico.py Front                       testar variantes de captura
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
