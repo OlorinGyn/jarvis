@@ -1,28 +1,20 @@
 """Sends a phone notification when a person is recorded.
 
-Telegram, over plain urllib. It pushes to the phone, carries the thumbnail so
-the message is worth looking at, costs nothing, and needs no port opened on
-this machine. Email would be slower and silent; a Windows toast is useless
-when nobody is at the computer.
+Telegram, over requests. It pushes to the phone, carries the thumbnail so the
+message is worth looking at, costs nothing, and needs no port opened on this
+machine. Email would be slower and silent; a Windows toast is useless when
+nobody is at the computer.
 
 Sending happens in a thread: the network must never stall the capture loop.
 
 See docs/ARQUITETURA.md section 12.
 """
 
-import json
-import mimetypes
-import ssl
 import threading
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
-import uuid
-from functools import lru_cache
 from pathlib import Path
 
-import certifi
+import requests
 
 from .settings import load
 
@@ -30,83 +22,31 @@ API = "https://api.telegram.org/bot{token}/{method}"
 TIMEOUT = 15
 COOLDOWN_SECONDS = 120
 
-
-@lru_cache(maxsize=1)
-def _context():
-    """TLS trust from certifi, not from the machine.
-
-    Windows fetches missing root CAs on demand through its own API, which
-    browsers trigger and Python does not. api.telegram.org chains to "Go Daddy
-    Root Certificate Authority - G2", absent from this machine's store, so
-    verification failed while every browser worked. certifi carries it.
-    """
-    if API.startswith("http://"):
-        return None
-    return ssl.create_default_context(cafile=certifi.where())
-
 _last_sent = {}
 _lock = threading.Lock()
 
 
-def _multipart(fields, file_field=None, file_path=None):
-    """Build a multipart body by hand, so no HTTP library is needed."""
-    boundary = f"----jarvis{uuid.uuid4().hex}"
-    parts = []
-    for name, value in fields.items():
-        parts.append(
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
-            f"{value}\r\n".encode("utf-8"))
-
-    if file_field and file_path:
-        path = Path(file_path)
-        kind = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        parts.append(
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="{file_field}"; '
-            f'filename="{path.name}"\r\n'
-            f"Content-Type: {kind}\r\n\r\n".encode("utf-8"))
-        parts.append(path.read_bytes())
-        parts.append(b"\r\n")
-
-    parts.append(f"--{boundary}--\r\n".encode("utf-8"))
-    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
-
-
 def _call(token, method, fields, file_field=None, file_path=None):
     """One Telegram API call. Returns (ok, detail)."""
-    url = API.format(token=token, method=method)
+    files = None
+    if file_field and file_path:
+        path = Path(file_path)
+        files = {file_field: (path.name, path.read_bytes())}
     try:
-        if file_path:
-            body, content_type = _multipart(fields, file_field, file_path)
-            request = urllib.request.Request(url, data=body,
-                                             headers={"Content-Type": content_type})
-        else:
-            body = urllib.parse.urlencode(fields).encode("utf-8")
-            request = urllib.request.Request(url, data=body)
-        with urllib.request.urlopen(request, timeout=TIMEOUT,
-                                    context=_context()) as answer:
-            payload = json.loads(answer.read().decode("utf-8"))
-        return bool(payload.get("ok")), payload.get("description", "")
-    except urllib.error.HTTPError as problem:
-        try:
-            detail = json.loads(problem.read().decode("utf-8")).get("description", "")
-        except Exception:
-            detail = str(problem)
-        return False, detail
-    except (urllib.error.URLError, OSError, ValueError) as problem:
+        payload = requests.post(API.format(token=token, method=method),
+                                data=fields, files=files,
+                                timeout=TIMEOUT).json()
+    except (requests.RequestException, ValueError) as problem:
         return False, str(problem)
+    return bool(payload.get("ok")), payload.get("description", "")
 
 
 def discover_chat(token):
     """Read the chat id from the last message someone sent to the bot."""
-    ok, _ = True, None
-    url = API.format(token=token, method="getUpdates")
     try:
-        with urllib.request.urlopen(url, timeout=TIMEOUT,
-                                    context=_context()) as answer:
-            payload = json.loads(answer.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError) as problem:
+        payload = requests.get(API.format(token=token, method="getUpdates"),
+                               timeout=TIMEOUT).json()
+    except (requests.RequestException, ValueError) as problem:
         return "", str(problem)
     if not payload.get("ok"):
         return "", payload.get("description", "resposta inesperada")

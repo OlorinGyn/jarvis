@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
 `__name__` vale `"__main__"` quando o arquivo é executado diretamente, e o nome
 do módulo quando ele é importado. Sem essa guarda, `tools/diagnostico.py`
-importar `cameras` para reaproveitar `load_env()` abriria as câmeras e a janela
+importar `cameras` para reaproveitar algo dele abriria as câmeras e a janela
 como efeito colateral.
 
 É o equivalente do `public static void main`, mas por convenção, não por regra

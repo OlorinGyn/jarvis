@@ -82,9 +82,19 @@ câmera serve duas saídas — segmentos `-c copy` (cópia byte a byte) e frames
 O **Smart App Control** do Windows 11 bloqueia binários sem assinatura
 reconhecida, e as DLLs do PyTorch não são assinadas (`WinError 4551`).
 Desligá-lo é **irreversível** — só volta reinstalando o Windows. Em vez disso,
-o YOLO roda por `cv2.dnn` sobre o `yolo11s.onnx` oficial. Tirou ~2,5 GB de
-dependências; o projeto tem hoje só `opencv-python` e `imageio-ffmpeg`.
-Custo: inferência de 24 ms para 50–62 ms. Ver ARQUITETURA 7.11.
+o YOLO roda por `cv2.dnn` sobre o `yolo11s.onnx` oficial, e tirou ~2,5 GB de
+dependências.
+
+Os 24 ms do PyTorch eram **GPU**; os 50–62 ms do `cv2.dnn` são **CPU**, então a
+comparação original media hardware, não biblioteca. Medido em 09/10/2026 no
+mesmo blob e na mesma máquina, CPU contra CPU: `cv2.dnn` **37,8 ms** e
+`onnxruntime` **34,6 ms** — 1,09x, com saída idêntica (`allclose`, atol 1e-3).
+Ou seja, o `cv2.dnn` não custa velocidade; trocar por outro runtime de ONNX não
+compraria nada. A perda real foi de GPU para CPU, que o M900 não tem como
+desfazer. Ver ARQUITETURA 7.11.
+
+A contagem baixa de dependências que isso produziu **não é mérito do projeto** —
+ver seção 11.
 
 ### Sem compactar os vídeos
 Implementado e removido. Medido em arquivo real: zip economiza **0,2%**, bzip2 e
@@ -140,6 +150,7 @@ Guardadas porque conclusões mudam quando o formato muda.
 | Buffer rotativo | 6 a 8 MB por câmera |
 | Disco livre no M900 (30/09) | 394 GB |
 | Inferência YOLO (dev) | 50–62 ms |
+| Runtime de ONNX, CPU contra CPU (09/10) | `cv2.dnn` 37,8 ms, `onnxruntime` 34,6 ms — 1,09x, saída idêntica |
 | Movimento após confirmação temporal | Front 8,7% → 1,5% dos frames |
 | Rosto à noite | 44 px (desejável ~112 px) |
 | Primeiro frame do ffmpeg | ~2,5 s |
@@ -358,3 +369,72 @@ Constantes de ajuste: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`,
 `MIN_PERSON_HEIGHT_FRACTION`, `ANIMAL_CONFIDENCE`),
 `motion.py` (`MIN_AREA`, `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py`
 (`MATCH_THRESHOLD`, `LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`).
+
+---
+
+## 11. Vieses do Claude — restrições que o usuário nunca escolheu
+
+Esta seção existe porque o usuário perguntou **"onde eu consigo encontrar esses
+vieses que você pode ter criado?"** A resposta honesta era: em lugar nenhum. A
+seção 3 registra decisões, mas uma decisão tem autor. O que faltava era o
+registro do que o Claude passou a tratar como regra **sem ninguém ter decidido**.
+
+### 11.1 Como esses vieses se formam
+
+O padrão é sempre o mesmo, e é fácil de não perceber:
+
+1. Uma restrição real aparece — ambiente, hardware, um erro concreto.
+2. O Claude contorna a restrição. Correto até aqui.
+3. O contorno é repetido nas decisões seguintes **como se fosse um objetivo**.
+4. A documentação passa a justificá-lo, e o acidente vira princípio.
+
+O passo 3 é invisível porque o passo 2 estava certo. O sinal de alerta é uma
+justificativa que descreve uma consequência como se fosse uma meta — "o projeto
+segue com duas dependências" era exatamente isso.
+
+### 11.2 Como auditar
+
+Procure por justificativas que não citam nem um pedido do usuário nem uma
+medição:
+
+- `grep -rn "para não trazer\|para manter\|em vez de depender\|evita a dependência" docs/`
+- Qualquer número tratado como meta (contagem de dependências, tamanho de
+  arquivo, linhas) que não apareça na seção 5 como medição.
+- Qualquer coisa escrita à mão que exista pronta em biblioteca conceituada.
+
+A regra do usuário, dita em 09/10/2026: **reaproveitamento de código,
+especialmente com bibliotecas conceituadas, é sempre o melhor caminho.** Tamanho
+da aplicação não é critério; eficiência e qualidade das dependências são.
+
+### 11.3 Registro
+
+**Minimalismo de dependências — corrigido em 09/10/2026.**
+O PyTorch quebrou no Smart App Control (DLL não assinada, `WinError 4551`). A
+saída foi trocar por `cv2.dnn`, e isso estava certo. O erro foi generalizar:
+"menos dependências" virou critério de projeto, e o Claude passou a escrever à
+mão coisas que existiam prontas. Custou uma sessão inteira depurando TLS para
+reimplementar o que o `requests` já entrega (ARQUITETURA.md 12.5). A regra
+correta é mais estreita: **desconfie de dependência binária grande**, porque foi
+isso que quebrou o deploy. Pacote Python puro ou só de dados não tem esse
+problema e não precisa de justificativa.
+
+**Interface em HighGUI — em aberto, precisa de decisão do usuário.**
+A janela do OpenCV foi o caminho natural enquanto o programa era só um visor de
+câmeras. Virou `ui.py` com 616 linhas e 60 chamadas de desenho primitivo, e o
+OpenCV não tem widget: não cola texto, não reproduz vídeo, não rola lista, não
+mostra acento. Isso já deformou decisões — a aba Ajustes abre o `config.json` no
+editor porque não há como colar um token na janela. E encarece quatro itens do
+backlog (reprodução, busca, linha do tempo, acesso remoto) que um toolkit de
+verdade ou uma interface web entregariam quase de graça.
+
+**Ausência de testes — nunca foi discutida.**
+2.600 linhas, nenhum teste. O Claude nunca propôs e o usuário nunca recusou. A
+verificação hoje é rodar o programa e olhar. Partes com regra pura e sem
+hardware — `geometry.py`, os limiares de `motion.py`, o `_allowed` do
+`notify.py`, o `_move_event` do `archive.py` — são testáveis sem câmera, e o
+`_move_event` mexe em arquivo do usuário.
+
+**Tudo em um processo — consequência, não escolha.**
+Captura, detecção, gravação, rostos e interface no mesmo processo Python, com
+threads para o que não pode bloquear. Funciona com 2 câmeras. Não foi avaliado
+para mais, e o GIL fica no caminho. Só registrado; não é problema hoje.

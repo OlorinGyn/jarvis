@@ -8,11 +8,11 @@ Press q or close the window to quit.
 """
 
 import time
-from pathlib import Path
 from urllib.parse import quote
 
 import cv2
 import numpy as np
+from dotenv import dotenv_values
 
 from jarvis import ROOT, ui
 from jarvis.archive import Housekeeper
@@ -32,18 +32,6 @@ GREEN = (0, 255, 0)
 RED = (0, 0, 255)
 YELLOW = (0, 220, 255)
 CYAN = (255, 200, 0)
-
-
-def load_env(path=None):
-    """Read KEY=value lines from a .env file into a dict."""
-    values = {}
-    for line in Path(path or ROOT / ".env").read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, value = line.partition("=")
-        values[key.strip()] = value.strip()
-    return values
 
 
 def build_camera_list(env):
@@ -164,7 +152,7 @@ def window_size(live):
 
 
 def main():
-    env = load_env()
+    env = dotenv_values(ROOT / ".env")
     cameras = build_camera_list(env)
 
     if not cameras:

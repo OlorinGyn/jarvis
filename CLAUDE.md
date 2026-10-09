@@ -19,3 +19,8 @@ Regras do usuário, detalhadas em `docs/CONTEXTO.md` seção 2:
 máquinas a enxergam pelo git. Ao concluir um item, risque-o no mesmo commit da
 mudança. Itens marcados **(proposto)** são sugestão do Claude sem decisão do
 usuário — não comece nenhum sem perguntar.
+**A seção 11 do `docs/CONTEXTO.md` é o registro de vieses**: restrições que o
+Claude adotou sozinho, sem decisão do usuário. Ao perceber que está justificando
+uma escolha por uma consequência do ambiente em vez de um pedido ou uma medição,
+registre lá. Reaproveitar biblioteca conceituada vem antes de escrever à mão;
+tamanho da aplicação não é critério.

@@ -1689,9 +1689,10 @@ agora"* — é um gravador, não uma vigilância.
 | Dependência nova | nenhuma | SMTP + senha de app | — |
 | Expõe a máquina | não | não | — |
 
-A API é HTTP comum, então `urllib` basta e o projeto segue com duas
-dependências. O `multipart/form-data` do envio de foto é montado à mão, em
-vinte linhas, para não trazer o `requests` só por isso.
+A API é HTTP comum e o envio usa `requests`. A primeira versão usava `urllib`
+da biblioteca padrão e montava o `multipart/form-data` da foto à mão, em vinte
+linhas, para não trazer dependência nova. Foi um erro — veja a seção 12.5 e a
+seção 11 do `CONTEXTO.md`.
 
 ### 12.2 Avisa no começo do evento, não no fim
 
@@ -1741,12 +1742,23 @@ repositório inteiro do Windows levou de 39 para 52 CAs e continuou falhando,
 porque a raiz simplesmente não estava lá para ser carregada.
 
 A correção é o `certifi`, o conjunto de raízes da Mozilla — 121 certificados,
-incluindo a Go Daddy G2. Virou a terceira dependência do projeto, e vale a
-pena: é um arquivo de dados, não código, e garante o mesmo comportamento nas
-duas máquinas em vez de depender do que cada Windows resolveu baixar.
+incluindo a Go Daddy G2. É um arquivo de dados, não código, e garante o mesmo
+comportamento nas duas máquinas em vez de depender do que cada Windows resolveu
+baixar.
 
-**A lição:** erro de SSL não significa necessariamente interceptação. Vale
+**Duas lições, e a segunda é mais importante que a primeira.**
+
+A primeira: erro de SSL não significa necessariamente interceptação. Vale
 testar outro site antes de culpar antivírus.
+
+A segunda: **este problema nunca deveria ter chegado a existir.** O `requests`
+já depende do `certifi` e o usa por padrão — `requests.utils.DEFAULT_CA_BUNDLE_PATH`
+aponta para `certifi.where()`. O bug só apareceu porque a primeira versão
+evitava o `requests` para manter a contagem de dependências baixa, e essa
+contagem nunca foi uma decisão do usuário. O custo real daquela economia não
+foram as vinte linhas de `multipart` — foi uma sessão inteira de depuração de
+TLS para reinstalar, à mão, uma garantia que a biblioteca dá de graça. O envio
+hoje usa `requests` e não importa `certifi` diretamente.
 
 ### 12.6 Configuração
 
