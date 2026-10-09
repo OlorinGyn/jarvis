@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title J.A.R.V.I.S. - vigilancia sem janela
+title J.A.R.V.I.S. - servico
 
 if not exist ".env" (
     echo Arquivo .env nao encontrado. Rode instalar.bat primeiro.
@@ -9,8 +9,8 @@ if not exist ".env" (
     exit /b 1
 )
 
-echo Gravando e avisando sem abrir janela. Ctrl+C encerra.
-echo Para ver as cameras, use jarvis.bat.
+echo Servico do J.A.R.V.I.S.: grava, avisa e serve a pagina. Ctrl+C encerra.
+echo Para ver as cameras: http://127.0.0.1:8765 ou o atalho da Area de Trabalho.
 echo.
 
 uv run python -m jarvis --sem-janela

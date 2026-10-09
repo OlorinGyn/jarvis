@@ -99,8 +99,9 @@ ver seção 11.
 ### Python oficial assinado, não o que o uv baixa
 O Python que o `uv` baixa não é assinado, e o Smart App Control só o deixa rodar
 enquanto a nuvem da Microsoft lhe dá boa reputação — veredito que muda sozinho.
-Em 09/10/2026 bloqueou o próprio interpretador no M900, depois de um `uv sync`
-trazer o 3.14.7, e a vigilância parou. O do python.org é assinado pela Python
+Em 09/10/2026 bloqueou o próprio interpretador no M900 — o mesmo arquivo que
+rodou em 29 e 30/09, sem nada mudar no disco —, e o programa não conseguia mais
+subir. O do python.org é assinado pela Python
 Software Foundation e passa sempre. `pyproject.toml` declara
 `python-preference = "system"`, e os `.bat` chamam `uv run python -m jarvis`
 em vez do `jarvis.exe` que o uv gera, também sem assinatura. A regra que sai
@@ -155,7 +156,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Terminal cheio de `[h264] error while decoding MB` | Câmera Back mandando blocos danificados (Wi-Fi), impressos pelo decodificador interno do OpenCV na varredura de rostos | Varredura lê pelo nosso ffmpeg em `-loglevel quiet`, 2× mais rápida; `tools/verificar_clipes.py` mede o dano (ARQUITETURA 10.11) |
 | Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
-| M900 parado, `Failed to spawn: python` (`WinError 4551`), 09/10 | `uv sync` trocou o Python que o uv baixa por 3.14.7, binário sem assinatura e sem reputação; o Smart App Control bloqueou o próprio interpretador | Python oficial assinado pela PSF + `python-preference = "system"`; `.bat` chamam `python -m jarvis`, sem o `jarvis.exe` sem assinatura (INSTALACAO 1.2) |
+| M900 não subia, `Failed to spawn: python` (`WinError 4551`), 09/10 | O Smart App Control passou a recusar o Python que o uv baixa (sem assinatura) — o mesmo arquivo que rodava em 29–30/09; o veredito de reputação mudou sozinho | Python oficial assinado pela PSF + `python-preference = "system"`; `.bat` chamam `python -m jarvis`, sem o `jarvis.exe` sem assinatura (INSTALACAO 1.2) |
 
 ## 5. Medições de referência
 
@@ -248,6 +249,9 @@ Cada item traz a origem, porque a distinção importa:
 - **(proposto)** — sugestão do Claude, ainda sem decisão dele
 
 Itens propostos **não são plano**. Não comece um sem perguntar.
+
+As recomendações da revisão de arquitetura ficam à parte, na seção 13.4, com
+prioridade própria; as de prioridade **alta** vêm antes dos itens daqui.
 
 ### Feito
 
@@ -573,6 +577,10 @@ Depois disso, diga ao usuário: em que item o trabalho parou, qual o próximo
 estágio e se alguma pré-condição falhou. Não peça a ele para rodar nada que
 você conseguia rodar.
 
+Leia também as recomendações **abertas** da seção 13 (revisão de arquitetura).
+As de prioridade alta vêm antes do próximo item do backlog, a menos que o
+usuário diga outra coisa.
+
 ### 12.4 O que não viaja pelo git, e o que fazer
 
 | Arquivo | Por quê | Consequência |
@@ -586,3 +594,149 @@ Se o `config.json` não existir ou estiver sem `notify_token`, diga isso ao
 usuário — é a única coisa aqui que precisa dele, porque o token é credencial e
 só ele tem. O `chat_id` você descobre sozinho depois, com
 `notify.discover_chat()`.
+
+---
+
+## 13. Revisão de arquitetura
+
+### 13.1 Como funciona — combinado em 09/10/2026
+
+O usuário divide o trabalho em dois papéis, como numa equipe:
+
+| Papel | Modo do Claude | Faz |
+|---|---|---|
+| **Desenvolvedor** | `high` | implementa, testa, documenta, commita |
+| **Arquiteto** | `ultracode` | revisa o que o desenvolvedor fez, sem pressa de entregar |
+
+**O desenvolvedor avisa quando é hora de revisar.** Ao terminar uma entrega,
+diga ao usuário que há material para revisão e peça para ele ativar o
+`ultracode` e o code review. Sinais de que chegou a hora:
+
+- um item ou estágio do backlog foi concluído;
+- três ou mais commits de código desde a última revisão (13.2);
+- qualquer mudança em **concorrência** (threads, objetos nativos
+  compartilhados), **exposição na rede**, **arquivos do usuário** (mover,
+  apagar) ou **credenciais** — mesmo que seja um commit só;
+- antes de deixar o sistema rodando sozinho por dias.
+
+**O arquiteto revisa o intervalo desde a última revisão** — o diff inteiro, não
+só o resumo — e confere o que a documentação afirma contra o código e contra o
+sistema real (registros, arquivos, medições). Corrige na hora o que é texto ou
+documentação errada. O que é código vira **recomendação** aqui, com prioridade,
+para o desenvolvedor implementar. Ao final, atualiza 13.2.
+
+**O desenvolvedor lê as recomendações abertas** antes de começar (rotina de
+retomada, 12.3). Ao implementar uma, marque como feita no mesmo commit, dizendo
+onde. Se discordar de uma, não ignore: escreva o porquê aqui e deixe o usuário
+decidir.
+
+### 13.2 Registro de revisões
+
+| # | Data | Intervalo revisado | Resultado |
+|---|---|---|---|
+| 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas |
+
+**Última revisão cobre até `456b613`.** A próxima começa do commit seguinte.
+
+### 13.3 Revisão 1 — o que foi corrigido na hora
+
+- **História errada do bloqueio do Python** (INSTALACAO 1.2, seções 3 e 4
+  deste arquivo). Dizia que um `uv sync` tinha trocado o Python por 3.14.7 e
+  que o Windows já o tinha bloqueado em 29/09. Os dois são falsos: o 3.14.7 foi
+  baixado em 29/09 e rodou até 30/09 — o veredito do Windows mudou sobre o
+  **mesmo arquivo** —, e os bloqueios de 29/09 no registro eram DLLs do PyTorch
+  carregadas pelo Python. O erro veio de filtrar o registro pela palavra
+  "python" sem ler a mensagem inteira.
+- **"O `Core` não muda"** (ARQUITETURA 17.4) não valia mais depois do estágio 3,
+  que acrescentou `labels` e `live_view()`. Reescrito para o que importa: o
+  `Core` não sabe da web.
+- **`jarvis_vigilancia.bat`** ainda mandava usar o `jarvis.bat` para ver as
+  câmeras.
+
+Fato levantado na revisão: **a última gravação do M900 é de 30/09 às 22:54.** O
+sistema ficou nove dias sem rodar; o bloqueio do Python só apareceu ao tentar
+subir de novo em 09/10.
+
+### 13.4 Recomendações
+
+| | # | Prioridade | Recomendação | Estado |
+|---|---|---|---|---|
+| | R1 | **alta** | Aviso de pessoa que aparece no meio de um evento | aberta |
+| | R2 | média | Corrida no arranque: dois lançamentos seguidos sobem duas instâncias | aberta |
+| | R3 | média | Ao vivo congela sem aviso se o serviço reiniciar | aberta |
+| | R4 | média | Exposição na rede Wi-Fi classificada como Pública — **decisão do usuário** | aberta |
+| | R5 | média | "Reconhecido" com semelhança baixa | aberta |
+| | R6 | média | Testes automáticos para as rotas da web e as travas do aviso | aberta |
+| | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | aberta |
+| | R8 | baixa | Falha de rede na página não aparece para o usuário | aberta |
+| | R9 | verificação | `python-preference = "system"` na máquina de desenvolvimento | aberta |
+
+**R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
+`EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
+os rótulos daquele frame. Se o evento começa com um cachorro, `notify.event()`
+recusa (só `person` avisa) e ninguém tenta de novo: a pessoa que chega segundos
+depois **não gera aviso nenhum**, e por consequência também não gera a segunda
+mensagem com o rosto (ARQUITETURA 12.7), que depende do primeiro aviso ter
+saído. Em 30/09, 29 dos 85 eventos com pessoa tinham também animal; em todo
+aquele em que o animal apareceu primeiro, a pessoa passou sem aviso (o JSON
+não guarda a ordem, então não dá para dizer quantos). Correção sugerida:
+em `update()`, enquanto o evento não foi avisado, tentar de novo quando
+aparecer um rótulo que ainda não foi tentado — no máximo uma tentativa por
+rótulo novo, para não ler o `config.json` a cada frame. A foto do aviso deve
+ser a do momento em que a pessoa apareceu, não a miniatura do evento (que
+mostra o cachorro); gravar como `<HH-MM-SS>.aviso.jpg`, porque o arquivamento
+(`archive.py`) move os arquivos de um evento por `glob(f"{base.name}.*")` e um
+nome como `<HH-MM-SS>_aviso.jpg` ficaria para trás.
+
+**R2 — Corrida no arranque (média).** `main()` pergunta se já há um
+J.A.R.V.I.S. (`web.already_running()`), mas a porta só é ocupada depois que as
+câmeras respondem — até 25 s por câmera em `wait_ready()`. Dois cliques no
+atalho dentro dessa janela sobem duas instâncias, que brigam pela única conexão
+RTSP de cada câmera. Correção sugerida: ocupar a porta **antes** de abrir as
+câmeras (`web.start()` sem `Core`), e entregar o `Core` depois
+(`web.attach(core)`); até lá, `/api/cameras` responde vazio e a página deve
+tentar de novo em vez de mostrar "nenhuma câmera" para sempre.
+
+**R3 — Ao vivo congela sem aviso (média).** Se o serviço reiniciar ou cair, o
+`<img>` do MJPEG fica parado no último quadro, sem nenhum sinal de que não é
+mais ao vivo — o pior tipo de falha para vigilância. Sugestão: a página
+consulta `/api/cameras` a cada poucos segundos; sem resposta, marca as imagens
+como "sem conexão" e reconecta quando o servidor voltar (trocando o `src` com
+um parâmetro novo, para o navegador não reaproveitar a conexão morta).
+
+**R4 — Exposição na rede (média, decisão do usuário).** O servidor escuta em
+`0.0.0.0` sem login, como decidido (ARQUITETURA 17.4). Mas a rede Wi-Fi do M900
+está classificada no Windows como **Pública**, e a regra de firewall criada
+vale para esse perfil. Na prática, qualquer aparelho conectado ao mesmo Wi-Fi —
+inclusive visita — vê as câmeras ao vivo e todas as gravações. Opções: marcar a
+rede como **Privada** e restringir a regra a esse perfil; ou manter como está,
+sabendo disso. Não é decisão técnica: registrar a escolha do usuário aqui.
+
+**R5 — "Reconhecido" com semelhança baixa (média).** A segunda mensagem diz
+"Fulano reconhecido" para qualquer casamento acima de `MATCH_THRESHOLD`
+(0.363). Com rostos de 40 px, a ARQUITETURA 10.4 já admite que 0.37 pode ser
+acaso — por isso `LEARN_THRESHOLD` é 0.45. A mensagem deveria refletir essa
+diferença: abaixo de 0.45, "provavelmente Fulano".
+
+**R6 — Testes automáticos (média).** A seção 11 registra a ausência de testes
+como viés nunca discutido. Esta revisão adiciona dois alvos baratos e de alto
+valor: as validações da rota de miniatura (são a única barreira entre a rede e
+os arquivos do disco) e as travas de `notify` (`_allowed`, R1). O FastAPI tem
+`TestClient`; precisa do `httpx` como dependência de desenvolvimento. Hoje a
+verificação foi um script avulso no scratchpad, que não fica no repositório.
+
+**R7 — `instalar.bat` não confere o Python (baixa).** O passo 3 instala o Python
+oficial e ignora qualquer erro. Se o `winget` falhar, o `uv` cai para o Python
+dele, sem assinatura, e o problema de 09/10 volta sem aviso. Sugestão: depois do
+`uv sync`, conferir a assinatura de `.venv\Scripts\python.exe` e avisar se não
+for da Python Software Foundation.
+
+**R8 — Falha de rede silenciosa na página (baixa).** Em `app.js`, um `fetch`
+que falha (servidor fora) vira erro no console do navegador e a lista fica como
+estava. Mostrar "sem conexão com o J.A.R.V.I.S." no resumo.
+
+**R9 — Verificar na máquina de desenvolvimento.** `python-preference = "system"`
+foi testado só no M900. No dev, se houver outro Python 3.14 instalado no
+Windows, o `uv` passa a usá-lo; se não houver, continua com o dele. Na próxima
+sessão lá: rodar a rotina 12.1, conferir qual interpretador o `.venv` usa e se o
+`jarvis` sobe.

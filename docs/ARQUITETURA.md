@@ -2101,8 +2101,10 @@ acento. Aceite: cadastrar nome e colar o token pelo navegador.
   acesso de fora algum dia entrar, e aí é decisão nova.
 - **A web lê o que já existe.** Os JSON em `clips/` continuam sendo a fonte. O
   banco de eventos (item 13) é independente e vem depois, se vier.
-- **O `Core` não muda.** Ele não sabe que existe web, do mesmo jeito que não
-  sabe que existe janela. Quem serve é que lê o `Core`.
+- **O `Core` não sabe da web.** Do mesmo jeito que não sabe que existe janela:
+  quem serve é que lê o `Core`. O estágio 3 acrescentou a ele dois acessos só
+  de leitura, `labels` e `live_view()` (17.7) — o `Core` não importa `web` nem
+  muda de comportamento por existir alguém olhando.
 - **Sem framework de frontend.** HTML e JavaScript simples servem para listar,
   filtrar e tocar vídeo. React aqui seria o oposto do reaproveitamento útil:
   peso sem problema que justifique.

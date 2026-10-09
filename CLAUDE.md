@@ -31,6 +31,15 @@ uma escolha por uma consequência do ambiente em vez de um pedido ou uma mediç�
 registre lá. Reaproveitar biblioteca conceituada vem antes de escrever à mão;
 tamanho da aplicação não é critério.
 
+**Desenvolvedor e arquiteto (combinado em 09/10/2026).** O usuário desenvolve
+com o Claude em `high` e revisa com o Claude em `ultracode`, como um arquiteto
+revisando o trabalho do desenvolvedor. Desenvolvendo, **avise o usuário quando
+houver material suficiente para revisão** e peça para ativar o `ultracode` com
+o code review — os critérios estão na seção 13.1 do `docs/CONTEXTO.md`.
+Revisando, siga a mesma seção: corrija documentação na hora, transforme
+problema de código em recomendação com prioridade (13.4) e atualize o registro
+(13.2). Recomendações abertas de prioridade alta vêm antes do backlog.
+
 **Ao abrir nesta pasta, antes de responder qualquer coisa:** rode a rotina de
 retomada da seção 12 do `docs/CONTEXTO.md`. Ela é sua, não do usuário — ele não
 roda comandos de preparação à mão. Sincronize o ambiente, verifique o que o

@@ -53,11 +53,16 @@ O `uv` sabe baixar Python sozinho, e o projeto usava isso. Esses binários
 Control do Windows 11 deixa passar binário sem assinatura só se a nuvem da
 Microsoft disser que ele tem boa reputação — e esse veredito muda com o tempo.
 
-Aconteceu no M900 em 09/10/2026: um `uv sync` atualizou o Python para 3.14.7,
-binário novo e sem reputação, e o Windows passou a bloquear o próprio
-interpretador (`WinError 4551`). Nada rodava, nem `python -c "print(1)"`, e a
-vigilância ficou parada. O registro do Windows mostrou que o mesmo já tinha
-acontecido em 29/09 e se resolvido sozinho depois.
+Aconteceu no M900 em 09/10/2026, e o detalhe é o que torna o problema
+traiçoeiro: o Python bloqueado era o **mesmo arquivo** que rodou normalmente em
+29 e 30/09 — o `cpython-3.14.7` que o `uv` baixou em 29/09. Nada mudou no
+disco; mudou o veredito do Windows sobre ele. O próprio interpretador passou a
+ser recusado (`WinError 4551`), nem `python -c "print(1)"` rodava, e o
+programa não tinha como voltar a subir. O registro `CodeIntegrity` do Windows
+não mostra quando o veredito virou: o M900 não tinha rodado o J.A.R.V.I.S. entre
+30/09 e 09/10, e o primeiro bloqueio registrado do `python.exe` é o da tentativa
+de 09/10. (Os bloqueios de 29/09 no mesmo registro são outra coisa: DLLs do
+PyTorch carregadas pelo Python, o caso da ARQUITETURA 7.11.)
 
 O Python do python.org é **assinado pela Python Software Foundation**, e
 assinatura válida passa sem depender de reputação. O `pyproject.toml` declara
