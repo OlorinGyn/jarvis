@@ -1,14 +1,16 @@
-"""Live viewer: shows every configured camera side by side.
+"""The surveillance service: cameras, detection, recording, and the web page.
 
 Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
 on disk is the camera's own stream with no re-encoding.
 
 See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
-Com janela: q ou fechar encerra. Com --sem-janela: Ctrl+C.
+Sem opcao: servico e navegador. --sem-janela: so o servico. --janela: a janela
+antiga do OpenCV, ate a web cobrir People e Ajustes. Ctrl+C encerra.
 """
 
 import sys
 import time
+import webbrowser
 from urllib.parse import quote
 
 import cv2
@@ -25,11 +27,13 @@ from jarvis.people import SubjectDetector
 STREAM = "stream1"
 PLACEHOLDER_IP = "ip-da-camera"
 PANEL_HEIGHT = 480
+LABEL_Y = 62
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
 REDRAW_SECONDS = 0.15
 IDLE_SLEEP = 0.005
 HEADLESS_FLAG = "--sem-janela"
+WINDOW_FLAG = "--janela"
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
@@ -134,7 +138,7 @@ def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=Fal
                     (top_left[0], max(top_left[1] - 8, 14)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, colour, 2)
 
-    cv2.putText(frame, label, (12, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.9, GREEN, 2)
+    cv2.putText(frame, label, (12, LABEL_Y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, GREEN, 2)
 
     if recording:
         cv2.circle(frame, (frame.shape[1] - 78, 28), 9, RED, -1)
@@ -227,6 +231,25 @@ class Core:
         """The cameras side by side, for whoever is drawing."""
         return np.hstack([self.panels[cam.label] for cam in self.streams])
 
+    @property
+    def labels(self):
+        return [cam.label for cam in self.streams]
+
+    def live_view(self, label):
+        """One camera's newest frame with its detections drawn, built on demand.
+
+        Called from the web thread. It only reads: the frame is never drawn on
+        in place, because make_panel resizes into a new array first.
+        """
+        cam = next((c for c in self.streams if c.label == label), None)
+        if cam is None:
+            return None
+        frame = cam.stream.latest
+        if frame is None:
+            return make_panel(None, cam.label, PANEL_HEIGHT, reason=cam.stream.last_error)
+        return make_panel(frame, cam.label, PANEL_HEIGHT, (), cam.subjects.subjects,
+                          cam.recorder.recording)
+
     def close(self):
         """Close the pending events and the streams. Safe to call once."""
         for cam in self.streams:
@@ -271,7 +294,7 @@ def run_window(core):
 
 def run_headless(core):
     """Drives the core with no window and no drawing. Stops on Ctrl+C."""
-    print("Vigilancia sem janela. Ctrl+C para encerrar.")
+    print("Vigilancia rodando. Ctrl+C para encerrar.")
     try:
         while True:
             if not core.step():
@@ -282,11 +305,21 @@ def run_headless(core):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    headless = HEADLESS_FLAG in argv
-    core = Core(start_cameras(), draw=not headless)
-    server = web.start()
+    window = WINDOW_FLAG in argv
+    open_browser = not window and HEADLESS_FLAG not in argv
+
+    if web.already_running():
+        print(f"O J.A.R.V.I.S. ja esta rodando: {web.LOCAL_URL}")
+        if open_browser:
+            webbrowser.open(web.LOCAL_URL)
+        return
+
+    core = Core(start_cameras(), draw=window)
+    server = web.start(core)
+    if open_browser and server is not None:
+        webbrowser.open(web.LOCAL_URL)
     try:
-        (run_headless if headless else run_window)(core)
+        (run_window if window else run_headless)(core)
     finally:
         web.stop(server)
         core.close()

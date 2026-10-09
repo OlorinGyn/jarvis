@@ -22,9 +22,11 @@ body {
 
 header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-  padding: 16px 20px 8px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--linha);
 }
 
 .logo {
@@ -38,9 +40,58 @@ h1 {
   letter-spacing: 0.04em;
 }
 
-.subtitle {
-  margin: 0;
+.abas {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.abas a {
   color: var(--apagado);
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+
+.abas a.ativa {
+  background: var(--destaque);
+  color: var(--texto);
+}
+
+.aba {
+  display: none;
+}
+
+.aba.ativa {
+  display: block;
+}
+
+#cameras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+#cameras img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #000;
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  #cameras {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .abas {
+    margin-left: 0;
+  }
 }
 
 .toolbar {
@@ -48,8 +99,7 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 8px 20px 16px;
-  border-bottom: 1px solid var(--linha);
+  padding: 16px 20px 0;
 }
 
 .toolbar button,

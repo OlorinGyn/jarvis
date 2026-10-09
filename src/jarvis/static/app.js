@@ -109,12 +109,67 @@ botaoProximo.addEventListener("click", () => {
 document.getElementById("hoje").addEventListener("click", () => irPara(hojeISO()));
 campoDia.addEventListener("change", carregar);
 
+const quadroCameras = document.getElementById("cameras");
+let cameras = [];
+
+function abaAtual() {
+  return location.hash === "#gravacoes" ? "gravacoes" : "ao-vivo";
+}
+
+function ligarAoVivo(ligar) {
+  if (!ligar) {
+    for (const imagem of quadroCameras.querySelectorAll("img")) {
+      imagem.removeAttribute("src");
+    }
+    quadroCameras.replaceChildren();
+    return;
+  }
+  if (quadroCameras.children.length) return;
+  if (cameras.length === 0) {
+    const vazio = document.createElement("p");
+    vazio.className = "vazio";
+    vazio.textContent = "Nenhuma câmera ativa.";
+    quadroCameras.append(vazio);
+    return;
+  }
+  for (const nome of cameras) {
+    const imagem = document.createElement("img");
+    imagem.alt = nome;
+    imagem.src = `/ao-vivo/${encodeURIComponent(nome)}`;
+    quadroCameras.append(imagem);
+  }
+}
+
+function mostrarAba() {
+  const aba = abaAtual();
+  for (const secao of document.querySelectorAll(".aba")) {
+    secao.classList.toggle("ativa", secao.id === aba);
+  }
+  for (const link of document.querySelectorAll(".abas a")) {
+    link.classList.toggle("ativa", link.dataset.aba === aba);
+  }
+  ligarAoVivo(aba === "ao-vivo" && !document.hidden);
+  if (aba === "gravacoes") {
+    carregarDias().then(carregar);
+  }
+}
+
+window.addEventListener("hashchange", mostrarAba);
+document.addEventListener("visibilitychange", () => {
+  ligarAoVivo(abaAtual() === "ao-vivo" && !document.hidden);
+});
+
 setInterval(() => {
-  if (campoDia.value === hojeISO() && !document.hidden) {
+  if (abaAtual() === "gravacoes" && campoDia.value === hojeISO() && !document.hidden) {
     carregarDias();
     carregar();
   }
 }, ATUALIZAR_MS);
 
 campoDia.value = hojeISO();
-carregarDias().then(carregar);
+fetch("/api/cameras")
+  .then((resposta) => (resposta.ok ? resposta.json() : []))
+  .then((lista) => {
+    cameras = lista;
+    mostrarAba();
+  });

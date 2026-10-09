@@ -275,15 +275,25 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    usuário aprovou e acrescentou o motivo decisivo: ele nem sempre vai querer
    acompanhar ao vivo, e o software precisa rodar o tempo todo sem janela de
    usuário. A metade de baixo já está feita (item acima); falta o cliente.
-   **Estágio 1 feito em 09/10/2026** no M900: lista de eventos em
-   `http://127.0.0.1:8765` (ARQUITETURA 17.6). **Próximo: estágio 2**,
-   reprodução do vídeo na página.
    Serve uma página local, e o navegador passa a ser o toolkit: reproduz
    vídeo, rola lista, aceita acento, cola texto e abre no celular. Entregue
-   junto, de graça: acesso remoto e os itens 5, 6 e 11. Fazer **ao lado** da
-   janela atual, sem removê-la, para comparar antes de descartar.
+   junto, de graça: acesso remoto e os itens 5, 6 e 11.
    **Stack: FastAPI + uvicorn**, decidido por MJPEG e HTTP Range, não por gosto.
    Plano em quatro estágios, cada um com critério de aceite: ARQUITETURA 17.
+
+   **Decisão do usuário, 09/10/2026: a web é o único acesso**, com um serviço
+   rodando — *"não quero ter duas formas de acesso"*. Substitui o plano de
+   manter a janela ao lado para comparar. Ordem:
+
+   | | Etapa | Estado |
+   |---|---|---|
+   | ✓ | Estágio 1 — lista de eventos | feito 09/10 (ARQUITETURA 17.6) |
+   | ✓ | Estágio 3 — ao vivo, rede local, atalho abre serviço + navegador | feito 09/10 (ARQUITETURA 17.7) |
+   | | **Estágio 4 — People e Ajustes na web** | **próximo** |
+   | | Remover a janela do OpenCV (`ui.py`, `--janela`) e subir com o Windows, sem console | depois do 4 |
+   | | Estágio 2 — reprodução do vídeo na página | depois |
+
+   Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
 
 ### Importante
 
@@ -373,7 +383,9 @@ em dados).
 
 ```bat
 jarvis.bat                                              iniciar
-http://127.0.0.1:8765                                   gravações no navegador (com o programa rodando)
+http://127.0.0.1:8765                                   ao vivo e gravações (com o programa rodando)
+uv run python -m jarvis --sem-janela                    só o serviço, sem abrir navegador
+uv run python -m jarvis --janela                        janela antiga do OpenCV (provisória)
 uv run jarvis                                           iniciar, sem o .bat
 uv run tools/diagnostico.py Front                       testar variantes de captura
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera

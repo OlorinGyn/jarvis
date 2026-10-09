@@ -113,21 +113,34 @@ Para recriar só o atalho:
 powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
 ```
 
+Isso liga o serviço — câmeras, detecção, gravação, rostos, notificação — e abre
+o navegador em `http://127.0.0.1:8765`, com as abas **Ao vivo** e
+**Gravações**. Clicar no atalho com o serviço já rodando só abre o navegador;
+não sobe um segundo, que brigaria pela câmera. O console que fica aberto é o
+serviço: encerre com `Ctrl+C` nele, não no X (ARQUITETURA 17.7).
+
 O `.bat` só confere se o `.env` existe e chama `uv run python -m jarvis`, que
 vai direto ao Python assinado em vez do `jarvis.exe` sem assinatura que o `uv`
-gera (seção 1.2). `uv run jarvis` também funciona enquanto o Windows aceitar
-aquele `.exe`. O `.bat` existe para dar para abrir com dois cliques e para a
-janela não fechar sozinha quando algo dá errado.
+gera (seção 1.2).
 
-Para gravar e avisar **sem abrir janela nenhuma**:
+Para ligar **só o serviço**, sem abrir o navegador — é o que se usa para subir
+com o Windows (seção 5):
 
 ```bat
 jarvis_vigilancia.bat
 ```
 
-É o mesmo sistema — movimento, pessoas, gravação, rostos e notificação — só sem
-a parte visual. Encerra com `Ctrl+C`. Use quando ninguém vai acompanhar ao vivo;
-veja ARQUITETURA seção 15.
+**Pelo celular**, na mesma rede Wi-Fi: o console mostra o endereço, algo como
+`http://192.168.0.18:8765`. Na primeira vez o Windows pergunta se o Python pode
+receber conexões da rede; é preciso permitir. Sem isso, só o próprio computador
+abre a página.
+
+A janela antiga do OpenCV ainda existe, **provisoriamente**, para nomear rostos
+e mexer nos ajustes até a web fazer isso (backlog, item 3):
+
+```bat
+uv run python -m jarvis --janela
+```
 
 ## 3. O que é baixado automaticamente
 
@@ -176,19 +189,16 @@ Tarefas, não a pasta Inicializar — o Agendador reinicia o programa se ele cai
 
 1. Abra o **Agendador de Tarefas** → Criar Tarefa
 2. **Geral:** com `jarvis_vigilancia.bat`, marque "Executar estando o usuário
-   conectado ou não" — não precisa de ninguém logado. Com `jarvis.bat`, deixe
-   "Executar somente quando o usuário estiver conectado", porque a janela exige
-   sessão gráfica
-3. **Disparadores:** Ao iniciar o computador (sem janela) ou Ao fazer logon
-   (com janela)
-4. **Ações:** Iniciar um programa → o caminho completo do `.bat` (não o atalho:
-   o Agendador precisa do arquivo de verdade)
+   conectado ou não" — não precisa de ninguém logado
+3. **Disparadores:** Ao iniciar o computador
+4. **Ações:** Iniciar um programa → o caminho completo do `jarvis_vigilancia.bat`
+   (não o atalho: o Agendador precisa do arquivo de verdade)
 5. **Configurações:** marque "Se a tarefa falhar, reiniciar a cada 1 minuto"
 
-Para vigilância contínua, use o `jarvis_vigilancia.bat`: a gravação não depende
-mais da janela. A janela continua precisando de sessão gráfica, e enquanto não
-existir a interface web (backlog, item 3) não há como ver as câmeras de um
-núcleo rodando sem janela.
+Com o serviço subindo sozinho, o atalho da Área de Trabalho vira só "abrir a
+página": ele percebe o serviço rodando e abre o navegador. Automatizar esse
+passo, e tirar o console do caminho, está no backlog depois do estágio 4 da
+interface web.
 
 ## 6. Ajustes para o M900
 

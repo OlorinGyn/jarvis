@@ -3,28 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>J.A.R.V.I.S. — Gravações</title>
+  <title>J.A.R.V.I.S.</title>
   <link rel="icon" href="/icone.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
     <img src="/icone.png" alt="" class="logo">
-    <div>
-      <h1>J.A.R.V.I.S.</h1>
-      <p class="subtitle">Gravações</p>
-    </div>
+    <h1>J.A.R.V.I.S.</h1>
+    <nav class="abas">
+      <a href="#ao-vivo" data-aba="ao-vivo">Ao vivo</a>
+      <a href="#gravacoes" data-aba="gravacoes">Gravações</a>
+    </nav>
   </header>
 
-  <nav class="toolbar">
-    <button id="anterior" title="Dia anterior com gravação">◀</button>
-    <input type="date" id="dia">
-    <button id="proximo" title="Próximo dia com gravação">▶</button>
-    <button id="hoje">Hoje</button>
-    <span id="resumo"></span>
-  </nav>
+  <section id="ao-vivo" class="aba">
+    <div id="cameras"></div>
+  </section>
 
-  <main id="eventos"></main>
+  <section id="gravacoes" class="aba">
+    <nav class="toolbar">
+      <button id="anterior" title="Dia anterior com gravação">◀</button>
+      <input type="date" id="dia">
+      <button id="proximo" title="Próximo dia com gravação">▶</button>
+      <button id="hoje">Hoje</button>
+      <span id="resumo"></span>
+    </nav>
+    <main id="eventos"></main>
+  </section>
 
   <template id="cartao">
     <article class="cartao">

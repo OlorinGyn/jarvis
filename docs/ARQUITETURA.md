@@ -1990,10 +1990,10 @@ motivo é a seção 15.1.
 
 | Quero | Comando |
 |---|---|
-| Ver as câmeras | `jarvis.bat` |
-| Só gravar e avisar | `jarvis_vigilancia.bat` |
-| Direto | `uv run python -m jarvis --sem-janela` |
-| Ver as gravações no navegador | `http://127.0.0.1:8765`, com qualquer um dos dois rodando (17.6) |
+| Usar o J.A.R.V.I.S. | `jarvis.bat` ou o atalho: serviço + navegador (17.7) |
+| Só o serviço, sem abrir nada | `jarvis_vigilancia.bat` |
+| A janela antiga, provisória | `uv run python -m jarvis --janela` |
+| Ver pelo navegador ou celular | `http://127.0.0.1:8765`, ou o endereço de rede que ele imprime |
 
 Sem janela, o encerramento é `Ctrl+C`. No Windows, `Ctrl+C` no terminal vira
 `KeyboardInterrupt` no Python, que o `run_headless` captura — e o `finally` do
@@ -2021,7 +2021,7 @@ backlog, porque hoje não há como olhar um núcleo sem janela.
 | Aviso no celular pelo Telegram | 12 |
 | Ícone e atalho na Área de Trabalho | 14 |
 | Vigilância sem janela (`--sem-janela`) | 15 |
-| Interface web, estágio 1: lista de eventos no navegador | 17.6 |
+| Interface web: ao vivo e lista de eventos, no navegador e na rede local | 17.6, 17.7 |
 
 Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
 bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
@@ -2030,7 +2030,13 @@ bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
 
 Decidido em 09/10/2026. Item 3 do backlog. Esta seção é o plano, para que a
 obra possa ser retomada por outra sessão ou pela outra máquina sem perder as
-decisões. **Estágio 1 feito em 09/10/2026** (17.6); os estágios 2 a 4 ainda não.
+decisões. **Estágios 1 e 3 feitos em 09/10/2026** (17.6, 17.7); 4 e 2 ainda não.
+
+**Mudança de rumo do usuário, no mesmo dia:** *"não quero ter duas formas de
+acesso; se possível tudo web, com um serviço rodando."* O plano original
+mantinha a janela do OpenCV ao lado da web para comparar; agora a web é o único
+acesso, e a janela sai assim que a web cobrir o que só ela faz. A ordem passou
+a ser 1 → 3 → 4 → remover a janela e subir com o Windows → 2.
 
 ### 17.1 Por que, em uma frase
 
@@ -2154,9 +2160,8 @@ uvicorn. Se outra instância já estiver servindo, aparece "Interface web
 desligada: a porta 8765 ja esta em uso" e a vigilância segue normalmente —
 porque a interface é opcional e gravar não é.
 
-**Só esta máquina, por enquanto.** `HOST = "127.0.0.1"` escuta só conexões
-locais. Abrir para a rede (`0.0.0.0`) é o estágio 3: o celular precisa disso, e
-o Windows vai pedir permissão no firewall na primeira vez.
+**Só esta máquina, no estágio 1.** `HOST = "127.0.0.1"` escutava só conexões
+locais. O estágio 3 abriu para a rede (17.7).
 
 **A página.** HTML, CSS e JavaScript simples em `src/jarvis/static/`, sem
 framework (17.4). O JavaScript busca `/api/eventos` e monta os cartões a partir
@@ -2169,8 +2174,76 @@ usam, e a página traduz na exibição: o dado continua o mesmo, só a apresenta
 é em português. O mesmo vale para a data: o `<input type="date">` mostra no
 formato do navegador, enquanto a API fala `AAAA-MM-DD`.
 
-**O que ainda não faz:** clicar no cartão não abre o vídeo (estágio 2), não há
-ao vivo (estágio 3), e só lista o que está em `clips/` — eventos já movidos para
-o HD externo (seção 11) não aparecem, igual à janela.
+**O que ainda não faz:** clicar no cartão não abre o vídeo (estágio 2), e só
+lista o que está em `clips/` — eventos já movidos para o HD externo (seção 11)
+não aparecem, igual à janela.
+
+### 17.7 Estágio 3, como ficou: ao vivo e um ponto de entrada só
+
+**Aceite cumprido no M900:** as duas câmeras ao vivo na aba **Ao vivo**, com
+nome, caixas de detecção e o `REC` de quando está gravando, a ~8 quadros por
+segundo. O celular pela rede local depende do firewall (abaixo); a regra para o
+`python.exe` existe, mas o teste no celular ainda não foi feito.
+
+**MJPEG.** Cada câmera é uma resposta HTTP que nunca termina:
+`multipart/x-mixed-replace`, uma sequência de JPEGs separados por uma linha de
+fronteira (`--frame`). O navegador troca a imagem a cada parte que chega, e
+mostra isso num `<img>` comum — sem player, sem JavaScript de vídeo. É o motivo
+por que o `http.server` foi descartado (17.2): um espectador seguraria a única
+thread dele para sempre.
+
+```python
+yield (f"--{BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
+       f"Content-Length: {len(data)}\r\n\r\n").encode() + data + b"\r\n"
+```
+
+`_mjpeg()` é um *generator* comum; o `StreamingResponse` o consome numa thread
+do pool do servidor, uma por espectador. Ele dorme `1 / LIVE_FPS` entre quadros
+e para quando `web.stop()` liga o `_stopping` — sem isso, um navegador aberto
+seguraria o encerramento do programa.
+
+**De onde vem a imagem.** `Core.live_view(label)` monta o painel **na hora do
+pedido**, a partir do que o `Core` já tem: o último frame de análise
+(`stream.latest`), as últimas detecções (`subjects.subjects`) e se está
+gravando. Reaproveita o `make_panel` da janela, então o desenho é idêntico. Só
+lê: o `make_panel` redimensiona para um array novo antes de desenhar, e o frame
+original nunca é tocado — importante, porque ele é lido pela thread da web
+enquanto o laço do `Core` segue na principal.
+
+Ninguém olhando, ninguém paga: o `Core` continua com `draw=False` no modo
+serviço, e o painel só existe quando um navegador pede. A página fecha os
+streams quando sai da aba Ao vivo ou quando o navegador é minimizado
+(`document.hidden`), tirando o `src` das imagens.
+
+O rótulo da câmera desceu para `LABEL_Y = 62`: em `y = 34` ele ficava em cima do
+relógio que a própria Tapo escreve no canto.
+
+**Rede local.** `HOST = "0.0.0.0"` escuta em todas as interfaces, e o programa
+imprime o endereço para o celular (`lan_address()`: conectar um socket UDP não
+envia nada, só faz o Windows escolher a interface de saída, cujo endereço é o
+nosso). Na primeira vez o Windows pergunta no firewall se o `python.exe` pode
+receber conexões; sem permitir, só esta máquina abre a página. A rede do M900
+está classificada como **Pública**, e a regra criada vale para esse perfil.
+Continua sem login e sem porta aberta para a internet (17.4).
+
+**Um ponto de entrada.** `main()` em `cameras.py` passou a ter três modos:
+
+| Comando | Faz |
+|---|---|
+| `python -m jarvis` (o `jarvis.bat` e o atalho) | serviço + abre o navegador na página |
+| `python -m jarvis --sem-janela` (`jarvis_vigilancia.bat`) | só o serviço; para subir com o Windows |
+| `python -m jarvis --janela` | a janela antiga do OpenCV, **provisória** até o estágio 4 |
+
+Antes de abrir câmera, `web.already_running()` pergunta a `/api/cameras` se já
+há um J.A.R.V.I.S. servindo. Se houver, o segundo não sobe: só abre o navegador
+(ou avisa) e sai. Testado: com o serviço no ar, um segundo lançamento saiu em
+3 s e as câmeras continuaram com os dois ffmpeg da primeira instância. Sem
+isso, clicar duas vezes no atalho faria o segundo brigar pela única conexão RTSP
+de cada câmera.
+
+**Encerrar** continua sendo `Ctrl+C` no console. Fechar o console no X não passa
+pelo `finally` do `main()` — o Windows mata o processo, e um clipe em montagem
+se perderia. Rodar como serviço de verdade, sem console, é o passo depois do
+estágio 4.
 
 ---
