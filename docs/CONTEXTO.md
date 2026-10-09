@@ -488,6 +488,20 @@ uv sync
 O `git pull` primeiro, porque o projeto é editado em duas máquinas. Se der
 conflito ou divergência, pare e mostre ao usuário em vez de resolver sozinho.
 
+**O push também é seu.** Combinado em 09/10/2026: o usuário não faz mais push
+nem pull à mão. Ao terminar uma feature ou acumular commits, envie e confirme
+contra o servidor:
+
+```bash
+git push jarvis master
+git ls-remote jarvis -h refs/heads/master
+```
+
+Confira pelo `ls-remote` ou por `git rev-list --count jarvis/master..HEAD`, não
+pela saída do `push`: o ref local de rastreamento fica velho quando a outra
+máquina envia algo, e já me fez afirmar que havia commits pendentes quando não
+havia, e o contrário também.
+
 O `uv sync` porque as dependências mudam entre commits. Em 09/10/2026 entraram
 `requests`, `python-dotenv`, `fastapi` e `uvicorn`.
 

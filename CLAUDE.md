@@ -9,6 +9,12 @@ Regras do usuário, detalhadas em `docs/CONTEXTO.md` seção 2:
   uma linha são aceitas.
 - **Toda mudança termina em commit + documentação atualizada**, sem precisar
   pedir. A mensagem explica o porquê.
+- **O push é sua responsabilidade, não do usuário** (combinado em 09/10/2026).
+  Ao concluir uma feature ou acumular commits, envie — e **confirme com o
+  servidor**, não com a saída do `push`: `git ls-remote` ou
+  `git rev-list --count jarvis/master..HEAD`. O cache local mente depois de um
+  push feito de outra máquina. O `pull` está na rotina da seção 12 do
+  `CONTEXTO.md`.
 - **O `.env` nunca entra no commit.** Tem as senhas reais das câmeras. Confira
   também `models/`, `clips/`, `faces/` e `backups/`.
 - **Explique o código, não só o resultado.** O usuário está aprendendo Python
