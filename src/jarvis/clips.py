@@ -22,7 +22,7 @@ from pathlib import Path
 
 import cv2
 
-from jarvis import ROOT, faces
+from jarvis import ROOT, faces, notify
 from jarvis.capture import SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = ROOT / "clips"
@@ -174,6 +174,9 @@ class EventRecorder:
         self.labels = set()
         self.best_confidence = 0.0
         self._save_thumbnail(frame, subjects)
+
+        notify.event(self.label, sorted({s.label for s in subjects}),
+                     str(self.base.with_suffix(".jpg")))
 
     def _save_thumbnail(self, frame, subjects):
         shot = frame.copy()

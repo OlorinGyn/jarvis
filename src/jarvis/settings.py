@@ -17,6 +17,10 @@ DEFAULTS = {
     "archive_path": "",
     "archive_after_days": 30,
     "archive_min_free_gb": 10.0,
+    "notify_token": "",
+    "notify_chat": "",
+    "notify_labels": ["person"],
+    "notify_cooldown": 120,
 }
 
 

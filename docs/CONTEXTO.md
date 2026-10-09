@@ -210,21 +210,23 @@ Esta é a lista única; a ARQUITETURA aponta para cá.
 1. ~~**Retenção automática**~~ — feito, mas com outro desenho: em vez de
    apagar, o `archive.py` move para um HD externo após 30 dias e só apaga de
    lá se o HD lotar. Ver ARQUITETURA 11
-2. **Medir o M900 rodando** — CPU com as duas câmeras em movimento, e se
+2. ~~**Notificação**~~ — feito: Telegram com miniatura, aviso no começo
+   do evento. Ver ARQUITETURA 12
+3. **Medir o M900 rodando** — CPU com as duas câmeras em movimento, e se
    `HWACCEL` ajuda (INSTALACAO seção 6)
-3. **Rótulos de animal** — só aceitar uma espécie que se repita no evento, em
+4. **Rótulos de animal** — só aceitar uma espécie que se repita no evento, em
    vez de acumular cada hesitação do YOLO
-4. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
+5. **Tracking** — manter identidade entre frames; resolve a pessoa parada e faz
    um clipe corresponder a uma pessoa
-5. **Reprodução no Records** — clicar num cartão e assistir
-6. **Desfazer junção na tela People**
-7. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
+6. **Reprodução no Records** — clicar num cartão e assistir
+7. **Desfazer junção na tela People**
+8. **Persistir os spots estáticos** — hoje a lista nasce vazia a cada execução,
    então o primeiro clipe falso da noite ainda é gravado
-8. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
-9. **Luz acionada por movimento na Front** — não é software, mas é o maior
+9. **Banco de eventos** (SQLite) no lugar dos JSON, quando houver busca
+10. **Luz acionada por movimento na Front** — não é software, mas é o maior
    ganho possível para rosto à noite (ARQUITETURA 10.5)
-10. **Re-ID de animais** — classificador sobre o corpo inteiro (ARQUITETURA 10.8)
-11. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
+11. **Re-ID de animais** — classificador sobre o corpo inteiro (ARQUITETURA 10.8)
+12. **OpenVINO no M900** — o `cv2.dnn` aceita esse backend, e era o plano para
     recuperar a velocidade perdida ao sair do PyTorch
 
 ## 9. Mapa do repositório
@@ -240,6 +242,7 @@ src/jarvis/
   faces.py        camada 4: YuNet + SFace, galeria, cadastro de nome
   archive.py      camada 5: move para o HD externo, apaga só lá se lotar
   settings.py     configuração editável pela interface (config.json)
+  notify.py       aviso no celular via Telegram, com miniatura
   ui.py           menu lateral e as quatro telas
   geometry.py     tipo Detection e utilitários de caixas
 tools/

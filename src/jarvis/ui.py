@@ -16,7 +16,7 @@ from datetime import date
 import cv2
 import numpy as np
 
-from jarvis import archive, faces, settings
+from jarvis import archive, faces, notify, settings
 from jarvis.clips import available_days, list_clips, reveal
 
 SIDEBAR_WIDTH = 190
@@ -118,6 +118,7 @@ class Interface:
         self.naming = None
         self.typed = ""
         self.archive_report = None
+        self.notify_report = ""
         self.notice = ("", 0.0)
 
     def _region(self, box, action, payload=None):
@@ -194,6 +195,17 @@ class Interface:
         elif action == "archive_now":
             self.archive_report = {"moved": archive.move_old(),
                                    "freed": archive.free_space()}
+        elif action == "open_config":
+            settings.save(settings.load())
+            reveal(settings.FILE)
+        elif action == "find_chat":
+            chat, erro = notify.discover_chat(settings.load()["notify_token"])
+            if chat:
+                settings.update(notify_chat=chat)
+            self.notify_report = f"chat {chat}" if chat else f"falhou: {erro}"
+        elif action == "test_notify":
+            ok, detalhe = notify.send("J.A.R.V.I.S.: teste de notificacao")
+            self.notify_report = "enviado" if ok else f"falhou: {detalhe}"
 
     def refresh(self, force=False):
         now = time.monotonic()
@@ -512,16 +524,45 @@ class Interface:
             cv2.putText(canvas, texto, (bx + 14, y + 22), FONT, 0.45, TEXT, 1)
             self._region((bx, y, bx + largura, y + altura), acao, None)
 
+        y += altura + 24
         if self.archive_report:
             movidos = self.archive_report["moved"]
             liberados = self.archive_report["freed"]
-            y += altura + 28
             recado = (f"Movidos {movidos['moved']} evento(s), "
                       f"{gigabytes(movidos['bytes'])}. "
                       f"Apagados {liberados['removed']} do arquivo.")
             if movidos["skipped"]:
                 recado = f"Nada feito: {movidos['skipped']}"
             cv2.putText(canvas, recado, (x, y), FONT, 0.45, GREEN, 1)
+            y += 24
+
+        config = settings.load()
+        y += 26
+        cv2.putText(canvas, "4. Notificacao no celular (Telegram)", (x, y),
+                    FONT, 0.5, TEXT, 1)
+        tem_token = bool(config.get("notify_token"))
+        tem_chat = bool(config.get("notify_chat"))
+        linha("token do bot", "configurado" if tem_token else "faltando",
+              GREEN if tem_token else RED)
+        linha("conversa", config.get("notify_chat") or "faltando",
+              GREEN if tem_chat else RED)
+        linha("avisa sobre", ", ".join(config.get("notify_labels") or []))
+        linha("intervalo minimo por camera", f"{config.get('notify_cooldown')} s")
+
+        y += 30
+        acoes = [("Abrir config.json", "open_config", PANEL),
+                 ("Descobrir conversa", "find_chat", ACTIVE),
+                 ("Enviar teste", "test_notify", ACTIVE)]
+        for indice, (texto, acao, cor) in enumerate(acoes):
+            bx = x + indice * (largura + vao)
+            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), cor, -1)
+            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), LINE, 1)
+            cv2.putText(canvas, texto, (bx + 12, y + 22), FONT, 0.45, TEXT, 1)
+            self._region((bx, y, bx + largura, y + altura), acao, None)
+
+        if self.notify_report:
+            y += altura + 24
+            cv2.putText(canvas, self.notify_report, (x, y), FONT, 0.45, GREEN, 1)
 
     def _draw_calendar(self, canvas, area):
         x0, y0, x1, y1 = area

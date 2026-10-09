@@ -1675,7 +1675,66 @@ andamento.
 
 ---
 
-## 12. Restrição importante das câmeras Tapo
+## 12. Notificação — `notify.py`
+
+### 12.1 Por que Telegram
+
+Sem aviso, o sistema responde *"quem esteve aqui?"* e nunca *"tem alguém aí
+agora"* — é um gravador, não uma vigilância.
+
+| | Telegram | E-mail | Toast do Windows |
+|---|---|---|---|
+| Chega no celular | push imediato | caixa de entrada | não |
+| Manda a miniatura | sim | anexo | não |
+| Dependência nova | nenhuma | SMTP + senha de app | — |
+| Expõe a máquina | não | não | — |
+
+A API é HTTP comum, então `urllib` basta e o projeto segue com duas
+dependências. O `multipart/form-data` do envio de foto é montado à mão, em
+vinte linhas, para não trazer o `requests` só por isso.
+
+### 12.2 Avisa no começo do evento, não no fim
+
+O aviso dispara em `_start()`, no primeiro frame com sujeito detectado — não
+quando o clipe fecha. A diferença importa: fechar o evento espera a pessoa sair
+mais `POST_SECONDS`, e depois a montagem leva mais alguns segundos. Avisando no
+começo, a mensagem chega enquanto a pessoa ainda está lá.
+
+O custo é não ter o nome do rosto, que só sai da varredura pós-evento. Para
+"tem alguém aí", saber na hora vale mais que saber quem.
+
+### 12.3 Silêncio é obrigatório
+
+Duas travas impedem a enxurrada que tornaria o recurso insuportável:
+
+- **Filtro por rótulo.** `notify_labels` vem com `["person"]`. Animal não avisa,
+  senão cada gato de madrugada viraria uma mensagem.
+- **Intervalo mínimo por câmera.** `notify_cooldown = 120` segundos, contado
+  **por câmera**: alguém circulando na frente não gera vinte avisos, mas um
+  evento na Back durante o silêncio da Front ainda passa.
+
+### 12.4 Nunca trava a captura
+
+O envio roda numa thread. Uma rede lenta ou o Telegram fora do ar não podem
+segurar o laço de captura, e toda falha volta como `(False, motivo)` em vez de
+exceção.
+
+### 12.5 Configuração
+
+O token tem ~46 caracteres e o HighGUI não tem como colar. Por isso a aba
+Ajustes abre o `config.json` no editor em vez de pedir digitação:
+
+1. **Abrir config.json** — cole o token do `@BotFather` em `notify_token`
+2. Mande qualquer mensagem para o bot no Telegram
+3. **Descobrir conversa** — lê o `chat_id` da última mensagem e grava sozinho
+4. **Enviar teste** — confirma que chega no celular
+
+O `config.json` não é versionado, e o token é uma credencial: quem o tiver pode
+mandar mensagens pelo seu bot.
+
+---
+
+## 13. Restrição importante das câmeras Tapo
 
 **A câmera suporta apenas duas destas três funções ao mesmo tempo:**
 
@@ -1698,7 +1757,7 @@ uv run tools/probe_rtsp.py <ip> <usuario> <senha> stream1
 
 ---
 
-## 13. Ícone e atalho
+## 14. Ícone e atalho
 
 **Um `.bat` não tem ícone próprio.** O Windows desenha o ícone de um arquivo
 pelo tipo dele, e todo `.bat` usa o mesmo. Quem pode ter ícone é um **atalho**
@@ -1736,7 +1795,7 @@ guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
 
 ---
 
-## 14. Estado atual
+## 15. Estado atual
 
 **Funcionando no M900 desde 29/09/2026:**
 
