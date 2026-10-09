@@ -39,6 +39,7 @@ IDLE_SLEEP = 0.005
 HEADLESS_FLAGS = ("--headless", "--sem-janela")
 WINDOW_FLAGS = ("--window", "--janela")
 STOP_FLAG = "--stop"
+HOLD_FILE = ROOT / "HOLD"
 
 logger = logging.getLogger(__name__)
 
@@ -333,6 +334,21 @@ def _has(argv, flags):
     return any(flag in argv for flag in flags)
 
 
+def _answers_soon(port, seconds=5):
+    """Whether a J.A.R.V.I.S. that just took the port starts answering.
+
+    Two launches a moment apart: the first holds the port but its server may
+    not answer yet. If nothing answers, the port belongs to another program,
+    and the surveillance runs without the web rather than not at all.
+    """
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if web.already_running(port):
+            return True
+        time.sleep(0.5)
+    return False
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     log.setup()
@@ -347,6 +363,11 @@ def main(argv=None):
     window = _has(argv, WINDOW_FLAGS)
     open_browser = not window and not _has(argv, HEADLESS_FLAGS)
 
+    if HOLD_FILE.exists():
+        logger.info("Held: %s exists (an update or a deliberate stop). Not starting.",
+                    HOLD_FILE)
+        return
+
     if web.already_running(port):
         logger.info("J.A.R.V.I.S. is already running: %s", url)
         if open_browser:
@@ -355,6 +376,13 @@ def main(argv=None):
 
     stop = threading.Event()
     server = web.start(port=port, on_stop=stop.set)
+    if server is None and _answers_soon(port):
+        logger.info("J.A.R.V.I.S. is already running: %s", url)
+        if open_browser:
+            webbrowser.open(url)
+        return
+
+    log.to_file()
     core = Core(start_cameras(env), draw=window)
     web.attach(core)
     if open_browser and server is not None:

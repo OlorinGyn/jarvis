@@ -92,10 +92,10 @@ def check_settings(problems):
         problems.append(f"{settings.FILE}: unreadable ({problem})")
         return "unreadable"
     unknown = sorted(set(stored) - set(settings.DEFAULTS))
-    if unknown:
-        problems.append(f"{settings.FILE}: keys this version does not know, "
-                        f"and would drop on save: {unknown}")
     settings.load()
+    if unknown:
+        return (f"{len(stored)} key(s); warning: this version does not know {unknown} "
+                f"and would drop them on save (readable, so not a failure)")
     return f"{len(stored)} key(s)"
 
 

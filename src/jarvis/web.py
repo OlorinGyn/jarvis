@@ -210,14 +210,35 @@ def _port_free(host, port):
     return True
 
 
+def _bind(host, port):
+    """Take the port now, in this thread, or return None if someone has it.
+
+    Exclusive on Windows: without SO_EXCLUSIVEADDRUSE a second process could
+    bind the same port. Binding here, before uvicorn's thread starts, is what
+    makes the port a lock: a check followed by a later bind left a window in
+    which two launches both saw it free.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    try:
+        sock.bind((host, port))
+        sock.listen(64)
+    except OSError:
+        sock.close()
+        return None
+    return sock
+
+
 def start(core=None, host=HOST, port=PORT, on_stop=None):
     """Serve the page in a background thread. Returns the server, or None.
 
     Called before the cameras open, so the port works as a lock: a second
-    launch during the slow camera startup sees it taken and does not start.
+    launch during the slow camera startup finds it taken and does not start.
     """
     global _on_stop
-    if not _port_free(host, port):
+    sock = _bind(host, port)
+    if sock is None:
         logger.warning("Web interface off: port %d is already in use.", port)
         return None
     _on_stop = on_stop
@@ -225,7 +246,8 @@ def start(core=None, host=HOST, port=PORT, on_stop=None):
     attach(core)
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_config=None,
                                           log_level="warning", access_log=False))
-    threading.Thread(target=server.run, name="web", daemon=True).start()
+    threading.Thread(target=server.run, kwargs={"sockets": [sock]}, name="web",
+                     daemon=True).start()
     logger.info("Web interface: %s", local_url(port))
     address = lan_address()
     if address and host == "0.0.0.0":

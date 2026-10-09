@@ -35,3 +35,6 @@ config.json
 
 # registro do programa (logs/jarvis.log, com rotacao)
 logs/
+
+# present while production is held (update in progress or deliberate stop)
+HOLD

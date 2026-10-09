@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('install', 'update', 'status', 'start', 'stop', 'check')]
+    [ValidateSet('install', 'update', 'status', 'start', 'stop', 'check', 'register')]
     [string]$Action,
     [string]$Tag = '',
     [string]$ProdDir = 'C:\JARVIS',
@@ -13,6 +13,7 @@ $TaskName = 'JARVIS'
 $DevDir = Split-Path -Parent $PSScriptRoot
 $HealthSeconds = 90
 $FreshSeconds = 5
+$RetryMinutes = 5
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     $env:Path += ';C:\Program Files\Git\cmd'
@@ -26,6 +27,12 @@ function Say([string]$Text) { Write-Host "[production] $Text" }
 function Invoke-ProdGit { git -C $ProdDir @args; if ($LASTEXITCODE) { throw "git $args failed" } }
 
 function Python { & (Join-Path $ProdDir '.venv\Scripts\python.exe') @args }
+
+function HoldFile { Join-Path $ProdDir 'HOLD' }
+
+function Hold([string]$Why) { Set-Content -Path (HoldFile) -Value $Why -Encoding ASCII }
+
+function Release { Remove-Item (HoldFile) -ErrorAction SilentlyContinue }
 
 function Port {
     $envFile = Join-Path $ProdDir '.env'
@@ -81,18 +88,12 @@ function StopService {
         Push-Location $ProdDir
         try { Python -m jarvis --stop | Out-Host } finally { Pop-Location }
     }
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    }
 }
 
 function StartService {
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Start-ScheduledTask -TaskName $TaskName
-    } else {
-        Start-Process -FilePath (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') `
-            -ArgumentList '-m', 'jarvis', '--headless' -WorkingDirectory $ProdDir
-    }
+    Release
+    Start-Process -FilePath (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') `
+        -ArgumentList '-m', 'jarvis', '--headless' -WorkingDirectory $ProdDir
 }
 
 function CheckData([string]$When) {
@@ -142,25 +143,41 @@ function CopyData {
 }
 
 function RegisterTask {
+    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $admin) { throw 'Registering the startup task needs an administrator PowerShell.' }
     $action = New-ScheduledTaskAction -Execute (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') `
         -Argument '-m jarvis --headless' -WorkingDirectory $ProdDir
-    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $atStartup = New-ScheduledTaskTrigger -AtStartup
+    $retry = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+        -RepetitionInterval (New-TimeSpan -Minutes $RetryMinutes) -RepetitionDuration (New-TimeSpan -Days 3650)
     $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) `
-        -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable `
-        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+        -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $atStartup, $retry `
         -Principal $principal -Settings $settings -Force | Out-Null
-    Say "Scheduled task '$TaskName' registered: starts with Windows, restarts if it crashes."
+    Say "Task '$TaskName': starts with Windows, and every $RetryMinutes min starts it again if it is not running."
+}
+
+function RegisterTaskElevated {
+    Say 'Registering the startup task needs administrator rights: Windows will ask for permission now.'
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Action register -ProdDir `"$ProdDir`""
+    try {
+        $child = Start-Process powershell -Verb RunAs -ArgumentList $arguments -Wait -PassThru
+    } catch {
+        Say 'Permission refused. Production is running now but will not come back after a reboot.'
+        Say "Later, from an administrator PowerShell: tools\production.ps1 -Action register"
+        return
+    }
+    if ($child.ExitCode -eq 0 -and (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
+        Say 'Startup task registered.'
+    } else {
+        Say "The task was not registered (exit code $($child.ExitCode)). Run -Action register as administrator."
+    }
 }
 
 function Install {
     if (Test-Path (Join-Path $ProdDir '.git')) { throw "$ProdDir already has an installation. Use -Action update." }
-    if (-not $SkipTask) {
-        $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-            [Security.Principal.WindowsBuiltInRole]::Administrator)
-        if (-not $admin) { throw 'Run this from an administrator PowerShell: registering a startup task needs it.' }
-    }
     Say "Cloning $Repo into $ProdDir..."
     git clone --quiet $Repo $ProdDir
     if ($LASTEXITCODE) { throw 'git clone failed' }
@@ -171,17 +188,16 @@ function Install {
     CopyData
     Sync
     if (-not (CheckData 'copied data, new installation')) { throw 'Existing data is not readable by this version. Nothing was started.' }
-    if (-not $SkipTask) { RegisterTask }
     StartService
     if (-not (Healthy)) {
         throw 'Installed, but the cameras did not deliver frames in time. Read logs\jarvis.log in the production folder.'
     }
     Say "Production is running $target, every camera delivering frames."
-    if (-not $SkipTask) { Notify "J.A.R.V.I.S. production installed: $target" }
-    if (-not $SkipTask) {
-        ConfigureTestCopy
-        DesktopShortcut
-    }
+    if ($SkipTask) { return }
+    Notify "J.A.R.V.I.S. production installed: $target"
+    ConfigureTestCopy
+    DesktopShortcut
+    RegisterTaskElevated
 }
 
 function StopDevCopy {
@@ -193,13 +209,13 @@ function StopDevCopy {
 }
 
 function SetEnvValue([string]$File, [string]$Key, [string]$Value) {
-    $lines = @(Get-Content $File)
+    $lines = @([IO.File]::ReadAllLines($File))
     if ($lines -match "^\s*$Key\s*=") {
         $lines = $lines -replace "^\s*$Key\s*=.*", "$Key=$Value"
     } else {
         $lines += "$Key=$Value"
     }
-    Set-Content -Path $File -Value $lines -Encoding UTF8
+    [IO.File]::WriteAllLines($File, [string[]]$lines, (New-Object Text.UTF8Encoding $false))
 }
 
 function ConfigureTestCopy {
@@ -207,13 +223,13 @@ function ConfigureTestCopy {
     if (Test-Path $envFile) {
         SetEnvValue $envFile 'CAM_STREAM' 'stream2'
         SetEnvValue $envFile 'WEB_PORT' '8766'
-        Say "Development copy is now the test copy: stream2 (640x360), port 8766."
+        Say 'Development copy is now the test copy: stream2 (640x360), port 8766.'
     }
     $devPython = Join-Path $DevDir '.venv\Scripts\python.exe'
     Push-Location $DevDir
     try {
-        & $devPython -c "from jarvis import settings; settings.update(notify_token='', notify_prefix='[TEST]')"
-        Say 'Test copy: Telegram off (token removed there; production keeps its own), prefix [TEST].'
+        & $devPython -c "from jarvis import settings; settings.update(notify_token='', notify_prefix='[TEST]', archive_path='')"
+        Say 'Test copy: Telegram off and no external drive (production keeps both), prefix [TEST].'
     } finally { Pop-Location }
 }
 
@@ -229,6 +245,11 @@ function DesktopShortcut {
     Say "Desktop: 'J.A.R.V.I.S.' opens production; 'J.A.R.V.I.S. (test)' starts the test copy."
 }
 
+function SwitchTo([string]$Version) {
+    Invoke-ProdGit checkout --quiet --force $Version
+    Sync
+}
+
 function Update {
     if (-not (Test-Path (Join-Path $ProdDir '.git'))) { throw "Nothing installed in $ProdDir. Use -Action install." }
     $previous = CurrentVersion
@@ -237,11 +258,11 @@ function Update {
     Say "Updating $previous -> $target"
 
     if (-not (CheckData 'before, current version')) { throw 'Data already unreadable before updating; nothing changed. Investigate first.' }
+    Hold "update $previous -> $target"
     StopService
     $good = $false
     try {
-        Invoke-ProdGit checkout --quiet --force $target
-        Sync
+        SwitchTo $target
         $good = CheckData 'after, new version'
         if ($good) {
             StartService
@@ -257,11 +278,16 @@ function Update {
     }
 
     Say "The new version failed. Rolling back to $previous..."
-    StopService
-    Invoke-ProdGit checkout --quiet --force $previous
-    Sync
-    StartService
-    $back = Healthy
+    $back = $false
+    try {
+        Hold "rollback to $previous"
+        StopService
+        SwitchTo $previous
+        StartService
+        $back = Healthy
+    } catch {
+        Say "Error during the rollback: $_"
+    }
     Notify "J.A.R.V.I.S. update to $target FAILED; rolled back to $previous (running: $back)"
     throw "Update to $target failed and was rolled back to $previous. Running again: $back."
 }
@@ -271,6 +297,7 @@ function ShowStatus {
     Say "Version: $(CurrentVersion)"
     $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     Say "Startup task: $(if ($task) { $task.State } else { 'not registered' })"
+    if (Test-Path (HoldFile)) { Say "HELD: $(Get-Content (HoldFile)) - the task will not start it. Use -Action start." }
     $state = Status
     if ($state) {
         $ages = ($state.frame_age.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value) s" }) -join ', '
@@ -285,6 +312,7 @@ switch ($Action) {
     'update' { Update }
     'status' { ShowStatus }
     'start' { StartService; if (Healthy) { Say 'Running.' } else { throw 'Started, but no frames in time.' } }
-    'stop' { StopService; Say 'Stopped.' }
+    'stop' { Hold 'stopped on request'; StopService; Say 'Stopped, and held until -Action start.' }
     'check' { if (CheckData 'on request') { Say 'Data OK.' } else { throw 'Some files are not readable by this version.' } }
+    'register' { RegisterTask }
 }
