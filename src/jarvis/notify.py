@@ -12,19 +12,37 @@ See docs/ARQUITETURA.md section 12.
 
 import json
 import mimetypes
+import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from functools import lru_cache
 from pathlib import Path
+
+import certifi
 
 from .settings import load
 
 API = "https://api.telegram.org/bot{token}/{method}"
 TIMEOUT = 15
 COOLDOWN_SECONDS = 120
+
+
+@lru_cache(maxsize=1)
+def _context():
+    """TLS trust from certifi, not from the machine.
+
+    Windows fetches missing root CAs on demand through its own API, which
+    browsers trigger and Python does not. api.telegram.org chains to "Go Daddy
+    Root Certificate Authority - G2", absent from this machine's store, so
+    verification failed while every browser worked. certifi carries it.
+    """
+    if API.startswith("http://"):
+        return None
+    return ssl.create_default_context(cafile=certifi.where())
 
 _last_sent = {}
 _lock = threading.Lock()
@@ -66,7 +84,8 @@ def _call(token, method, fields, file_field=None, file_path=None):
         else:
             body = urllib.parse.urlencode(fields).encode("utf-8")
             request = urllib.request.Request(url, data=body)
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as answer:
+        with urllib.request.urlopen(request, timeout=TIMEOUT,
+                                    context=_context()) as answer:
             payload = json.loads(answer.read().decode("utf-8"))
         return bool(payload.get("ok")), payload.get("description", "")
     except urllib.error.HTTPError as problem:
@@ -84,7 +103,8 @@ def discover_chat(token):
     ok, _ = True, None
     url = API.format(token=token, method="getUpdates")
     try:
-        with urllib.request.urlopen(url, timeout=TIMEOUT) as answer:
+        with urllib.request.urlopen(url, timeout=TIMEOUT,
+                                    context=_context()) as answer:
             payload = json.loads(answer.read().decode("utf-8"))
     except (urllib.error.URLError, OSError, ValueError) as problem:
         return "", str(problem)

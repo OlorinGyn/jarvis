@@ -1719,7 +1719,37 @@ O envio roda numa thread. Uma rede lenta ou o Telegram fora do ar não podem
 segurar o laço de captura, e toda falha volta como `(False, motivo)` em vez de
 exceção.
 
-### 12.5 Configuração
+### 12.5 A raiz de certificado que faltava
+
+Na primeira tentativa de validar o token, isto:
+
+```
+[SSL: CERTIFICATE_VERIFY_FAILED] self-signed certificate in certificate chain
+```
+
+Parecia antivírus interceptando HTTPS. **Não era.** O `github.com` e o
+`google.com` verificavam normalmente — só o Telegram falhava.
+
+A cadeia que o `api.telegram.org` apresenta termina em **"Go Daddy Root
+Certificate Authority - G2"**, e o repositório desta máquina tinha apenas
+raízes **Starfield**. A raiz Go Daddy G2 não estava instalada.
+
+O navegador funciona porque o **Windows baixa raízes faltantes sob demanda**,
+pela própria CryptoAPI. O Python não aciona esse mecanismo: o
+`ssl.enum_certificates` só enxerga o que já está em cache local. Carregar o
+repositório inteiro do Windows levou de 39 para 52 CAs e continuou falhando,
+porque a raiz simplesmente não estava lá para ser carregada.
+
+A correção é o `certifi`, o conjunto de raízes da Mozilla — 121 certificados,
+incluindo a Go Daddy G2. Virou a terceira dependência do projeto, e vale a
+pena: é um arquivo de dados, não código, e garante o mesmo comportamento nas
+duas máquinas em vez de depender do que cada Windows resolveu baixar.
+
+**A lição:** erro de SSL não significa necessariamente interceptação. Vale
+testar outro site antes de culpar antivírus.
+
+### 12.6 Configuração
+
 
 O token tem ~46 caracteres e o HighGUI não tem como colar. Por isso a aba
 Ajustes abre o `config.json` no editor em vez de pedir digitação:
