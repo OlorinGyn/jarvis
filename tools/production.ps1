@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('install', 'update', 'status', 'start', 'stop')]
+    [ValidateSet('install', 'update', 'status', 'start', 'stop', 'check')]
     [string]$Action,
     [string]$Tag = '',
     [string]$ProdDir = 'C:\JARVIS',
@@ -37,8 +37,12 @@ function Port {
 }
 
 function CurrentVersion {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $exact = git -C $ProdDir describe --tags --exact-match 2>$null
-    if ($LASTEXITCODE -eq 0) { return $exact }
+    $found = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $previous
+    if ($found) { return $exact }
     return (git -C $ProdDir rev-parse --short HEAD)
 }
 
@@ -75,7 +79,7 @@ function StopService {
     if (Status) {
         Say 'Stopping the service cleanly...'
         Push-Location $ProdDir
-        try { Python -m jarvis --stop } finally { Pop-Location }
+        try { Python -m jarvis --stop | Out-Host } finally { Pop-Location }
     }
     if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
         Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -94,7 +98,10 @@ function StartService {
 function CheckData([string]$When) {
     Say "Checking that every existing file is still readable ($When)..."
     Push-Location $ProdDir
-    try { Python tools\check_data.py; $ok = ($LASTEXITCODE -eq 0) } finally { Pop-Location }
+    try {
+        Python tools\check_data.py | Out-Host
+        $ok = ($LASTEXITCODE -eq 0)
+    } finally { Pop-Location }
     return $ok
 }
 
@@ -279,4 +286,5 @@ switch ($Action) {
     'status' { ShowStatus }
     'start' { StartService; if (Healthy) { Say 'Running.' } else { throw 'Started, but no frames in time.' } }
     'stop' { StopService; Say 'Stopped.' }
+    'check' { if (CheckData 'on request') { Say 'Data OK.' } else { throw 'Some files are not readable by this version.' } }
 }

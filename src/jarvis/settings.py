@@ -29,7 +29,7 @@ def load():
     """Current settings, with any missing key filled from DEFAULTS."""
     values = dict(DEFAULTS)
     try:
-        stored = json.loads(FILE.read_text(encoding="utf-8"))
+        stored = json.loads(FILE.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return values
     for key in DEFAULTS:

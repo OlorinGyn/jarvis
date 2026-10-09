@@ -198,7 +198,7 @@ class Gallery:
 
     def load(self):
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
+            data = json.loads(self.path.read_text(encoding="utf-8-sig"))
             self.people = data.get("people", [])
         except (OSError, ValueError):
             self.people = []
@@ -314,7 +314,7 @@ def _repoint_sightings(folder, old_id, new_id):
     """Sightings store a person_id, so a merge rewrites the ones that pointed at old_id."""
     for path in Path(folder).glob("*/*.json"):
         try:
-            sighting = json.loads(path.read_text(encoding="utf-8"))
+            sighting = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         if sighting.get("person_id") == old_id:
@@ -469,7 +469,7 @@ def list_sightings(day=None):
     entries = []
     for path in folder.glob("*.json"):
         try:
-            entry = json.loads(path.read_text(encoding="utf-8"))
+            entry = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         person = gallery.get(entry.get("person_id"))

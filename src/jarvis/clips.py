@@ -118,7 +118,7 @@ def list_clips(day=None):
     entries = []
     for path in CLIP_DIR.glob(f"*/{folder}/*.json"):
         try:
-            entry = json.loads(path.read_text(encoding="utf-8"))
+            entry = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         entry["thumbnail_path"] = path.with_suffix(".jpg")

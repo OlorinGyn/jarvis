@@ -195,7 +195,7 @@ def request_stop(port=PORT, timeout=120):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if not already_running(port) and _port_free(HOST, port):
-            return "Stopped."
+            return "The service has stopped."
         time.sleep(1)
     return f"Asked to stop, but it was still running after {timeout} s."
 

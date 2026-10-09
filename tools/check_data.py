@@ -30,7 +30,7 @@ def check_events(root, problems):
             continue
         count += 1
         try:
-            entry = json.loads(sidecar.read_text(encoding="utf-8"))
+            entry = json.loads(sidecar.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as problem:
             problems.append(f"{sidecar}: unreadable ({problem})")
             continue
@@ -68,7 +68,7 @@ def check_faces(problems):
         for path in folder.glob("*.json"):
             sightings += 1
             try:
-                entry = json.loads(path.read_text(encoding="utf-8"))
+                entry = json.loads(path.read_text(encoding="utf-8-sig"))
             except (OSError, ValueError) as problem:
                 problems.append(f"{path}: unreadable ({problem})")
                 continue
@@ -87,7 +87,7 @@ def check_settings(problems):
     if not settings.FILE.exists():
         return "absent (defaults apply)"
     try:
-        stored = json.loads(settings.FILE.read_text(encoding="utf-8"))
+        stored = json.loads(settings.FILE.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as problem:
         problems.append(f"{settings.FILE}: unreadable ({problem})")
         return "unreadable"
