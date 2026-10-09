@@ -7,20 +7,20 @@ funciona, veja [ARQUITETURA.md](ARQUITETURA.md).
 
 ## 1. O que precisa estar instalado
 
-Três coisas:
+Quatro coisas:
 
 | Programa | Para quê |
 |---|---|
 | **git** | Baixar e atualizar o código |
-| **uv** | Instalar o Python e as dependências |
+| **uv** | Instalar as dependências e rodar o programa |
+| **Python 3.14 oficial** (python.org) | O interpretador. Tem que ser o **assinado**, ver 1.2 |
 | **Visual C++ Redistributable** | O OpenCV depende dele |
 
-**Não é preciso instalar Python, ffmpeg, CUDA, PyTorch nem codecs.** O `uv` traz
-o Python; o ffmpeg vem empacotado na dependência `imageio-ffmpeg`. O projeto tem
-apenas **duas** dependências Python: `opencv-python` e `imageio-ffmpeg`, cerca de
-90 MB no total.
+**Não é preciso instalar ffmpeg, CUDA, PyTorch nem codecs.** O ffmpeg vem
+empacotado na dependência `imageio-ffmpeg`; as demais estão no `pyproject.toml`
+e o `uv` as instala.
 
-O `instalar.bat` cuida do `uv` e do Redistributable sozinho.
+O `instalar.bat` cuida do `uv`, do Python e do Redistributable sozinho.
 
 ### 1.1 Por que o Visual C++ Redistributable
 
@@ -46,6 +46,36 @@ instalar.
 Na máquina de desenvolvimento isso já estava presente por causa de outros
 programas, e por isso o problema só apareceu na máquina de destino.
 
+### 1.2 Por que o Python oficial, e não o que o uv baixa
+
+O `uv` sabe baixar Python sozinho, e o projeto usava isso. Esses binários
+(do projeto *python-build-standalone*) **não são assinados**. O Smart App
+Control do Windows 11 deixa passar binário sem assinatura só se a nuvem da
+Microsoft disser que ele tem boa reputação — e esse veredito muda com o tempo.
+
+Aconteceu no M900 em 09/10/2026: um `uv sync` atualizou o Python para 3.14.7,
+binário novo e sem reputação, e o Windows passou a bloquear o próprio
+interpretador (`WinError 4551`). Nada rodava, nem `python -c "print(1)"`, e a
+vigilância ficou parada. O registro do Windows mostrou que o mesmo já tinha
+acontecido em 29/09 e se resolvido sozinho depois.
+
+O Python do python.org é **assinado pela Python Software Foundation**, e
+assinatura válida passa sem depender de reputação. O `pyproject.toml` declara
+`python-preference = "system"`: o `uv` usa o Python instalado no Windows quando
+existe, e só cai para o dele se não houver nenhum. Para instalar à mão:
+
+```bat
+winget install --id Python.Python.3.14 -e --scope user
+```
+
+Para conferir que o ambiente está no Python assinado:
+
+```powershell
+Get-AuthenticodeSignature .venv\Scripts\python.exe
+```
+
+Tem que dizer `Valid` e `CN=Python Software Foundation`.
+
 ## 2. Passo a passo
 
 ```bat
@@ -54,17 +84,18 @@ cd jarvis
 instalar.bat
 ```
 
-O `instalar.bat` faz seis coisas:
+O `instalar.bat` faz sete coisas:
 
 1. Instala o `uv` se faltar (se instalar, **feche a janela e rode de novo** — o
    PATH só atualiza numa janela nova)
 2. Garante o Visual C++ Redistributable (ver 1.1)
-3. `uv sync` — instala Python e dependências a partir do `uv.lock`, nas versões
+3. Instala o Python 3.14 oficial, só para o usuário atual (ver 1.2)
+4. `uv sync` — instala as dependências a partir do `uv.lock`, nas versões
    exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
-4. Baixa os modelos de visão (~73 MB no total, ver seção 3)
-5. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
+5. Baixa os modelos de visão (~73 MB no total, ver seção 3)
+6. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
    (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 12)
-6. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
+7. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
 
 Cada passo tem sua própria mensagem de erro. A primeira versão juntava o
 download dos modelos com a carga do PyTorch e, quando o PyTorch falhava,
@@ -82,8 +113,10 @@ Para recriar só o atalho:
 powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
 ```
 
-O `.bat` só confere se o `.env` existe e chama `uv run jarvis`. Os dois são
-equivalentes; o `.bat` existe para dar para abrir com dois cliques e para a
+O `.bat` só confere se o `.env` existe e chama `uv run python -m jarvis`, que
+vai direto ao Python assinado em vez do `jarvis.exe` sem assinatura que o `uv`
+gera (seção 1.2). `uv run jarvis` também funciona enquanto o Windows aceitar
+aquele `.exe`. O `.bat` existe para dar para abrir com dois cliques e para a
 janela não fechar sozinha quando algo dá errado.
 
 Para gravar e avisar **sem abrir janela nenhuma**:
@@ -356,13 +389,23 @@ Falta o Visual C++ Redistributable. Ver seção 1.1.
 
 **`WinError 4551: An Application Control policy has blocked this file`**
 
-O Smart App Control do Windows 11 bloqueou uma DLL sem assinatura reconhecida.
+O Smart App Control do Windows 11 bloqueou um binário sem assinatura
+reconhecida. Já aconteceu duas vezes:
 
-Isto **não deve mais acontecer**: o PyTorch, que era o único componente afetado,
-foi removido do projeto justamente por causa disso (ARQUITETURA 7.11). Se
-aparecer em outra biblioteca, **não desligue o Smart App Control** sem pensar —
-ele é irreversível, só volta reinstalando o Windows. Procure primeiro uma
-alternativa assinada.
+| Quando | O que foi bloqueado | Saída |
+|---|---|---|
+| 29/09/2026 | DLLs do PyTorch | PyTorch removido, YOLO pelo `cv2.dnn` (ARQUITETURA 7.11) |
+| 09/10/2026 | o **próprio Python** que o `uv` baixa | Python oficial assinado (seção 1.2) |
+
+Se a mensagem cita `python.exe` ou o `uv` diz `Failed to spawn: python`, é o
+segundo caso: confira a assinatura com `Get-AuthenticodeSignature
+.venv\Scripts\python.exe`, e se não for da Python Software Foundation, instale
+o Python oficial e recrie o ambiente (`Remove-Item .venv -Recurse` e `uv sync`).
+
+Se aparecer em outra biblioteca, **não desligue o Smart App Control** sem
+pensar — ele é irreversível, só volta reinstalando o Windows. Procure primeiro
+uma alternativa assinada. Para ver o que foi bloqueado, o Windows registra cada
+bloqueio no log `Microsoft-Windows-CodeIntegrity/Operational`.
 
 Para conferir o estado dele:
 

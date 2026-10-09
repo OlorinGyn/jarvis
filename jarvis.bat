@@ -9,7 +9,7 @@ if not exist ".env" (
     exit /b 1
 )
 
-uv run jarvis
+uv run python -m jarvis
 set CODIGO=%errorlevel%
 
 if not "%CODIGO%"=="0" (

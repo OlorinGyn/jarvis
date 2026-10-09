@@ -10,7 +10,7 @@ echo.
 
 where uv >nul 2>&1
 if errorlevel 1 (
-    echo [1/6] uv nao encontrado. Instalando...
+    echo [1/7] uv nao encontrado. Instalando...
     winget install --id=astral-sh.uv -e --accept-source-agreements --accept-package-agreements
     if errorlevel 1 (
         echo.
@@ -25,15 +25,20 @@ if errorlevel 1 (
     pause
     exit /b 0
 ) else (
-    echo [1/6] uv encontrado.
+    echo [1/7] uv encontrado.
 )
 
-echo [2/6] Verificando o Visual C++ Redistributable...
+echo [2/7] Verificando o Visual C++ Redistributable...
 echo       ^(o OpenCV depende dele e nao o empacota^)
 winget install --id=Microsoft.VCRedist.2015+.x64 -e --accept-source-agreements --accept-package-agreements >nul 2>&1
 echo       pronto.
 
-echo [3/6] Instalando dependencias ^(pode demorar na primeira vez^)...
+echo [3/7] Python oficial, assinado pela Python Software Foundation...
+echo       ^(o Smart App Control do Windows 11 bloqueia o Python sem assinatura^)
+winget install --id=Python.Python.3.14 -e --scope user --accept-source-agreements --accept-package-agreements --silent >nul 2>&1
+echo       pronto.
+
+echo [4/7] Instalando dependencias ^(pode demorar na primeira vez^)...
 uv sync
 if errorlevel 1 (
     echo.
@@ -42,7 +47,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/6] Baixando modelos de visao ^(~73 MB^)...
+echo [5/7] Baixando modelos de visao ^(~73 MB^)...
 uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
 if errorlevel 1 (
     echo.
@@ -58,10 +63,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [5/6] Atalho na Area de Trabalho...
+echo [6/7] Atalho na Area de Trabalho...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\criar_atalho.ps1"
 
-echo [6/6] Configuracao das cameras...
+echo [7/7] Configuracao das cameras...
 if exist ".env" (
     echo      .env ja existe, mantido como esta.
 ) else (

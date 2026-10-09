@@ -96,6 +96,17 @@ desfazer. Ver ARQUITETURA 7.11.
 A contagem baixa de dependências que isso produziu **não é mérito do projeto** —
 ver seção 11.
 
+### Python oficial assinado, não o que o uv baixa
+O Python que o `uv` baixa não é assinado, e o Smart App Control só o deixa rodar
+enquanto a nuvem da Microsoft lhe dá boa reputação — veredito que muda sozinho.
+Em 09/10/2026 bloqueou o próprio interpretador no M900, depois de um `uv sync`
+trazer o 3.14.7, e a vigilância parou. O do python.org é assinado pela Python
+Software Foundation e passa sempre. `pyproject.toml` declara
+`python-preference = "system"`, e os `.bat` chamam `uv run python -m jarvis`
+em vez do `jarvis.exe` que o uv gera, também sem assinatura. A regra que sai
+daqui: **no M900, todo executável no caminho tem que ser assinado** — reputação
+não é garantia. Ver INSTALACAO 1.2.
+
 ### Interface web com FastAPI
 A vigilância já roda sem janela, mas não havia como olhar um núcleo sem janela.
 `http.server` foi cogitado e descartado: é de uma thread, então MJPEG ao vivo
@@ -144,6 +155,7 @@ para o mesmo rosto e **0.045** para rostos diferentes, com limiar de 0.363.
 | Terminal cheio de `[h264] error while decoding MB` | Câmera Back mandando blocos danificados (Wi-Fi), impressos pelo decodificador interno do OpenCV na varredura de rostos | Varredura lê pelo nosso ffmpeg em `-loglevel quiet`, 2× mais rápida; `tools/verificar_clipes.py` mede o dano (ARQUITETURA 10.11) |
 | Foto do rosto ruim | Era o recorte de 112 px do reconhecedor, ampliado duas vezes | Recorte do frame original com cabelo e ombros, 300 px (ARQUITETURA 10.10) |
 | Scripts dependiam da pasta atual | Caminhos relativos (`Path("clips")`) | `ROOT` no pacote; todo caminho parte da raiz (ARQUITETURA 3.2) |
+| M900 parado, `Failed to spawn: python` (`WinError 4551`), 09/10 | `uv sync` trocou o Python que o uv baixa por 3.14.7, binário sem assinatura e sem reputação; o Smart App Control bloqueou o próprio interpretador | Python oficial assinado pela PSF + `python-preference = "system"`; `.bat` chamam `python -m jarvis`, sem o `jarvis.exe` sem assinatura (INSTALACAO 1.2) |
 
 ## 5. Medições de referência
 
@@ -505,6 +517,15 @@ havia, e o contrário também.
 O `uv sync` porque as dependências mudam entre commits. Em 09/10/2026 entraram
 `requests`, `python-dotenv`, `fastapi` e `uvicorn`.
 
+**O remote se chama `jarvis` nas duas máquinas.** No M900 ele vinha como
+`origin` do `git clone` e foi renomeado em 09/10/2026, para os comandos desta
+seção valerem igual. Numa máquina nova: `git remote rename origin jarvis`.
+
+**Confira se o Python ainda roda.** Se o `uv sync` ou o `uv run` falhar com
+`Failed to spawn: python` ou `WinError 4551`, é o Smart App Control bloqueando
+um interpretador sem assinatura. A saída está em INSTALACAO 1.2 — Python
+oficial e recriar o `.venv` —, e é sua: faça antes de responder.
+
 ### 12.2 Verifique o que o item em andamento exige
 
 Leia a seção 8 (backlog) e identifique o item `(decidido)` em curso. Se ele
@@ -525,7 +546,7 @@ com threads, Python puro — e não se abandona a web.
 | Máquina | `pydantic_core` carrega? |
 |---|---|
 | Dev (Windows, este PC) | sim, testado em 09/10/2026 |
-| M900 (deploy) | **não testado** |
+| M900 (deploy) | sim, testado em 09/10/2026 — `pydantic_core` 2.50.0, depois de trocar para o Python assinado |
 
 ### 12.3 Diga em que pé está
 

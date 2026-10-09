@@ -13,7 +13,7 @@ echo Gravando e avisando sem abrir janela. Ctrl+C encerra.
 echo Para ver as cameras, use jarvis.bat.
 echo.
 
-uv run jarvis --sem-janela
+uv run python -m jarvis --sem-janela
 set CODIGO=%errorlevel%
 
 if not "%CODIGO%"=="0" (

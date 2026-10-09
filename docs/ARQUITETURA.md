@@ -1996,8 +1996,9 @@ viés da seção 11 voltando pela porta dos fundos, e foi descartada.
 **Risco verificado:** o FastAPI traz `pydantic`, cujo núcleo é Rust compilado —
 a mesma categoria de binário que o Smart App Control bloqueou no PyTorch (7.11).
 Testado em 09/10/2026 na máquina de desenvolvimento: `import pydantic_core`
-carrega sem erro. **Falta confirmar no M900**, que é onde o Smart App Control
-mais incomodou:
+carrega sem erro. **Confirmado no M900 também, em 09/10/2026** (`pydantic_core`
+2.50.0) — que é onde o Smart App Control mais incomodou. Antes disso foi
+preciso trocar o próprio Python por um assinado (INSTALACAO 1.2). O teste:
 
 ```bat
 uv run python -c "import pydantic_core, fastapi, uvicorn; print('ok')"
