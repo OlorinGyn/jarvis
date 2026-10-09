@@ -21,6 +21,7 @@ from .settings import load
 API = "https://api.telegram.org/bot{token}/{method}"
 TIMEOUT = 15
 COOLDOWN_SECONDS = 120
+MAX_FACES = 3
 
 _last_sent = {}
 _lock = threading.Lock()
@@ -101,6 +102,28 @@ def event(camera, labels, thumbnail, names=None, settings=None):
     threading.Thread(target=send, args=(texto, thumbnail, settings),
                      daemon=True).start()
     return True
+
+
+def faces_seen(camera, started_at, sightings, settings=None):
+    """Follow up an event with each face the clip scan found, named when known.
+
+    Runs in the clip-assembly thread, after the event, so it can block on the
+    network without touching capture. Only called when the event's own
+    notification went out, so the cooldown that silenced the first message
+    silences this one too.
+    """
+    settings = settings or load()
+    if not settings.get("notify_token") or not settings.get("notify_chat"):
+        return 0
+    sent = 0
+    when = started_at.strftime("%H:%M:%S")
+    for sighting in sightings[:MAX_FACES]:
+        name = sighting.get("name") or ""
+        quem = f"{name} reconhecido" if name else "rosto desconhecido"
+        ok, _ = send(f"{camera} {when}: {quem}", sighting.get("thumbnail_path"),
+                     settings)
+        sent += ok
+    return sent
 
 
 def reset_cooldown():

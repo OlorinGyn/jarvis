@@ -255,6 +255,7 @@ Itens propostos **não são plano**. Não comece um sem perguntar.
 |---|---|---|
 | ✓ | **Armazenamento em camadas** (decidido) — move para HD externo após 30 dias; só apaga de lá se lotar | ARQUITETURA 11 |
 | ✓ | **Notificação no celular** (decidido) — Telegram com miniatura, aviso no começo do evento | ARQUITETURA 12 |
+| ✓ | **Rosto e nome na notificação** (decidido, 09/10) — segunda mensagem após a varredura, com o recorte do rosto e o nome se conhecido | ARQUITETURA 12.7 |
 | ✓ | **Núcleo sem janela** (decidido) — `--sem-janela`; gravar e avisar não dependem mais de ter alguém olhando | ARQUITETURA 15 |
 
 ### Crítico

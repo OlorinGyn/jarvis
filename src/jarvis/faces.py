@@ -455,7 +455,9 @@ def _scan_clip(clip, camera, started_at, gallery):
         }
         (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2),
                                              encoding="utf-8")
-        recorded.append(sighting)
+        person = gallery.get(person_id) or {}
+        recorded.append({**sighting, "thumbnail_path": thumbnail,
+                         "name": person.get("name", "")})
 
     return recorded
 

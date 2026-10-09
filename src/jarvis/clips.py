@@ -64,7 +64,7 @@ def _concat(segments, destination):
         listing.unlink(missing_ok=True)
 
 
-def _assemble(camera, start, end, destination, labels):
+def _assemble(camera, start, end, destination, labels, notified=False):
     """Wait for the final segment to close, build the clip, then read faces."""
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
@@ -72,11 +72,15 @@ def _assemble(camera, start, end, destination, labels):
     if not segments:
         return
     _concat(segments, destination)
-    if "person" in labels and destination.exists():
-        try:
-            faces.scan_clip(destination, camera.label, start)
-        except Exception as problem:
-            print(f"  face scan failed on {destination.name}: {problem}")
+    if "person" not in labels or not destination.exists():
+        return
+    try:
+        found = faces.scan_clip(destination, camera.label, start)
+    except Exception as problem:
+        print(f"  face scan failed on {destination.name}: {problem}")
+        return
+    if notified and found:
+        notify.faces_seen(camera.label, start, found)
 
 
 def available_days():
@@ -135,6 +139,7 @@ class EventRecorder:
         self.base = None
         self.labels = set()
         self.best_confidence = 0.0
+        self.notified = False
 
     @property
     def protect_from(self):
@@ -175,8 +180,8 @@ class EventRecorder:
         self.best_confidence = 0.0
         self._save_thumbnail(frame, subjects)
 
-        notify.event(self.label, sorted({s.label for s in subjects}),
-                     str(self.base.with_suffix(".jpg")))
+        self.notified = notify.event(self.label, sorted({s.label for s in subjects}),
+                                     str(self.base.with_suffix(".jpg")))
 
     def _save_thumbnail(self, frame, subjects):
         shot = frame.copy()
@@ -221,7 +226,7 @@ class EventRecorder:
 
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
-                                     destination, set(self.labels)))
+                                     destination, set(self.labels), self.notified))
         job.start()
         _jobs.append(job)
 

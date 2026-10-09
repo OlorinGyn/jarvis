@@ -1717,7 +1717,8 @@ mais `POST_SECONDS`, e depois a montagem leva mais alguns segundos. Avisando no
 começo, a mensagem chega enquanto a pessoa ainda está lá.
 
 O custo é não ter o nome do rosto, que só sai da varredura pós-evento. Para
-"tem alguém aí", saber na hora vale mais que saber quem.
+"tem alguém aí", saber na hora vale mais que saber quem. O "quem" chega depois,
+numa segunda mensagem (12.7).
 
 ### 12.3 Silêncio é obrigatório
 
@@ -1788,6 +1789,49 @@ Ajustes abre o `config.json` no editor em vez de pedir digitação:
 
 O `config.json` não é versionado, e o token é uma credencial: quem o tiver pode
 mandar mensagens pelo seu bot.
+
+### 12.7 Segunda mensagem: o rosto e o nome
+
+Pedido do usuário em 09/10/2026: além da miniatura do evento, a foto do rosto
+isolado e, se a pessoa for conhecida, o nome na mensagem.
+
+O rosto só existe depois do evento — o clipe precisa fechar, ser montado e
+varrido (10.1), uns 20 a 40 s depois de a pessoa aparecer. Por isso não dá para
+pôr na primeira mensagem sem atrasá-la, e 12.2 continua valendo. Fica assim:
+
+| Mensagem | Quando | Foto | Texto |
+|---|---|---|---|
+| 1ª | no primeiro frame com pessoa | miniatura do evento, com a caixa | `Back: person` e a hora |
+| 2ª | depois da varredura de rostos | recorte do rosto (10.10) | `Back 15:20:54: Gustavo Henrique Gomes reconhecido` ou `rosto desconhecido` |
+
+Uma foto por pessoa encontrada no clipe, no máximo `MAX_FACES = 3`.
+
+**O caminho.** `EventRecorder._start()` guarda o que `notify.event()` devolveu
+em `self.notified`, e esse valor viaja junto para a thread de montagem:
+
+```python
+found = faces.scan_clip(destination, camera.label, start)
+...
+if notified and found:
+    notify.faces_seen(camera.label, start, found)
+```
+
+`scan_clip()` passou a devolver, além do que grava no JSON da aparição, o
+caminho da foto (`thumbnail_path`) e o nome atual da pessoa (`name`, vazio se
+ninguém deu nome). O nome vem da galeria na hora, então quem foi nomeado
+ontem aparece com nome hoje.
+
+**A segunda segue a primeira.** Só sai se a primeira saiu. Quando o intervalo de
+120 s por câmera (12.3) segurou o aviso do evento, segura também o do rosto —
+senão alguém andando pelo quintal geraria uma foto de rosto a cada evento,
+justamente a enxurrada que 12.3 existe para evitar.
+
+**Não trava nada.** `faces_seen()` roda na thread de montagem do clipe, que já
+é de fundo e já espera a varredura; o laço de captura nunca vê a rede.
+
+Testado em 09/10/2026 com dois clipes de 29/09 e uma cópia da galeria: as duas
+mensagens chegaram, uma com "Gustavo Henrique Gomes reconhecido" e outra com
+"Izabel reconhecido", cada uma com o recorte do rosto.
 
 ---
 
