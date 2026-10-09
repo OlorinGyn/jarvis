@@ -2249,3 +2249,110 @@ se perderia. Rodar como serviço de verdade, sem console, é o passo depois do
 estágio 4.
 
 ---
+
+## 18. Production and test — design (proposed 09/10/2026)
+
+Written in English: the user decided on 09/10/2026 that documentation moves to
+English (CONTEXTO R10). Older sections are still in Portuguese until then.
+
+### 18.1 What the user asked for
+
+> "My proposal is to have a service already installed on my machine, running
+> constantly. [...] Have the production version always running, with an update
+> process for it, and meanwhile we run in a test environment to evolve the
+> version."
+
+Today there is one copy of the program, and it is also the one being edited.
+Every change goes live the moment it is saved, and testing a change means
+stopping the surveillance.
+
+### 18.2 The camera limit, measured
+
+The obstacle the user anticipated is real, but narrower than assumed. Measured
+on 09/10/2026 on the Front camera, a second client started 3 s after the first:
+
+| First client | Second client | Result |
+|---|---|---|
+| `stream1` | `stream1` | second refused (`406`, "not one of 40{0,1,3,4}") |
+| `stream1` | `stream2` | **both deliver** (151 and 76 frames) |
+| `stream2` | `stream2` | **both deliver** |
+
+| Stream | Codec | Resolution | Frame rate |
+|---|---|---|---|
+| `stream1` | H.264 | 1920x1080 | 15 fps |
+| `stream2` | H.264 | 640x360 | 15 fps |
+
+Same on the Back camera. So the Tapo C310 allows **one** client on the HD stream
+and several on the SD stream at the same time. The September finding
+("the camera accepts a single RTSP session", 5.2) was only ever tested on
+`stream1`.
+
+### 18.3 The design
+
+**Two installations, each with its own data:**
+
+| | Production | Test |
+|---|---|---|
+| Where | its own clone, `C:\JARVIS`, outside the project folder | the development checkout |
+| Code | a **release tag**, never a working copy | whatever is being written |
+| Camera stream | `stream1`, 1080p, records in HD | `stream2`, 640x360 |
+| Web port | 8765, open to the home network (decided, R4) | 8766 |
+| `clips/`, `faces/`, `config.json` | its own | its own; separate already, because every path hangs off `ROOT` (3.2) |
+| Telegram | on | off by default, or prefixed `[TEST]` |
+| Runs as | Task Scheduler task at boot, no console | by hand |
+
+Both read the same cameras at once thanks to 18.2. The test copy can run on the
+M900 or on the development machine; the cameras are on the network either way.
+
+**What 640x360 costs the test copy:** motion, YOLO, recording, the web and the
+notifications all work, but a face that is 45 px in 1080p is 15 px here — face
+recognition cannot be tested live. For that, test against recorded HD clips
+(see 18.6).
+
+**Releases.** Production only ever runs a tagged commit, and a commit only gets
+a tag after the architect review (CONTEXTO 13) has covered it. That ties the
+two workflows together: nothing unreviewed reaches the machine that guards the
+house.
+
+**Updating production**, one command (`tools/update_production.ps1`, to be
+written):
+
+1. Fetch tags into `C:\JARVIS` and remember the tag currently running.
+2. Stop the service **gracefully**, so a clip being assembled is not lost.
+3. Check out the new tag and run `uv sync`.
+4. Start the Task Scheduler task.
+5. Health check: within 60 s, `/api/cameras` lists every camera and the live
+   view delivers frames.
+6. On failure, check out the previous tag, `uv sync`, start again, and say so
+   on Telegram. On success, report the new version on Telegram.
+
+### 18.4 What the code needs before this works
+
+| Change | Why |
+|---|---|
+| Stream per installation in `.env` (`CAM_STREAM`, default `stream1`) | `STREAM` is a constant in `cameras.py` today |
+| Web port per installation (`WEB_PORT`, default 8765) | `PORT` is a constant in `web.py` |
+| A graceful stop that is not Ctrl+C | a scheduled task has no console; ending the task kills the process without running the `finally` in `main()` (17.7) |
+| Logging to a file with rotation instead of `print` | with no console, `print` goes nowhere |
+| Notification prefix per installation | so a test event is never mistaken for a real one |
+
+The graceful stop has two reasonable forms: a `POST /api/shutdown` that only
+accepts connections from `127.0.0.1`, or a stop file the main loop checks every
+pass. The endpoint is simpler to call from the update script; the file works
+even if the web thread is stuck.
+
+### 18.5 Open decisions for the user
+
+- Does the test copy run on the M900 next to production, or on the development
+  machine? Recommendation: development machine — it is where the code is
+  written and it has the CPU to spare; the M900 only runs production.
+- Who runs the update? Recommendation: Claude, on request, after a review —
+  never automatically, because an automatic update that fails at 3 a.m. is a
+  night without surveillance.
+
+### 18.6 Later
+
+A **file source**: point the test copy at a folder of recorded clips instead of
+a camera, and replay them through the whole pipeline. It makes face
+recognition testable at full resolution and makes any bug reproducible with
+the exact footage that caused it.

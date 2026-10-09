@@ -1,46 +1,65 @@
-# Instruções para o Claude Code
+# Instructions for Claude Code
 
-Leia `docs/CONTEXTO.md` antes de mexer em qualquer coisa: histórico, decisões
-que não devem ser desfeitas sem motivo novo, e o que já foi descartado.
+Read `docs/CONTEXTO.md` before touching anything: history, decisions that must
+not be undone without a new reason, and what has already been ruled out.
 
-Regras do usuário, detalhadas em `docs/CONTEXTO.md` seção 2:
+## Language (decided by the user on 09/10/2026)
 
-- **Código sem comentários.** Toda explicação vai para `docs/`. Docstrings de
-  uma linha são aceitas.
-- **Toda mudança termina em commit + documentação atualizada**, sem precisar
-  pedir. A mensagem explica o porquê.
-- **O push é sua responsabilidade, não do usuário** (combinado em 09/10/2026).
-  Ao concluir uma feature ou acumular commits, envie — e **confirme com o
-  servidor**, não com a saída do `push`: `git ls-remote` ou
-  `git rev-list --count jarvis/master..HEAD`. O cache local mente depois de um
-  push feito de outra máquina. O `pull` está na rotina da seção 12 do
-  `CONTEXTO.md`.
-- **O `.env` nunca entra no commit.** Tem as senhas reais das câmeras. Confira
-  também `models/`, `clips/`, `faces/` e `backups/`.
-- **Explique o código, não só o resultado.** O usuário está aprendendo Python
-  e OpenCV, vindo de Java e C#.
-- Documentação em português; código e identificadores em inglês.
+| What | Language |
+|---|---|
+| Conversation with the user | **Portuguese** |
+| Code, identifiers, commit messages | English |
+| Documentation (`docs/`, `README.md`, this file) | English |
+| Text the program shows: web page, notifications, terminal | English |
 
-**O backlog é a seção 8 do `docs/CONTEXTO.md`.** É a lista única, e as duas
-máquinas a enxergam pelo git. Ao concluir um item, risque-o no mesmo commit da
-mudança. Itens marcados **(proposto)** são sugestão do Claude sem decisão do
-usuário — não comece nenhum sem perguntar.
-**A seção 11 do `docs/CONTEXTO.md` é o registro de vieses**: restrições que o
-Claude adotou sozinho, sem decisão do usuário. Ao perceber que está justificando
-uma escolha por uma consequência do ambiente em vez de um pedido ou uma medição,
-registre lá. Reaproveitar biblioteca conceituada vem antes de escrever à mão;
-tamanho da aplicação não é critério.
+Technical terms stay in English everywhere. Until the migration in
+`docs/CONTEXTO.md` R10 is done, older documents and parts of the code are
+still in Portuguese; **everything new is written in English**, and anything you
+touch moves to English with it. Never mix the two inside one identifier name.
 
-**Desenvolvedor e arquiteto (combinado em 09/10/2026).** O usuário desenvolve
-com o Claude em `high` e revisa com o Claude em `ultracode`, como um arquiteto
-revisando o trabalho do desenvolvedor. Desenvolvendo, **avise o usuário quando
-houver material suficiente para revisão** e peça para ativar o `ultracode` com
-o code review — os critérios estão na seção 13.1 do `docs/CONTEXTO.md`.
-Revisando, siga a mesma seção: corrija documentação na hora, transforme
-problema de código em recomendação com prioridade (13.4) e atualize o registro
-(13.2). Recomendações abertas de prioridade alta vêm antes do backlog.
+## The user's rules
 
-**Ao abrir nesta pasta, antes de responder qualquer coisa:** rode a rotina de
-retomada da seção 12 do `docs/CONTEXTO.md`. Ela é sua, não do usuário — ele não
-roda comandos de preparação à mão. Sincronize o ambiente, verifique o que o
-plano em andamento exige, e só então diga em que ponto o trabalho está.
+Detailed in `docs/CONTEXTO.md` section 2:
+
+- **No comments in code.** All explanation goes to `docs/`. One-line
+  docstrings are fine.
+- **Every change ends in a commit plus updated documentation**, without being
+  asked. The message explains why.
+- **Pushing is your job, not the user's** (agreed 09/10/2026). When a feature
+  is done or commits pile up, push — and **confirm against the server**, not the
+  `push` output: `git ls-remote` or `git rev-list --count jarvis/master..HEAD`.
+  The local cache lies after a push from the other machine. Pulling is part of
+  the resume routine, `docs/CONTEXTO.md` section 12.
+- **`.env` never goes into a commit.** It holds the real camera passwords.
+  Check `models/`, `clips/`, `faces/`, `backups/` and `config.json` too.
+- **Explain the code, not just the result.** The user is learning Python and
+  OpenCV, coming from Java and C#.
+
+## Backlog, biases, reviews
+
+**The backlog is `docs/CONTEXTO.md` section 8.** It is the single list, and both
+machines see it through git. When an item is done, strike it in the same commit
+as the change. Items marked **(proposto)** are Claude's suggestions with no
+decision from the user — never start one without asking.
+
+**`docs/CONTEXTO.md` section 11 is the bias log**: constraints Claude adopted on
+its own, without a decision from the user. When you catch yourself justifying a
+choice by a consequence of the environment instead of a request or a
+measurement, log it there. Reusing a well-regarded library comes before writing
+by hand; application size is not a criterion.
+
+**Developer and architect (agreed 09/10/2026).** The user develops with Claude
+in `high` and reviews with Claude in `ultracode`, like an architect reviewing a
+developer's work. While developing, **tell the user when there is enough for a
+review** and ask them to switch to `ultracode` and run the code review — the
+criteria are in `docs/CONTEXTO.md` section 13.1. While reviewing, follow the
+same section: fix documentation on the spot, turn code problems into
+prioritised recommendations (13.4) and update the log (13.2). Open
+high-priority recommendations come before the backlog.
+
+## When opening this folder
+
+**Before answering anything,** run the resume routine in `docs/CONTEXTO.md`
+section 12. It is yours, not the user's — they do not run setup commands by
+hand. Sync the environment, check what the plan in progress requires, and only
+then say where the work stands.

@@ -62,7 +62,11 @@ OpenCV, vindo de Java e C#. Ele pediu respostas concisas em opções e tangentes
 mas **nunca** economize na explicação de código ou comando — já reclamou quando
 eu cortei demais.
 
-Documentação em português; código e identificadores em inglês.
+**Language — decided by the user on 09/10/2026:** only the conversation with the
+user is in Portuguese. Code, identifiers, commits, documentation and every text
+the program shows (web page, notifications, terminal) are in English. This
+replaces the old rule ("documentação em português"). Migration of what already
+exists: R10, section 13.4. The table is in `CLAUDE.md`.
 
 ## 3. Decisões tomadas — não desfaça sem motivo novo
 
@@ -298,6 +302,16 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    | | Estágio 2 — reprodução do vídeo na página | depois |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
+17. **Production and test environments** (decided 09/10/2026; design
+    proposed) — the user wants a production copy installed on the M900 and
+    always running, a process to update it, and a separate test copy to keep
+    evolving the system. Measured the same day: the cameras take one client on
+    `stream1` (1080p) but several on `stream2` (640x360), even alongside
+    `stream1` — so production keeps `stream1` and records in HD, and the test
+    copy watches the same cameras on `stream2`. Production runs only reviewed
+    release tags, as a Task Scheduler task with no console. Design, required
+    code changes and the two open decisions: ARQUITETURA 18. This also absorbs
+    the "remove the window and start with Windows" step of item 3.
 
 ### Importante
 
@@ -634,7 +648,7 @@ decidir.
 
 | # | Data | Intervalo revisado | Resultado |
 |---|---|---|---|
-| 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas |
+| 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARQUITETURA 18) |
 
 **Última revisão cobre até `456b613`.** A próxima começa do commit seguinte.
 
@@ -664,12 +678,13 @@ subir de novo em 09/10.
 | | R1 | **alta** | Aviso de pessoa que aparece no meio de um evento | aberta |
 | | R2 | média | Corrida no arranque: dois lançamentos seguidos sobem duas instâncias | aberta |
 | | R3 | média | Ao vivo congela sem aviso se o serviço reiniciar | aberta |
-| | R4 | média | Exposição na rede Wi-Fi classificada como Pública — **decisão do usuário** | aberta |
+| ✓ | R4 | média | Exposição na rede Wi-Fi classificada como Pública — **decisão do usuário** | decided 09/10: keep open to the LAN |
 | | R5 | média | "Reconhecido" com semelhança baixa | aberta |
 | | R6 | média | Testes automáticos para as rotas da web e as travas do aviso | aberta |
 | | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | aberta |
 | | R8 | baixa | Falha de rede na página não aparece para o usuário | aberta |
 | | R9 | verificação | `python-preference = "system"` na máquina de desenvolvimento | aberta |
+| | R10 | **high** | Move everything except the conversation to English (user decision) | open |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -711,6 +726,9 @@ vale para esse perfil. Na prática, qualquer aparelho conectado ao mesmo Wi-Fi �
 inclusive visita — vê as câmeras ao vivo e todas as gravações. Opções: marcar a
 rede como **Privada** e restringir a regra a esse perfil; ou manter como está,
 sabendo disso. Não é decisão técnica: registrar a escolha do usuário aqui.
+**Decided on 09/10/2026:** the user keeps the port open to the home network, to
+reach the interface from their other computer. Any device on the same Wi-Fi can
+see the cameras; that is accepted. Closed.
 
 **R5 — "Reconhecido" com semelhança baixa (média).** A segunda mensagem diz
 "Fulano reconhecido" para qualquer casamento acima de `MATCH_THRESHOLD`
@@ -740,3 +758,31 @@ foi testado só no M900. No dev, se houver outro Python 3.14 instalado no
 Windows, o `uv` passa a usá-lo; se não houver, continua com o dele. Na próxima
 sessão lá: rodar a rotina 12.1, conferir qual interpretador o `.venv` usa e se o
 `jarvis` sobe.
+
+**R10 — Move everything except the conversation to English (high).** User
+decision on 09/10/2026, after finding the project confusing to read: three
+languages showed at once (English commits, Portuguese docs, accentless
+Portuguese in the terminal that reads like Spanish), and the old rule "code and
+identifiers in English" had already been broken in several files. Scope, in
+order:
+
+1. **Identifiers.** `static/app.js` (`carregar`, `cartao`, `campoDia`...), the
+   web routes (`/api/dias`, `/api/eventos?dia=`, `/miniatura`, `/ao-vivo`),
+   `ui.py`, `notify.py` (`quem`, `texto`), `tools/diagnostico.py`. Rename the
+   files too where the name is Portuguese (`diagnostico.py`,
+   `refazer_rostos.py`, `verificar_clipes.py`, `gerar_icone.py`,
+   `gerar_epub.py`, `criar_atalho.ps1`, `instalar.bat`,
+   `jarvis_vigilancia.bat`) and update every reference, including the desktop
+   shortcut target.
+2. **Program text.** Web page, Telegram messages, terminal output, `.bat`
+   output, `--sem-janela`/`--janela` flags (keep the old flags working as
+   aliases for one release, so a scheduled task does not break).
+3. **Documentation.** `ARQUITETURA.md`, `INSTALACAO.md`, `PYTHON.md`,
+   `CONTEXTO.md`, `README.md` — about 4,000 lines. File names move to English
+   as well (`ARCHITECTURE.md`, `INSTALL.md`, `CONTEXT.md`); `PYTHON.md` stays.
+   Translate, do not summarise: these documents are the project's memory, and
+   the explanations aimed at a Java/C# developer are the point of `PYTHON.md`.
+
+Data on disk does **not** change: JSON keys are already English, and folder
+names (`clips/`, `faces/`, `backups/`) too. A dedicated session; check the
+cross-references by script afterwards, the way the 30/09 review did.
