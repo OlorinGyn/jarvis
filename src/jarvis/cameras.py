@@ -4,9 +4,10 @@ Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
 on disk is the camera's own stream with no re-encoding.
 
 See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
-Press q or close the window to quit.
+Com janela: q ou fechar encerra. Com --sem-janela: Ctrl+C.
 """
 
+import sys
 import time
 from urllib.parse import quote
 
@@ -27,6 +28,8 @@ PANEL_HEIGHT = 480
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
 REDRAW_SECONDS = 0.15
+IDLE_SLEEP = 0.005
+HEADLESS_FLAG = "--sem-janela"
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
@@ -151,7 +154,8 @@ def window_size(live):
     return width, height
 
 
-def main():
+def start_cameras():
+    """Open every camera named in the .env and report what each one answered."""
     env = dotenv_values(ROOT / ".env")
     cameras = build_camera_list(env)
 
@@ -162,24 +166,32 @@ def main():
     streams = [Camera(label, url) for label, url in cameras]
     for cam in streams:
         print(f"  {cam.label}: {cam.stream.wait_ready()}")
+    return streams
 
-    interface = ui.Interface()
-    cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
-    cv2.setMouseCallback(WINDOW, interface.on_mouse)
-    cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
-    last_prune = time.monotonic()
-    housekeeper = Housekeeper()
-    last_render = 0.0
-    panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
-              for cam in streams}
 
-    while True:
+class Core:
+    """The surveillance itself: capture, detection, recording, housekeeping.
+
+    It knows nothing about any interface. Panels are only built when somebody
+    asked for drawing, so a core nobody is watching pays nothing for pixels.
+    """
+
+    def __init__(self, streams, draw=False):
+        self.streams = streams
+        self.draw = draw
+        self.housekeeper = Housekeeper()
+        self.last_prune = time.monotonic()
+        self.panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
+                       for cam in streams} if draw else {}
+
+    def step(self):
+        """One pass over every camera. True when at least one frame was new."""
         fresh = False
-        for cam in streams:
+        for cam in self.streams:
             frame = cam.read()
             if frame is None:
-                if cam.stream.latest is None:
-                    panels[cam.label] = make_panel(
+                if cam.stream.latest is None and self.draw:
+                    self.panels[cam.label] = make_panel(
                         None, cam.label, PANEL_HEIGHT,
                         reason=cam.stream.last_error)
                 continue
@@ -194,24 +206,55 @@ def main():
                 print(f"  event {saved['path'].name} [{names}] "
                       f"{saved['seconds']}s, {saved['reason']}")
 
-            panels[cam.label] = make_panel(
-                frame, cam.status(motion_boxes, subjects), PANEL_HEIGHT,
-                motion_boxes, subjects, cam.recorder.recording)
+            if self.draw:
+                self.panels[cam.label] = make_panel(
+                    frame, cam.status(motion_boxes, subjects), PANEL_HEIGHT,
+                    motion_boxes, subjects, cam.recorder.recording)
 
         now = time.monotonic()
-        if now - last_prune > PRUNE_SECONDS:
-            last_prune = now
-            for cam in streams:
+        if now - self.last_prune > PRUNE_SECONDS:
+            self.last_prune = now
+            for cam in self.streams:
                 cam.prune()
 
-        feito = housekeeper.tick()
+        feito = self.housekeeper.tick()
         if feito and (feito["moved"]["moved"] or feito["freed"]["removed"]):
             print(f"  arquivo: {feito['moved']['moved']} movido(s), "
                   f"{feito['freed']['removed']} apagado(s) do HD")
+        return fresh
 
+    def mosaic(self):
+        """The cameras side by side, for whoever is drawing."""
+        return np.hstack([self.panels[cam.label] for cam in self.streams])
+
+    def close(self):
+        """Close the pending events and the streams. Safe to call once."""
+        for cam in self.streams:
+            saved = cam.recorder.stop("shutdown")
+            if saved:
+                print(f"  event {saved['path'].name}")
+
+        print("Assembling pending clips...")
+        wait_for_jobs()
+        for cam in self.streams:
+            cam.close()
+
+
+def run_window(core):
+    """Drives the core from the OpenCV window; cv2.waitKey sets the pace."""
+    interface = ui.Interface()
+    cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
+    cv2.setMouseCallback(WINDOW, interface.on_mouse)
+    cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
+    last_render = 0.0
+
+    while True:
+        fresh = core.step()
+
+        now = time.monotonic()
         if fresh or now - last_render > REDRAW_SECONDS:
             last_render = now
-            live = np.hstack([panels[cam.label] for cam in streams])
+            live = core.mosaic()
             cv2.imshow(WINDOW, interface.render(live, window_size(live)))
 
         key = cv2.waitKey(15) & 0xFF
@@ -223,16 +266,28 @@ def main():
         if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
             break
 
-    for cam in streams:
-        saved = cam.recorder.stop("shutdown")
-        if saved:
-            print(f"  event {saved['path'].name}")
-
-    print("Assembling pending clips...")
-    wait_for_jobs()
-    for cam in streams:
-        cam.close()
     cv2.destroyAllWindows()
+
+
+def run_headless(core):
+    """Drives the core with no window and no drawing. Stops on Ctrl+C."""
+    print("Vigilancia sem janela. Ctrl+C para encerrar.")
+    try:
+        while True:
+            if not core.step():
+                time.sleep(IDLE_SLEEP)
+    except KeyboardInterrupt:
+        print()
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    headless = HEADLESS_FLAG in argv
+    core = Core(start_cameras(), draw=not headless)
+    try:
+        (run_headless if headless else run_window)(core)
+    finally:
+        core.close()
 
 
 if __name__ == "__main__":

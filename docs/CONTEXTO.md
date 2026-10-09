@@ -212,7 +212,9 @@ em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
   pessoas; só se corrige com `tools/refazer_rostos.py`.
 - **Texto da interface sem acentos.** `cv2.putText` usa fontes Hershey, que não
   têm glifos acentuados.
-- **A interface precisa de sessão gráfica.** Não roda como serviço invisível.
+- **A interface precisa de sessão gráfica**, mas a vigilância não: desde
+  09/10/2026 o núcleo roda com `--sem-janela` e a janela virou opcional
+  (ARQUITETURA 15).
 
 ## 8. Backlog
 
@@ -233,6 +235,7 @@ Itens propostos **não são plano**. Não comece um sem perguntar.
 |---|---|---|
 | ✓ | **Armazenamento em camadas** (decidido) — move para HD externo após 30 dias; só apaga de lá se lotar | ARQUITETURA 11 |
 | ✓ | **Notificação no celular** (decidido) — Telegram com miniatura, aviso no começo do evento | ARQUITETURA 12 |
+| ✓ | **Núcleo sem janela** (decidido) — `--sem-janela`; gravar e avisar não dependem mais de ter alguém olhando | ARQUITETURA 15 |
 
 ### Crítico
 
@@ -247,40 +250,48 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 2. **Saúde do sistema** (proposto) — se uma câmera morrer às 3h da manhã, nada
    avisa. Há reinício automático, mas nenhum registro de quanto tempo ficou
    fora. Um resumo diário fecharia isso, agora que existe notificação.
+3. **Interface web, substituindo o HighGUI** (decidido em 09/10/2026) — o
+   usuário aprovou e acrescentou o motivo decisivo: ele nem sempre vai querer
+   acompanhar ao vivo, e o software precisa rodar o tempo todo sem janela de
+   usuário. A metade de baixo já está feita (item acima); falta o cliente.
+   Serve uma página local, e o navegador passa a ser o toolkit: reproduz
+   vídeo, rola lista, aceita acento, cola texto e abre no celular. Entregue
+   junto, de graça: acesso remoto e os itens 5, 6 e 11. Fazer **ao lado** da
+   janela atual, sem removê-la, para comparar antes de descartar.
 
 ### Importante
 
 Funciona sem, mas incompleto.
 
-3. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
+4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
-4. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
-5. **Busca e filtro** (proposto) — com ~100 eventos/dia, só por data é
+5. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
+6. **Busca e filtro** (proposto) — com ~100 eventos/dia, só por data é
    inviável. Por pessoa, câmera, rótulo
-6. **Tracking** (proposto) — manter identidade entre frames; resolve a pessoa
+7. **Tracking** (proposto) — manter identidade entre frames; resolve a pessoa
    parada e faz um clipe corresponder a uma pessoa
-7. **Rótulos de animal** (proposto) — só aceitar espécie que se repita no
+8. **Rótulos de animal** (proposto) — só aceitar espécie que se repita no
    evento, em vez de acumular cada hesitação do YOLO
-8. **Desfazer junção na tela People** (proposto) — corrigir um merge errado
-9. **Áudio** (proposto) — as câmeras mandam PCM e o `-an` descarta. Latido,
+9. **Desfazer junção na tela People** (proposto) — corrigir um merge errado
+10. **Áudio** (proposto) — as câmeras mandam PCM e o `-an` descarta. Latido,
    grito, vidro quebrando
 
 ### Melhoria
 
-10. **Linha do tempo** (proposto) — grade de cartões não responde "o que houve
+11. **Linha do tempo** (proposto) — grade de cartões não responde "o que houve
     entre 2h e 4h"
-11. **Persistir os spots estáticos** (proposto) — a lista nasce vazia a cada
+12. **Persistir os spots estáticos** (proposto) — a lista nasce vazia a cada
     execução, então o primeiro clipe falso da noite ainda é gravado
-12. **Banco de eventos** (proposto) — SQLite no lugar dos JSON, quando houver
+13. **Banco de eventos** (proposto) — SQLite no lugar dos JSON, quando houver
     busca
-13. **OpenVINO no M900** (proposto) — o `cv2.dnn` aceita esse backend, e era o
+14. **OpenVINO no M900** (proposto) — o `cv2.dnn` aceita esse backend, e era o
     plano para recuperar a velocidade perdida ao sair do PyTorch
-14. **Re-ID de animais** (proposto) — classificador sobre o corpo inteiro
+15. **Re-ID de animais** (proposto) — classificador sobre o corpo inteiro
     (ARQUITETURA 10.8)
 
 ### Fora de software
 
-15. **Luz acionada por movimento na Front** (proposto) — não é código, mas é o
+16. **Luz acionada por movimento na Front** (proposto) — não é código, mas é o
     maior ganho possível para rosto à noite (ARQUITETURA 10.5)
 
 ### Fora de escopo, deliberadamente
@@ -297,7 +308,7 @@ alguém propuser um deles, a resposta já está aqui.
 ```
 src/jarvis/
   __init__.py     ROOT, a raiz do projeto
-  cameras.py      aplicação principal: laço, exibição, orquestração
+  cameras.py      Core (vigilância, sem janela) + run_window / run_headless
   capture.py      ffmpeg por câmera: segmentos originais + frames de análise
   motion.py       camada 1: MOG2 + confirmação temporal
   people.py       camada 2: YOLO via cv2.dnn, pessoas e animais
@@ -320,7 +331,8 @@ tools/
 assets/           jarvis.ico e prévia PNG (gerados, mas versionados)
 docs/             ARQUITETURA, INSTALACAO, PYTHON e este arquivo
 instalar.bat      instalação numa máquina nova
-jarvis.bat        atalho para iniciar (uv run jarvis)
+jarvis.bat        atalho para iniciar com janela
+jarvis_vigilancia.bat  só grava e avisa, sem janela (--sem-janela)
 ```
 
 Estrutura explicada em ARQUITETURA seção 3.
@@ -418,14 +430,23 @@ correta é mais estreita: **desconfie de dependência binária grande**, porque 
 isso que quebrou o deploy. Pacote Python puro ou só de dados não tem esse
 problema e não precisa de justificativa.
 
-**Interface em HighGUI — em aberto, precisa de decisão do usuário.**
+**Interface em HighGUI — reconhecido e em correção desde 09/10/2026.**
 A janela do OpenCV foi o caminho natural enquanto o programa era só um visor de
 câmeras. Virou `ui.py` com 616 linhas e 60 chamadas de desenho primitivo, e o
 OpenCV não tem widget: não cola texto, não reproduz vídeo, não rola lista, não
 mostra acento. Isso já deformou decisões — a aba Ajustes abre o `config.json` no
-editor porque não há como colar um token na janela. E encarece quatro itens do
-backlog (reprodução, busca, linha do tempo, acesso remoto) que um toolkit de
-verdade ou uma interface web entregariam quase de graça.
+editor porque não há como colar um token na janela.
+
+Mas o pior não era a interface, e sim o que ela arrastava junto: **o laço de
+vigilância era passageiro da janela.** O `cv2.waitKey` dava o compasso e fechar
+a janela encerrava a gravação. O usuário percebeu sozinho ao dizer que nem
+sempre vai querer acompanhar ao vivo. O núcleo foi separado (ARQUITETURA 15) e a
+interface web é o item 3 do backlog.
+
+**Correção de mérito:** ao propor isso eu disse que o M900 gastava CPU
+desenhando para ninguém. É verdade, mas medi depois e é pequeno — `make_panel`
+0,43 ms por câmera mais 0,41 ms de mosaico, 1,27 ms de ~20 ms por frame, uns 6%.
+O ganho da separação não é CPU; é a vigilância não morrer com a janela.
 
 **Ausência de testes — nunca foi discutida.**
 2.600 linhas, nenhum teste. O Claude nunca propôs e o usuário nunca recusou. A

@@ -22,6 +22,8 @@ O `instalar.bat` instala o que falta, baixa os modelos e cria o `.env`, onde
 vão o IP e as credenciais de cada câmera. Detalhes em
 [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
+Para gravar e avisar sem abrir janela, `jarvis_vigilancia.bat`.
+
 ## Estrutura
 
 ```

@@ -86,6 +86,16 @@ O `.bat` só confere se o `.env` existe e chama `uv run jarvis`. Os dois são
 equivalentes; o `.bat` existe para dar para abrir com dois cliques e para a
 janela não fechar sozinha quando algo dá errado.
 
+Para gravar e avisar **sem abrir janela nenhuma**:
+
+```bat
+jarvis_vigilancia.bat
+```
+
+É o mesmo sistema — movimento, pessoas, gravação, rostos e notificação — só sem
+a parte visual. Encerra com `Ctrl+C`. Use quando ninguém vai acompanhar ao vivo;
+veja ARQUITETURA seção 15.
+
 ## 3. O que é baixado automaticamente
 
 Nada disso está no repositório, porque são arquivos grandes que não devem ser
@@ -132,16 +142,20 @@ Para um sistema de vigilância isso costuma ser o que se quer. Use o Agendador d
 Tarefas, não a pasta Inicializar — o Agendador reinicia o programa se ele cair.
 
 1. Abra o **Agendador de Tarefas** → Criar Tarefa
-2. **Geral:** marque "Executar estando o usuário conectado ou não" só se não
-   precisar ver a janela. Para ver a interface, deixe "Executar somente quando o
-   usuário estiver conectado"
-3. **Disparadores:** Ao fazer logon
-4. **Ações:** Iniciar um programa → o caminho completo do `jarvis.bat` (não o
-   atalho: o Agendador precisa do arquivo de verdade)
+2. **Geral:** com `jarvis_vigilancia.bat`, marque "Executar estando o usuário
+   conectado ou não" — não precisa de ninguém logado. Com `jarvis.bat`, deixe
+   "Executar somente quando o usuário estiver conectado", porque a janela exige
+   sessão gráfica
+3. **Disparadores:** Ao iniciar o computador (sem janela) ou Ao fazer logon
+   (com janela)
+4. **Ações:** Iniciar um programa → o caminho completo do `.bat` (não o atalho:
+   o Agendador precisa do arquivo de verdade)
 5. **Configurações:** marque "Se a tarefa falhar, reiniciar a cada 1 minuto"
 
-A interface precisa de uma sessão gráfica ativa; ela não roda como serviço do
-Windows sem janela.
+Para vigilância contínua, use o `jarvis_vigilancia.bat`: a gravação não depende
+mais da janela. A janela continua precisando de sessão gráfica, e enquanto não
+existir a interface web (backlog, item 3) não há como ver as câmeras de um
+núcleo rodando sem janela.
 
 ## 6. Ajustes para o M900
 

@@ -1837,7 +1837,111 @@ guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
 
 ---
 
-## 15. Estado atual
+## 15. Núcleo e interface — vigilância sem janela
+
+### 15.1 O problema: a gravação era passageira da janela
+
+Até 09/10/2026 o `main()` era um laço só, e quem ditava o ritmo dele era a
+janela:
+
+```python
+key = cv2.waitKey(15) & 0xFF
+...
+if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+    break
+```
+
+O `cv2.waitKey` não é só "ler tecla" — é a função que bombeia a fila de eventos
+do HighGUI, e era ela que dava o compasso de todo o resto. Detecção, gravação,
+rostos e notificação rodavam **dentro** desse laço. Fechar a janela encerrava a
+vigilância.
+
+Para um visor de câmeras isso estava certo. Para um sistema de segurança, não:
+ninguém fica com a janela aberta 24 h por dia, e é justamente quando não há
+ninguém olhando que gravar importa mais.
+
+### 15.2 A separação
+
+`cameras.py` passou a ter três peças, e a dependência só aponta para um lado:
+
+| Peça | O que é | Sabe da janela? |
+|---|---|---|
+| `Core` | captura, movimento, sujeitos, gravação, arquivo | **não** |
+| `run_window` | desenha, lê teclado e mouse | sim |
+| `run_headless` | só chama `Core.step()` num laço | não |
+
+O `Core.step()` é uma passada por todas as câmeras e devolve `True` se algum
+frame era novo. Quem chama decide o que fazer com isso:
+
+```python
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    headless = HEADLESS_FLAG in argv
+    core = Core(start_cameras(), draw=not headless)
+    try:
+        (run_headless if headless else run_window)(core)
+    finally:
+        core.close()
+```
+
+O `finally` é o que garante que clipe pendente seja montado e stream fechado,
+seja qual for o motivo da saída — tecla `q`, janela fechada, `Ctrl+C` ou
+exceção.
+
+**Detalhe de Python:** `(run_headless if headless else run_window)(core)`
+escolhe a função e chama. Funções são valores, como em C# com delegate, mas sem
+precisar declarar o tipo. O parêntese em volta é obrigatório: sem ele o `if`
+ternário engoliria a chamada.
+
+### 15.3 O ritmo, sem waitKey
+
+Sem janela não existe `waitKey`, então o laço precisa de ritmo próprio:
+
+```python
+while True:
+    if not core.step():
+        time.sleep(IDLE_SLEEP)
+```
+
+Dorme **só quando não veio frame novo**. Se veio, processa a próxima passada na
+hora. Isso é melhor que o laço antigo, que pagava os 15 ms do `waitKey` em toda
+iteração, tendo frame ou não. Medido: 2.995 passadas em 15 s, 300 com frame
+novo — ou seja, 10 fps por câmera, e o resto do tempo dormindo em vez de girar
+em falso.
+
+### 15.4 O `draw` e o que ele economiza
+
+O `Core` só monta painel se `draw=True`:
+
+```python
+self.panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
+               for cam in streams} if draw else {}
+```
+
+Medido nesta máquina: `make_panel` custa **0,43 ms por câmera** e o mosaico
+(`np.hstack`) **0,41 ms**, somando **1,27 ms** com duas câmeras, de uns 20 ms
+por frame. São ~6%. Vale economizar, mas **não é o motivo da mudança** — o
+motivo é a seção 15.1.
+
+### 15.5 Como rodar
+
+| Quero | Comando |
+|---|---|
+| Ver as câmeras | `jarvis.bat` |
+| Só gravar e avisar | `jarvis_vigilancia.bat` |
+| Direto | `uv run jarvis --sem-janela` |
+
+Sem janela, o encerramento é `Ctrl+C`. No Windows, `Ctrl+C` no terminal vira
+`KeyboardInterrupt` no Python, que o `run_headless` captura — e o `finally` do
+`main()` fecha tudo em ordem.
+
+**Ainda não é serviço de verdade.** Rodar no boot sem ninguém logado é outro
+assunto (Agendador de Tarefas ou NSSM), e depende da interface web do item 3 do
+backlog, porque hoje não há como olhar um núcleo sem janela.
+
+---
+
+## 16. Estado atual
 
 **Funcionando no M900 desde 29/09/2026:**
 
