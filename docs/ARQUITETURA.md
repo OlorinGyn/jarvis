@@ -1614,7 +1614,68 @@ qualquer `import cv2` do programa, que é quando o OpenCV lê a variável.
 
 ---
 
-## 11. Restrição importante das câmeras Tapo
+## 11. Armazenamento em camadas — `archive.py`
+
+### 11.1 Três camadas, deleção por último
+
+```
+clips/ (disco do programa)  --30 dias-->  HD externo  --só se lotar-->  apaga o mais antigo
+```
+
+**Nada é apagado de `clips/`.** O que foi gravado sai de lá apenas movido para o
+arquivo morto. A exclusão existe só no HD externo, do evento mais antigo, e
+somente quando o espaço livre cai abaixo do limite.
+
+A alternativa descartada era apagar por idade direto da gravação. Com ~300 MB/dia
+o disco encheria, mas apagar material recente para resolver isso troca um
+problema por outro pior.
+
+### 11.2 Copiar, conferir, então apagar
+
+Mover entre discos não é atômico. `_move_event()` copia todos os arquivos do
+evento, **confere o tamanho de cada um**, e só então remove os originais.
+
+Uma cópia interrompida — HD desconectado no meio — deixa o original intacto e
+apaga o que já tinha ido. Melhor sobrar duplicado que faltar.
+
+Testado simulando falha na segunda cópia de um evento: o original permanece.
+
+### 11.3 HD desconectado
+
+É o caso normal, não a exceção: um HD externo passa a maior parte do tempo fora.
+`destination_state()` responde se dá para escrever agora, e todas as operações
+param na hora se não der, sem apagar nada e explicando o motivo na tela.
+
+### 11.4 Configuração na interface
+
+A aba **Ajustes** mostra as três camadas com números reais — quantos eventos,
+quanto ocupam, quanto sobra em cada disco — e os botões para escolher a pasta,
+arquivar na hora e remover a configuração.
+
+O seletor de pasta é o nativo do Windows, via `tkinter`, que vem na biblioteca
+padrão. O HighGUI não tem diálogo de arquivo, e digitar caminho à mão seria
+ruim justamente para um HD externo, cuja letra muda.
+
+As escolhas ficam em `config.json` na raiz, **não** no `.env`. A separação é
+proposital: o `.env` guarda credenciais escritas uma vez à mão, enquanto isto
+muda em tempo de execução pela interface. O `config.json` não é versionado.
+
+| Chave | Padrão | O que faz |
+|---|---|---|
+| `archive_path` | vazio | Pasta do HD externo; vazio desliga o arquivamento |
+| `archive_after_days` | 30 | Idade para mover |
+| `archive_min_free_gb` | 10 | Abaixo disso, apaga o mais antigo do HD |
+
+### 11.5 Quando roda
+
+`Housekeeper.tick()` é chamado no laço principal e só age a cada
+`CHECK_SECONDS = 1800`. Eventos com menos de `PROTECT_MINUTES = 10` nunca são
+tocados, porque a montagem do clipe acontece numa thread e pode ainda estar em
+andamento.
+
+---
+
+## 12. Restrição importante das câmeras Tapo
 
 **A câmera suporta apenas duas destas três funções ao mesmo tempo:**
 
@@ -1637,7 +1698,7 @@ uv run tools/probe_rtsp.py <ip> <usuario> <senha> stream1
 
 ---
 
-## 12. Ícone e atalho
+## 13. Ícone e atalho
 
 **Um `.bat` não tem ícone próprio.** O Windows desenha o ícone de um arquivo
 pelo tipo dele, e todo `.bat` usa o mesmo. Quem pode ter ícone é um **atalho**
@@ -1675,7 +1736,7 @@ guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
 
 ---
 
-## 13. Estado atual
+## 14. Estado atual
 
 **Funcionando no M900 desde 29/09/2026:**
 

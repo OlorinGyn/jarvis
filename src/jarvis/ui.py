@@ -16,13 +16,13 @@ from datetime import date
 import cv2
 import numpy as np
 
-from jarvis import faces
+from jarvis import archive, faces, settings
 from jarvis.clips import available_days, list_clips, reveal
 
 SIDEBAR_WIDTH = 190
 ITEM_TOP = 92
 ITEM_HEIGHT = 54
-ITEMS = ("Live", "Records", "People")
+ITEMS = ("Live", "Records", "People", "Ajustes")
 FACE_CARD = 150
 NAME_MAX = 40
 NOTICE_SECONDS = 6.0
@@ -64,6 +64,34 @@ def letterbox(canvas, area, image):
     canvas[offset_y:offset_y + new_h, offset_x:offset_x + new_w] = resized
 
 
+def pick_folder(initial=""):
+    """Open the native Windows folder chooser. Returns "" if cancelled.
+
+    HighGUI has no file dialog, but tkinter ships with Python and gives the
+    real system one, which matters for an external drive whose letter changes.
+    """
+    try:
+        import tkinter
+        from tkinter import filedialog
+    except ImportError:
+        return ""
+
+    janela = tkinter.Tk()
+    janela.withdraw()
+    janela.attributes("-topmost", True)
+    try:
+        escolhido = filedialog.askdirectory(
+            title="Pasta do arquivo morto (HD externo)",
+            initialdir=initial or None)
+    finally:
+        janela.destroy()
+    return escolhido or ""
+
+
+def gigabytes(quantidade):
+    return f"{quantidade / 1024 ** 3:.1f} GB"
+
+
 def shift_month(month, delta):
     """Move a first-of-month date by whole months."""
     index = month.year * 12 + month.month - 1 + delta
@@ -89,6 +117,7 @@ class Interface:
         self.sightings = []
         self.naming = None
         self.typed = ""
+        self.archive_report = None
         self.notice = ("", 0.0)
 
     def _region(self, box, action, payload=None):
@@ -156,6 +185,15 @@ class Interface:
             self.month = shift_month(self.month, payload)
         elif action == "open":
             reveal(payload)
+        elif action == "pick_archive":
+            escolhido = pick_folder(settings.load()["archive_path"])
+            if escolhido:
+                settings.update(archive_path=escolhido)
+        elif action == "clear_archive":
+            settings.update(archive_path="")
+        elif action == "archive_now":
+            self.archive_report = {"moved": archive.move_old(),
+                                   "freed": archive.free_space()}
 
     def refresh(self, force=False):
         now = time.monotonic()
@@ -179,6 +217,8 @@ class Interface:
             self._draw_records(canvas, area)
         elif self.view == "People":
             self._draw_people(canvas, area)
+        elif self.view == "Ajustes":
+            self._draw_settings(canvas, area)
         elif live is not None:
             letterbox(canvas, area, live)
 
@@ -404,6 +444,84 @@ class Interface:
                     FONT, 0.6, TEXT, 1)
         cv2.putText(canvas, "Enter para salvar    Esc para cancelar",
                     (x + 20, y + 130), FONT, 0.45, MUTED, 1)
+
+    def _draw_settings(self, canvas, area):
+        x0, y0, x1, y1 = area
+        relatorio = archive.summary()
+        x = x0 + CARD_GAP + 6
+        y = y0 + 34
+
+        cv2.putText(canvas, "Armazenamento", (x, y), FONT, 0.7, TEXT, 2)
+        y += 14
+
+        def linha(rotulo, valor, cor=TEXT, recuo=0):
+            nonlocal y
+            y += 24
+            cv2.putText(canvas, rotulo, (x + recuo, y), FONT, 0.45, MUTED, 1)
+            cv2.putText(canvas, valor, (x + recuo + 250, y), FONT, 0.45, cor, 1)
+
+        y += 26
+        cv2.putText(canvas, "1. Gravacao (disco do programa)", (x, y),
+                    FONT, 0.5, TEXT, 1)
+        linha("eventos guardados aqui", str(relatorio["local_events"]))
+        linha("ocupando", gigabytes(relatorio["local_bytes"]))
+        linha("livre neste disco", gigabytes(relatorio["local_free"]))
+        mais_antigo = relatorio["oldest"]
+        linha("gravacao mais antiga",
+              mais_antigo.strftime("%d/%m/%Y %H:%M") if mais_antigo else "nenhuma")
+
+        y += 26
+        cv2.putText(canvas, "2. Arquivo morto (HD externo)", (x, y), FONT, 0.5, TEXT, 1)
+        caminho = relatorio["archive_path"] or "nenhuma pasta escolhida"
+        if len(caminho) > 46:
+            caminho = "..." + caminho[-43:]
+        pronto = relatorio["archive_ready"]
+        linha("pasta", caminho, GREEN if pronto else MUTED)
+        if pronto:
+            linha("situacao", "conectado", GREEN)
+            linha("eventos arquivados", str(relatorio.get("archive_events", 0)))
+            linha("ocupando", gigabytes(relatorio.get("archive_bytes", 0)))
+            livre = relatorio.get("archive_free", 0)
+            apertado = livre < relatorio["min_free_gb"] * 1024 ** 3
+            linha("livre no HD", gigabytes(livre), RED if apertado else GREEN)
+        else:
+            linha("situacao", relatorio["archive_reason"], RED)
+
+        y += 26
+        cv2.putText(canvas, "3. Regras", (x, y), FONT, 0.5, TEXT, 1)
+        linha("mover para o HD depois de", f"{relatorio['after_days']} dias")
+        linha("apagar o mais antigo se sobrar menos de",
+              f"{relatorio['min_free_gb']:.0f} GB")
+        y += 24
+        cv2.putText(canvas, "Nada e apagado da gravacao. A exclusao so acontece",
+                    (x, y), FONT, 0.42, MUTED, 1)
+        y += 18
+        cv2.putText(canvas, "no arquivo morto, do mais antigo, quando o HD lotar.",
+                    (x, y), FONT, 0.42, MUTED, 1)
+
+        y += 34
+        botoes = [("Escolher pasta", "pick_archive", ACTIVE)]
+        if relatorio["archive_path"]:
+            botoes.append(("Arquivar agora", "archive_now", ACTIVE))
+            botoes.append(("Remover pasta", "clear_archive", PANEL))
+        largura, altura, vao = 170, 34, 12
+        for indice, (texto, acao, cor) in enumerate(botoes):
+            bx = x + indice * (largura + vao)
+            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), cor, -1)
+            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), LINE, 1)
+            cv2.putText(canvas, texto, (bx + 14, y + 22), FONT, 0.45, TEXT, 1)
+            self._region((bx, y, bx + largura, y + altura), acao, None)
+
+        if self.archive_report:
+            movidos = self.archive_report["moved"]
+            liberados = self.archive_report["freed"]
+            y += altura + 28
+            recado = (f"Movidos {movidos['moved']} evento(s), "
+                      f"{gigabytes(movidos['bytes'])}. "
+                      f"Apagados {liberados['removed']} do arquivo.")
+            if movidos["skipped"]:
+                recado = f"Nada feito: {movidos['skipped']}"
+            cv2.putText(canvas, recado, (x, y), FONT, 0.45, GREEN, 1)
 
     def _draw_calendar(self, canvas, area):
         x0, y0, x1, y1 = area

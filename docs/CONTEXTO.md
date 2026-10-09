@@ -207,8 +207,9 @@ em ~6 s como "Tempo esgotado. Confira a rede e o IP da camera".
 
 Esta é a lista única; a ARQUITETURA aponta para cá.
 
-1. **Retenção automática** — com ~300 MB/dia é o mais urgente. Apagar dias
-   mais antigos que N, ou o mais antigo quando o disco passar de um limite
+1. ~~**Retenção automática**~~ — feito, mas com outro desenho: em vez de
+   apagar, o `archive.py` move para um HD externo após 30 dias e só apaga de
+   lá se o HD lotar. Ver ARQUITETURA 11
 2. **Medir o M900 rodando** — CPU com as duas câmeras em movimento, e se
    `HWACCEL` ajuda (INSTALACAO seção 6)
 3. **Rótulos de animal** — só aceitar uma espécie que se repita no evento, em
@@ -237,7 +238,9 @@ src/jarvis/
   people.py       camada 2: YOLO via cv2.dnn, pessoas e animais
   clips.py        camada 3: eventos, montagem sem perda, metadados
   faces.py        camada 4: YuNet + SFace, galeria, cadastro de nome
-  ui.py           menu lateral e as três telas
+  archive.py      camada 5: move para o HD externo, apaga só lá se lotar
+  settings.py     configuração editável pela interface (config.json)
+  ui.py           menu lateral e as quatro telas
   geometry.py     tipo Detection e utilitários de caixas
 tools/
   diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)

@@ -29,3 +29,6 @@ models/
 
 # epub gerados sob demanda, nao versionados
 docs/epub/
+
+# configuracao local da maquina
+config.json

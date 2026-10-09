@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 
 from jarvis import ROOT, ui
+from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
 from jarvis.motion import MotionDetector
@@ -179,6 +180,7 @@ def main():
     cv2.setMouseCallback(WINDOW, interface.on_mouse)
     cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
     last_prune = time.monotonic()
+    housekeeper = Housekeeper()
     last_render = 0.0
     panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
               for cam in streams}
@@ -213,6 +215,11 @@ def main():
             last_prune = now
             for cam in streams:
                 cam.prune()
+
+        feito = housekeeper.tick()
+        if feito and (feito["moved"]["moved"] or feito["freed"]["removed"]):
+            print(f"  arquivo: {feito['moved']['moved']} movido(s), "
+                  f"{feito['freed']['removed']} apagado(s) do HD")
 
         if fresh or now - last_render > REDRAW_SECONDS:
             last_render = now
