@@ -24,3 +24,8 @@ Claude adotou sozinho, sem decisão do usuário. Ao perceber que está justifica
 uma escolha por uma consequência do ambiente em vez de um pedido ou uma medição,
 registre lá. Reaproveitar biblioteca conceituada vem antes de escrever à mão;
 tamanho da aplicação não é critério.
+
+**Ao abrir nesta pasta, antes de responder qualquer coisa:** rode a rotina de
+retomada da seção 12 do `docs/CONTEXTO.md`. Ela é sua, não do usuário — ele não
+roda comandos de preparação à mão. Sincronize o ambiente, verifique o que o
+plano em andamento exige, e só então diga em que ponto o trabalho está.

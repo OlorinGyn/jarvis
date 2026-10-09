@@ -101,7 +101,8 @@ A vigilância já roda sem janela, mas não havia como olhar um núcleo sem jane
 `http.server` foi cogitado e descartado: é de uma thread, então MJPEG ao vivo
 travaria tudo, e não resolve HTTP Range, que o `<video>` exige para arrastar a
 barra. `pydantic_core` (Rust compilado) testado contra o Smart App Control no
-dev: carrega. **Confirmar no M900.** Ver ARQUITETURA 17.
+dev: carrega. Em outra máquina, quem confirma é a sessão que abrir lá, pela
+rotina da seção 12. Ver ARQUITETURA 17.
 
 ### Sem compactar os vídeos
 Implementado e removido. Medido em arquivo real: zip economiza **0,2%**, bzip2 e
@@ -468,3 +469,66 @@ hardware — `geometry.py`, os limiares de `motion.py`, o `_allowed` do
 Captura, detecção, gravação, rostos e interface no mesmo processo Python, com
 threads para o que não pode bloquear. Funciona com 2 câmeras. Não foi avaliado
 para mais, e o GIL fica no caminho. Só registrado; não é problema hoje.
+
+---
+
+## 12. Rotina de retomada — execute isto ao abrir o projeto
+
+**Esta seção é para o Claude, não para o usuário.** Ele não roda comandos de
+preparação à mão e espera que o contexto deixe qualquer máquina pronta para
+continuar. Então faça você, antes de responder, e relate só o resultado.
+
+### 12.1 Sempre
+
+```bash
+git pull --ff-only
+uv sync
+```
+
+O `git pull` primeiro, porque o projeto é editado em duas máquinas. Se der
+conflito ou divergência, pare e mostre ao usuário em vez de resolver sozinho.
+
+O `uv sync` porque as dependências mudam entre commits. Em 09/10/2026 entraram
+`requests`, `python-dotenv`, `fastapi` e `uvicorn`.
+
+### 12.2 Verifique o que o item em andamento exige
+
+Leia a seção 8 (backlog) e identifique o item `(decidido)` em curso. Se ele
+tiver pré-condição registrada, teste-a **agora**, nesta máquina, e registre o
+resultado aqui no mesmo commit da próxima mudança.
+
+Em aberto em 09/10/2026, para o item 3 (interface web, ARQUITETURA 17):
+
+```bash
+uv run python -c "import pydantic_core, fastapi, uvicorn; print('ok')"
+```
+
+O `pydantic_core` é Rust compilado, a mesma categoria de binário que o Smart
+App Control bloqueou no PyTorch. Carrega no dev. Se falhar aqui com
+`WinError 4551`, o plano B está em ARQUITETURA 17.2 — Flask com servidor WSGI
+com threads, Python puro — e não se abandona a web.
+
+| Máquina | `pydantic_core` carrega? |
+|---|---|
+| Dev (Windows, este PC) | sim, testado em 09/10/2026 |
+| M900 (deploy) | **não testado** |
+
+### 12.3 Diga em que pé está
+
+Depois disso, diga ao usuário: em que item o trabalho parou, qual o próximo
+estágio e se alguma pré-condição falhou. Não peça a ele para rodar nada que
+você conseguia rodar.
+
+### 12.4 O que não viaja pelo git, e o que fazer
+
+| Arquivo | Por quê | Consequência |
+|---|---|---|
+| `.env` | credenciais das câmeras | cada máquina tem o seu; se faltar, `instalar.bat` cria |
+| `config.json` | contém o token do Telegram | **a notificação nasce desligada numa máquina nova** |
+| `models/` | ~73 MB | baixados sob demanda no primeiro uso |
+| `clips/`, `faces/` | gravações e galeria | são locais por natureza |
+
+Se o `config.json` não existir ou estiver sem `notify_token`, diga isso ao
+usuário — é a única coisa aqui que precisa dele, porque o token é credencial e
+só ele tem. O `chat_id` você descobre sozinho depois, com
+`notify.discover_chat()`.
