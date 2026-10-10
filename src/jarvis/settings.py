@@ -25,13 +25,19 @@ DEFAULTS = {
 }
 
 
-def load():
-    """Current settings, with any missing key filled from DEFAULTS."""
-    values = dict(DEFAULTS)
+def _stored():
+    """Everything config.json holds, or an empty dict when it cannot be read."""
     try:
         stored = json.loads(FILE.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
-        return values
+        return {}
+    return stored if isinstance(stored, dict) else {}
+
+
+def load():
+    """Current settings, with any missing key filled from DEFAULTS."""
+    values = dict(DEFAULTS)
+    stored = _stored()
     for key in DEFAULTS:
         if key in stored:
             values[key] = stored[key]
@@ -39,9 +45,14 @@ def load():
 
 
 def save(values):
-    """Write the settings back, keeping only known keys."""
+    """Write the known settings back; keys this version does not know stay as they were.
+
+    A newer version may have added keys. Dropping them here, after a rollback
+    or from any older copy that saves, would erase what the user set there.
+    """
     clean = {key: values.get(key, default) for key, default in DEFAULTS.items()}
-    FILE.write_text(json.dumps(clean, indent=2), encoding="utf-8")
+    kept = {key: value for key, value in _stored().items() if key not in DEFAULTS}
+    FILE.write_text(json.dumps({**clean, **kept}, indent=2), encoding="utf-8")
     return clean
 
 
