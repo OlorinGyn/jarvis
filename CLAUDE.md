@@ -63,7 +63,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | Backlog, review log, recommendations | reads them | manages them |
 | `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
-| Documentation EPUB | no | regenerates it at the end of every session that changed the docs |
+| Documentation EPUB | no | generates it **only when the user asks** (CONTEXTO 10) |
 | Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (CONTEXTO 15) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
 

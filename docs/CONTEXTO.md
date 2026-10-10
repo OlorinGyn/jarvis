@@ -474,10 +474,12 @@ Os `.md` nunca são alterados, e os EPUBs **não são versionados**. O script ap
 antigos da pasta e confere, ao final, se a contagem de tabelas e blocos de
 código bate com a dos arquivos de origem.
 
-**Whose job — decided on 09/10/2026: the architect's.** The book is made of
-the documentation, and only the architect changes the documentation, so the
-architect regenerates it as the last step of every session that changed a
-`.md`, and tells the user it is ready. A developer session never needs to. The
+**Whose job: the architect's, on request — decided 10/10/2026.** Only the user
+reads the book, and not after every change, so it is built when they ask for
+it ("gere o epub"), not at the end of every session. Building it costs
+almost nothing — pandoc runs locally and prints three lines — but a step that
+nobody needs is still a step, and the book is made from the `.md` files at any
+moment, so nothing is lost by waiting. The
 check counts table separators even when indented: it used to miss a table
 nested in a list item (backlog item 3) and report a loss that was not one.
 
@@ -698,8 +700,8 @@ impact, suggested documentation by section, topics worth teaching, what to
 review hardest — and asks: *"Arquiteto, precisamos da sua análise."* The
 architect decides what is worth documenting, integrates it, empties the file,
 pushes, and tags a release when the code is fit for production. Production only
-ever runs tags (ARQUITETURA 18.7), named `vYYYY.MM.DD`; a second release on the same day is `vYYYY.MM.DD.2` — `production.ps1` sorts tags as versions, so it ranks after the first. The architect's last step, whenever the
-docs changed, is the EPUB (section 10). The developer's session is written down
+ever runs tags (ARQUITETURA 18.7), named `vYYYY.MM.DD`; a second release on the same day is `vYYYY.MM.DD.2` — `production.ps1` sorts tags as versions, so it ranks after the first. The EPUB is built only when the user asks
+(section 10). The developer's session is written down
 as the `dev` skill (`.claude/skills/dev/SKILL.md`), which the architect
 maintains.
 
