@@ -59,6 +59,7 @@ MAX_PAUSE_SECONDS = 600.0
 THUMB_SIZE = 300
 THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
+MAX_PENDING = 100
 
 _GALLERY_LOCK = threading.Lock()
 _SCAN_LOCK = threading.Lock()
@@ -174,6 +175,7 @@ def _group(observations):
             if cosine(group["embedding"], seen["embedding"]) >= SAME_FACE_THRESHOLD:
                 group["count"] += 1
                 group["views"].append(seen["embedding"])
+                group["crops"].append(seen["crop"])
                 if weight > group["weight"]:
                     group.update(embedding=seen["embedding"], crop=seen["crop"],
                                  weight=weight, score=seen["score"], width=width)
@@ -182,8 +184,15 @@ def _group(observations):
             groups.append({"embedding": seen["embedding"], "crop": seen["crop"],
                            "weight": weight, "score": seen["score"],
                            "width": width, "count": 1,
-                           "views": [seen["embedding"]]})
+                           "views": [seen["embedding"]], "crops": [seen["crop"]]})
     return groups
+
+
+def views_of(person):
+    """The face crop path of each stored view, aligned with its embeddings; None where none was kept."""
+    views = list(person.get("views") or [])
+    count = len(person["embeddings"])
+    return (views + [None] * count)[:count]
 
 
 def _similarity(person, embedding):
@@ -243,29 +252,99 @@ class Gallery:
                 return person_id, score
         return None, max(best[True][1], best[False][1])
 
-    def add(self, embeddings, thumbnail):
+    @property
+    def view_dir(self):
+        """Where each stored view's face crop is kept, next to gallery.json."""
+        return self.path.parent / "views"
+
+    def _store_view(self, crop):
+        """Save a view's face crop and return its portable path, or None without one."""
+        if crop is None:
+            return None
+        self.view_dir.mkdir(parents=True, exist_ok=True)
+        path = self.view_dir / f"{uuid.uuid4().hex[:12]}.jpg"
+        cv2.imwrite(str(path), crop, [cv2.IMWRITE_JPEG_QUALITY, 92])
+        return _portable(path)
+
+    def _forget_view(self, view):
+        """Delete a view's crop, but only a file this gallery stored itself."""
+        if not view:
+            return
+        path = Path(view) if Path(view).is_absolute() else ROOT / view
+        if path.parent.resolve() == self.view_dir.resolve():
+            path.unlink(missing_ok=True)
+
+    def _take(self, person, embedding, view):
+        """Store one view, or queue it when the person already holds MAX_EMBEDDINGS."""
+        views = views_of(person)
+        if len(person["embeddings"]) < MAX_EMBEDDINGS:
+            person["embeddings"].append(embedding)
+            person["views"] = views + [view]
+            return
+        person["views"] = views
+        pending = person.setdefault("pending", [])
+        pending.append({"embedding": embedding, "view": view})
+        for dropped in pending[:-MAX_PENDING]:
+            self._forget_view(dropped.get("view"))
+        del pending[:-MAX_PENDING]
+
+    def add(self, embeddings, thumbnail, crops=None):
+        embeddings = list(embeddings)
+        crops = list(crops or []) + [None] * len(embeddings)
+        stored = [self._store_view(crop) for crop in crops[:min(len(embeddings), MAX_EMBEDDINGS)]]
         person = {
             "id": f"p_{uuid.uuid4().hex[:8]}",
             "name": "",
-            "embeddings": list(embeddings)[:MAX_EMBEDDINGS],
+            "embeddings": [],
+            "views": [],
             "thumbnail": _portable(thumbnail),
             "first_seen": datetime.now().isoformat(timespec="seconds"),
         }
+        for embedding, view in zip(embeddings[:MAX_EMBEDDINGS], stored):
+            self._take(person, embedding, view)
         with _GALLERY_LOCK:
             self.load()
             self.people.append(person)
             self.save()
         return person["id"]
 
-    def reinforce(self, person_id, embedding):
-        """Keep more views per person so angles and lighting are covered."""
+    def reinforce(self, person_id, embedding, crop=None):
+        """Keep more views per person; past MAX_EMBEDDINGS they wait in a queue."""
+        view = self._store_view(crop)
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
-            if person is None or len(person["embeddings"]) >= MAX_EMBEDDINGS:
+            if person is None:
+                self._forget_view(view)
                 return
-            person["embeddings"].append(embedding)
+            self._take(person, embedding, view)
             self.save()
+
+    def remove_view(self, person_id, index):
+        """Drop one stored view; the oldest queued view takes its place.
+
+        Returns False when there is no such view, or when it is the person's
+        last one with nothing queued: a person with no view can match nobody.
+        """
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            if person is None or not 0 <= index < len(person["embeddings"]):
+                return False
+            pending = person.get("pending") or []
+            if len(person["embeddings"]) == 1 and not pending:
+                return False
+            views = views_of(person)
+            person["embeddings"].pop(index)
+            removed = views.pop(index)
+            person["views"] = views
+            if pending:
+                waiting = pending.pop(0)
+                person["embeddings"].append(waiting["embedding"])
+                person["views"].append(waiting.get("view"))
+            self.save()
+        self._forget_view(removed)
+        return True
 
     def rename(self, person_id, full_name):
         """Name a person, then gather every unnamed face that is them.
@@ -306,9 +385,11 @@ class Gallery:
         return merged
 
     def _merge(self, source, target):
-        """Move every view and sighting of source into target."""
-        room = MAX_EMBEDDINGS - len(target["embeddings"])
-        target["embeddings"].extend(source["embeddings"][:max(room, 0)])
+        """Move every view and sighting of source into target; overflow waits in its queue."""
+        for embedding, view in zip(source["embeddings"], views_of(source)):
+            self._take(target, embedding, view)
+        for waiting in source.get("pending") or []:
+            self._take(target, waiting["embedding"], waiting.get("view"))
         self.people.remove(source)
         _repoint_sightings(self.path.parent, source["id"], target["id"])
 
@@ -505,10 +586,11 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None):
         cv2.imwrite(str(thumbnail), group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])
 
         if person_id is None:
-            others = [v for v in group["views"] if v is not embedding]
-            person_id = gallery.add([embedding, *others[:3]], thumbnail)
+            others = [(v, c) for v, c in zip(group["views"], group["crops"]) if v is not embedding]
+            person_id = gallery.add([embedding, *(v for v, _ in others[:3])], thumbnail,
+                                    [group["crop"], *(c for _, c in others[:3])])
         elif score >= LEARN_THRESHOLD:
-            gallery.reinforce(person_id, embedding)
+            gallery.reinforce(person_id, embedding, group["crop"])
         seen_here.add(person_id)
 
         sighting = {

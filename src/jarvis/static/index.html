@@ -37,14 +37,30 @@
   </section>
 
   <section id="people" class="tab">
-    <nav class="toolbar">
-      <button id="people-previous" title="Previous day with faces">◀</button>
-      <input type="date" id="people-day">
-      <button id="people-next" title="Next day with faces">▶</button>
-      <button id="people-today">Today</button>
-      <span id="people-summary"></span>
-    </nav>
-    <main id="faces"></main>
+    <div id="people-list">
+      <h2 class="heading">People</h2>
+      <p class="result heading-hint" id="people-result"></p>
+      <main id="persons" class="people-grid"></main>
+      <h2 class="heading">Unnamed faces <span id="unnamed-count"></span></h2>
+      <p class="hint heading-hint">Type a name, or pick who the face belongs to. Giving two faces the same name merges them.</p>
+      <main id="unnamed" class="people-grid"></main>
+    </div>
+    <div id="person-page" hidden>
+      <nav class="toolbar">
+        <a href="#people" class="back">◀ People</a>
+        <h2 id="person-name"></h2>
+      </nav>
+      <form id="rename-form" class="naming person-rename">
+        <input name="person" maxlength="60" autocomplete="off" placeholder="Full name">
+        <button type="submit">Rename</button>
+      </form>
+      <p class="result heading-hint" id="person-result"></p>
+      <h3 class="heading">Views that recognise them <span id="views-count"></span></h3>
+      <p class="hint heading-hint">Remove a poor view and the oldest waiting one takes its place.</p>
+      <main id="views" class="views-grid"></main>
+      <h3 class="heading">Days they were seen</h3>
+      <div id="calendar"></div>
+    </div>
   </section>
 
   <section id="settings" class="tab">
@@ -95,22 +111,19 @@
     </main>
   </section>
 
-  <template id="face-card">
-    <article class="card face">
-      <div class="photo"><img alt="" loading="lazy"></div>
+  <template id="person-card">
+    <article class="card person-card">
+      <a class="photo"><img alt="" loading="lazy"></a>
       <div class="caption">
         <div class="row">
-          <span class="name"></span>
-          <span class="camera"></span>
-        </div>
-        <div class="row">
-          <span class="time"></span>
-          <span class="score"></span>
+          <a class="name"></a>
+          <span class="count"></span>
         </div>
         <form class="naming">
-          <input name="name" maxlength="60" autocomplete="off" placeholder="Full name">
+          <input name="person" maxlength="60" autocomplete="off" placeholder="Full name">
           <button type="submit">Save</button>
         </form>
+        <select class="belongs"><option value="">Belongs to…</option></select>
       </div>
     </article>
   </template>

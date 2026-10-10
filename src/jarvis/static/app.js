@@ -29,7 +29,7 @@ function plural(n, one, many) {
 const TABS = ["live", "recordings", "people", "settings"];
 
 function currentTab() {
-  const tab = location.hash.slice(1);
+  const tab = location.hash.slice(1).split("/")[0];
   return TABS.includes(tab) ? tab : "live";
 }
 
@@ -177,19 +177,23 @@ function showTab() {
   if (tab === "recordings") {
     loadDays().then(loadEvents);
   } else if (tab === "people") {
-    loadFaceDays().then(loadFaces);
+    showPeople();
   } else if (tab === "settings") {
     loadSettings();
   }
 }
 
-const peopleDay = document.getElementById("people-day");
-const peoplePrevious = document.getElementById("people-previous");
-const peopleNext = document.getElementById("people-next");
-const peopleSummary = document.getElementById("people-summary");
-const faceList = document.getElementById("faces");
-const faceTemplate = document.getElementById("face-card");
-let daysWithFaces = [];
+const peopleList = document.getElementById("people-list");
+const personPage = document.getElementById("person-page");
+const personsGrid = document.getElementById("persons");
+const unnamedGrid = document.getElementById("unnamed");
+const personTemplate = document.getElementById("person-card");
+const peopleResult = document.getElementById("people-result");
+const personResult = document.getElementById("person-result");
+const renameForm = document.getElementById("rename-form");
+const viewsGrid = document.getElementById("views");
+const calendarBox = document.getElementById("calendar");
+let namedPeople = [];
 
 const PIN_KEY = "jarvis-pin";
 
@@ -220,99 +224,249 @@ async function send(url, payload) {
     body: JSON.stringify(payload || {}),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || `error ${response.status}`);
+  if (!response.ok) {
+    const problem = new Error(data.detail || `error ${response.status}`);
+    problem.status = response.status;
+    throw problem;
+  }
   return data;
 }
 
-function faceCard(face) {
-  const node = faceTemplate.content.cloneNode(true);
+async function getJSON(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(response.status);
+  return response.json();
+}
+
+function selectedPerson() {
+  const parts = location.hash.slice(1).split("/");
+  return parts[0] === "people" ? parts[1] || "" : "";
+}
+
+async function nameFace(id, name, merge) {
+  try {
+    return await send(`/api/persons/${id}/name`, { name, merge });
+  } catch (problem) {
+    if (!merge && problem.status === 409 && confirm(`${problem.message}. Merge them?`)) {
+      return send(`/api/persons/${id}/name`, { name, merge: true });
+    }
+    throw problem;
+  }
+}
+
+function describeNaming(result) {
+  return `${result.name}: saved` +
+    (result.merged ? `, ${plural(result.merged, "face", "faces")} merged into them` : "");
+}
+
+async function applyName(id, name, merge) {
+  try {
+    peopleResult.textContent = describeNaming(await nameFace(id, name, merge));
+  } catch (problem) {
+    peopleResult.textContent = `Not saved: ${problem.message}`;
+  }
+  loadPersons();
+}
+
+function personCard(card) {
+  const node = personTemplate.content.cloneNode(true);
+  const link = node.querySelector("a.photo");
+  link.setAttribute("href", `#people/${card.id}`);
   const image = node.querySelector("img");
-  if (face.thumbnail) {
-    image.src = face.thumbnail;
+  if (card.photo) {
+    image.src = card.photo;
   } else {
     image.remove();
   }
   const name = node.querySelector(".name");
-  name.textContent = face.name;
-  name.classList.toggle("person", face.named);
-  node.querySelector(".camera").textContent = face.camera;
-  node.querySelector(".time").textContent = face.time;
-  node.querySelector(".score").textContent =
-    face.reliable ? `match ${face.score.toFixed(2)}` : `${face.face_width} px face`;
+  name.setAttribute("href", `#people/${card.id}`);
+  name.textContent = card.name || "Unknown";
+  name.classList.toggle("person", Boolean(card.name));
+  node.querySelector(".count").textContent =
+    plural(card.views, "view", "views") + (card.pending ? ` +${card.pending}` : "");
   const form = node.querySelector("form");
+  const select = node.querySelector("select");
+  if (card.name) {
+    form.remove();
+    select.remove();
+    return node;
+  }
   const input = form.querySelector("input");
-  if (face.named) input.value = face.name;
-  form.addEventListener("submit", async (submitted) => {
+  form.addEventListener("submit", (submitted) => {
     submitted.preventDefault();
-    try {
-      const result = await send(`/api/people/${face.person_id}/name`, { name: input.value });
-      await loadFaces(false);
-      peopleSummary.textContent = `${result.name}: saved` +
-        (result.merged ? `, ${plural(result.merged, "face", "faces")} merged` : "");
-    } catch (problem) {
-      peopleSummary.textContent = `Not saved: ${problem.message}`;
+    applyName(card.id, input.value, false);
+  });
+  if (namedPeople.length === 0) {
+    select.remove();
+    return node;
+  }
+  for (const person of namedPeople) {
+    const option = document.createElement("option");
+    option.value = person.name;
+    option.textContent = person.name;
+    select.append(option);
+  }
+  select.addEventListener("change", () => {
+    if (!select.value) return;
+    if (confirm(`This face is ${select.value}? It merges into them, which cannot be undone yet.`)) {
+      applyName(card.id, select.value, true);
+    } else {
+      select.value = "";
     }
   });
   return node;
 }
 
-function updateFaceArrows() {
-  const day = peopleDay.value;
-  peoplePrevious.disabled = !daysWithFaces.some((d) => d < day);
-  peopleNext.disabled = !daysWithFaces.some((d) => d > day);
-}
-
-async function loadFaces(describe = true) {
+async function loadPersons() {
   let data;
   try {
-    const response = await fetch(`/api/people?day=${peopleDay.value}`);
-    if (!response.ok) throw new Error(response.status);
-    data = await response.json();
+    data = await getJSON("/api/persons");
   } catch {
-    peopleSummary.textContent = "Could not read the faces.";
+    showNotice(personsGrid, "Could not read the people.");
     return;
   }
-  faceList.replaceChildren(...data.faces.map(faceCard));
-  if (data.faces.length === 0) {
-    showNotice(faceList, "No faces seen on this day.");
-  }
-  if (describe) {
-    const unnamed = data.faces.filter((f) => !f.named).length;
-    peopleSummary.textContent = data.faces.length
-      ? `${plural(data.faces.length, "face", "faces")} · ${unnamed} unnamed · ` +
-        "the same name on two faces merges them"
-      : "";
-  }
-  updateFaceArrows();
+  namedPeople = data.named;
+  personsGrid.replaceChildren(...data.named.map(personCard));
+  if (data.named.length === 0) showNotice(personsGrid, "Nobody is named yet: name a face below.");
+  unnamedGrid.replaceChildren(...data.unnamed.map(personCard));
+  if (data.unnamed.length === 0) showNotice(unnamedGrid, "No unnamed faces.");
+  document.getElementById("unnamed-count").textContent =
+    data.unnamed.length ? `(${data.unnamed.length})` : "";
 }
 
-async function loadFaceDays() {
+function viewTile(id, photo, index, person) {
+  const tile = document.createElement("figure");
+  tile.className = "view";
+  if (photo) {
+    const image = document.createElement("img");
+    image.src = photo;
+    image.alt = "";
+    image.loading = "lazy";
+    tile.append(image);
+  } else {
+    const missing = document.createElement("span");
+    missing.className = "no-photo";
+    missing.textContent = "no photo";
+    tile.append(missing);
+  }
+  if (person.views > 1 || person.pending > 0) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.title = "Remove this view";
+    remove.textContent = "×";
+    remove.addEventListener("click", async () => {
+      if (!confirm("Remove this view? It will no longer be used to recognise them.")) return;
+      try {
+        showPerson(await send(`/api/persons/${id}/views/${index}/remove`));
+        personResult.textContent = "View removed.";
+      } catch (problem) {
+        personResult.textContent = `Not removed: ${problem.message}`;
+      }
+    });
+    tile.append(remove);
+  }
+  return tile;
+}
+
+function monthGrid(month, counts) {
+  const [year, number] = month.split("-").map(Number);
+  const box = document.createElement("div");
+  box.className = "month";
+  const title = document.createElement("h4");
+  title.textContent = new Date(year, number - 1, 1)
+    .toLocaleDateString("en", { month: "long", year: "numeric" });
+  const grid = document.createElement("div");
+  grid.className = "month-grid";
+  for (const letter of ["S", "M", "T", "W", "T", "F", "S"]) {
+    const head = document.createElement("span");
+    head.className = "weekday";
+    head.textContent = letter;
+    grid.append(head);
+  }
+  for (let blank = new Date(year, number - 1, 1).getDay(); blank > 0; blank--) {
+    grid.append(document.createElement("span"));
+  }
+  const last = new Date(year, number, 0).getDate();
+  for (let day = 1; day <= last; day++) {
+    const iso = `${month}-${String(day).padStart(2, "0")}`;
+    const count = counts[iso];
+    const cell = document.createElement(count ? "button" : "span");
+    cell.className = count ? "day seen" : "day";
+    cell.textContent = day;
+    if (count) {
+      cell.type = "button";
+      cell.title = `seen ${plural(count, "time", "times")}: open the recordings`;
+      cell.addEventListener("click", () => {
+        dayInput.value = iso;
+        location.hash = "#recordings";
+      });
+    }
+    grid.append(cell);
+  }
+  box.append(title, grid);
+  return box;
+}
+
+function drawCalendar(appearances) {
+  const counts = {};
+  for (const seen of appearances) counts[seen.day] = (counts[seen.day] || 0) + 1;
+  const months = [...new Set(Object.keys(counts).map((day) => day.slice(0, 7)))].sort().reverse();
+  if (months.length === 0) {
+    showNotice(calendarBox, "Not seen in any recording yet.");
+    return;
+  }
+  calendarBox.replaceChildren(...months.map((month) => monthGrid(month, counts)));
+}
+
+function showPerson(person) {
+  document.getElementById("person-name").textContent = person.name || "Unknown";
+  renameForm.querySelector("input").value = person.name;
+  renameForm.querySelector("button").textContent = person.name ? "Rename" : "Save name";
+  document.getElementById("views-count").textContent =
+    `(${person.views} of 40${person.pending ? `, ${person.pending} waiting` : ""})`;
+  viewsGrid.replaceChildren(...person.view_photos.map((photo, index) =>
+    viewTile(person.id, photo, index, person)));
+  drawCalendar(person.appearances);
+}
+
+async function loadPerson(id) {
   try {
-    const response = await fetch("/api/face-days");
-    daysWithFaces = response.ok ? await response.json() : [];
+    showPerson(await getJSON(`/api/persons/${id}`));
   } catch {
-    daysWithFaces = [];
+    document.getElementById("person-name").textContent = "Not found";
+    viewsGrid.replaceChildren();
+    calendarBox.replaceChildren();
+    personResult.textContent = "This person no longer exists; they may have been merged.";
   }
-  updateFaceArrows();
 }
 
-function goToFaces(day) {
-  peopleDay.value = day;
-  loadFaces();
+function showPeople() {
+  const id = selectedPerson();
+  peopleList.hidden = Boolean(id);
+  personPage.hidden = !id;
+  personResult.textContent = "";
+  if (id) {
+    loadPerson(id);
+  } else {
+    loadPersons();
+  }
 }
 
-peoplePrevious.addEventListener("click", () => {
-  const earlier = daysWithFaces.filter((d) => d < peopleDay.value);
-  if (earlier.length) goToFaces(earlier[0]);
+renameForm.addEventListener("submit", async (submitted) => {
+  submitted.preventDefault();
+  const id = selectedPerson();
+  try {
+    const result = await nameFace(id, renameForm.querySelector("input").value, false);
+    personResult.textContent = describeNaming(result);
+    if (result.id !== id) {
+      location.hash = `#people/${result.id}`;
+    } else {
+      loadPerson(id);
+    }
+  } catch (problem) {
+    personResult.textContent = `Not saved: ${problem.message}`;
+  }
 });
-
-peopleNext.addEventListener("click", () => {
-  const later = daysWithFaces.filter((d) => d > peopleDay.value);
-  if (later.length) goToFaces(later[later.length - 1]);
-});
-
-document.getElementById("people-today").addEventListener("click", () => goToFaces(todayISO()));
-peopleDay.addEventListener("change", () => loadFaces());
 
 const notifyForm = document.getElementById("notify-form");
 const archiveForm = document.getElementById("archive-form");
@@ -505,5 +659,4 @@ setInterval(() => {
 }, REFRESH_MS);
 
 dayInput.value = todayISO();
-peopleDay.value = todayISO();
 checkHealth().then(showTab);

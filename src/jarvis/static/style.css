@@ -195,22 +195,6 @@ h1 {
   color: var(--muted);
 }
 
-#people-summary {
-  margin-left: 8px;
-  color: var(--muted);
-}
-
-#faces {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
-  padding: 16px 20px 32px;
-}
-
-.face .photo {
-  aspect-ratio: 1 / 1;
-}
-
 .name {
   font-weight: 600;
   color: var(--muted);
@@ -220,9 +204,172 @@ h1 {
   color: var(--person);
 }
 
-.score {
+.heading {
+  margin: 20px 20px 4px;
+  font-size: 1.05rem;
+}
+
+.heading span {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.hint.heading-hint,
+.result.heading-hint {
+  margin: 0 20px;
+}
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  padding: 10px 20px 8px;
+}
+
+.person-card .photo {
+  display: block;
+  aspect-ratio: 1 / 1;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.name.person {
+  color: var(--person);
+}
+
+.count {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.belongs {
+  width: 100%;
+  margin-top: 6px;
+  background: var(--background);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font: inherit;
+}
+
+.back {
+  color: var(--text);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+#person-name {
+  margin: 0 0 0 8px;
+  font-size: 1.3rem;
+}
+
+.person-rename {
+  max-width: 420px;
+  margin: 12px 20px 4px;
+}
+
+.views-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 10px 20px;
+}
+
+.view {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1 / 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.no-photo {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.view button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.view button:hover {
+  background: var(--alarm);
+}
+
+#calendar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px 32px;
+}
+
+.month {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.month h4 {
+  margin: 0 0 8px;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 32px);
+  gap: 3px;
+  text-align: center;
+}
+
+.weekday {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.day {
+  line-height: 30px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.day.seen {
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--text);
+  cursor: pointer;
 }
 
 .naming {

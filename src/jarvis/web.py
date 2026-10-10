@@ -8,6 +8,7 @@ See docs/ARQUITETURA.md sections 17 and 18.
 """
 
 import hmac
+import json
 import logging
 import re
 import socket
@@ -46,6 +47,7 @@ SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best)?\.jpg$")
 SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
 SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
+SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
 NAME_MAX = 60
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
@@ -172,39 +174,78 @@ def thumbnail(camera: str, day: str, name: str):
     return FileResponse(path, media_type="image/jpeg")
 
 
-def _sighting(entry):
-    """What the People tab needs from one face sighting."""
-    thumb = entry["thumbnail_path"]
+def _photo_url(stored):
+    """The page URL of a stored face crop (a sighting's or a view's), or None."""
+    if not stored:
+        return None
+    path = Path(stored)
+    if path.parent.name == "views" and SAFE_VIEW.match(path.name):
+        return f"/view/{path.name}"
+    if SAFE_DAY.match(path.parent.name) and SAFE_FACE.match(path.name):
+        return f"/face/{path.parent.name}/{path.name}"
+    return None
+
+
+def _person_card(person):
+    """One person as the People tab lists them: the newest view with a photo stands for them."""
+    photo = next((v for v in reversed(faces.views_of(person)) if v), None)
     return {
-        "person_id": entry.get("person_id", ""),
-        "name": entry.get("name", ""),
-        "named": bool(entry.get("named")),
-        "time": entry.get("time", ""),
-        "camera": entry.get("camera", ""),
-        "score": entry.get("score", 0),
-        "reliable": entry.get("reliable", True),
-        "face_width": entry.get("face_width", 0),
-        "thumbnail": f"/face/{thumb.parent.name}/{thumb.name}" if thumb.exists() else None,
+        "id": person["id"],
+        "name": person["name"],
+        "photo": _photo_url(photo or person.get("thumbnail")),
+        "views": len(person["embeddings"]),
+        "pending": len(person.get("pending") or []),
+        "first_seen": person.get("first_seen", ""),
     }
 
 
-@app.get("/api/face-days")
-def face_days():
-    """Every day with face sightings, newest first."""
-    return [day.isoformat() for day in sorted(faces.days_with_faces(), reverse=True)]
+def _appearances(person_id):
+    """Every sighting of a person, newest first: when, which camera, which recording."""
+    found = []
+    for path in faces.FACE_DIR.glob("*/*.json"):
+        try:
+            sighting = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        if sighting.get("person_id") == person_id:
+            at = sighting.get("at", "")
+            found.append({"at": at, "day": at[:10], "time": sighting.get("time", ""),
+                          "camera": sighting.get("camera", "")})
+    found.sort(key=lambda a: a["at"], reverse=True)
+    return found
 
 
-@app.get("/api/people")
-def people_seen(day: str = None):
-    """The faces seen on one day, newest first, named with the gallery's current names."""
-    chosen = _parse_day(day) if day else date.today()
-    return {"day": chosen.isoformat(),
-            "faces": [_sighting(e) for e in faces.list_sightings(chosen)]}
+def _person_or_404(gallery, person_id):
+    person = gallery.get(person_id) if SAFE_PERSON.match(person_id) else None
+    if person is None:
+        raise HTTPException(404, "no such person")
+    return person
+
+
+@app.get("/api/persons")
+def persons():
+    """Named people by name, then the unnamed faces, newest first."""
+    cards = [_person_card(p) for p in faces.Gallery().people]
+    return {
+        "named": sorted((c for c in cards if c["name"]), key=lambda c: c["name"].casefold()),
+        "unnamed": sorted((c for c in cards if not c["name"]),
+                          key=lambda c: c["first_seen"], reverse=True),
+    }
+
+
+@app.get("/api/persons/{person_id}")
+def person_page(person_id: str):
+    """One person: the photo of each stored view, the queue, and every appearance."""
+    person = _person_or_404(faces.Gallery(), person_id)
+    card = _person_card(person)
+    card["view_photos"] = [_photo_url(v) for v in faces.views_of(person)]
+    card["appearances"] = _appearances(person_id)
+    return card
 
 
 @app.get("/face/{day}/{name}")
 def face_thumbnail(day: str, name: str):
-    """One face crop. The checks keep requests inside faces/."""
+    """One sighting's face crop. The checks keep requests inside faces/."""
     if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
         raise HTTPException(404)
     root = faces.FACE_DIR.resolve()
@@ -214,19 +255,43 @@ def face_thumbnail(day: str, name: str):
     return FileResponse(path, media_type="image/jpeg")
 
 
-@app.post("/api/people/{person_id}/name")
-def name_person(person_id: str, payload: dict = Body(...)):
-    """Name a person; the same name on another face merges the two (Gallery.rename)."""
-    name = payload.get("name")
-    if not SAFE_PERSON.match(person_id):
+@app.get("/view/{name}")
+def view_photo(name: str):
+    """One stored view's face crop, from faces/views/."""
+    if not SAFE_VIEW.match(name):
         raise HTTPException(404)
+    root = (faces.FACE_DIR / "views").resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@app.post("/api/persons/{person_id}/name")
+def name_person(person_id: str, payload: dict = Body(...)):
+    """Name or rename a person. A name someone else has merges the two, so it asks first."""
+    name = payload.get("name")
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > NAME_MAX:
         raise HTTPException(400, f"a name of 1 to {NAME_MAX} characters")
     gallery = faces.Gallery()
-    if gallery.get(person_id) is None:
-        raise HTTPException(404, "no such person")
+    person = _person_or_404(gallery, person_id)
+    other = gallery.by_name(name)
+    if other is not None and other is not person and payload.get("merge") is not True:
+        raise HTTPException(409, f"{other['name']} already exists: saving merges the two "
+                                 "into one person, which cannot be undone yet")
     merged = gallery.rename(person_id, name)
-    return {"name": name.strip(), "merged": merged}
+    result = faces.Gallery().by_name(name)
+    return {"id": result["id"] if result else person_id, "name": name.strip(), "merged": merged}
+
+
+@app.post("/api/persons/{person_id}/views/{index}/remove")
+def remove_view(person_id: str, index: int):
+    """Remove one stored view; the oldest queued view takes its place."""
+    gallery = faces.Gallery()
+    _person_or_404(gallery, person_id)
+    if not gallery.remove_view(person_id, index):
+        raise HTTPException(400, "that view cannot be removed: it is the last one")
+    return person_page(person_id)
 
 
 def _is_local(request):
