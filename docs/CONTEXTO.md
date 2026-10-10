@@ -35,7 +35,7 @@ exists behind `--window` until stage 4 replaces it.
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
-release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. The folder
+release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. The folder
 above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
 INSTALACAO 9).
 
@@ -1249,7 +1249,7 @@ disk, which is exactly why the roles hand over through files.
 | D2 | developer | high | 10/10 04:10–04:40 | session 2: R21 measured, backlog 18, R22, R17, R10 code part; R18 deferred by the user | 0% → 11% (new window): R21 3, backlog 18 + R22 2, R17 3, R18 question + R10 3 | 39% → 41% | 241k → 330k tokens, carried over from session 1 |
 | A7 | architect | ultracode | 10/10 13:25–13:35 | review 4, R23 decided, release `v2026.10.10.2`, comic scripts 2 and 3 (one failed shell append re-sent them) | 9% → 15% | 43% → 44% | 500k → 540k tokens, in the old conversation |
 | D3 | developer | high | 10/10 13:45–14:20 | session 3: R23, R18, web stage 4 | 22% → 34%: R23 2, R18 2, stage 4 8 | 45% → 46% | 336k → 405k, old conversation again |
-| A8 | architect | ultracode | 10/10 14:25– | backlog 19, review 5, R24, release `v2026.10.10.3`, script 4 | 35% → (end) | 47% → | 557k → |
+| A8 | architect | ultracode | 10/10 14:25–14:45 | backlog 19, review 5, R24, release and production `v2026.10.10.3`, script 4 | 35% → 38% | 47% → 47% | 557k → 580k tokens |
 
 ### 14.4 Next session: developer 4
 
