@@ -30,6 +30,8 @@ WANTED_CLASSES = tuple(CLASS_NAMES)
 CONFIDENCE = 0.35
 ANIMAL_CONFIDENCE = 0.45
 MIN_PERSON_HEIGHT_FRACTION = 0.20
+WIDE_PERSON_RATIO = 2.0
+BOTTOM_EDGE_FRACTION = 0.03
 IMG_SIZE = 640
 NMS_THRESHOLD = 0.45
 MIN_INTERVAL = 0.25
@@ -131,6 +133,16 @@ def _same_place(a, b):
     return True
 
 
+def wide_at_bottom(box, frame_height):
+    """A "person" lying across the bottom edge: on the Front camera, the dog on the mat.
+
+    Both conditions, not one: a wide box mid-frame could be a person lying
+    down, and a standing person whose feet touch the edge is always tall.
+    """
+    x, y, w, h = box[:4]
+    return w > WIDE_PERSON_RATIO * h and y + h >= (1 - BOTTOM_EDGE_FRACTION) * frame_height
+
+
 def drop_duplicates(subjects):
     """Keep the most confident box when two of them describe the same subject."""
     subjects = sorted(subjects, key=lambda d: d.confidence, reverse=True)
@@ -227,6 +239,9 @@ class SubjectDetector:
                 continue
             if class_id == PERSON_CLASS and box[3] < minimum_person:
                 self._drop("person too short", detection)
+                continue
+            if class_id == PERSON_CLASS and wide_at_bottom(box, frame.shape[0]):
+                self._drop("wide at the bottom edge", detection)
                 continue
             if REQUIRE_MOTION_OVERLAP and not any(
                     overlap_area(box, m) for m in motion_boxes):

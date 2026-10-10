@@ -34,7 +34,8 @@ def frames(video):
         [ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-nostdin", "-i", str(video),
          "-an", "-s", f"{ANALYSIS_WIDTH}x{ANALYSIS_HEIGHT}", "-r", str(ANALYSIS_FPS),
          "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
-        stdout=subprocess.PIPE, stdin=subprocess.DEVNULL, creationflags=NO_WINDOW)
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+        creationflags=NO_WINDOW)
     try:
         while True:
             data = process.stdout.read(size)
