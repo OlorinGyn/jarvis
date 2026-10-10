@@ -768,7 +768,7 @@ subir de novo em 09/10.
 | | R10 | **high** | Move everything except the conversation to English (user decision) | in progress; left: older docs, `ui.py`, `cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, Portuguese file names (13.7) |
 | ✓ | R11 | **high** | `settings.save()` drops keys it does not know | done `524b14f` (ARQUITETURA 19.2) |
 | | R12 | medium | Production and test copy on the same M900 double the CPU load | open |
-| | R13 | verification | The startup task survives a reboot, and restarts after a crash | partly: the 5-minute trigger fires and leaves the running copy alone (result 0, 09/10 23:16); reboot and crash still untested, see 13.6 |
+| | R13 | verification | The startup task survives a reboot, and restarts after a crash | **reboot verified 10/10**: Windows up 00:58:07, task at 00:58:16, cameras ok 00:59:06, in session 0 with no window. Crash restart still untested (13.6, item 5) |
 | | R14 | low | Live MJPEG is encoded once per viewer | open |
 | ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
 | ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
