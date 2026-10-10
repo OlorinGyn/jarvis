@@ -4,9 +4,9 @@ Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
 on disk is the camera's own stream with no re-encoding.
 
 See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
-No option: service plus browser. --headless: the service alone. --window: the
-old OpenCV window, until the web covers People and settings. --stop: ask a
-running service to shut down cleanly. Ctrl+C also stops.
+No option: service plus browser. --headless: the service alone. --stop: ask a
+running service to shut down cleanly. Ctrl+C also stops. --window, the old
+OpenCV window, is gone: the flag now only says where the web page is.
 """
 
 import logging
@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, faces, log, ui, web
+from jarvis import ROOT, faces, log, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -32,10 +32,8 @@ PLACEHOLDER_IP = "ip-da-camera"
 PANEL_HEIGHT = 480
 LABEL_Y = 62
 STALE_SECONDS = 5.0
-WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
 RATE_SECONDS = 60.0
-REDRAW_SECONDS = 0.15
 IDLE_SLEEP = 0.005
 HEADLESS_FLAGS = ("--headless", "--sem-janela")
 WINDOW_FLAGS = ("--window", "--janela")
@@ -92,16 +90,6 @@ class Camera:
     def close(self):
         self.stream.stop()
 
-    def status(self, motion_boxes, subjects):
-        """Build the caption shown on this camera's panel."""
-        if self.motion.warming_up:
-            return f"{self.label} - learning background"
-        if subjects:
-            names = ", ".join(sorted({s.label for s in subjects}))
-            return f"{self.label} - {names.upper()} ({len(subjects)})"
-        if motion_boxes:
-            return f"{self.label} - motion ({len(motion_boxes)})"
-        return self.label
 
 
 def _wrap(text, width):
@@ -161,17 +149,6 @@ def make_panel(frame, label, height, motion_boxes=(), subjects=(), recording=Fal
     return frame
 
 
-def window_size(live):
-    """The window's current pixel size, falling back to the natural layout."""
-    try:
-        _, _, width, height = cv2.getWindowImageRect(WINDOW)
-    except cv2.error:
-        width = height = 0
-    if width < 240 or height < 160:
-        return ui.SIDEBAR_WIDTH + live.shape[1], live.shape[0]
-    return width, height
-
-
 def start_cameras(env):
     """Open every camera named in the .env and report what each one answered."""
     cameras = build_camera_list(env)
@@ -190,21 +167,18 @@ def start_cameras(env):
 class Core:
     """The surveillance itself: capture, detection, recording, housekeeping.
 
-    It knows nothing about any interface. Panels are only built when somebody
-    asked for drawing, so a core nobody is watching pays nothing for pixels.
+    It knows nothing about any interface: the web reads it, through labels,
+    frame_ages() and live_view(), and draws only for whoever is watching.
     """
 
-    def __init__(self, streams, draw=False):
+    def __init__(self, streams):
         self.streams = streams
-        self.draw = draw
         self.housekeeper = Housekeeper()
         self.last_prune = time.monotonic()
         self.analysed = {cam.label: 0 for cam in streams}
         self.per_minute = {}
         self.rate_started = self.last_prune
         self.scan_seen = False
-        self.panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
-                       for cam in streams} if draw else {}
 
     def step(self):
         """One pass over every camera. True when at least one frame was new."""
@@ -212,10 +186,6 @@ class Core:
         for cam in self.streams:
             frame = cam.read()
             if frame is None:
-                if cam.stream.latest is None and self.draw:
-                    self.panels[cam.label] = make_panel(
-                        None, cam.label, PANEL_HEIGHT,
-                        reason=cam.stream.last_error)
                 continue
             fresh = True
 
@@ -228,11 +198,6 @@ class Core:
                 names = ", ".join(saved["labels"]) or "?"
                 logger.info("  event %s %s [%s] %ss, %s", cam.label, saved["path"].name,
                             names, saved["seconds"], saved["reason"])
-
-            if self.draw:
-                self.panels[cam.label] = make_panel(
-                    frame, cam.status(motion_boxes, subjects), PANEL_HEIGHT,
-                    motion_boxes, subjects, cam.recorder.recording)
 
         now = time.monotonic()
         if now - self.last_prune > PRUNE_SECONDS:
@@ -261,10 +226,6 @@ class Core:
         self.analysed = dict.fromkeys(self.analysed, 0)
         self.rate_started = now
         self.scan_seen = False
-
-    def mosaic(self):
-        """The cameras side by side, for whoever is drawing."""
-        return np.hstack([self.panels[cam.label] for cam in self.streams])
 
     @property
     def labels(self):
@@ -307,35 +268,6 @@ class Core:
         for cam in self.streams:
             cam.close()
         logger.info("Stopped.")
-
-
-def run_window(core, stop):
-    """Drives the core from the OpenCV window; cv2.waitKey sets the pace."""
-    interface = ui.Interface()
-    cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
-    cv2.setMouseCallback(WINDOW, interface.on_mouse)
-    cv2.resizeWindow(WINDOW, ui.SIDEBAR_WIDTH + 1280, 560)
-    last_render = 0.0
-
-    while not stop.is_set():
-        fresh = core.step()
-
-        now = time.monotonic()
-        if fresh or now - last_render > REDRAW_SECONDS:
-            last_render = now
-            live = core.mosaic()
-            cv2.imshow(WINDOW, interface.render(live, window_size(live)))
-
-        key = cv2.waitKey(15) & 0xFF
-        if interface.capturing:
-            interface.on_key(key)
-        elif key == ord("q"):
-            break
-
-        if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
-            break
-
-    cv2.destroyAllWindows()
 
 
 def run_headless(core, stop):
@@ -382,8 +314,9 @@ def main(argv=None):
         logger.info(web.request_stop(port))
         return
 
-    window = _has(argv, WINDOW_FLAGS)
-    open_browser = not window and not _has(argv, HEADLESS_FLAGS)
+    if _has(argv, WINDOW_FLAGS):
+        logger.info("The OpenCV window was removed; the interface is the web page: %s", url)
+    open_browser = not _has(argv, HEADLESS_FLAGS)
 
     if HOLD_FILE.exists():
         logger.info("Held: %s exists (an update or a deliberate stop). Not starting.",
@@ -405,12 +338,12 @@ def main(argv=None):
         return
 
     log.to_file()
-    core = Core(start_cameras(env), draw=window)
+    core = Core(start_cameras(env))
     web.attach(core)
     if open_browser and server is not None:
         webbrowser.open(url)
     try:
-        (run_window if window else run_headless)(core, stop)
+        run_headless(core, stop)
     finally:
         web.stop(server)
         core.close()

@@ -127,7 +127,7 @@ def free_space(settings=None):
 
 
 def summary(settings=None):
-    """What the Ajustes screen shows: where things are and how much room is left."""
+    """What the Settings tab shows: where things are and how much room is left."""
     settings = settings or load()
     state = destination_state(settings["archive_path"])
     here = events(CLIP_DIR)
