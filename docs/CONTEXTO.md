@@ -745,7 +745,7 @@ decidir.
 | 6 | 10/10/2026 | `3a91964..5eb8964`, developer session 4 — R24, backlog 19 and 20, the window removed | no code fixed; R25 decided from the user's question about face messages; release `v2026.10.10.4`; production's gallery deleted at the deploy, as the user decided |
 | 7 | 10/10/2026 | `5eb8964..0707670`, developer session 5 — R25, R6 | no code fixed; 23 tests pass; the new `httpx2` dependency checked as legitimate; backlog 21 added; release `v2026.10.10.5` |
 | 8 | 10/10/2026 | `0707670..7bde4db`, developer session 6 — backlog 21, R26 | no code fixed; 29 tests pass; release `v2026.10.10.6` |
-| 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production |
+| 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production: 69 events, 77 crops, 78 unnamed entries for the user to name |
 
 **Last review covers up to the `v2026.10.10.7` release commit.** The next one
 starts from the commit after it.
@@ -1299,7 +1299,7 @@ disk, which is exactly why the roles hand over through files.
 | D6 | developer | high | 10/10 16:10–16:20 | session 6: backlog 21, R26 | 81% → 84% | 53% → 53% | 542k → 560k, old conversation |
 | A11 | architect | ultracode | 10/10 16:25–16:35 | review 8, release and deploy `v2026.10.10.6`, script 7 | 86% → about 89% | 53% → 53% | 669k → 680k tokens |
 | D7 | developer | high | 10/10 evening | session 7: backlog 22 parts 1 and 2 | 10% → 23% (new window) | 56% → 57% | 564k → 635k, old conversation |
-| A12 | architect | ultracode | 10/10 21:00– | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → (end) | 59% → | 705k → |
+| A12 | architect | ultracode | 10/10 21:00–21:20 | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → ~43% | 59% → 60% | 705k → 720k tokens |
 
 ### 14.4 Next session: developer 8
 
