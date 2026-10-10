@@ -331,6 +331,8 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
+19. **Assign a face to an existing person** (decided 10/10/2026) — the user names a face, but later sightings of the same person are sometimes not recognised and turn up as a new unnamed card. They want to pick that card and say "this is Gustavo" from the names that already exist, instead of typing, so the person gains a second pattern and is recognised in both conditions from then on. **The engine already does the merge:** `Gallery.rename()` with an existing name folds the card into that person and moves its views and sightings (`_merge`) — reachable today only by retyping the exact name in the old OpenCV window. So the work is the **web People screen** (backlog 3, stage 4) with a "belongs to…" picker listing existing names, plus one engine change: `_merge` drops every new view once a person holds `MAX_EMBEDDINGS` (40), which would stop exactly this kind of learning — when full, replace the view most similar to the others instead. Measured 10/10: production's gallery holds 4 views for the user, 8 for another named person, and 7 unnamed identities, some of which may be the user. **Animals:** the user wants the same for the dogs, but there is no animal identity today — SFace only knows human faces (ARQUITETURA 10.8). That is item 15, which the user's wish moves from (proposto) to wanted; it needs research before a plan.
+
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
 5. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
@@ -354,7 +356,7 @@ Funciona sem, mas incompleto.
     busca
 14. **OpenVINO no M900** (proposto) — o `cv2.dnn` aceita esse backend, e era o
     plano para recuperar a velocidade perdida ao sair do PyTorch
-15. **Re-ID de animais** (proposto) — classificador sobre o corpo inteiro
+15. **Re-ID de animais** (wanted by the user since 10/10, with item 19; needs research first) — classificador sobre o corpo inteiro
     (ARQUITETURA 10.8)
 
 ### Fora de software
