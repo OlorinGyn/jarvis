@@ -109,7 +109,7 @@ function CheckData([string]$When) {
 function Sync {
     Push-Location $ProdDir
     try {
-        uv sync --frozen
+        uv sync --frozen --no-dev
         if ($LASTEXITCODE) { throw 'uv sync failed' }
     } finally { Pop-Location }
     $signature = Get-AuthenticodeSignature (Join-Path $ProdDir '.venv\Scripts\pythonw.exe')
