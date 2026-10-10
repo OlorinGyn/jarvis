@@ -331,7 +331,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
-21. **A favourite photo per person** (decided 10/10/2026). On the person's page the user picks which of the stored views is the photo shown on the People grid. Additive: an optional `cover` per person in `gallery.json`, the portable path of the chosen view's crop; the grid uses it when set and the file exists, otherwise today's `thumbnail`. When the favourite view is removed (`remove_view`) or merged away, `cover` falls back to the first view that has a photo. The write goes through the R24 guard; `check_data` and `tests/test_gallery.py` cover the new key.
+21. **Done 10/10 (`v2026.10.10.6`).** **A favourite photo per person** (decided 10/10/2026). On the person's page the user picks which of the stored views is the photo shown on the People grid. Additive: an optional `cover` per person in `gallery.json`, the portable path of the chosen view's crop; the grid uses it when set and the file exists, otherwise today's `thumbnail`. When the favourite view is removed (`remove_view`) or merged away, `cover` falls back to the first view that has a photo. The write goes through the R24 guard; `check_data` and `tests/test_gallery.py` cover the new key.
 
 19. **Done 10/10 (`v2026.10.10.4`, ARQUITETURA 17.10).** **People by person, not by day; attach a face to an existing name** (decided 10/10/2026, redesigned by the user the same day). The People tab today lists sightings by day. The user wants instead: **(a)** one screen with every **named** person (they fit on one screen), and a separate place for the unnamed faces; **(b)** clicking a person opens their page: first **the stored views that recognise them** (up to `MAX_EMBEDDINGS` = 40), then **a calendar of every recording they appear in**; **(c)** on an unnamed face, a "belongs to…" picker of existing names instead of typing — the merge itself already exists (`Gallery.rename` → `_merge`); **(d)** when a person already holds 40 views, new ones **wait in a queue** instead of being dropped (today `_merge` and `reinforce` drop them); on the person's page the user can **remove** one of the 40, and the oldest waiting view takes its place. This replaces the architect's earlier idea of replacing the most redundant view automatically: the user wants the choice. **Data, additive only:** a view today is a bare embedding with no picture, so to show the 40 the gallery must start keeping each view's face crop — an optional list aligned with `embeddings` (`null` for the views stored before, shown as "no photo"), plus an optional `pending` queue; `check_data` must read old and new. **(e) Rename a person** from their page (added by the user, 10/10). `Gallery.rename` already does it, but a new name that belongs to someone else **merges the two** — the page must say so and ask before doing it. **Fresh start (decided by the user, 10/10):** production's gallery holds only two named people and views without pictures, so when this version is deployed the architect **deletes** production's `faces/` — the user chose no backup — and the gallery restarts empty; the user names the two people again, and every view from then on has its picture. Clearing it before the deploy would be pointless: the running version would keep storing views without pictures until then. **Animals:** the user wants the same for the dogs; that needs item 15 first.
 
@@ -742,8 +742,9 @@ decidir.
 | 5 | 10/10/2026 | `11c6663..5f3c356`, developer session 3 — R23, R18, web stage 4 | no code fixed; R18's 2.0 accepted; R24 opened for writes from the network; release `v2026.10.10.3` tagged |
 | 6 | 10/10/2026 | `3a91964..5eb8964`, developer session 4 — R24, backlog 19 and 20, the window removed | no code fixed; R25 decided from the user's question about face messages; release `v2026.10.10.4`; production's gallery deleted at the deploy, as the user decided |
 | 7 | 10/10/2026 | `5eb8964..0707670`, developer session 5 — R25, R6 | no code fixed; 23 tests pass; the new `httpx2` dependency checked as legitimate; backlog 21 added; release `v2026.10.10.5` |
+| 8 | 10/10/2026 | `0707670..7bde4db`, developer session 6 — backlog 21, R26 | no code fixed; 29 tests pass; release `v2026.10.10.6` |
 
-**Last review covers up to the `v2026.10.10.5` release commit.** The next one
+**Last review covers up to the `v2026.10.10.6` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -794,7 +795,7 @@ subir de novo em 09/10.
 | ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARQUITETURA 12.10) |
 | ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
 | ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
-| | R26 | low | Production installs the development tools (pytest, httpx2) | open — dev session 6: `uv sync --frozen --no-dev` in `production.ps1` |
+| ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1291,19 +1292,12 @@ disk, which is exactly why the roles hand over through files.
 | A9 | architect | ultracode | 10/10 15:35–15:55 | the face-message question, review 6, R25, release and deploy `v2026.10.10.4`, gallery deleted, script 5 | 64% → 68% | 50% → 51% | 610k → 645k tokens |
 | D5 | developer | high | 10/10 15:40–15:50 | session 5: R25, R6 (23 tests) | see its HANDOFF; small | — | 509k at the start, old conversation |
 | A10 | architect | ultracode | 10/10 16:00–16:50 | review 7, httpx2 check, backlog 21, release and deploy `v2026.10.10.5`, script 6 | 68% → 78% (shared with developer session 5 in the same window) | 51% → 52% | 650k → 663k tokens |
+| D6 | developer | high | 10/10 16:10–16:20 | session 6: backlog 21, R26 | 81% → 84% | 53% → 53% | 542k → 560k, old conversation |
+| A11 | architect | ultracode | 10/10 16:25–16:35 | review 8, release and deploy `v2026.10.10.6`, script 7 | 86% → about 89% | 53% → 53% | 669k → 680k tokens |
 
-### 14.4 Next session: developer 6
+### 14.4 Next session: developer 7
 
-Developer session 5 did its whole plan (R25, R6) in about 10 minutes.
-
-| | Item | Why here | Files |
-|---|---|---|---|
-| 1 | **Backlog 21** — the favourite photo per person | the user's request; small, and the tests from R6 make it safe to touch the gallery | `faces.py`, `web.py`, `static/`, `tools/check_data.py`, `tests/` |
-| 2 | **R26** — `--no-dev` in `production.ps1`'s `uv sync`: the deploy of `v2026.10.10.5` installed pytest and httpx2 into production | one flag; production needs no test tools | `tools/production.ps1` |
-
-Run `uv run pytest` before every commit from now on, and add a test for each change to the gallery or the guard. **Start in a new conversation** — session 5 began at 509k tokens.
-
-**Waiting for the user:** items 1–2 (zones, daily health), item 15 (animal identity, research first).
+**Nothing is planned.** Every decided item and every open recommendation of priority medium or above is done. Left: R10 (the older docs, the architect's own work, and `tools/diagnostico.py` with the Portuguese file names), R12, R14, R7, R9 (low), and what waits for the user — backlog items 1–2 (zones, daily health) and 15 (animal identity, research first). The next session starts from the user's next request.
 
 ---
 
@@ -1331,3 +1325,4 @@ review and commits.
 | 4 | `v2026.10.10.3` | The House Gets a Front Desk / A Casa Ganha uma Recepção | written |
 | 5 | `v2026.10.10.4` | The Lock and the Album / A Tranca e o Álbum | written |
 | 6 | `v2026.10.10.5` | The Safety Net / A Rede de Proteção | written |
+| 7 | `v2026.10.10.6` | The Favourite / A Favorita | written |

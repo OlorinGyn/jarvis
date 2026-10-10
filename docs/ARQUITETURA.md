@@ -2518,7 +2518,7 @@ it refuses a person's last view when nothing waits. A rename to a name that
 belongs to someone else answers **409 Conflict**, which the page turns into
 "this will merge with X — continue?" and resends with `merge: true`. After a
 rollback, an older version ignores both keys and only appends embeddings, so
-the alignment holds (its new views just get `None`).
+the alignment holds (its new views just get `None`). **The favourite photo (backlog 21):** a star on each view with a photo sets the person's optional `cover` — the view's crop path, not its index, so it survives views being removed or reordered; `cover_of()` ignores it once it no longer matches a view, and removing the favourite falls back to the first view with a photo. A merge keeps the target's cover.
 
 **Who appears (backlog 20).** `/api/events` reads the day's sightings once,
 keyed by camera, day and clip time, and adds `people` (current names; unnamed
@@ -2720,7 +2720,7 @@ dies silently on an invalid handle.
 1. Check the data with the **current** version. Unreadable already → refuse,
    nothing changed.
 2. Hold, stop cleanly.
-3. `git checkout --force <tag>`, `uv sync --frozen`, signature check.
+3. `git checkout --force <tag>`, `uv sync --frozen --no-dev` (since 10/10/2026: production carries no test tools, and the sync removes them if present), signature check.
 4. Check the data with the **new** version.
 5. Release, start, health check: within 90 s every camera's last frame must be
    under 5 s old (`/api/status`, `frame_age`).
@@ -2804,7 +2804,7 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
-| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views` and `pending` **optional since 10/10/2026** (17.10) |
+| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10) |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per stored or queued view |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
 | `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10). Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |

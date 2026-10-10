@@ -647,3 +647,29 @@ Rede de Proteção** — 23 testes automáticos (R6).
 **Os decretos do Dono:** "Quero escolher a minha foto favorita." (backlog 21)
 
 **Próxima:** Edição nº 7.
+
+---
+
+## Edição nº 7 — A Favorita
+
+`v2026.10.10.6` · 10 out 2026, à noite
+
+**Quadro 1.** A página da pessoa: quarenta fotos de rosto; a mão do Dono toca
+numa estrelinha em uma delas, e ela fica dourada.
+O DONO: Esta. É assim que eu quero aparecer na página People.
+DEV: A estrela lembra a foto em si, não a posição dela na fileira — então
+continua certa quando outras vistas entram e saem.
+
+**Quadro 2.** Um caminhão de mudança sai da casa com caixas escritas "pytest"
+e "httpx2".
+DEV: E a produção para de carregar as ferramentas de teste. --no-dev.
+
+**Quadro 3.** O Dono, na rua, digitando no celular.
+O DONO: Sem botão de desfazer. Só me avise antes de juntar, e se eu disser
+sim, segue o baile.
+ARQUITETO: Esse aviso já existia. Nada a construir.
+
+**Ficha final.** Habilidades: **A Favorita** — uma foto escolhida por pessoa
+(backlog 21) · **Bagagem Leve** — produção sem ferramentas de teste (R26).
+Decretos: "Quero escolher minha foto favorita." · "Sem desfazer; me avise e
+siga no sim." Próxima: Edição nº 8.

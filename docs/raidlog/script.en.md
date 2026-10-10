@@ -621,3 +621,28 @@ checked).
 **The Owner's decrees:** "Let me choose my favourite photo." (backlog 21)
 
 **Next:** Issue #7.
+
+---
+
+## Issue #7 — The Favourite
+
+`v2026.10.10.6` · 10 Oct 2026, evening
+
+**Panel 1.** The person page: forty face photos; the Owner's hand taps a small
+star on one of them, and it turns gold.
+THE OWNER: This one. That's how I want to appear on the People page.
+DEV: The star remembers the photo itself, not its place in the row — so it
+stays right when other views come and go.
+
+**Panel 2.** A moving van leaves the house with boxes labelled "pytest" and
+"httpx2".
+DEV: And production stops carrying the test tools. --no-dev.
+
+**Panel 3.** The Owner, on the street, typing on the phone.
+THE OWNER: No undo button. Just warn me before a merge, and if I say yes, go.
+ARCHITECT: That warning was already there. Nothing to build.
+
+**Closing card.** Abilities: **The Favourite** — a chosen photo per person
+(backlog 21) · **Light Luggage** — production without test tools (R26).
+Decrees: "Let me pick my favourite photo." · "No undo; warn me and go on
+yes." Next: Issue #8.
