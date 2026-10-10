@@ -32,6 +32,7 @@ SOCKET_TIMEOUT_SECONDS = 5
 HWACCEL = ""
 SEGMENT_NAME = "%Y%m%d-%H%M%S.mp4"
 SEGMENT_FORMAT = "%Y%m%d-%H%M%S"
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 TRANSLATIONS = (
@@ -107,7 +108,8 @@ class FFmpegCamera:
         self._stop.clear()
         self.process = subprocess.Popen(
             self._command(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=self.frame_bytes)
+            stderr=subprocess.PIPE, bufsize=self.frame_bytes,
+            creationflags=NO_WINDOW)
         self.last_start = time.monotonic()
         self._reader = threading.Thread(target=self._pump, daemon=True)
         self._reader.start()

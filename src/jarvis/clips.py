@@ -25,7 +25,7 @@ from pathlib import Path
 import cv2
 
 from jarvis import ROOT, faces, notify
-from jarvis.capture import SEGMENT_SECONDS, ffmpeg_exe
+from jarvis.capture import NO_WINDOW, SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = ROOT / "clips"
 BUFFER_DIR = CLIP_DIR / "_buffer"
@@ -60,7 +60,7 @@ def _concat(segments, destination):
             [ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
              "-f", "concat", "-safe", "0", "-i", str(listing),
              "-c", "copy", "-movflags", "+faststart", str(destination)],
-            check=True, capture_output=True)
+            check=True, capture_output=True, creationflags=NO_WINDOW)
     except (subprocess.CalledProcessError, OSError):
         pass
     finally:

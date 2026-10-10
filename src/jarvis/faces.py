@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 
 from jarvis import ROOT, people
-from jarvis.capture import ffmpeg_exe
+from jarvis.capture import NO_WINDOW, ffmpeg_exe
 
 MODEL_DIR = ROOT / "models"
 DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
@@ -343,7 +343,7 @@ def _describe(clip):
     and stop, without decoding the video.
     """
     result = subprocess.run([ffmpeg_exe(), "-hide_banner", "-nostdin", "-i", str(clip)],
-                            capture_output=True)
+                            capture_output=True, creationflags=NO_WINDOW)
     header = result.stderr.decode(errors="replace")
     size = re.search(r"Video:.*?, (\d{2,5})x(\d{2,5})", header)
     duration = re.search(r"Duration: (\d+):(\d+):([\d.]+)", header)
@@ -376,7 +376,8 @@ def _sampled_frames(clip):
          "-i", str(clip), "-vf", f"select=not(mod(n\\,{step}))",
          "-fps_mode", "passthrough", "-frames:v", str(MAX_SAMPLES),
          "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        creationflags=NO_WINDOW)
     size = width * height * 3
     try:
         while True:
