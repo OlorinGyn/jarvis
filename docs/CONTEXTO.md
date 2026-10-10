@@ -35,7 +35,7 @@ page, with Live, Recordings, People and Settings, is the only interface.
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
-release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. The folder
+release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. And to `v2026.10.10.4` at 15:37: 205 events read before and after; then, as the user decided, production was stopped, its `faces/` deleted and started again — the gallery is empty, waiting for the user to name the people again. The folder
 above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
 INSTALACAO 9).
 
@@ -1283,7 +1283,7 @@ disk, which is exactly why the roles hand over through files.
 | D3 | developer | high | 10/10 13:45–14:20 | session 3: R23, R18, web stage 4 | 22% → 34%: R23 2, R18 2, stage 4 8 | 45% → 46% | 336k → 405k, old conversation again |
 | A8 | architect | ultracode | 10/10 14:25–14:45 | backlog 19, review 5, R24, release and production `v2026.10.10.3`, script 4 | 35% → 38% | 47% → 47% | 557k → 580k tokens |
 | D4 | developer | high | 10/10 14:35–15:30 | session 4: R24, backlog 19 and 20, window removed | 43% → 62%: R24 5, backlog 19 10, backlog 20 2, window 2 | 48% → 50% | 412k → 505k, old conversation |
-| A9 | architect | ultracode | 10/10 15:35– | the face-message question, review 6, R25, release and deploy `v2026.10.10.4`, script 5 | 64% → (end) | 50% → | 610k → |
+| A9 | architect | ultracode | 10/10 15:35–15:55 | the face-message question, review 6, R25, release and deploy `v2026.10.10.4`, gallery deleted, script 5 | 64% → 68% | 50% → 51% | 610k → 645k tokens |
 
 ### 14.4 Next session: developer 5
 
