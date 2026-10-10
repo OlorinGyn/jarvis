@@ -38,3 +38,6 @@ logs/
 
 # present while production is held (update in progress or deliberate stop)
 HOLD
+
+# raid log pdf, built on demand
+docs/raidlog/*.pdf

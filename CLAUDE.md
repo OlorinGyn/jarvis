@@ -63,6 +63,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
 | Documentation EPUB | no | regenerates it at the end of every session that changed the docs |
+| Raid log comic (docs/raidlog/) | no | draws one issue per release (CONTEXTO 15) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
 
 **The developer's session is the `dev` skill** (`.claude/skills/dev/SKILL.md`):

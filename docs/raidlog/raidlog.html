@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S. Raid Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111;--paper:#fdf3dc;--gold:#ffd84d;--red:#c8102e;--cyan:#33d6ff}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#555}
+body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comic Neue',cursive;color:var(--ink)}
+.page{width:210mm;height:297mm;padding:9mm;position:relative;overflow:hidden;background:var(--paper);break-after:page;page-break-after:always}
+.chap{display:flex;align-items:baseline;gap:10px;height:40px;margin-bottom:7px;border-bottom:4px solid var(--ink)}
+.chap .no{font:20px Bangers,cursive;letter-spacing:1px;background:var(--ink);color:var(--gold);padding:2px 9px;transform:skew(-8deg)}
+.chap .t{font:30px Bangers,cursive;letter-spacing:1.5px}
+.foot{position:absolute;bottom:3.2mm;right:9mm;font:11px Bangers,cursive;letter-spacing:1px;color:#6b5a3a}
+.grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:7px;height:calc(297mm - 18mm - 47px - 8px)}
+.w{grid-column:span 2}
+.p{position:relative;border:3px solid var(--ink);overflow:hidden;background:#fff;box-shadow:3px 3px 0 var(--ink)}
+.p>svg{position:absolute;inset:0;width:100%;height:100%}
+.b{position:absolute;max-width:60%;background:#fff;border:2.5px solid var(--ink);border-radius:16px;padding:5px 9px;font:700 12.5px/1.25 'Comic Neue',cursive;box-shadow:2px 2px 0 var(--ink);z-index:3}
+.b::after{content:"";position:absolute;bottom:-8px;left:20px;width:12px;height:12px;background:inherit;border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);border-color:inherit;transform:rotate(45deg)}
+.b.r::after{left:auto;right:20px}
+.b.c::after{left:calc(50% - 6px)}
+.b.n::after{display:none}
+.owner{background:#fff4c2;border-color:#8a6d00}
+.owner::before{content:"THE OWNER";position:absolute;top:-10px;left:10px;background:#8a6d00;color:#fff;font:11px Bangers,cursive;letter-spacing:1px;padding:0 6px;border-radius:3px}
+.boss{background:#111;color:#ff5468;border-color:#ff5468;font:15px/1.15 Bangers,cursive;letter-spacing:.6px;border-radius:5px}
+.jv{background:#0b1020;color:#8ff3ff;border-color:var(--cyan);font:700 11.5px/1.3 Consolas,'Courier New',monospace;border-radius:8px}
+.cap{position:absolute;top:0;left:0;max-width:72%;background:var(--gold);border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);font:700 11.5px/1.25 'Comic Neue',cursive;padding:4px 8px;z-index:4}
+.cap.bot{top:auto;bottom:0;border-bottom:0;border-top:2.5px solid var(--ink)}
+.cap.end{max-width:100%;left:0;right:0;background:#111;color:var(--gold);font:17px/1.2 Bangers,cursive;letter-spacing:1px;text-align:center;border:0;padding:6px}
+.cover{background:#0d1430;padding:0}
+.cover .title{position:absolute;top:10mm;left:0;right:0;text-align:center;z-index:2}
+.cover h1{margin:0;font:96px/1 Bangers,cursive;letter-spacing:4px;color:var(--gold);-webkit-text-stroke:3px var(--ink);text-shadow:6px 6px 0 var(--red)}
+.cover .ribbon{display:inline-block;margin-top:6px;background:var(--red);color:#fff;font:30px Bangers,cursive;letter-spacing:6px;padding:2px 26px;border:3px solid var(--ink);transform:rotate(-2deg)}
+.cover .badge{position:absolute;top:9mm;right:9mm;width:96px;height:96px;border-radius:50%;background:var(--gold);border:4px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font:18px/1 Bangers,cursive;transform:rotate(10deg);z-index:3}
+.cover .badge b{font-size:38px}
+.cover>svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%}
+.cover .band{position:absolute;left:0;right:0;bottom:12mm;text-align:center;z-index:2}
+.cover .band .name{display:inline-block;background:#fff;border:4px solid var(--ink);box-shadow:6px 6px 0 var(--red);font:42px Bangers,cursive;letter-spacing:2px;padding:4px 24px}
+.cover .band .meta{margin-top:10px;color:#e8ecff;font:700 14px 'Comic Neue',cursive;letter-spacing:.5px}
+.card{background:#f4e6c4}
+.sheet{height:100%;border:5px double #6b4a1e;padding:7mm;background:repeating-linear-gradient(0deg,transparent 0 27px,rgba(107,74,30,.07) 27px 28px)}
+.sheet h2{margin:0;font:40px Bangers,cursive;letter-spacing:2px;text-align:center}
+.sheet .sub{text-align:center;font:700 13px 'Comic Neue';margin:2px 0 10px}
+.sheet h3{font:22px Bangers,cursive;letter-spacing:1.5px;margin:12px 0 5px;border-bottom:3px solid var(--ink)}
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:9mm}
+.sheet ul{list-style:none;margin:0;padding:0}
+.sheet li{font:13px/1.32 'Comic Neue',cursive;margin:0 0 6px 22px;position:relative}
+.sheet li::before{position:absolute;left:-21px;top:-1px;font:16px Bangers,cursive}
+.loot li::before{content:"\2605";color:#c99400;-webkit-text-stroke:.6px #111}
+.boss-l li::before{content:"\2716";color:var(--red)}
+.lurk li::before{content:"?";color:#5b3fa0}
+.sheet li b{font-weight:700}
+.party{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.party div{border:3px solid var(--ink);background:#fff;padding:6px;text-align:center;font:12px/1.25 'Comic Neue'}
+.party svg{width:66px;height:72px;display:block;margin:0 auto 2px}
+.party b{font:17px Bangers,cursive;letter-spacing:1px;display:block}
+.stats{display:flex;justify-content:space-between;margin-top:12px;background:var(--ink);color:var(--gold);font:17px Bangers,cursive;letter-spacing:1px;padding:7px 12px}
+.next{margin-top:10px;text-align:center;font:18px Bangers,cursive;letter-spacing:1px}
+.decrees{display:grid;grid-template-columns:1fr 1fr;gap:6px 9mm;margin-top:4px}
+.decrees div{background:#fff4c2;border:2.5px solid #8a6d00;border-radius:12px;padding:5px 9px;font:700 12.5px/1.3 'Comic Neue',cursive}
+.decrees i{display:block;font:400 11px 'Comic Neue',cursive;font-style:normal;color:#6b5a3a}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<radialGradient id="eg"><stop offset="0" stop-color="#e8fdff"/><stop offset=".45" stop-color="#3fe0ff"/><stop offset="1" stop-color="#0a6f99"/></radialGradient>
+<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1230"/><stop offset="1" stop-color="#2d3c6e"/></linearGradient>
+<linearGradient id="room" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3d6"/><stop offset="1" stop-color="#f0cf94"/></linearGradient>
+<linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a0610"/><stop offset="1" stop-color="#a3263a"/></linearGradient>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fdcff"/><stop offset="1" stop-color="#eef9ff"/></linearGradient>
+<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b1d5e"/><stop offset="1" stop-color="#e2707a"/></linearGradient>
+<pattern id="dots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#000"/></pattern>
+<pattern id="wdots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff"/></pattern>
+
+<symbol id="jarvis" viewBox="0 0 100 120">
+<line x1="50" y1="6" x2="50" y2="22" stroke="#111" stroke-width="3"/>
+<circle cx="50" cy="6" r="5" fill="#ffcc33" stroke="#111" stroke-width="2"/>
+<path d="M18 62 L6 84" stroke="#111" stroke-width="10" stroke-linecap="round"/><path d="M18 62 L6 84" stroke="#3a4d85" stroke-width="5" stroke-linecap="round"/>
+<path d="M82 62 L94 84" stroke="#111" stroke-width="10" stroke-linecap="round"/><path d="M82 62 L94 84" stroke="#3a4d85" stroke-width="5" stroke-linecap="round"/>
+<rect x="31" y="80" width="12" height="26" rx="4" fill="#3a4d85" stroke="#111" stroke-width="3"/>
+<rect x="57" y="80" width="12" height="26" rx="4" fill="#3a4d85" stroke="#111" stroke-width="3"/>
+<ellipse cx="36" cy="109" rx="11" ry="6" fill="#222"/><ellipse cx="64" cy="109" rx="11" ry="6" fill="#222"/>
+<rect x="15" y="20" width="70" height="64" rx="24" fill="#3a4d85" stroke="#111" stroke-width="3"/>
+<path d="M25 33 Q50 22 75 33" stroke="#8fa6dd" stroke-width="3" fill="none" stroke-linecap="round"/>
+<circle cx="50" cy="54" r="22" fill="#0b1020" stroke="#111" stroke-width="3"/>
+<circle cx="50" cy="54" r="15" fill="url(#eg)"/>
+<circle cx="50" cy="54" r="5" fill="#0b1020"/>
+<circle cx="45" cy="49" r="3" fill="#fff"/>
+<circle cx="22" cy="54" r="3" fill="#c9d6f5"/><circle cx="78" cy="54" r="3" fill="#c9d6f5"/>
+</symbol>
+
+<symbol id="drone" viewBox="0 0 60 52">
+<line x1="12" y1="6" x2="48" y2="6" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+<line x1="30" y1="6" x2="30" y2="16" stroke="#111" stroke-width="3"/>
+<circle cx="30" cy="32" r="16" fill="#3a4d85" stroke="#111" stroke-width="3"/>
+<circle cx="30" cy="32" r="9" fill="url(#eg)"/><circle cx="30" cy="32" r="3" fill="#0b1020"/>
+</symbol>
+
+<symbol id="owl" viewBox="0 0 100 122">
+<polygon points="20,30 26,4 42,24" fill="#6b4524" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="80,30 74,4 58,24" fill="#6b4524" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<ellipse cx="50" cy="68" rx="37" ry="47" fill="#8c5a32" stroke="#111" stroke-width="3"/>
+<ellipse cx="50" cy="85" rx="23" ry="27" fill="#ecd3a5"/>
+<path d="M40 78 q4 4 8 0 M52 78 q4 4 8 0 M46 90 q4 4 8 0 M38 96 q4 4 8 0 M54 98 q4 4 8 0" stroke="#b98e5a" stroke-width="2" fill="none"/>
+<path d="M14 62 Q2 92 22 106 Q18 84 14 62Z" fill="#6b4524" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<path d="M86 62 Q98 92 78 106 Q82 84 86 62Z" fill="#6b4524" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="35" cy="48" r="14" fill="#fff" stroke="#111" stroke-width="2.5"/>
+<circle cx="65" cy="48" r="14" fill="#fff" stroke="#111" stroke-width="2.5"/>
+<circle cx="37" cy="50" r="6" fill="#111"/><circle cx="63" cy="50" r="6" fill="#111"/>
+<circle cx="39" cy="48" r="2" fill="#fff"/><circle cx="65" cy="48" r="2" fill="#fff"/>
+<circle cx="35" cy="48" r="16.5" fill="none" stroke="#c9a227" stroke-width="3"/><circle cx="65" cy="48" r="16.5" fill="none" stroke="#c9a227" stroke-width="3"/>
+<polygon points="45,61 55,61 50,72" fill="#f2a33a" stroke="#111" stroke-width="2" stroke-linejoin="round"/>
+<path d="M38 114 l-4 6 M43 114 l0 7 M57 114 l0 7 M62 114 l4 6" stroke="#f2a33a" stroke-width="3.5" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="beaver" viewBox="0 0 100 122">
+<ellipse cx="82" cy="104" rx="19" ry="9" fill="#5a3a22" stroke="#111" stroke-width="3" transform="rotate(-25 82 104)"/>
+<ellipse cx="50" cy="82" rx="30" ry="34" fill="#a0673a" stroke="#111" stroke-width="3"/>
+<ellipse cx="50" cy="90" rx="18" ry="22" fill="#dcae7c"/>
+<circle cx="29" cy="27" r="7" fill="#a0673a" stroke="#111" stroke-width="3"/><circle cx="71" cy="27" r="7" fill="#a0673a" stroke="#111" stroke-width="3"/>
+<circle cx="50" cy="45" r="25" fill="#a0673a" stroke="#111" stroke-width="3"/>
+<path d="M24 32 Q50 2 76 32 Z" fill="#ffcf33" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<rect x="17" y="29" width="66" height="7" rx="3" fill="#ffcf33" stroke="#111" stroke-width="3"/>
+<rect x="46" y="11" width="8" height="15" rx="2" fill="#e8a800"/>
+<circle cx="41" cy="46" r="4.5" fill="#111"/><circle cx="59" cy="46" r="4.5" fill="#111"/>
+<circle cx="42.5" cy="44.5" r="1.5" fill="#fff"/><circle cx="60.5" cy="44.5" r="1.5" fill="#fff"/>
+<ellipse cx="50" cy="56" rx="7" ry="5" fill="#3a2212"/>
+<rect x="45" y="61" width="10" height="10" rx="2" fill="#fff" stroke="#111" stroke-width="2"/><line x1="50" y1="61" x2="50" y2="71" stroke="#111" stroke-width="1.5"/>
+<ellipse cx="37" cy="115" rx="9" ry="5" fill="#5a3a22"/><ellipse cx="63" cy="115" rx="9" ry="5" fill="#5a3a22"/>
+</symbol>
+
+<symbol id="house" viewBox="0 0 200 150">
+<polygon points="0,72 100,6 200,72" fill="#55385a" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+<rect x="20" y="70" width="160" height="78" fill="#7a5c86" stroke="#111" stroke-width="4"/>
+<rect x="38" y="88" width="34" height="28" fill="#ffd96b" stroke="#111" stroke-width="3"/>
+<rect x="128" y="88" width="34" height="28" fill="#ffd96b" stroke="#111" stroke-width="3"/>
+<rect x="86" y="98" width="28" height="50" fill="#3b2a40" stroke="#111" stroke-width="3"/>
+</symbol>
+
+<symbol id="pc" viewBox="0 0 140 110">
+<rect x="4" y="4" width="92" height="66" rx="6" fill="#222" stroke="#111" stroke-width="3"/>
+<rect x="11" y="11" width="78" height="52" fill="#13324a"/>
+<path d="M18 22h40M18 32h56M18 42h30M18 52h48" stroke="#5fe08a" stroke-width="3"/>
+<rect x="40" y="70" width="20" height="16" fill="#333"/><rect x="26" y="86" width="48" height="6" rx="2" fill="#333"/>
+<rect x="104" y="30" width="32" height="62" rx="3" fill="#2a2a2a" stroke="#111" stroke-width="3"/>
+<circle cx="120" cy="42" r="3" fill="#5fe08a"/>
+<text x="120" y="84" font-size="9" fill="#ddd" text-anchor="middle" font-family="Arial" font-weight="bold">M900</text>
+</symbol>
+
+<symbol id="plane" viewBox="0 0 60 44">
+<polygon points="2,20 58,2 40,42 28,28" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="28,28 58,2 22,40" fill="#bfe3ff" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="mosq" viewBox="0 0 30 22">
+<ellipse cx="11" cy="7" rx="6" ry="3.5" fill="#fff" stroke="#111" stroke-width="1.5"/>
+<ellipse cx="19" cy="7" rx="6" ry="3.5" fill="#fff" stroke="#111" stroke-width="1.5"/>
+<ellipse cx="15" cy="13" rx="9" ry="3" fill="#111"/>
+<path d="M8 15 l-4 6 M14 15 l-1 6 M20 15 l3 6 M24 12 l6 -2" stroke="#111" stroke-width="1.3"/>
+</symbol>
+
+<symbol id="dog" viewBox="0 0 172 80">
+<rect x="0" y="44" width="150" height="28" rx="10" fill="#1d1d24" stroke="#000" stroke-width="2"/>
+<path d="M76 44 q-16 -12 -8 -26" stroke="#111" stroke-width="11" fill="none" stroke-linecap="round"/>
+<path d="M76 44 q-16 -12 -8 -26" stroke="#f4f4f4" stroke-width="6" fill="none" stroke-linecap="round"/>
+<ellipse cx="108" cy="46" rx="34" ry="16" fill="#f4f4f4" stroke="#111" stroke-width="3"/>
+<polygon points="138,28 144,10 152,26" fill="#f4f4f4" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="150,26 158,12 162,30" fill="#f4f4f4" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="148" cy="38" r="15" fill="#f4f4f4" stroke="#111" stroke-width="3"/>
+<ellipse cx="161" cy="45" rx="8" ry="5.5" fill="#f4f4f4" stroke="#111" stroke-width="2.5"/>
+<circle cx="167" cy="44" r="2.6" fill="#111"/>
+<path d="M142 36 q4 3 8 0" stroke="#111" stroke-width="2.5" fill="none"/>
+<ellipse cx="130" cy="60" rx="11" ry="5" fill="#f4f4f4" stroke="#111" stroke-width="2.5"/>
+</symbol>
+
+<symbol id="husky" viewBox="0 0 90 80">
+<path d="M14 30 q-12 -6 -8 -20" stroke="#111" stroke-width="9" fill="none" stroke-linecap="round"/>
+<path d="M14 30 q-12 -6 -8 -20" stroke="#f4f4f4" stroke-width="5" fill="none" stroke-linecap="round"/>
+<rect x="18" y="52" width="8" height="24" fill="#f4f4f4" stroke="#111" stroke-width="2.5"/><rect x="52" y="52" width="8" height="24" fill="#f4f4f4" stroke="#111" stroke-width="2.5"/>
+<ellipse cx="40" cy="44" rx="28" ry="15" fill="#f4f4f4" stroke="#111" stroke-width="3"/>
+<polygon points="64,20 68,4 74,18" fill="#f4f4f4" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="72,18 80,6 82,22" fill="#f4f4f4" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="72" cy="30" r="13" fill="#f4f4f4" stroke="#111" stroke-width="3"/>
+<ellipse cx="84" cy="35" rx="6" ry="4.5" fill="#f4f4f4" stroke="#111" stroke-width="2.5"/>
+<circle cx="88" cy="34" r="2.2" fill="#111"/><circle cx="74" cy="27" r="2.4" fill="#111"/>
+</symbol>
+</defs>
+</svg>
+
+<!-- PAGE 1 -->
+<section class="page cover">
+<svg viewBox="0 0 760 1080" preserveAspectRatio="xMidYMax slice">
+<rect width="760" height="1080" fill="url(#night)"/>
+<g fill="#fff"><circle cx="60" cy="300" r="2"/><circle cx="140" cy="380" r="1.6"/><circle cx="700" cy="320" r="2"/><circle cx="520" cy="300" r="1.4"/><circle cx="250" cy="330" r="1.8"/><circle cx="90" cy="520" r="1.5"/><circle cx="690" cy="520" r="1.8"/><circle cx="420" cy="360" r="1.4"/><circle cx="330" cy="280" r="1.2"/><circle cx="600" cy="420" r="1.5"/></g>
+<circle cx="640" cy="400" r="58" fill="#fff3c4" stroke="#111" stroke-width="4"/>
+<circle cx="622" cy="386" r="10" fill="#efdf9f"/><circle cx="660" cy="420" r="7" fill="#efdf9f"/><circle cx="648" cy="380" r="5" fill="#efdf9f"/>
+<polygon points="155,590 120,900 300,900" fill="#bff6ff" opacity=".16"/>
+<polygon points="605,590 460,900 650,900" fill="#bff6ff" opacity=".16"/>
+<path d="M0 900 Q380 790 760 900 V1080 H0Z" fill="#182044" stroke="#111" stroke-width="4"/>
+<use href="#house" x="210" y="640" width="340" height="255"/>
+<use href="#jarvis" x="306" y="430" width="148" height="178"/>
+<use href="#drone" x="108" y="540" width="96" height="84"/>
+<use href="#drone" x="556" y="540" width="96" height="84"/>
+<text x="156" y="644" text-anchor="middle" font-family="Bangers" font-size="22" fill="#8ff3ff" letter-spacing="2">FRONT</text>
+<text x="604" y="644" text-anchor="middle" font-family="Bangers" font-size="22" fill="#8ff3ff" letter-spacing="2">BACK</text>
+<use href="#owl" x="34" y="820" width="140" height="170"/>
+<use href="#beaver" x="590" y="822" width="140" height="172"/>
+<rect width="760" height="1080" fill="url(#wdots)" opacity=".05"/>
+</svg>
+<div class="title"><h1>J.A.R.V.I.S.</h1><div class="ribbon">RAID LOG</div></div>
+<div class="badge"><span>ISSUE</span><b>#1</b></div>
+<div class="band"><div class="name">The First Night Shift</div><div class="meta">v2026.10.09 &middot; 24 Sep &ndash; 9 Oct 2026 &middot; 52 commits &middot; 2 cameras &middot; 1 house</div></div>
+</section>
+
+<!-- PAGE 2 -->
+<section class="page">
+<div class="chap"><span class="no">CHAPTER 1</span><span class="t">The Gate of Signatures</span></div>
+<div class="grid">
+<div class="p w">
+<svg viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice">
+<rect width="800" height="350" fill="url(#room)"/>
+<rect y="288" width="800" height="62" fill="#c48a52" stroke="#111" stroke-width="3"/>
+<rect x="330" y="200" width="300" height="14" fill="#7a4a24" stroke="#111" stroke-width="3"/>
+<rect x="345" y="214" width="12" height="76" fill="#7a4a24" stroke="#111" stroke-width="3"/><rect x="603" y="214" width="12" height="76" fill="#7a4a24" stroke="#111" stroke-width="3"/>
+<use href="#pc" x="420" y="78" width="160" height="126"/>
+<rect x="592" y="176" width="20" height="24" rx="3" fill="#fff" stroke="#111" stroke-width="2.5"/><path d="M612 182 q8 0 8 7 q0 7 -8 7" fill="none" stroke="#111" stroke-width="2.5"/><path d="M598 170 q-4 -8 2 -14 M606 170 q-4 -8 2 -14" stroke="#9a7" stroke-width="2" fill="none"/>
+<use href="#beaver" x="225" y="170" width="112" height="136"/>
+<rect x="650" y="128" width="130" height="8" fill="#7a4a24" stroke="#111" stroke-width="2.5"/>
+<use href="#drone" x="660" y="82" width="52" height="46"/><use href="#drone" x="720" y="82" width="52" height="46"/>
+<text x="686" y="152" text-anchor="middle" font-family="Bangers" font-size="15" fill="#3a4d85">FRONT</text><text x="746" y="152" text-anchor="middle" font-family="Bangers" font-size="15" fill="#3a4d85">BACK</text>
+<rect width="800" height="350" fill="url(#dots)" opacity=".06"/>
+</svg>
+<div class="cap">24 September 2026. Two Tapo cameras, one Lenovo M900 &mdash; and a builder.</div>
+<div class="b" style="left:6%;top:22%;max-width:34%">Motion, YOLO, clips&hellip; it all runs on the big PC. Now, on the M900&mdash;</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#red)"/>
+<rect y="300" width="400" height="50" fill="#2a0a10"/>
+<rect x="196" y="70" width="190" height="236" fill="#4a4a55" stroke="#111" stroke-width="4"/>
+<path d="M196 110h190M196 150h190M196 190h190M196 230h190M196 270h190M240 70v40M300 70v40M350 110v40M220 150v40M280 150v40M360 190v40" stroke="#33333c" stroke-width="3"/>
+<path d="M236 306 V182 Q291 122 346 182 V306Z" fill="#14141a" stroke="#111" stroke-width="4"/>
+<path d="M254 306V170M273 306V152M291 306V146M309 306V152M328 306V170" stroke="#777" stroke-width="5"/>
+<path d="M261 82 h60 v30 q0 26 -30 38 q-30 -12 -30 -38z" fill="#1f6feb" stroke="#111" stroke-width="3"/>
+<text x="291" y="116" text-anchor="middle" font-family="Bangers" font-size="20" fill="#fff">SAC</text>
+<rect x="24" y="210" width="62" height="74" rx="12" fill="#e8582c" stroke="#111" stroke-width="3"/>
+<text x="55" y="252" text-anchor="middle" font-family="Bangers" font-size="15" fill="#fff" transform="rotate(-8 55 252)">PyTorch</text>
+<use href="#beaver" x="56" y="196" width="96" height="117"/>
+</svg>
+<div class="b boss r" style="left:34%;top:4%;max-width:62%">UNSIGNED DLLs SHALL NOT PASS!</div>
+<div class="b" style="left:4%;top:34%;max-width:44%">But PyTorch is only two gigabytes&hellip;</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#sky)"/>
+<rect y="296" width="400" height="54" fill="#8bc34a" stroke="#111" stroke-width="3"/>
+<g transform="rotate(-14 70 286)"><rect x="24" y="262" width="90" height="42" rx="10" fill="#e8582c" stroke="#111" stroke-width="3"/><text x="69" y="290" text-anchor="middle" font-family="Bangers" font-size="16" fill="#fff">PyTorch</text></g>
+<path d="M126 252 l14 -8 M128 270 l16 -2" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+<use href="#beaver" x="160" y="176" width="112" height="136"/>
+<rect x="262" y="224" width="86" height="28" rx="7" fill="#5fe08a" stroke="#111" stroke-width="3"/>
+<text x="305" y="244" text-anchor="middle" font-family="Bangers" font-size="17" fill="#111">cv2.dnn</text>
+<path d="M356 214 l6 -10 M366 232 l12 -2 M354 252 l8 8" stroke="#e8a800" stroke-width="3" stroke-linecap="round"/>
+</svg>
+<div class="b r" style="left:6%;top:6%;max-width:80%">Then we travel light: YOLO through OpenCV's own <b>dnn</b>. No PyTorch at all.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#night)"/>
+<rect y="300" width="400" height="50" fill="#1a2140"/>
+<polygon points="96,236 400,120 400,330 96,250" fill="#e8fdff" opacity=".22"/>
+<use href="#jarvis" x="14" y="186" width="100" height="120"/>
+<use href="#mosq" x="190" y="160" width="40" height="30"/><use href="#mosq" x="250" y="200" width="34" height="26"/><use href="#mosq" x="310" y="150" width="44" height="32"/><use href="#mosq" x="230" y="240" width="30" height="22"/><use href="#mosq" x="340" y="226" width="38" height="28"/><use href="#mosq" x="290" y="270" width="30" height="22"/>
+</svg>
+<div class="cap">26 Sep. The first night outside.</div>
+<div class="b boss r" style="left:36%;top:12%;max-width:60%">BZZZ! EVERY WING IS AN INTRUDER!</div>
+<div class="b jv" style="left:4%;top:33%;max-width:58%">Seen for several frames in a row, or it never happened.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#night)"/>
+<rect y="300" width="400" height="50" fill="#1a2140"/>
+<rect x="246" y="96" width="140" height="210" fill="#4a4a55" stroke="#111" stroke-width="4"/>
+<path d="M276 306 V196 Q316 150 356 196 V306Z" fill="#ffe9a8" stroke="#111" stroke-width="4"/>
+<path d="M286 108 h50 v24 q0 22 -25 32 q-25 -10 -25 -32z" fill="#1f6feb" stroke="#111" stroke-width="3"/>
+<text x="311" y="138" text-anchor="middle" font-family="Bangers" font-size="17" fill="#fff">SAC</text>
+<use href="#beaver" x="18" y="196" width="96" height="117"/>
+<rect x="106" y="226" width="82" height="46" rx="6" fill="#fff6d8" stroke="#111" stroke-width="3"/>
+<text x="147" y="246" text-anchor="middle" font-family="Bangers" font-size="13" fill="#111">python.org</text>
+<text x="147" y="263" text-anchor="middle" font-family="Bangers" font-size="12" fill="#1f6feb">SIGNED: PSF</text>
+<circle cx="186" cy="270" r="9" fill="#c8102e" stroke="#111" stroke-width="2"/>
+<use href="#owl" x="186" y="222" width="80" height="98"/>
+</svg>
+<div class="cap">9 Oct. After nine quiet days, the gate rises again &mdash; this time against uv's own Python.</div>
+<div class="b boss r" style="left:52%;top:23%;max-width:46%">SIGNED. YOU MAY PASS.</div>
+<div class="b r" style="left:4%;top:38%;max-width:62%">First review, first finding: our own chronicle was wrong. Read the whole log line, not just the word &ldquo;python&rdquo;.</div>
+</div>
+</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 2</div>
+</section>
+
+<!-- PAGE 3 -->
+<section class="page">
+<div class="chap"><span class="no">CHAPTER 2</span><span class="t">Eyes, Faces and Paper Planes</span></div>
+<div class="grid">
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#red)"/>
+<path d="M108 136 L162 142 M292 136 L238 142" stroke="#ddd" stroke-width="3" stroke-dasharray="6 4"/>
+<use href="#drone" x="40" y="100" width="76" height="66"/><use href="#drone" x="284" y="100" width="76" height="66"/>
+<ellipse cx="200" cy="146" rx="46" ry="34" fill="#f6a5c0" stroke="#111" stroke-width="3"/>
+<path d="M172 136 q10 -12 20 0 q10 12 20 0 M176 156 q12 -10 24 0 q10 10 22 0" stroke="#c45d84" stroke-width="3" fill="none"/>
+<text x="200" y="150" text-anchor="middle" font-family="Bangers" font-size="20" fill="#111">NET</text>
+<polygon points="200,92 190,112 204,112 194,130 218,104 204,104 212,92" fill="#ffd84d" stroke="#111" stroke-width="2"/>
+<polygon points="236,180 228,196 240,196 232,212 252,190 240,190 246,180" fill="#ffd84d" stroke="#111" stroke-width="2"/>
+<use href="#beaver" x="14" y="220" width="90" height="110"/>
+</svg>
+<div class="cap">Two threads, one neural net.</div>
+<div class="b boss c" style="left:16%;top:56%;max-width:70%">buf.shape() == m.shape()&hellip; CRASH!</div>
+<div class="b" style="left:30%;top:76%;max-width:66%">Each thread gets its own brain. Faces wait their turn.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#room)"/>
+<rect y="300" width="400" height="50" fill="#c48a52" stroke="#111" stroke-width="3"/>
+<g transform="rotate(-16 130 170)"><rect x="104" y="128" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="131" cy="156" r="14" fill="#e8c39e" stroke="#111" stroke-width="2"/><path d="M116 192 q15 -16 30 0" fill="#7a8fd0" stroke="#111" stroke-width="2"/></g>
+<g><rect x="173" y="116" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="200" cy="144" r="14" fill="#d9a77b" stroke="#111" stroke-width="2"/><path d="M185 180 q15 -16 30 0" fill="#3c3c3c" stroke="#111" stroke-width="2"/><rect x="170" y="104" width="60" height="14" fill="#ffd84d" stroke="#111" stroke-width="2"/><text x="200" y="115" text-anchor="middle" font-family="Bangers" font-size="11">OWNER</text></g>
+<g transform="rotate(16 270 170)"><rect x="242" y="128" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="269" cy="156" r="14" fill="#f0d0b0" stroke="#111" stroke-width="2"/><path d="M254 192 q15 -16 30 0" fill="#c06060" stroke="#111" stroke-width="2"/></g>
+<use href="#jarvis" x="150" y="196" width="100" height="120"/>
+</svg>
+<div class="b owner c" style="left:8%;top:6%;max-width:84%">Name a face once &mdash; and know it every time after.</div>
+<div class="b jv n" style="left:62%;top:62%;max-width:36%">gallery: merged by name.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#night)"/>
+<rect y="314" width="400" height="36" fill="#1a2140"/>
+<use href="#house" x="6" y="216" width="132" height="99"/>
+<path d="M110 220 Q180 120 286 96" fill="none" stroke="#8ff3ff" stroke-width="2.5" stroke-dasharray="7 6"/>
+<use href="#plane" x="150" y="150" width="44" height="32"/><use href="#plane" x="226" y="104" width="44" height="32"/>
+<rect x="290" y="30" width="96" height="172" rx="12" fill="#111"/>
+<rect x="297" y="44" width="82" height="140" fill="#e9f3fb"/>
+<rect x="302" y="50" width="72" height="58" rx="6" fill="#fff" stroke="#9ab" stroke-width="1.5"/>
+<rect x="307" y="55" width="62" height="34" fill="#555"/><circle cx="338" cy="72" r="7" fill="#999"/>
+<text x="307" y="101" font-family="Arial" font-weight="bold" font-size="9.5" fill="#111">Front: person</text>
+<rect x="302" y="114" width="72" height="62" rx="6" fill="#fff" stroke="#9ab" stroke-width="1.5"/>
+<rect x="320" y="119" width="36" height="30" fill="#777"/><circle cx="338" cy="131" r="8" fill="#d9a77b"/>
+<text x="307" y="161" font-family="Arial" font-weight="bold" font-size="9" fill="#111">Front 20:23:</text>
+<text x="307" y="172" font-family="Arial" font-weight="bold" font-size="9" fill="#c8102e">probably Owner</text>
+<use href="#owl" x="300" y="222" width="86" height="105"/>
+</svg>
+<div class="cap">Then the phone learned to ring.</div>
+<div class="b r" style="left:4%;top:13%;max-width:66%">Below 0.45 it says &ldquo;probably&rdquo;. Humility is a feature.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#room)"/>
+<rect y="304" width="400" height="46" fill="#c48a52" stroke="#111" stroke-width="3"/>
+<rect x="142" y="100" width="246" height="190" rx="6" fill="#fff" stroke="#111" stroke-width="4"/>
+<rect x="142" y="100" width="246" height="22" rx="6" fill="#dcdcdc" stroke="#111" stroke-width="4"/>
+<circle cx="156" cy="111" r="4" fill="#e55"/><circle cx="168" cy="111" r="4" fill="#eb5"/><circle cx="180" cy="111" r="4" fill="#5c5"/>
+<text x="196" y="115" font-family="Arial" font-size="10" fill="#333">http://&lt;M900&gt;:8765</text>
+<rect x="152" y="132" width="110" height="74" fill="#222"/><rect x="270" y="132" width="110" height="74" fill="#222"/>
+<use href="#drone" x="186" y="142" width="42" height="36"/><use href="#drone" x="304" y="142" width="42" height="36"/>
+<circle cx="164" cy="144" r="5" fill="#f33"/><text x="173" y="148" font-family="Bangers" font-size="11" fill="#fff">LIVE</text>
+<circle cx="282" cy="144" r="5" fill="#f33"/><text x="291" y="148" font-family="Bangers" font-size="11" fill="#fff">LIVE</text>
+<text x="207" y="200" text-anchor="middle" font-family="Bangers" font-size="12" fill="#8ff3ff">FRONT</text><text x="325" y="200" text-anchor="middle" font-family="Bangers" font-size="12" fill="#8ff3ff">BACK</text>
+<rect x="152" y="216" width="70" height="26" fill="#eee" stroke="#999"/><rect x="230" y="216" width="70" height="26" fill="#eee" stroke="#999"/><rect x="308" y="216" width="70" height="26" fill="#eee" stroke="#999"/>
+<rect x="152" y="250" width="70" height="26" fill="#eee" stroke="#999"/><rect x="230" y="250" width="70" height="26" fill="#eee" stroke="#999"/>
+<use href="#beaver" x="20" y="200" width="104" height="127"/>
+<path d="M112 250 l26 -24" stroke="#777" stroke-width="7" stroke-linecap="round"/><circle cx="140" cy="224" r="7" fill="none" stroke="#777" stroke-width="4"/>
+</svg>
+<div class="b owner" style="left:4%;top:6%;max-width:90%">I don't want two ways in. Everything on the web, one service.</div>
+<div class="b" style="left:3%;top:34%;max-width:34%">FastAPI + MJPEG: the browser is the window now.</div>
+</div>
+
+<div class="p w">
+<svg viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice">
+<rect width="800" height="350" fill="url(#room)"/>
+<rect y="292" width="800" height="58" fill="#c48a52" stroke="#111" stroke-width="3"/>
+<use href="#pc" x="34" y="120" width="190" height="149"/>
+<rect x="49" y="135" width="105" height="70" fill="#3a0a12"/><rect x="178" y="222" width="40" height="16" fill="#2a2a2a"/><text x="197" y="234" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="11" fill="#ddd">PC 2</text>
+<text x="101" y="164" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="11" fill="#ff5468">Invalid HTTP</text>
+<text x="101" y="180" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="11" fill="#ff5468">request</text>
+<path d="M240 170 Q400 70 560 150" fill="none" stroke="#c8102e" stroke-width="4" stroke-dasharray="10 7"/>
+<text x="372" y="128" text-anchor="middle" font-family="Bangers" font-size="22" fill="#c8102e">https://</text>
+<path d="M420 108 l22 22 M442 108 l-22 22" stroke="#c8102e" stroke-width="5"/>
+<path d="M240 214 Q400 260 560 214" fill="none" stroke="#2e9d4a" stroke-width="5"/>
+<polygon points="560,204 576,214 558,226" fill="#2e9d4a"/>
+<text x="400" y="268" text-anchor="middle" font-family="Bangers" font-size="22" fill="#2e9d4a">http://</text>
+<use href="#owl" x="345" y="138" width="110" height="134"/>
+<use href="#house" x="580" y="140" width="196" height="147"/>
+<use href="#jarvis" x="726" y="216" width="62" height="74"/>
+</svg>
+<div class="cap">From the other computer: an error.</div>
+<div class="b c" style="left:31%;top:7%;max-width:38%">Your browser knocked with <b>https://</b>. This house answers <b>http://</b>.</div>
+<div class="b owner r" style="left:72%;top:14%;max-width:26%">Typed http:// &mdash; it works!</div>
+</div>
+</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 3</div>
+</section>
+
+<!-- PAGE 4 -->
+<section class="page">
+<div class="chap"><span class="no">CHAPTER 3</span><span class="t">Twins, Oaths and Curses</span></div>
+<div class="grid">
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#night)"/>
+<rect y="300" width="400" height="50" fill="#1a2140"/>
+<use href="#jarvis" x="44" y="88" width="140" height="168"/>
+<use href="#jarvis" x="262" y="166" width="74" height="89"/>
+<rect x="54" y="256" width="122" height="24" rx="4" fill="#ffd84d" stroke="#111" stroke-width="3"/>
+<text x="115" y="274" text-anchor="middle" font-family="Bangers" font-size="15">PROD &middot; stream1 &middot; HD</text>
+<rect x="214" y="258" width="172" height="22" rx="4" fill="#8ff3ff" stroke="#111" stroke-width="3"/>
+<text x="300" y="274" text-anchor="middle" font-family="Bangers" font-size="13">[TEST] &middot; stream2 &middot; 640&times;360</text>
+</svg>
+<div class="b owner" style="left:4%;top:6%;max-width:90%">One copy always on guard. Another one to train.</div>
+<div class="cap bot">The camera gives stream1 to one viewer &mdash; stream2 to many.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#sky)"/>
+<rect y="304" width="400" height="46" fill="#8bc34a" stroke="#111" stroke-width="3"/>
+<path d="M24 304 V140 Q24 96 68 96 H170 Q214 96 214 140 V304Z" fill="#a9a9b3" stroke="#111" stroke-width="4"/>
+<g font-family="Bangers" font-size="27" text-anchor="middle" fill="#55555e" letter-spacing="1" transform="translate(-36 0)">
+<text x="155" y="150">GENERATED</text><text x="155" y="186">FILES</text><text x="155" y="222">NEVER</text><text x="155" y="258">BREAK</text></g>
+<use href="#owl" x="262" y="190" width="104" height="127"/>
+<path d="M262 238 l-40 -16" stroke="#555" stroke-width="7" stroke-linecap="round"/>
+</svg>
+<div class="b owner" style="left:4%;top:4%;max-width:92%">Never break what an older version wrote.</div>
+<div class="b r" style="left:56%;top:20%;max-width:42%;font-size:11.5px">Carved. <b>check_data</b> reads every file before and after each update.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="#2a1840"/>
+<rect y="304" width="400" height="46" fill="#1a0e28"/>
+<rect x="24" y="190" width="112" height="118" fill="#fff6d8" stroke="#111" stroke-width="3"/>
+<text x="80" y="212" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="13">config.json</text>
+<path d="M36 228h76M36 244h60M36 260h80M36 276h50M36 292h70" stroke="#bbb" stroke-width="4"/>
+<path d="M140 270 V160 q0 -58 58 -58 q58 0 58 58 V270 l-14 -14 l-15 14 l-14 -14 l-15 14 l-14 -14 l-15 14 l-14 -14z" fill="#f4f6ff" stroke="#111" stroke-width="3"/>
+<ellipse cx="180" cy="158" rx="9" ry="13" fill="#111"/><ellipse cx="216" cy="158" rx="9" ry="13" fill="#111"/>
+<ellipse cx="198" cy="192" rx="12" ry="9" fill="#111"/>
+<text x="198" y="236" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="15" fill="#5b3fa0">U+FEFF</text>
+<use href="#beaver" x="282" y="200" width="100" height="122"/>
+<circle cx="292" cy="238" r="20" fill="#cfefff" fill-opacity=".55" stroke="#111" stroke-width="4"/><path d="M306 254 l14 14" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+</svg>
+<div class="b boss" style="left:4%;top:5%;max-width:72%">HIDDEN AT BYTE ZERO, I MADE YOUR WHOLE CONFIG VANISH!</div>
+<div class="b r" style="left:50%;top:36%;max-width:48%"><b>utf-8-sig</b>. I see you now.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#night)"/>
+<rect y="304" width="400" height="46" fill="#1a2140"/>
+<circle cx="100" cy="270" r="44" fill="#ffd84d" opacity=".22"/>
+<use href="#owl" x="18" y="214" width="92" height="112"/>
+<rect x="92" y="258" width="18" height="24" rx="3" fill="#ffd84d" stroke="#111" stroke-width="2.5"/>
+<use href="#jarvis" x="150" y="196" width="94" height="113"/>
+<use href="#jarvis" x="290" y="196" width="94" height="113"/>
+<path d="M232 182 a42 36 0 0 1 84 0z" fill="#ffcf33" stroke="#111" stroke-width="4"/>
+<rect x="228" y="180" width="92" height="16" fill="#ffcf33" stroke="#111" stroke-width="3"/>
+<text x="274" y="193" text-anchor="middle" font-family="Bangers" font-size="13">PORT 8765</text>
+<path d="M236 236 L250 196 M304 236 L296 196" stroke="#3a4d85" stroke-width="7" stroke-linecap="round"/>
+</svg>
+<div class="cap">Review 2, late at night.</div>
+<div class="b" style="left:4%;top:14%;max-width:92%">Two launches at the same instant both saw the port free. Take it in one move: <b>SO_EXCLUSIVEADDRUSE</b>.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#red)"/>
+<rect y="306" width="400" height="44" fill="#2a0a10"/>
+<path d="M236 222 l20 36 M290 220 l-6 40" stroke="#111" stroke-width="8" stroke-linecap="round"/>
+<circle cx="262" cy="150" r="84" fill="#f3e9d2" stroke="#111" stroke-width="5"/>
+<path d="M262 74v14M262 212v14M186 150h14M324 150h14" stroke="#111" stroke-width="5"/>
+<polygon points="222,118 252,132 222,138" fill="#111"/><polygon points="302,118 272,132 302,138" fill="#111"/>
+<path d="M226 172 l12 -8 l12 8 l12 -8 l12 8 l12 -8 l12 8" fill="none" stroke="#111" stroke-width="4"/>
+<text x="262" y="208" text-anchor="middle" font-family="Bangers" font-size="34" fill="#c8102e">72h</text>
+<use href="#owl" x="16" y="214" width="96" height="117"/>
+</svg>
+<div class="b boss r" style="left:4%;top:4%;max-width:62%">EVERY THREE DAYS, I END THE WATCH!</div>
+<div class="b" style="left:28%;top:66%;max-width:70%">Time limit: none. And for crashes, a drumbeat every 5 minutes.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="#cfd8e6"/>
+<rect y="304" width="400" height="46" fill="#93a3bd" stroke="#111" stroke-width="3"/>
+<rect x="20" y="96" width="300" height="172" fill="#012456" stroke="#111" stroke-width="4"/>
+<rect x="20" y="96" width="300" height="20" fill="#c8d3e6" stroke="#111" stroke-width="4"/>
+<g font-family="Consolas,monospace" font-weight="bold" font-size="11" fill="#eef">
+<text x="30" y="138">PS&gt; .\production.ps1</text>
+<text x="30" y="158" fill="#ff8b8b">The string is missing the</text>
+<text x="30" y="174" fill="#ff8b8b">terminator: '.</text></g>
+<rect x="150" y="214" width="74" height="13" rx="6" fill="#ffd84d" stroke="#111" stroke-width="2.5"/>
+<circle cx="168" cy="206" r="6" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="186" cy="206" r="6" fill="#fff" stroke="#111" stroke-width="2"/>
+<circle cx="170" cy="207" r="2.5" fill="#111"/><circle cx="188" cy="207" r="2.5" fill="#111"/>
+<path d="M164 227 l-6 14 M180 227 l2 14 M200 227 l-4 14 M214 227 l6 14" stroke="#ffd84d" stroke-width="3" stroke-linecap="round"/>
+<use href="#beaver" x="290" y="204" width="100" height="122"/>
+</svg>
+<div class="b boss" style="left:4%;top:4%;max-width:86%">HEE HEE! POWERSHELL 5.1 READS ME AS A CLOSING QUOTE!</div>
+<div class="b r" style="left:56%;top:47%;max-width:42%">ASCII only. Goodbye, em dash.</div>
+</div>
+</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 4</div>
+</section>
+
+<!-- PAGE 5 -->
+<section class="page">
+<div class="chap"><span class="no">CHAPTER 4</span><span class="t">The First Night Shift</span></div>
+<div class="grid">
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#dusk)"/>
+<rect y="306" width="400" height="44" fill="#2a1840"/>
+<path d="M116 116 h220 v104 h-220 l-44 -52z" fill="#ffcf33" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+<circle cx="104" cy="168" r="9" fill="#e2707a" stroke="#111" stroke-width="3"/>
+<text x="228" y="182" text-anchor="middle" font-family="Bangers" font-size="36" fill="#111">v2026.10.09</text>
+<use href="#owl" x="296" y="214" width="92" height="112"/>
+<use href="#beaver" x="20" y="226" width="82" height="100"/>
+<path d="M30 236 l-10 -16 M92 236 l10 -16" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+</svg>
+<div class="b r" style="left:4%;top:6%;max-width:92%">First release. Production only ever runs tags.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="url(#red)"/>
+<rect y="304" width="400" height="46" fill="#2a0a10"/>
+<text x="330" y="140" text-anchor="middle" font-family="Bangers" font-size="74" fill="#ffd84d" stroke="#111" stroke-width="3">&#9664;&#9664;</text>
+<g transform="rotate(-24 190 214)"><use href="#jarvis" x="130" y="134" width="120" height="144"/></g>
+<rect x="22" y="196" width="96" height="30" rx="4" fill="#fff" stroke="#111" stroke-width="3"/>
+<text x="70" y="217" text-anchor="middle" font-family="Bangers" font-size="15" fill="#c8102e">BROKEN</text>
+<path d="M22 196 l96 30 M118 196 l-96 30" stroke="#c8102e" stroke-width="4"/>
+</svg>
+<div class="cap">Dress rehearsal: an update broken on purpose.</div>
+<div class="b jv n" style="left:4%;top:81%;max-width:92%">health check failed. rolling back&hellip; Front: fresh. Back: fresh.</div>
+</div>
+
+<div class="p w">
+<svg viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice">
+<rect width="800" height="350" fill="url(#night)"/>
+<g fill="#fff"><circle cx="60" cy="40" r="2"/><circle cx="150" cy="90" r="1.5"/><circle cx="720" cy="60" r="2"/><circle cx="520" cy="30" r="1.5"/><circle cx="260" cy="40" r="1.8"/><circle cx="610" cy="110" r="1.4"/><circle cx="40" cy="140" r="1.4"/></g>
+<circle cx="700" cy="70" r="36" fill="#fff3c4" stroke="#111" stroke-width="3"/>
+<polygon points="190,150 110,330 280,330" fill="#bff6ff" opacity=".16"/>
+<polygon points="610,150 520,330 690,330" fill="#bff6ff" opacity=".16"/>
+<path d="M0 320 Q400 270 800 320 V350 H0Z" fill="#182044" stroke="#111" stroke-width="3"/>
+<use href="#house" x="300" y="150" width="200" height="150"/>
+<use href="#jarvis" x="358" y="58" width="84" height="101"/>
+<use href="#drone" x="160" y="104" width="62" height="54"/><use href="#drone" x="580" y="104" width="62" height="54"/>
+<text x="191" y="174" text-anchor="middle" font-family="Bangers" font-size="15" fill="#8ff3ff">FRONT</text><text x="611" y="174" text-anchor="middle" font-family="Bangers" font-size="15" fill="#8ff3ff">BACK</text>
+</svg>
+<div class="cap">9 October, 20:20:55. Production goes live.</div>
+<div class="b jv n" style="left:2%;top:56%;max-width:33%">Starting 2 camera(s) on stream1&hellip;<br>Back: ok<br>Front: ok<br>Surveillance running.</div>
+<div class="b jv n" style="left:69%;top:74%;max-width:29%">first night: 19 events, 0 errors.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="#5c5c62"/>
+<rect y="250" width="400" height="100" fill="#8a8a90"/>
+<rect x="250" y="40" width="120" height="216" fill="#3a3a40" stroke="#111" stroke-width="3"/>
+<circle cx="310" cy="96" r="20" fill="#fff" opacity=".9"/>
+<circle cx="160" cy="146" r="18" fill="#111"/>
+<path d="M146 166 h28 l10 70 h-48z" fill="#111"/>
+<path d="M148 236 l-8 44 M172 236 l10 44" stroke="#111" stroke-width="12" stroke-linecap="round"/>
+<rect x="166" y="180" width="54" height="16" fill="#c98b47" stroke="#111" stroke-width="2.5"/>
+<use href="#husky" x="40" y="214" width="96" height="86"/>
+<use href="#drone" x="20" y="30" width="60" height="52"/>
+<circle cx="98" cy="46" r="7" fill="#f33"/><text x="110" y="52" font-family="Bangers" font-size="18" fill="#fff">REC</text>
+</svg>
+<div class="cap">22:29. The Owner steps out for a delivery&hellip;</div>
+<div class="b jv n" style="left:4%;top:80%;max-width:92%">event: Front. 56 s &mdash; out, the gate, and back.</div>
+</div>
+
+<div class="p">
+<svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
+<rect width="400" height="350" fill="#0b1020"/>
+<circle cx="40" cy="186" r="118" fill="#3a4d85" stroke="#111" stroke-width="5"/>
+<circle cx="40" cy="186" r="84" fill="#0b1020" stroke="#111" stroke-width="4"/>
+<circle cx="40" cy="186" r="60" fill="url(#eg)"/>
+<circle cx="40" cy="186" r="20" fill="#0b1020"/>
+<circle cx="24" cy="168" r="9" fill="#fff"/>
+<rect x="170" y="96" width="216" height="150" fill="#6d6d6d" stroke="#fff" stroke-width="4"/>
+<rect x="170" y="196" width="216" height="50" fill="#8d8d8d"/>
+<use href="#dog" x="192" y="152" width="172" height="80"/>
+<rect x="186" y="150" width="186" height="84" fill="none" stroke="#39ff5a" stroke-width="3"/>
+<text x="188" y="144" font-family="Arial" font-weight="bold" font-size="15" fill="#39ff5a">person 0.72</text>
+</svg>
+<div class="b jv" style="left:52%;top:6%;max-width:44%">&hellip;person?</div>
+<div class="cap end bot">TO BE CONTINUED &mdash; ISSUE #2: THE DOG WHO WORE A PERSON'S FACE</div>
+</div>
+</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 5</div>
+</section>
+
+<!-- PAGE 6 -->
+<section class="page card">
+<div class="sheet">
+<h2>RAID LOG &middot; ISSUE #1</h2>
+<div class="sub">v2026.10.09 &middot; The First Night Shift &middot; 24 Sep &ndash; 9 Oct 2026</div>
+<div class="cols">
+<div>
+<h3>Abilities unlocked</h3>
+<ul class="loot">
+<li><b>Patient Eyes</b> &mdash; motion by MOG2, believed only when it lasts several frames; YOLO11 through <i>cv2.dnn</i>, no PyTorch.</li>
+<li><b>Memory for Faces</b> &mdash; YuNet finds, SFace recognises; a face named once is named forever.</li>
+<li><b>Paper Planes</b> &mdash; Telegram with the photo, then the face and the name, and &ldquo;probably&rdquo; when unsure.</li>
+<li><b>A Window Anywhere</b> &mdash; one web page for live view and recordings, on any computer in the house.</li>
+<li><b>Never Sleeps</b> &mdash; a service with no window, started by Windows, back within 5 minutes of a crash.</li>
+<li><b>Twin Training</b> &mdash; production in HD on stream1, a test copy on stream2.</li>
+<li><b>Oath of Unbroken Scrolls</b> &mdash; every file an older version wrote is read again before and after each update.</li>
+<li><b>Time-Turner</b> &mdash; an update that fails its health check puts the old version back on its own.</li>
+</ul>
+</div>
+<div>
+<h3>Bosses defeated</h3>
+<ul class="boss-l">
+<li><b>The Gate of Signatures</b> &mdash; Smart App Control, twice</li>
+<li><b>The Mosquito Swarm</b></li>
+<li><b>The Two-Headed Net</b> &mdash; one model, two threads</li>
+<li><b>The False Chronicle</b> &mdash; our own history, wrong</li>
+<li><b>The Invisible BOM</b></li>
+<li><b>The Twin Who Started Twice</b></li>
+<li><b>The 72-Hour Curse</b></li>
+<li><b>The Em Dash</b></li>
+</ul>
+<h3>Still lurking</h3>
+<ul class="lurk">
+<li>Black windows that open on their own (R15)</li>
+<li>The dog on the mat (R18)</li>
+<li>A face that passed too fast (R20)</li>
+</ul>
+</div>
+</div>
+<h3>The Owner's decrees</h3>
+<div class="decrees">
+<div>&ldquo;Everything on the web, one service.&rdquo;<i>no second way in &middot; 9 Oct</i></div>
+<div>&ldquo;Keep the door open to the home network.&rdquo;<i>reach it from the other computer &middot; R4</i></div>
+<div>&ldquo;One copy on guard, another to train.&rdquo;<i>production and test &middot; backlog 17</i></div>
+<div>&ldquo;Never break what was written before.&rdquo;<i>additive changes, or a migration</i></div>
+<div>&ldquo;Only our conversation stays in Portuguese.&rdquo;<i>code, docs and screens in English</i></div>
+<div>&ldquo;The Dev builds. The Architect writes it down.&rdquo;<i>HANDOFF.md between them</i></div>
+</div>
+<h3>The party</h3>
+<div class="party">
+<div><svg viewBox="0 0 100 122"><use href="#beaver"/></svg><b>The Dev</b>Claude, <i>high</i>. Builds, tests, hands over.</div>
+<div><svg viewBox="0 0 100 122"><use href="#owl"/></svg><b>The Architect</b>Claude, <i>ultracode</i>. Reviews at night, keeps the books.</div>
+<div><svg viewBox="0 0 100 120"><use href="#jarvis"/></svg><b>J.A.R.V.I.S.</b>Two eyes, one house. Guided by the Owner's every decision.</div>
+</div>
+<div class="stats"><span>16 days</span><span>52 commits</span><span>2 reviews</span><span>1 release</span><span>first night: 19 events</span></div>
+<div class="next">Next: Issue #2 &mdash; The Dog Who Wore a Person's Face</div>
+</div>
+</section>
+
+<script>
+const only = new URLSearchParams(location.search).get("p");
+if (only) document.querySelectorAll(".page").forEach((page, i) => { if (i + 1 !== Number(only)) page.style.display = "none"; });
+</script>
+</body>
+</html>

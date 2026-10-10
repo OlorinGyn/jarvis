@@ -393,6 +393,7 @@ src/jarvis/
 tools/
   production.ps1  production on the M900: install, update, start, stop, status, check
   check_data.py   reads every file on disk with the current code (ARQUITETURA 19)
+  build_raidlog.py  prints the raid log comic to PDF (section 15)
   diagnostico.py  capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   gerar_epub.py   joins every .md into one EPUB for an e-reader
@@ -406,6 +407,7 @@ docs/             ARQUITETURA, INSTALACAO, PYTHON and this file
 CLAUDE.md         instructions for Claude Code (roles, language, rules)
 .claude/skills/dev/SKILL.md  the developer's session: /dev or "Dev, ..."
 HANDOFF.md        developer → architect notes; empty between deliveries
+docs/raidlog/     the comic of each release (section 15)
 instalar.bat      install on a new machine
 jarvis.bat        start the service and open the browser
 jarvis_vigilancia.bat  service only, no browser (--headless)
@@ -1100,6 +1102,7 @@ disk, which is exactly why the roles hand over through files.
 |---|---|---|---|---|---|---|---|
 | — | both | high / ultracode | 29/09–09/10 | everything before this table | not measured | — | one conversation since 29/09, compacted several times |
 | A3 | architect | ultracode | 09/10 23:10–23:40 | finish review 2's docs, check production's first night, diagnose the windows, R15–R18, plan dev session 1 (to 23:25: 25%); then the user's Tapo videos — contact sheets, a frame-by-frame face probe, R19–R20, plan revised (+9 points); then pandoc, the EPUB and its checker, the `dev` skill (+3 points) | 0% → 37% at 23:46 (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 32% | 106k → 223k tokens |
+| A4 | architect | ultracode | 09/10 23:50 – 10/10 00:31 | user's Tapo videos already counted in A3; here: the raid log, issue 1 (6 pages of SVG, page renders checked as images), its tool and section 15 | 37% → 61%, **shared with developer session 1 running at the same time** in another conversation — its own numbers are in its HANDOFF | 32% → 35% | 223k → 314k tokens |
 
 ### 14.4 Next session: developer 1
 
@@ -1149,3 +1152,52 @@ a release goes to production, which is what finally removes the windows there.
 | R14, R7, R9 | low priority or a check on the other machine |
 | Backlog 3, stage 4 (People and Settings on the web) | the next feature, after production is trustworthy |
 | Backlog 1 and 2 (zones, daily health) | (proposto): asked on 09/10; the user decides on 10/10 |
+---
+
+## 15. Raid log — the comic of each release
+
+**The user's idea, 10/10/2026.** Every release gets an issue of a comic: the
+conversation between the architect and the developer during that version,
+simplified, ending with what J.A.R.V.I.S. learned. Together the issues form
+the project's raid log, printed as one PDF. The artistic choices were left to
+the architect.
+
+**What is fixed, so the issues stay one series:**
+
+| | |
+|---|---|
+| J.A.R.V.I.S. | a small round robot with one big cyan eye (the app icon), and two flying eye-drones, **Front** and **Back** |
+| The developer | a beaver in a hard hat — builds |
+| The architect | an owl in round gold glasses — reviews at night, keeps the books |
+| The user | never drawn: **The Owner**, a gold speech balloon. Every decision of theirs appears as a quote |
+| Problems | **bosses**, in black balloons with red letters |
+| J.A.R.V.I.S.'s voice | its log lines, in a dark terminal balloon |
+
+**Each issue:** a cover, three or four chapter pages of six panels at most, and
+a closing card — abilities unlocked, bosses defeated, what still lurks, the
+Owner's decrees, the party, the numbers. It ends on a cliffhanger that the
+next issue opens with (issue 1 ends on the dog detected as a person, which is
+where issue 2 begins).
+
+**Truth rule:** the dialogue is simplified, never invented in substance. Every
+boss is a real bug or limit of that version, every ability a real feature,
+every Owner quote a real decision. The sources are that version's
+`HANDOFF.md`, its review (13.x) and the commits.
+
+**Whose job:** the architect's, when tagging a release — the same moment the
+review is written, so the material is fresh. A new issue is a new set of
+`<section class="page">` blocks appended to `docs/raidlog/raidlog.html`; the
+characters are SVG symbols defined once at the top of that file and reused.
+
+```bat
+uv run python tools/build_raidlog.py     docs/raidlog/JARVIS - Raid Log.pdf
+```
+
+Edge in headless mode prints it, so it needs nothing installed. The fonts come
+from Google Fonts, so build it online. The PDF is not versioned, like the
+EPUB. Adding `?p=3` to the HTML's address shows only page 3 — that is how the
+architect checks each page as an image before printing.
+
+| Issue | Version | Title |
+|---|---|---|
+| 1 | `v2026.10.09` | The First Night Shift |
