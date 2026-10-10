@@ -1155,6 +1155,7 @@ disk, which is exactly why the roles hand over through files.
 | A4 | architect | ultracode | 09/10 23:50 – 10/10 00:31 | user's Tapo videos already counted in A3; here: the raid log, issue 1 (6 pages of SVG, page renders checked as images), its tool and section 15 | 37% → 61%, **shared with developer session 1 running at the same time** in another conversation — its own numbers are in its HANDOFF | 32% → 35% | 223k → 314k tokens |
 | D1 | developer | high | 10/10 00:00–00:30 | session 1: R15, R16, R10 in part, R19, R20, R11 (HANDOFF) | 39% → 52%: R15 3, R16 + R10 2, R19 4, R20 4, R11 and HANDOFF under 1 | 32% → 34% | 66k → 210k tokens |
 | A5 | architect | ultracode | 10/10 00:52–01:00 | review 3, HANDOFF integrated, release `v2026.10.10` | 77% → 82%: review and docs, about 5 points | 37% → 37% | 404k → 445k tokens |
+| A6 | architect | ultracode | 10/10 00:55–01:15 | production update to `v2026.10.10`, R13 reboot and crash checks, EPUB | 82% → 87% | 37% → 38% | 445k → 470k tokens — at this size every turn costs about a point, the strongest reason yet for a new conversation per session |
 
 ### 14.4 Next session: developer 2
 
@@ -1235,3 +1236,4 @@ architect checks each page as an image before printing.
 | Issue | Version | Title |
 |---|---|---|
 | 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite |
+| 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente — **to draw**: first task of the next architect session, in a new conversation (14.2) |
