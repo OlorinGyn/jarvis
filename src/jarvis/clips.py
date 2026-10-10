@@ -26,7 +26,7 @@ from pathlib import Path
 
 import cv2
 
-from jarvis import ROOT, faces, notify
+from jarvis import ROOT, dogs, faces, notify
 from jarvis.capture import NO_WINDOW, SEGMENT_FORMAT, SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = ROOT / "clips"
@@ -86,7 +86,7 @@ def _clip_moments(segments, spans):
 
 
 def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
-              person_spans=()):
+              person_spans=(), dog_view=None):
     """Wait for the final segment to close, build the clip, then read faces.
 
     When the event notified and no face was found, the phone gets the best
@@ -110,6 +110,11 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
         notify.faces_seen(camera.label, start, found)
     elif notified and best_view:
         notify.best_view(camera.label, start, best_view)
+    if dog_view:
+        try:
+            dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
+        except Exception as problem:
+            logger.exception("  dog crops failed on %s: %s", destination.name, problem)
 
 
 def recording_now():
@@ -179,6 +184,7 @@ class EventRecorder:
         self.moment = 0
         self.sent_moment = None
         self.best_view = None
+        self.dog_view = None
         self.person_spans = []
 
     @property
@@ -198,6 +204,7 @@ class EventRecorder:
                 self.moment += 1
                 self._notify_late(frame, subjects)
             self._consider_view(frame, subjects)
+            self._consider_dogs(frame, subjects)
             self.labels.update(s.label for s in subjects)
             self.best_confidence = max(
                 [self.best_confidence] + [s.confidence for s in subjects])
@@ -225,6 +232,7 @@ class EventRecorder:
         self.moment = 0
         self.sent_moment = None
         self.best_view = None
+        self.dog_view = None
         self.person_spans = []
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
@@ -273,6 +281,16 @@ class EventRecorder:
         if self.best_view is None or score > self.best_view["score"]:
             self.best_view = {"score": score, "frame": frame.copy(),
                               "subjects": list(subjects), "moment": self.moment}
+
+    def _consider_dogs(self, frame, subjects):
+        """Keep the frame where the dogs show best: their crops are what the Dogs tab names."""
+        found = [s for s in subjects if s.label == "dog"]
+        if not found:
+            return
+        score = sum(s.confidence * s.w * s.h for s in found)
+        if self.dog_view is None or score > self.dog_view["score"]:
+            self.dog_view = {"score": score, "frame": frame.copy(),
+                             "boxes": [(s.x, s.y, s.w, s.h) for s in found]}
 
     def _note_person(self, now):
         """Extend the current span of person sightings, or open a new one after a gap."""
@@ -338,12 +356,14 @@ class EventRecorder:
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
                                      destination, set(self.labels), self.notified,
-                                     followup, [tuple(s) for s in self.person_spans]))
+                                     followup, [tuple(s) for s in self.person_spans],
+                                     self.dog_view))
         job.start()
         _jobs.append(job)
 
         self.recording = False
         self.best_view = None
+        self.dog_view = None
         summary = dict(meta)
         summary["path"] = destination
         return summary

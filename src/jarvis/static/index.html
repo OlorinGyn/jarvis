@@ -15,6 +15,7 @@
       <a href="#live" data-tab="live">Live</a>
       <a href="#recordings" data-tab="recordings">Recordings</a>
       <a href="#people" data-tab="people">People</a>
+      <a href="#dogs" data-tab="dogs">Dogs</a>
       <a href="#settings" data-tab="settings">Settings</a>
     </nav>
     <span id="connection" hidden>No connection to J.A.R.V.I.S.</span>
@@ -37,29 +38,56 @@
   </section>
 
   <section id="people" class="tab">
-    <div id="people-list">
+    <div class="list">
       <h2 class="heading">People</h2>
-      <p class="result heading-hint" id="people-result"></p>
-      <main id="persons" class="people-grid"></main>
-      <h2 class="heading">Unnamed faces <span id="unnamed-count"></span></h2>
+      <p class="result heading-hint list-result"></p>
+      <main class="people-grid named-grid"></main>
+      <h2 class="heading">Unnamed faces <span class="unnamed-count"></span></h2>
       <p class="hint heading-hint">Type a name, or pick who the face belongs to. Giving two faces the same name merges them.</p>
-      <main id="unnamed" class="people-grid"></main>
+      <main class="people-grid unnamed-grid"></main>
     </div>
-    <div id="person-page" hidden>
+    <div class="page" hidden>
       <nav class="toolbar">
         <a href="#people" class="back">◀ People</a>
-        <h2 id="person-name"></h2>
+        <h2 class="page-name"></h2>
       </nav>
-      <form id="rename-form" class="naming person-rename">
-        <input name="person" maxlength="60" autocomplete="off" placeholder="Full name">
+      <form class="naming person-rename rename-form">
+        <input name="entry" maxlength="60" autocomplete="off" placeholder="Full name">
         <button type="submit">Rename</button>
       </form>
-      <p class="result heading-hint" id="person-result"></p>
-      <h3 class="heading">Views that recognise them <span id="views-count"></span></h3>
+      <p class="result heading-hint page-result"></p>
+      <h3 class="heading">Views that recognise them <span class="views-count"></span></h3>
       <p class="hint heading-hint">Remove a poor view and the oldest waiting one takes its place.</p>
-      <main id="views" class="views-grid"></main>
+      <main class="views-grid"></main>
       <h3 class="heading">Days they were seen</h3>
-      <div id="calendar"></div>
+      <div class="calendar"></div>
+    </div>
+  </section>
+
+  <section id="dogs" class="tab">
+    <div class="list">
+      <h2 class="heading">Dogs</h2>
+      <p class="result heading-hint list-result"></p>
+      <main class="people-grid named-grid"></main>
+      <h2 class="heading">Unnamed dogs <span class="unnamed-count"></span></h2>
+      <p class="hint heading-hint">Name each crop, or pick which dog it is. Naming a few of each dog, by day and at night, teaches the system to tell them apart.</p>
+      <main class="people-grid unnamed-grid"></main>
+    </div>
+    <div class="page" hidden>
+      <nav class="toolbar">
+        <a href="#dogs" class="back">◀ Dogs</a>
+        <h2 class="page-name"></h2>
+      </nav>
+      <form class="naming person-rename rename-form">
+        <input name="entry" maxlength="60" autocomplete="off" placeholder="Name">
+        <button type="submit">Rename</button>
+      </form>
+      <p class="result heading-hint page-result"></p>
+      <h3 class="heading">Views that recognise them <span class="views-count"></span></h3>
+      <p class="hint heading-hint">Remove a poor view and the oldest waiting one takes its place.</p>
+      <main class="views-grid"></main>
+      <h3 class="heading">Days they were seen</h3>
+      <div class="calendar"></div>
     </div>
   </section>
 

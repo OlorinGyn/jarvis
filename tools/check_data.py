@@ -13,12 +13,13 @@ import json
 import sys
 from pathlib import Path
 
-from jarvis import faces, settings, web
+from jarvis import dogs, faces, settings, web
 from jarvis.clips import CLIP_DIR
 
 EVENT_KEYS = ("camera", "started_at", "time", "seconds", "labels", "video", "thumbnail")
 SIGHTING_KEYS = ("person_id", "camera", "at", "time", "score", "thumbnail")
 PERSON_KEYS = ("id", "name", "embeddings")
+DOG_SIGHTING_KEYS = ("dog_id", "camera", "at", "time", "thumbnail")
 EMBEDDING_SIZE = 128
 
 
@@ -110,6 +111,36 @@ def check_settings(problems):
     return f"{len(stored)} key(s)"
 
 
+def check_dogs(problems):
+    """The dog gallery and every dog sighting, read as the Dogs tab reads them."""
+    gallery = dogs.DogGallery()
+    if dogs.GALLERY_FILE.exists() and not gallery.people:
+        problems.append(f"{dogs.GALLERY_FILE}: exists but no dog could be read")
+    for dog in gallery.people:
+        missing = [k for k in PERSON_KEYS if k not in dog]
+        if missing:
+            problems.append(f"dog {dog.get('id', '?')}: missing {missing}")
+            continue
+        wrong = [len(e) for e in dog["embeddings"] if len(e) != dogs.DESCRIPTOR_SIZE]
+        if wrong:
+            problems.append(f"dog {dog['id']}: descriptors of size {wrong}")
+        faces.views_of(dog)
+        faces.cover_of(dog)
+    sightings = 0
+    for day in sorted(dogs.days_with_dogs()):
+        for path in (dogs.DOG_DIR / day.isoformat()).glob("*.json"):
+            sightings += 1
+            try:
+                entry = json.loads(path.read_text(encoding="utf-8-sig"))
+            except (OSError, ValueError) as problem:
+                problems.append(f"{path}: unreadable ({problem})")
+                continue
+            missing = [k for k in DOG_SIGHTING_KEYS if k not in entry]
+            if missing:
+                problems.append(f"{path}: missing {missing}")
+    return len(gallery.people), sightings
+
+
 def main():
     problems = []
     events = check_events(CLIP_DIR, problems)
@@ -123,6 +154,8 @@ def main():
 
     people, sightings = check_faces(problems)
     print(f"gallery: {people} person(s); face sightings: {sightings}")
+    named_dogs, dog_sightings = check_dogs(problems)
+    print(f"dogs: {named_dogs} in the gallery; dog sightings: {dog_sightings}")
     print(f"config.json: {check_settings(problems)}")
 
     if problems:

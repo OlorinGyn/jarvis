@@ -26,7 +26,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, faces, notify, settings
+from jarvis import ROOT, archive, dogs, faces, notify, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -48,6 +48,7 @@ SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best)?\.jpg$")
 SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
 SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
 SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
+SAFE_DOG = re.compile(r"^d_[0-9a-f]{8}$")
 NAME_MAX = 60
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
@@ -208,14 +209,15 @@ def thumbnail(camera: str, day: str, name: str):
 
 
 def _photo_url(stored):
-    """The page URL of a stored face crop (a sighting's or a view's), or None."""
+    """The page URL of a stored crop (a sighting's or a view's, a face's or a dog's), or None."""
     if not stored:
         return None
     path = Path(stored)
+    prefix = "/dog-" if path.parent.parent.name == "dogs" else "/"
     if path.parent.name == "views" and SAFE_VIEW.match(path.name):
-        return f"/view/{path.name}"
+        return f"{prefix}view/{path.name}"
     if SAFE_DAY.match(path.parent.name) and SAFE_FACE.match(path.name):
-        return f"/face/{path.parent.name}/{path.name}"
+        return f"{prefix}{'photo' if prefix == '/dog-' else 'face'}/{path.parent.name}/{path.name}"
     return None
 
 
@@ -225,31 +227,31 @@ def _stored_file(stored):
     return path if path.is_absolute() else ROOT / path
 
 
-def _person_card(person):
-    """One person as the People tab lists them: the newest view with a photo stands for them."""
-    cover = faces.cover_of(person)
+def _card(entry):
+    """One person or dog as its grid lists them: the favourite, else the newest view with a photo."""
+    cover = faces.cover_of(entry)
     if cover and not _stored_file(cover).is_file():
         cover = None
-    photo = cover or next((v for v in reversed(faces.views_of(person)) if v), None)
+    photo = cover or next((v for v in reversed(faces.views_of(entry)) if v), None)
     return {
-        "id": person["id"],
-        "name": person["name"],
-        "photo": _photo_url(photo or person.get("thumbnail")),
-        "views": len(person["embeddings"]),
-        "pending": len(person.get("pending") or []),
-        "first_seen": person.get("first_seen", ""),
+        "id": entry["id"],
+        "name": entry["name"],
+        "photo": _photo_url(photo or entry.get("thumbnail")),
+        "views": len(entry["embeddings"]),
+        "pending": len(entry.get("pending") or []),
+        "first_seen": entry.get("first_seen", ""),
     }
 
 
-def _appearances(person_id):
-    """Every sighting of a person, newest first: when, which camera, which recording."""
+def _appearances(folder, key, entry_id):
+    """Every sighting of a person or dog, newest first: when, which camera."""
     found = []
-    for path in faces.FACE_DIR.glob("*/*.json"):
+    for path in Path(folder).glob("*/*.json"):
         try:
             sighting = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
-        if sighting.get("person_id") == person_id:
+        if sighting.get(key) == entry_id:
             at = sighting.get("at", "")
             found.append({"at": at, "day": at[:10], "time": sighting.get("time", ""),
                           "camera": sighting.get("camera", "")})
@@ -257,17 +259,16 @@ def _appearances(person_id):
     return found
 
 
-def _person_or_404(gallery, person_id):
-    person = gallery.get(person_id) if SAFE_PERSON.match(person_id) else None
-    if person is None:
-        raise HTTPException(404, "no such person")
-    return person
+def _entry_or_404(gallery, entry_id):
+    safe = SAFE_DOG if gallery.id_prefix == "d" else SAFE_PERSON
+    entry = gallery.get(entry_id) if safe.match(entry_id) else None
+    if entry is None:
+        raise HTTPException(404, "not found")
+    return entry
 
 
-@app.get("/api/persons")
-def persons():
-    """Named people by name, then the unnamed faces, newest first."""
-    cards = [_person_card(p) for p in faces.Gallery().people]
+def _grid(gallery):
+    cards = [_card(e) for e in gallery.people]
     return {
         "named": sorted((c for c in cards if c["name"]), key=lambda c: c["name"].casefold()),
         "unnamed": sorted((c for c in cards if not c["name"]),
@@ -275,78 +276,136 @@ def persons():
     }
 
 
-@app.get("/api/persons/{person_id}")
-def person_page(person_id: str):
-    """One person: the photo of each stored view, the queue, and every appearance."""
-    person = _person_or_404(faces.Gallery(), person_id)
-    card = _person_card(person)
-    views = faces.views_of(person)
+def _page(gallery, entry_id):
+    entry = _entry_or_404(gallery, entry_id)
+    card = _card(entry)
+    views = faces.views_of(entry)
     card["view_photos"] = [_photo_url(v) for v in views]
-    cover = faces.cover_of(person)
+    cover = faces.cover_of(entry)
     card["cover_index"] = views.index(cover) if cover else None
-    card["appearances"] = _appearances(person_id)
+    card["appearances"] = _appearances(gallery.path.parent, gallery.sighting_key, entry_id)
     return card
 
 
-@app.get("/face/{day}/{name}")
-def face_thumbnail(day: str, name: str):
-    """One sighting's face crop. The checks keep requests inside faces/."""
-    if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
-        raise HTTPException(404)
-    root = faces.FACE_DIR.resolve()
-    path = (root / day / name).resolve()
+def _name(gallery, entry_id, payload, kind):
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > NAME_MAX:
+        raise HTTPException(400, f"a name of 1 to {NAME_MAX} characters")
+    entry = _entry_or_404(gallery, entry_id)
+    other = gallery.by_name(name)
+    if other is not None and other is not entry and payload.get("merge") is not True:
+        raise HTTPException(409, f"{other['name']} already exists: saving merges the two "
+                                 f"into one {kind}, which cannot be undone")
+    merged = gallery.rename(entry_id, name)
+    result = type(gallery)(gallery.path).by_name(name)
+    return {"id": result["id"] if result else entry_id, "name": name.strip(), "merged": merged}
+
+
+def _cover(gallery, entry_id, index):
+    _entry_or_404(gallery, entry_id)
+    if not gallery.set_cover(entry_id, index):
+        raise HTTPException(400, "only a view with a photo can be the favourite")
+    return _page(gallery, entry_id)
+
+
+def _remove(gallery, entry_id, index):
+    _entry_or_404(gallery, entry_id)
+    if not gallery.remove_view(entry_id, index):
+        raise HTTPException(400, "that view cannot be removed: it is the last one")
+    return _page(gallery, entry_id)
+
+
+def _crop_file(root, *parts):
+    """A crop inside root, or a 404: the checks keep requests inside the folder."""
+    root = Path(root).resolve()
+    path = root.joinpath(*parts).resolve()
     if not path.is_relative_to(root) or not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type="image/jpeg")
 
 
-@app.get("/view/{name}")
-def view_photo(name: str):
-    """One stored view's face crop, from faces/views/."""
-    if not SAFE_VIEW.match(name):
-        raise HTTPException(404)
-    root = (faces.FACE_DIR / "views").resolve()
-    path = (root / name).resolve()
-    if not path.is_relative_to(root) or not path.is_file():
-        raise HTTPException(404)
-    return FileResponse(path, media_type="image/jpeg")
+@app.get("/api/persons")
+def persons():
+    """Named people by name, then the unnamed faces, newest first."""
+    return _grid(faces.Gallery())
+
+
+@app.get("/api/persons/{person_id}")
+def person_page(person_id: str):
+    """One person: the photo of each stored view, the queue, and every appearance."""
+    return _page(faces.Gallery(), person_id)
 
 
 @app.post("/api/persons/{person_id}/name")
 def name_person(person_id: str, payload: dict = Body(...)):
     """Name or rename a person. A name someone else has merges the two, so it asks first."""
-    name = payload.get("name")
-    if not isinstance(name, str) or not name.strip() or len(name.strip()) > NAME_MAX:
-        raise HTTPException(400, f"a name of 1 to {NAME_MAX} characters")
-    gallery = faces.Gallery()
-    person = _person_or_404(gallery, person_id)
-    other = gallery.by_name(name)
-    if other is not None and other is not person and payload.get("merge") is not True:
-        raise HTTPException(409, f"{other['name']} already exists: saving merges the two "
-                                 "into one person, which cannot be undone yet")
-    merged = gallery.rename(person_id, name)
-    result = faces.Gallery().by_name(name)
-    return {"id": result["id"] if result else person_id, "name": name.strip(), "merged": merged}
+    return _name(faces.Gallery(), person_id, payload, "person")
 
 
 @app.post("/api/persons/{person_id}/views/{index}/cover")
 def choose_cover(person_id: str, index: int):
     """Make one view, which must have a photo, the person's picture on the People grid."""
-    gallery = faces.Gallery()
-    _person_or_404(gallery, person_id)
-    if not gallery.set_cover(person_id, index):
-        raise HTTPException(400, "only a view with a photo can be the favourite")
-    return person_page(person_id)
+    return _cover(faces.Gallery(), person_id, index)
 
 
 @app.post("/api/persons/{person_id}/views/{index}/remove")
 def remove_view(person_id: str, index: int):
     """Remove one stored view; the oldest queued view takes its place."""
-    gallery = faces.Gallery()
-    _person_or_404(gallery, person_id)
-    if not gallery.remove_view(person_id, index):
-        raise HTTPException(400, "that view cannot be removed: it is the last one")
-    return person_page(person_id)
+    return _remove(faces.Gallery(), person_id, index)
+
+
+@app.get("/face/{day}/{name}")
+def face_thumbnail(day: str, name: str):
+    if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
+        raise HTTPException(404)
+    return _crop_file(faces.FACE_DIR, day, name)
+
+
+@app.get("/view/{name}")
+def view_photo(name: str):
+    if not SAFE_VIEW.match(name):
+        raise HTTPException(404)
+    return _crop_file(faces.FACE_DIR / "views", name)
+
+
+@app.get("/api/dogs")
+def dog_grid():
+    """Named dogs by name, then the unnamed crops, newest first."""
+    return _grid(dogs.DogGallery())
+
+
+@app.get("/api/dogs/{dog_id}")
+def dog_page(dog_id: str):
+    return _page(dogs.DogGallery(), dog_id)
+
+
+@app.post("/api/dogs/{dog_id}/name")
+def name_dog(dog_id: str, payload: dict = Body(...)):
+    return _name(dogs.DogGallery(), dog_id, payload, "dog")
+
+
+@app.post("/api/dogs/{dog_id}/views/{index}/cover")
+def choose_dog_cover(dog_id: str, index: int):
+    return _cover(dogs.DogGallery(), dog_id, index)
+
+
+@app.post("/api/dogs/{dog_id}/views/{index}/remove")
+def remove_dog_view(dog_id: str, index: int):
+    return _remove(dogs.DogGallery(), dog_id, index)
+
+
+@app.get("/dog-photo/{day}/{name}")
+def dog_photo(day: str, name: str):
+    if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
+        raise HTTPException(404)
+    return _crop_file(dogs.DOG_DIR, day, name)
+
+
+@app.get("/dog-view/{name}")
+def dog_view(name: str):
+    if not SAFE_VIEW.match(name):
+        raise HTTPException(404)
+    return _crop_file(dogs.DOG_DIR / "views", name)
 
 
 def _is_local(request):

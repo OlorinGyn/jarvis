@@ -215,6 +215,9 @@ class Gallery:
     would silently undo the other's work.
     """
 
+    id_prefix = "p"
+    sighting_key = "person_id"
+
     def __init__(self, path=None):
         self.path = Path(path or GALLERY_FILE)
         self.people = []
@@ -299,7 +302,7 @@ class Gallery:
         crops = list(crops or []) + [None] * len(embeddings)
         stored = [self._store_view(crop) for crop in crops[:min(len(embeddings), MAX_EMBEDDINGS)]]
         person = {
-            "id": f"p_{uuid.uuid4().hex[:8]}",
+            "id": f"{self.id_prefix}_{uuid.uuid4().hex[:8]}",
             "name": "",
             "embeddings": [],
             "views": [],
@@ -417,7 +420,7 @@ class Gallery:
         for waiting in source.get("pending") or []:
             self._take(target, waiting["embedding"], waiting.get("view"))
         self.people.remove(source)
-        _repoint_sightings(self.path.parent, source["id"], target["id"])
+        _repoint_sightings(self.path.parent, source["id"], target["id"], self.sighting_key)
 
     def label(self, person_id):
         person = self.get(person_id)
@@ -426,15 +429,15 @@ class Gallery:
         return person["name"] or "Unknown"
 
 
-def _repoint_sightings(folder, old_id, new_id):
+def _repoint_sightings(folder, old_id, new_id, key="person_id"):
     """Sightings store a person_id, so a merge rewrites the ones that pointed at old_id."""
     for path in Path(folder).glob("*/*.json"):
         try:
             sighting = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
-        if sighting.get("person_id") == old_id:
-            sighting["person_id"] = new_id
+        if sighting.get(key) == old_id:
+            sighting[key] = new_id
             path.write_text(json.dumps(sighting, indent=2), encoding="utf-8")
 
 

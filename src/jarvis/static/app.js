@@ -26,7 +26,7 @@ function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-const TABS = ["live", "recordings", "people", "settings"];
+const TABS = ["live", "recordings", "people", "dogs", "settings"];
 
 function currentTab() {
   const tab = location.hash.slice(1).split("/")[0];
@@ -181,23 +181,13 @@ function showTab() {
   if (tab === "recordings") {
     loadDays().then(loadEvents);
   } else if (tab === "people") {
-    showPeople();
+    peopleTab.show();
+  } else if (tab === "dogs") {
+    dogsTab.show();
   } else if (tab === "settings") {
     loadSettings();
   }
 }
-
-const peopleList = document.getElementById("people-list");
-const personPage = document.getElementById("person-page");
-const personsGrid = document.getElementById("persons");
-const unnamedGrid = document.getElementById("unnamed");
-const personTemplate = document.getElementById("person-card");
-const peopleResult = document.getElementById("people-result");
-const personResult = document.getElementById("person-result");
-const renameForm = document.getElementById("rename-form");
-const viewsGrid = document.getElementById("views");
-const calendarBox = document.getElementById("calendar");
-let namedPeople = [];
 
 const PIN_KEY = "jarvis-pin";
 
@@ -242,154 +232,6 @@ async function getJSON(url) {
   return response.json();
 }
 
-function selectedPerson() {
-  const parts = location.hash.slice(1).split("/");
-  return parts[0] === "people" ? parts[1] || "" : "";
-}
-
-async function nameFace(id, name, merge) {
-  try {
-    return await send(`/api/persons/${id}/name`, { name, merge });
-  } catch (problem) {
-    if (!merge && problem.status === 409 && confirm(`${problem.message}. Merge them?`)) {
-      return send(`/api/persons/${id}/name`, { name, merge: true });
-    }
-    throw problem;
-  }
-}
-
-function describeNaming(result) {
-  return `${result.name}: saved` +
-    (result.merged ? `, ${plural(result.merged, "face", "faces")} merged into them` : "");
-}
-
-async function applyName(id, name, merge) {
-  try {
-    peopleResult.textContent = describeNaming(await nameFace(id, name, merge));
-  } catch (problem) {
-    peopleResult.textContent = `Not saved: ${problem.message}`;
-  }
-  loadPersons();
-}
-
-function personCard(card) {
-  const node = personTemplate.content.cloneNode(true);
-  const link = node.querySelector("a.photo");
-  link.setAttribute("href", `#people/${card.id}`);
-  const image = node.querySelector("img");
-  if (card.photo) {
-    image.src = card.photo;
-  } else {
-    image.remove();
-  }
-  const name = node.querySelector(".name");
-  name.setAttribute("href", `#people/${card.id}`);
-  name.textContent = card.name || "Unknown";
-  name.classList.toggle("person", Boolean(card.name));
-  node.querySelector(".count").textContent =
-    plural(card.views, "view", "views") + (card.pending ? ` +${card.pending}` : "");
-  const form = node.querySelector("form");
-  const select = node.querySelector("select");
-  if (card.name) {
-    form.remove();
-    select.remove();
-    return node;
-  }
-  const input = form.querySelector("input");
-  form.addEventListener("submit", (submitted) => {
-    submitted.preventDefault();
-    applyName(card.id, input.value, false);
-  });
-  if (namedPeople.length === 0) {
-    select.remove();
-    return node;
-  }
-  for (const person of namedPeople) {
-    const option = document.createElement("option");
-    option.value = person.name;
-    option.textContent = person.name;
-    select.append(option);
-  }
-  select.addEventListener("change", () => {
-    if (!select.value) return;
-    if (confirm(`This face is ${select.value}? It merges into them, which cannot be undone yet.`)) {
-      applyName(card.id, select.value, true);
-    } else {
-      select.value = "";
-    }
-  });
-  return node;
-}
-
-async function loadPersons() {
-  let data;
-  try {
-    data = await getJSON("/api/persons");
-  } catch {
-    showNotice(personsGrid, "Could not read the people.");
-    return;
-  }
-  namedPeople = data.named;
-  personsGrid.replaceChildren(...data.named.map(personCard));
-  if (data.named.length === 0) showNotice(personsGrid, "Nobody is named yet: name a face below.");
-  unnamedGrid.replaceChildren(...data.unnamed.map(personCard));
-  if (data.unnamed.length === 0) showNotice(unnamedGrid, "No unnamed faces.");
-  document.getElementById("unnamed-count").textContent =
-    data.unnamed.length ? `(${data.unnamed.length})` : "";
-}
-
-function viewTile(id, photo, index, person) {
-  const tile = document.createElement("figure");
-  tile.className = "view";
-  if (photo) {
-    const image = document.createElement("img");
-    image.src = photo;
-    image.alt = "";
-    image.loading = "lazy";
-    tile.append(image);
-  } else {
-    const missing = document.createElement("span");
-    missing.className = "no-photo";
-    missing.textContent = "no photo";
-    tile.append(missing);
-  }
-  if (photo) {
-    const favourite = document.createElement("button");
-    favourite.type = "button";
-    favourite.className = "cover";
-    const chosen = person.cover_index === index;
-    favourite.classList.toggle("chosen", chosen);
-    favourite.title = chosen ? "The photo shown on People" : "Show this photo on People";
-    favourite.textContent = "★";
-    favourite.addEventListener("click", async () => {
-      try {
-        showPerson(await send(`/api/persons/${id}/views/${index}/cover`));
-        personResult.textContent = "Favourite photo saved.";
-      } catch (problem) {
-        personResult.textContent = `Not saved: ${problem.message}`;
-      }
-    });
-    tile.append(favourite);
-  }
-  if (person.views > 1 || person.pending > 0) {
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.title = "Remove this view";
-    remove.textContent = "×";
-    remove.addEventListener("click", async () => {
-      if (!confirm("Remove this view? It will no longer be used to recognise them.")) return;
-      try {
-        showPerson(await send(`/api/persons/${id}/views/${index}/remove`));
-        personResult.textContent = "View removed.";
-      } catch (problem) {
-        personResult.textContent = `Not removed: ${problem.message}`;
-      }
-    });
-    tile.append(remove);
-  }
-  return tile;
-}
-
 function monthGrid(month, counts) {
   const [year, number] = month.split("-").map(Number);
   const box = document.createElement("div");
@@ -429,66 +271,233 @@ function monthGrid(month, counts) {
   return box;
 }
 
-function drawCalendar(appearances) {
+function drawCalendar(box, appearances) {
   const counts = {};
   for (const seen of appearances) counts[seen.day] = (counts[seen.day] || 0) + 1;
   const months = [...new Set(Object.keys(counts).map((day) => day.slice(0, 7)))].sort().reverse();
   if (months.length === 0) {
-    showNotice(calendarBox, "Not seen in any recording yet.");
+    showNotice(box, "Not seen in any recording yet.");
     return;
   }
-  calendarBox.replaceChildren(...months.map((month) => monthGrid(month, counts)));
+  box.replaceChildren(...months.map((month) => monthGrid(month, counts)));
 }
 
-function showPerson(person) {
-  document.getElementById("person-name").textContent = person.name || "Unknown";
-  renameForm.querySelector("input").value = person.name;
-  renameForm.querySelector("button").textContent = person.name ? "Rename" : "Save name";
-  document.getElementById("views-count").textContent =
-    `(${person.views} of 40${person.pending ? `, ${person.pending} waiting` : ""})`;
-  viewsGrid.replaceChildren(...person.view_photos.map((photo, index) =>
-    viewTile(person.id, photo, index, person)));
-  drawCalendar(person.appearances);
-}
+function galleryTab(section, api, kind, unnamedLabel) {
+  const tab = section.id;
+  const list = section.querySelector(".list");
+  const page = section.querySelector(".page");
+  const namedGrid = section.querySelector(".named-grid");
+  const unnamedGrid = section.querySelector(".unnamed-grid");
+  const listResult = section.querySelector(".list-result");
+  const pageResult = section.querySelector(".page-result");
+  const renameForm = section.querySelector(".rename-form");
+  const viewsGrid = section.querySelector(".views-grid");
+  const calendarBox = section.querySelector(".calendar");
+  const cardTemplate = document.getElementById("person-card");
+  let named = [];
 
-async function loadPerson(id) {
-  try {
-    showPerson(await getJSON(`/api/persons/${id}`));
-  } catch {
-    document.getElementById("person-name").textContent = "Not found";
-    viewsGrid.replaceChildren();
-    calendarBox.replaceChildren();
-    personResult.textContent = "This person no longer exists; they may have been merged.";
+  function selected() {
+    const parts = location.hash.slice(1).split("/");
+    return parts[0] === tab ? parts[1] || "" : "";
   }
-}
 
-function showPeople() {
-  const id = selectedPerson();
-  peopleList.hidden = Boolean(id);
-  personPage.hidden = !id;
-  personResult.textContent = "";
-  if (id) {
-    loadPerson(id);
-  } else {
-    loadPersons();
-  }
-}
-
-renameForm.addEventListener("submit", async (submitted) => {
-  submitted.preventDefault();
-  const id = selectedPerson();
-  try {
-    const result = await nameFace(id, renameForm.querySelector("input").value, false);
-    personResult.textContent = describeNaming(result);
-    if (result.id !== id) {
-      location.hash = `#people/${result.id}`;
-    } else {
-      loadPerson(id);
+  async function nameEntry(id, name, merge) {
+    try {
+      return await send(`${api}/${id}/name`, { name, merge });
+    } catch (problem) {
+      if (!merge && problem.status === 409 && confirm(`${problem.message}. Merge them?`)) {
+        return send(`${api}/${id}/name`, { name, merge: true });
+      }
+      throw problem;
     }
-  } catch (problem) {
-    personResult.textContent = `Not saved: ${problem.message}`;
   }
-});
+
+  function describeNaming(result) {
+    return `${result.name}: saved` +
+      (result.merged ? `, ${plural(result.merged, "entry", "entries")} merged into it` : "");
+  }
+
+  async function applyName(id, name, merge) {
+    try {
+      listResult.textContent = describeNaming(await nameEntry(id, name, merge));
+    } catch (problem) {
+      listResult.textContent = `Not saved: ${problem.message}`;
+    }
+    loadList();
+  }
+
+  function card(entry) {
+    const node = cardTemplate.content.cloneNode(true);
+    const link = node.querySelector("a.photo");
+    link.setAttribute("href", `#${tab}/${entry.id}`);
+    const image = node.querySelector("img");
+    if (entry.photo) {
+      image.src = entry.photo;
+    } else {
+      image.remove();
+    }
+    const name = node.querySelector(".name");
+    name.setAttribute("href", `#${tab}/${entry.id}`);
+    name.textContent = entry.name || unnamedLabel;
+    name.classList.toggle("person", Boolean(entry.name));
+    node.querySelector(".count").textContent =
+      plural(entry.views, "view", "views") + (entry.pending ? ` +${entry.pending}` : "");
+    const form = node.querySelector("form");
+    const select = node.querySelector("select");
+    if (entry.name) {
+      form.remove();
+      select.remove();
+      return node;
+    }
+    const input = form.querySelector("input");
+    input.placeholder = section.querySelector(".rename-form input").placeholder;
+    form.addEventListener("submit", (submitted) => {
+      submitted.preventDefault();
+      applyName(entry.id, input.value, false);
+    });
+    if (named.length === 0) {
+      select.remove();
+      return node;
+    }
+    for (const other of named) {
+      const option = document.createElement("option");
+      option.value = other.name;
+      option.textContent = other.name;
+      select.append(option);
+    }
+    select.addEventListener("change", () => {
+      if (!select.value) return;
+      if (confirm(`This ${kind} is ${select.value}? It merges into them, which cannot be undone.`)) {
+        applyName(entry.id, select.value, true);
+      } else {
+        select.value = "";
+      }
+    });
+    return node;
+  }
+
+  async function loadList() {
+    let data;
+    try {
+      data = await getJSON(api);
+    } catch {
+      showNotice(namedGrid, "Could not read the gallery.");
+      return;
+    }
+    named = data.named;
+    namedGrid.replaceChildren(...data.named.map(card));
+    if (data.named.length === 0) showNotice(namedGrid, `No ${kind} is named yet: name one below.`);
+    unnamedGrid.replaceChildren(...data.unnamed.map(card));
+    if (data.unnamed.length === 0) showNotice(unnamedGrid, "Nothing unnamed.");
+    section.querySelector(".unnamed-count").textContent =
+      data.unnamed.length ? `(${data.unnamed.length})` : "";
+  }
+
+  function viewTile(id, photo, index, entry) {
+    const tile = document.createElement("figure");
+    tile.className = "view";
+    if (photo) {
+      const image = document.createElement("img");
+      image.src = photo;
+      image.alt = "";
+      image.loading = "lazy";
+      tile.append(image);
+      const favourite = document.createElement("button");
+      favourite.type = "button";
+      favourite.className = "cover";
+      const chosen = entry.cover_index === index;
+      favourite.classList.toggle("chosen", chosen);
+      favourite.title = chosen ? "The photo shown on the grid" : "Show this photo on the grid";
+      favourite.textContent = "★";
+      favourite.addEventListener("click", async () => {
+        try {
+          showEntry(await send(`${api}/${id}/views/${index}/cover`));
+          pageResult.textContent = "Favourite photo saved.";
+        } catch (problem) {
+          pageResult.textContent = `Not saved: ${problem.message}`;
+        }
+      });
+      tile.append(favourite);
+    } else {
+      const missing = document.createElement("span");
+      missing.className = "no-photo";
+      missing.textContent = "no photo";
+      tile.append(missing);
+    }
+    if (entry.views > 1 || entry.pending > 0) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.title = "Remove this view";
+      remove.textContent = "×";
+      remove.addEventListener("click", async () => {
+        if (!confirm("Remove this view? It will no longer be used to recognise them.")) return;
+        try {
+          showEntry(await send(`${api}/${id}/views/${index}/remove`));
+          pageResult.textContent = "View removed.";
+        } catch (problem) {
+          pageResult.textContent = `Not removed: ${problem.message}`;
+        }
+      });
+      tile.append(remove);
+    }
+    return tile;
+  }
+
+  function showEntry(entry) {
+    section.querySelector(".page-name").textContent = entry.name || unnamedLabel;
+    renameForm.querySelector("input").value = entry.name;
+    renameForm.querySelector("button").textContent = entry.name ? "Rename" : "Save name";
+    section.querySelector(".views-count").textContent =
+      `(${entry.views} of 40${entry.pending ? `, ${entry.pending} waiting` : ""})`;
+    viewsGrid.replaceChildren(...entry.view_photos.map((photo, index) =>
+      viewTile(entry.id, photo, index, entry)));
+    drawCalendar(calendarBox, entry.appearances);
+  }
+
+  async function loadEntry(id) {
+    try {
+      showEntry(await getJSON(`${api}/${id}`));
+    } catch {
+      section.querySelector(".page-name").textContent = "Not found";
+      viewsGrid.replaceChildren();
+      calendarBox.replaceChildren();
+      pageResult.textContent = `This ${kind} no longer exists; it may have been merged.`;
+    }
+  }
+
+  function show() {
+    const id = selected();
+    list.hidden = Boolean(id);
+    page.hidden = !id;
+    pageResult.textContent = "";
+    if (id) {
+      loadEntry(id);
+    } else {
+      loadList();
+    }
+  }
+
+  renameForm.addEventListener("submit", async (submitted) => {
+    submitted.preventDefault();
+    const id = selected();
+    try {
+      const result = await nameEntry(id, renameForm.querySelector("input").value, false);
+      pageResult.textContent = describeNaming(result);
+      if (result.id !== id) {
+        location.hash = `#${tab}/${result.id}`;
+      } else {
+        loadEntry(id);
+      }
+    } catch (problem) {
+      pageResult.textContent = `Not saved: ${problem.message}`;
+    }
+  });
+
+  return { show };
+}
+
+const peopleTab = galleryTab(document.getElementById("people"), "/api/persons", "person", "Unknown");
+const dogsTab = galleryTab(document.getElementById("dogs"), "/api/dogs", "dog", "Unnamed dog");
 
 const notifyForm = document.getElementById("notify-form");
 const archiveForm = document.getElementById("archive-form");
