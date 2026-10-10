@@ -757,8 +757,10 @@ subir de novo em 09/10.
 | | R14 | low | Live MJPEG is encoded once per viewer | open |
 | | R15 | **high** | ffmpeg opens console windows on the user's desktop | open — dev session 1 (14.4) |
 | | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | open — dev session 1 |
-| | R17 | **high** | No way to tell why something was *not* recorded: a replay tool | open — dev session 1 |
+| | R17 | medium | No way to tell why something was *not* recorded: a replay tool | open — dev session 2; was high until the "miss" proved not to be one |
 | | R18 | medium | The white dog lying on the Front mat is detected as `person` | open — needs R17 first |
+| | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | open — dev session 1 |
+| | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | open — dev session 1 |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -939,16 +941,28 @@ the start at 20:20:55, and 19 events: 7 on Front, 12 on Back.
    `pythonw.exe` gets a window of its own (ARQUITETURA 18.7). The two that
    stay are the captures, the ones that flash are clip assembly and the face
    scan. Closing one kills that ffmpeg. → **R15.**
-2. **Not recorded going out for a delivery, nor coming back.** The time is not
-   known yet. What the data says: **nothing recorded anything between
+2. **"Not recorded going out for a delivery, nor coming back."** **It was
+   recorded — both ways, in one event.** The user sent the trip exported from
+   the Tapo app (two clips, 22:29:22 and 22:29:54). Production's
+   `Front/2026-10-09/22-29-22.mp4` covers all of it and more, 56 s at 1080p:
+   out of the door at 22:29:19, the gate, back with the order from 22:29:43,
+   in at 22:29:57. What failed is everything the user *sees* of an event:
+   - **The picture was the dog.** The event's thumbnail — the Recordings card
+     and the Telegram photo — is the first analysis frame of the event. This
+     one started a second before the user stepped out, on the dog lying on
+     the mat detected as `person 0.72` (item 3). → **R19.**
+   - **No face message.** Probed frame by frame (an architect's script, not in
+     the repository): walking towards the camera for ~6 s, YuNet finds the
+     face in almost every frame, but only **4 of ~90 frames** pass both
+     `MIN_FACE_WIDTH` (36 px) and the frontal check — faces of 33–41 px while
+     far, then turned towards the door and blurred when close (up to 77 px,
+     not frontal). The scan reads **one frame in 14** (`MAX_SAMPLES` 60 spread
+     over the 56 s clip) and hit none of the four. No sighting, so no face
+     message. → **R20.**
+
+   Also established while looking: **nothing recorded anything between
    30/09 22:54 and 09/10 20:21** — the test copy only ran for tests (its last
-   clip is from 30/09), and production started at 20:20:55. After that, Front
-   recorded people at 20:23:07 (at the door) and 20:26:31, then nothing with a
-   person until 22:29 (which is the dog, item 3). So if the trip was before
-   20:20 there was no system running; if it was after, it is either one of
-   those two events or a real miss, and today nothing can tell which: the log
-   says what was recorded, never what was seen and dropped. → **R17**, and the
-   user can export the trip from the Tapo app to replay it.
+   clip is from 30/09), and production started at 20:20:55.
 
 **Found while looking:**
 
@@ -988,8 +1002,10 @@ a Telegram error — not at each caller. Acceptance: in the test copy, with a
 wrong token and with the network cut, the log shows the failure and the token
 appears nowhere (`Select-String` for the real token in `logs/` finds nothing).
 
-**R17 — A replay tool: why was this not recorded? (high).** Missing a person
-is the system failing its purpose, and today a miss cannot be diagnosed. Add
+**R17 — A replay tool: why was this not recorded? (medium).** First written as
+high, when the trip looked like a miss; it was not (item 2), so it drops to
+medium. Still wanted: R18 needs it, and so will the next real miss, which
+today could only be diagnosed by hand, as item 2 was. Add
 `tools/replay.py <video>`: it reads any video (a clip, or one exported from the
 Tapo app), scales it to the analysis size the way `capture.py` does, feeds it
 at `ANALYSIS_FPS` through the **real** `MotionDetector` and
@@ -1001,14 +1017,43 @@ changes nothing when absent. `people.py` uses the clock (`MIN_INTERVAL`,
 static spots): drive it with the video's time, not the wall clock, or a replay
 faster than real time will decide differently from production. Acceptance: on
 `Front/2026-10-09/20-29-03.mp4` it shows the dog detected as `person`; on
-`20-23-07.mp4`, the person at the door; on the trip's video, if the user
-exports it, the layer that dropped it.
+`20-23-07.mp4`, the person at the door; on `22-29-22.mp4`, the dog as
+`person` in the first second, then the user.
 
 **R18 — Dog on the mat as `person` (medium).** Do not tune before R17 shows
 which frames and scores produce it. Candidate fixes, to choose with the data:
 backlog item 1 (zones), or a rule against "persons" that never stand up in a
 spot where a static object lives. Note that `notify_labels` is `person`, so
 every one of these is a false alarm on the phone too.
+
+**R19 — The event's picture should show the person (high).** Today the
+thumbnail is the event's first analysis frame (`EventRecorder._start`), and
+the first frame is whatever triggered the event — on 09/10 at 22:29, the dog.
+The user looked at the event and saw no one. Direction: during the event, keep
+the best view of a person in memory (confidence and box size; persons only,
+falling back to the first frame when there is none), and at the end write it
+as `HH-MM-SS.best.jpg`, with an optional `best_thumbnail` field in the event
+JSON. **Additive, as the rule demands:** the first-frame `HH-MM-SS.jpg` stays
+(it shows what triggered the event, which is what R18 needs), older events
+without the field keep showing it, and the `base.*` name moves with the event
+when archived. The page shows the best view when there is one. On the phone,
+the first message must stay immediate, so it keeps the first frame; when the
+event notified and the scan found no face, the follow-up message carries the
+best view instead, so the phone always ends with a picture of the person.
+Acceptance: on a copy of the 22:29 event in the test copy, the card shows the
+user, and `check_data.py` reads old and new events.
+
+**R20 — The face scan misses short frontal moments (high).** Measured on the
+22:29 clip (item 2): 4 usable frames out of ~90, none of them sampled. One in
+14 frames, spread evenly over the clip, is too coarse when a face is frontal
+and large enough for a fraction of a second. Direction: sample densely where it
+pays — the recorder already knows when persons were detected; pass those
+moments to the scan and read every frame or every other one there, keeping the
+sparse pass for the rest. Measure the cost on the M900 (YuNet on 1080p frames,
+on the 4-core Skylake) and report it in `HANDOFF.md`. Acceptance: rescanning
+a **copy** of `22-29-22.mp4` in the test copy finds the user's face. Never
+write into `C:\JARVIS` from a test — copy the event into the test copy's
+`clips/` first.
 
 ---
 
@@ -1040,7 +1085,7 @@ disk, which is exactly why the roles hand over through files.
 | # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
 |---|---|---|---|---|---|---|---|
 | — | both | high / ultracode | 29/09–09/10 | everything before this table | not measured | — | one conversation since 29/09, compacted several times |
-| A3 | architect | ultracode | 09/10 23:10–23:25 | finish review 2's docs, check production's first night, diagnose the windows and the missed trip, R15–R18, plan dev session 1 | 0% → 25% (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 30% | 106k → 144k tokens |
+| A3 | architect | ultracode | 09/10 23:10–23:40 | finish review 2's docs, check production's first night, diagnose the windows, R15–R18, plan dev session 1 (to 23:25: 25%); then the user's Tapo videos — contact sheets, a frame-by-frame face probe, R19–R20, plan revised (+9 points) | 0% → 34% (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 31% | 106k → 200k tokens |
 
 ### 14.4 Next session: developer 1
 
@@ -1050,7 +1095,8 @@ disk, which is exactly why the roles hand over through files.
    anything that makes it miss, mislead or show something wrong comes before
    new features.
 2. **What the user saw comes before what Claude predicted.** The windows and
-   the missed trip are observations; most of 13.4 is review findings.
+   the trip that "was not recorded" are observations; most of 13.4 is review
+   findings.
 3. **Data and security rules are not negotiable.** The bot token leaking into a
    log is a security finding, so it rides with the first item that touches
    notifications.
@@ -1068,22 +1114,24 @@ disk, which is exactly why the roles hand over through files.
 | 1 | **R15** — no console windows | the user saw it; a closed window cuts a camera; small | `capture.py`, `clips.py`, `faces.py` |
 | 2 | **R16** — log notification outcomes, redact the token | security, and without it no one can answer "did the phone get it?" | `notify.py` |
 | 3 | **R10, the part in those files** — `capture.py` `TRANSLATIONS` and "FALHOU", `notify.discover_chat()` messages | same files as 1 and 2, nearly free now (criterion 4) | `capture.py`, `notify.py` |
-| 4 | **R11** — `settings.save()` keeps unknown keys | the never-break-files rule; small; must land before any version adds a setting | `settings.py` |
-| 5 | **R17** — `tools/replay.py` | the core purpose: today a miss cannot be diagnosed. Largest item, so last; if the budget ends first, stop after 4 and deliver | `tools/`, maybe a trace hook in `motion.py` / `people.py` |
+| 4 | **R19** — the event's picture shows the person | what made the user believe the trip was not recorded | `clips.py`, `notify.py`, `web.py`, `static/` |
+| 5 | **R20** — denser face scan where persons were seen | the face message that never came; `faces.py` is already open for item 1 | `faces.py`, `clips.py` |
+| 6 | **R11** — `settings.save()` keeps unknown keys | the never-break-files rule; tiny. The one that can wait if the budget runs out: nothing in this session adds a setting | `settings.py` |
 
-`tools/check_data.py` must pass before committing (4 touches `config.json`).
-The delivery ends as always: `HANDOFF.md`, then *"Arquiteto, precisamos da sua
-análise"*. After the review, a release with 1–4 goes to production, which is
-what finally removes the windows there.
+`tools/check_data.py` must pass before committing: R19 adds a field to the
+event files, R11 touches `config.json`. The delivery ends as always:
+`HANDOFF.md`, then *"Arquiteto, precisamos da sua análise"*. After the review,
+a release goes to production, which is what finally removes the windows there.
 
 **Not in this session, and why:**
 
 | Item | Why not now |
 |---|---|
+| R17 — replay tool | the trip was not a miss after all; first item of developer session 2 |
 | R18 — dog as person | needs R17's data first; tuning without it is guessing |
 | R6 — tests | worth a session of its own; R16 and R11 make good first targets for it |
 | R12 — two copies on one M900 | operational: run the test copy on the other computer or briefly |
 | R13 — reboot and crash | needs the user (13.6, item 5) |
 | R14, R7, R9 | low priority or a check on the other machine |
 | Backlog 3, stage 4 (People and Settings on the web) | the next feature, after production is trustworthy |
-| Backlog 1 and 2 (zones, daily health) | (proposto): asked to the user on 09/10, answer pending |
+| Backlog 1 and 2 (zones, daily health) | (proposto): asked on 09/10; the user decides on 10/10 |
