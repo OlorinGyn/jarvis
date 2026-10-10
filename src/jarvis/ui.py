@@ -22,7 +22,7 @@ from jarvis.clips import available_days, list_clips, reveal
 SIDEBAR_WIDTH = 190
 ITEM_TOP = 92
 ITEM_HEIGHT = 54
-ITEMS = ("Live", "Records", "People", "Ajustes")
+ITEMS = ("Live", "Records", "People", "Settings")
 FACE_CARD = 150
 NAME_MAX = 40
 NOTICE_SECONDS = 6.0
@@ -46,7 +46,7 @@ CYAN = (255, 200, 0)
 RED = (70, 70, 230)
 TODAY = (90, 150, 220)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-WEEKDAYS = ("D", "S", "T", "Q", "Q", "S", "S")
+WEEKDAYS = ("S", "M", "T", "W", "T", "F", "S")
 
 
 def letterbox(canvas, area, image):
@@ -76,20 +76,20 @@ def pick_folder(initial=""):
     except ImportError:
         return ""
 
-    janela = tkinter.Tk()
-    janela.withdraw()
-    janela.attributes("-topmost", True)
+    root = tkinter.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
     try:
-        escolhido = filedialog.askdirectory(
-            title="Pasta do arquivo morto (HD externo)",
+        chosen = filedialog.askdirectory(
+            title="Archive folder (external drive)",
             initialdir=initial or None)
     finally:
-        janela.destroy()
-    return escolhido or ""
+        root.destroy()
+    return chosen or ""
 
 
-def gigabytes(quantidade):
-    return f"{quantidade / 1024 ** 3:.1f} GB"
+def gigabytes(amount):
+    return f"{amount / 1024 ** 3:.1f} GB"
 
 
 def shift_month(month, delta):
@@ -156,8 +156,8 @@ class Interface:
         if key in (13, 10):
             if self.typed.strip():
                 merged = faces.Gallery().rename(self.naming, self.typed)
-                self.notice = (f"{self.typed.strip()}: salvo"
-                               + (f", {merged} rosto(s) agrupado(s)" if merged else ""),
+                self.notice = (f"{self.typed.strip()}: saved"
+                               + (f", {merged} face(s) merged" if merged else ""),
                                time.monotonic() + NOTICE_SECONDS)
                 self.last_scan = 0.0
             self.naming, self.typed = None, ""
@@ -187,9 +187,9 @@ class Interface:
         elif action == "open":
             reveal(payload)
         elif action == "pick_archive":
-            escolhido = pick_folder(settings.load()["archive_path"])
-            if escolhido:
-                settings.update(archive_path=escolhido)
+            chosen = pick_folder(settings.load()["archive_path"])
+            if chosen:
+                settings.update(archive_path=chosen)
         elif action == "clear_archive":
             settings.update(archive_path="")
         elif action == "archive_now":
@@ -199,13 +199,13 @@ class Interface:
             settings.save(settings.load())
             reveal(settings.FILE)
         elif action == "find_chat":
-            chat, erro = notify.discover_chat(settings.load()["notify_token"])
+            chat, error = notify.discover_chat(settings.load()["notify_token"])
             if chat:
                 settings.update(notify_chat=chat)
-            self.notify_report = f"chat {chat}" if chat else f"falhou: {erro}"
+            self.notify_report = f"chat {chat}" if chat else f"failed: {error}"
         elif action == "test_notify":
-            ok, detalhe = notify.send("J.A.R.V.I.S.: teste de notificacao")
-            self.notify_report = "enviado" if ok else f"falhou: {detalhe}"
+            ok, detail = notify.send("J.A.R.V.I.S.: test notification")
+            self.notify_report = "sent" if ok else f"failed: {detail}"
 
     def refresh(self, force=False):
         now = time.monotonic()
@@ -229,7 +229,7 @@ class Interface:
             self._draw_records(canvas, area)
         elif self.view == "People":
             self._draw_people(canvas, area)
-        elif self.view == "Ajustes":
+        elif self.view == "Settings":
             self._draw_settings(canvas, area)
         elif live is not None:
             letterbox(canvas, area, live)
@@ -266,14 +266,14 @@ class Interface:
     def _draw_header(self, canvas, x0, y0, right):
         when = self.day.strftime("%d/%m/%Y")
         if self.day == date.today():
-            when += " (hoje)"
-        title = f"{when}  -  {len(self.entries)} gravacao(oes)"
+            when += " (today)"
+        title = f"{when}  -  {len(self.entries)} recording(s)"
         cv2.putText(canvas, title, (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
         if self.entries:
-            dica = "clique num cartao para abrir na pasta"
+            hint = "click a card to show it in its folder"
             if self.max_scroll:
-                dica += "   |   roda do mouse para rolar"
-            cv2.putText(canvas, dica, (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2),
+                hint += "   |   mouse wheel to scroll"
+            cv2.putText(canvas, hint, (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2),
                         FONT, 0.42, MUTED, 1)
 
     def _thumbnail(self, entry, width, height):
@@ -286,7 +286,7 @@ class Interface:
         image = cv2.imread(str(path))
         if image is None:
             image = np.full((height, width, 3), (60, 60, 60), dtype=np.uint8)
-            cv2.putText(image, "sem imagem", (10, height // 2), FONT, 0.45, MUTED, 1)
+            cv2.putText(image, "no image", (10, height // 2), FONT, 0.45, MUTED, 1)
         else:
             shrinking = image.shape[1] > width
             image = cv2.resize(image, (width, height),
@@ -299,7 +299,7 @@ class Interface:
         width = x1 - x0 - SCROLLBAR_WIDTH
         if not self.entries:
             self.max_scroll = 0
-            cv2.putText(canvas, "Nenhuma gravacao neste dia.",
+            cv2.putText(canvas, "No recordings on this day.",
                         (x0 + CARD_GAP, y0 + 40), FONT, 0.6, MUTED, 1)
             return
 
@@ -364,18 +364,18 @@ class Interface:
 
         when = self.day.strftime("%d/%m/%Y")
         if self.day == date.today():
-            when += " (hoje)"
-        desconhecidos = sum(1 for s in self.sightings if not s["named"])
-        cv2.putText(canvas, f"{when}  -  {len(self.sightings)} rosto(s), "
-                            f"{desconhecidos} sem nome",
+            when += " (today)"
+        unknown = sum(1 for s in self.sightings if not s["named"])
+        cv2.putText(canvas, f"{when}  -  {len(self.sightings)} face(s), "
+                            f"{unknown} unnamed",
                     (x0 + CARD_GAP, y0 + 30), FONT, 0.66, TEXT, 2)
         text, until = self.notice
         if text and time.monotonic() < until:
             cv2.putText(canvas, text, (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2),
                         FONT, 0.45, GREEN, 1)
         elif self.sightings:
-            cv2.putText(canvas, "clique em [+ Nomear]; o mesmo nome em outro rosto "
-                                "junta os dois",
+            cv2.putText(canvas, "click [+ Name]; giving another face the same name "
+                                "merges the two",
                         (x0 + CARD_GAP, y0 + HEADER_HEIGHT + 2), FONT, 0.42, MUTED, 1)
 
     def _draw_face_cards(self, canvas, area):
@@ -383,7 +383,7 @@ class Interface:
         width = x1 - x0 - SCROLLBAR_WIDTH
         if not self.sightings:
             self.max_scroll = 0
-            cv2.putText(canvas, "Nenhum rosto reconhecido neste dia.",
+            cv2.putText(canvas, "No faces seen on this day.",
                         (x0 + CARD_GAP, y0 + 40), FONT, 0.6, MUTED, 1)
             return
 
@@ -407,19 +407,19 @@ class Interface:
             base = y + card_w
             cv2.rectangle(canvas, (x, base), (x + card_w, base + 64), PANEL, -1)
 
-            nomeado = face["named"]
+            named = face["named"]
             cv2.putText(canvas, face["name"][:18], (x + 6, base + 18), FONT, 0.46,
-                        GREEN if nomeado else MUTED, 1)
+                        GREEN if named else MUTED, 1)
             cv2.putText(canvas, f"{face['time']}  {face['camera'][:6]}",
                         (x + 6, base + 36), FONT, 0.42, TEXT, 1)
 
-            if not nomeado:
-                botao = (x + 6, base + 42, x + card_w - 6, base + 60)
-                cv2.rectangle(canvas, (botao[0], botao[1]), (botao[2], botao[3]),
+            if not named:
+                button = (x + 6, base + 42, x + card_w - 6, base + 60)
+                cv2.rectangle(canvas, (button[0], button[1]), (button[2], button[3]),
                               ACTIVE, -1)
-                cv2.putText(canvas, "+ Nomear", (botao[0] + 8, botao[1] + 14),
+                cv2.putText(canvas, "+ Name", (button[0] + 8, button[1] + 14),
                             FONT, 0.42, TEXT, 1)
-                self._region(botao, "name", face["person_id"])
+                self._region(button, "name", face["person_id"])
             else:
                 cv2.putText(canvas, f"conf {face.get('score', 0):.2f}",
                             (x + 6, base + 56), FONT, 0.4, MUTED, 1)
@@ -446,7 +446,7 @@ class Interface:
 
         cv2.rectangle(canvas, (x, y), (x + box_w, y + box_h), PANEL, -1)
         cv2.rectangle(canvas, (x, y), (x + box_w, y + box_h), ACTIVE, 2)
-        cv2.putText(canvas, "Nome completo", (x + 20, y + 36), FONT, 0.62, TEXT, 2)
+        cv2.putText(canvas, "Full name", (x + 20, y + 36), FONT, 0.62, TEXT, 2)
 
         field = (x + 20, y + 58, x + box_w - 20, y + 98)
         cv2.rectangle(canvas, (field[0], field[1]), (field[2], field[3]),
@@ -454,114 +454,114 @@ class Interface:
         cursor = "_" if int(time.time() * 2) % 2 else " "
         cv2.putText(canvas, self.typed + cursor, (field[0] + 10, field[1] + 27),
                     FONT, 0.6, TEXT, 1)
-        cv2.putText(canvas, "Enter para salvar    Esc para cancelar",
+        cv2.putText(canvas, "Enter to save    Esc to cancel",
                     (x + 20, y + 130), FONT, 0.45, MUTED, 1)
 
     def _draw_settings(self, canvas, area):
         x0, y0, x1, y1 = area
-        relatorio = archive.summary()
+        report = archive.summary()
         x = x0 + CARD_GAP + 6
         y = y0 + 34
 
-        cv2.putText(canvas, "Armazenamento", (x, y), FONT, 0.7, TEXT, 2)
+        cv2.putText(canvas, "Storage", (x, y), FONT, 0.7, TEXT, 2)
         y += 14
 
-        def linha(rotulo, valor, cor=TEXT, recuo=0):
+        def row(label, value, colour=TEXT, indent=0):
             nonlocal y
             y += 24
-            cv2.putText(canvas, rotulo, (x + recuo, y), FONT, 0.45, MUTED, 1)
-            cv2.putText(canvas, valor, (x + recuo + 250, y), FONT, 0.45, cor, 1)
+            cv2.putText(canvas, label, (x + indent, y), FONT, 0.45, MUTED, 1)
+            cv2.putText(canvas, value, (x + indent + 250, y), FONT, 0.45, colour, 1)
 
         y += 26
-        cv2.putText(canvas, "1. Gravacao (disco do programa)", (x, y),
+        cv2.putText(canvas, "1. Recording (the program's drive)", (x, y),
                     FONT, 0.5, TEXT, 1)
-        linha("eventos guardados aqui", str(relatorio["local_events"]))
-        linha("ocupando", gigabytes(relatorio["local_bytes"]))
-        linha("livre neste disco", gigabytes(relatorio["local_free"]))
-        mais_antigo = relatorio["oldest"]
-        linha("gravacao mais antiga",
-              mais_antigo.strftime("%d/%m/%Y %H:%M") if mais_antigo else "nenhuma")
+        row("events kept here", str(report["local_events"]))
+        row("using", gigabytes(report["local_bytes"]))
+        row("free on this drive", gigabytes(report["local_free"]))
+        oldest = report["oldest"]
+        row("oldest recording",
+              oldest.strftime("%d/%m/%Y %H:%M") if oldest else "none")
 
         y += 26
-        cv2.putText(canvas, "2. Arquivo morto (HD externo)", (x, y), FONT, 0.5, TEXT, 1)
-        caminho = relatorio["archive_path"] or "nenhuma pasta escolhida"
-        if len(caminho) > 46:
-            caminho = "..." + caminho[-43:]
-        pronto = relatorio["archive_ready"]
-        linha("pasta", caminho, GREEN if pronto else MUTED)
-        if pronto:
-            linha("situacao", "conectado", GREEN)
-            linha("eventos arquivados", str(relatorio.get("archive_events", 0)))
-            linha("ocupando", gigabytes(relatorio.get("archive_bytes", 0)))
-            livre = relatorio.get("archive_free", 0)
-            apertado = livre < relatorio["min_free_gb"] * 1024 ** 3
-            linha("livre no HD", gigabytes(livre), RED if apertado else GREEN)
+        cv2.putText(canvas, "2. Archive (external drive)", (x, y), FONT, 0.5, TEXT, 1)
+        folder = report["archive_path"] or "no folder chosen"
+        if len(folder) > 46:
+            folder = "..." + folder[-43:]
+        ready = report["archive_ready"]
+        row("folder", folder, GREEN if ready else MUTED)
+        if ready:
+            row("status", "connected", GREEN)
+            row("archived events", str(report.get("archive_events", 0)))
+            row("using", gigabytes(report.get("archive_bytes", 0)))
+            free = report.get("archive_free", 0)
+            tight = free < report["min_free_gb"] * 1024 ** 3
+            row("free on the drive", gigabytes(free), RED if tight else GREEN)
         else:
-            linha("situacao", relatorio["archive_reason"], RED)
+            row("status", report["archive_reason"], RED)
 
         y += 26
-        cv2.putText(canvas, "3. Regras", (x, y), FONT, 0.5, TEXT, 1)
-        linha("mover para o HD depois de", f"{relatorio['after_days']} dias")
-        linha("apagar o mais antigo se sobrar menos de",
-              f"{relatorio['min_free_gb']:.0f} GB")
+        cv2.putText(canvas, "3. Rules", (x, y), FONT, 0.5, TEXT, 1)
+        row("move to the drive after", f"{report['after_days']} days")
+        row("keep this much free on the drive",
+              f"{report['min_free_gb']:.0f} GB")
         y += 24
-        cv2.putText(canvas, "Nada e apagado da gravacao. A exclusao so acontece",
+        cv2.putText(canvas, "Nothing is deleted from the recordings. Deletion only",
                     (x, y), FONT, 0.42, MUTED, 1)
         y += 18
-        cv2.putText(canvas, "no arquivo morto, do mais antigo, quando o HD lotar.",
+        cv2.putText(canvas, "happens in the archive, oldest first, when the drive is full.",
                     (x, y), FONT, 0.42, MUTED, 1)
 
         y += 34
-        botoes = [("Escolher pasta", "pick_archive", ACTIVE)]
-        if relatorio["archive_path"]:
-            botoes.append(("Arquivar agora", "archive_now", ACTIVE))
-            botoes.append(("Remover pasta", "clear_archive", PANEL))
-        largura, altura, vao = 170, 34, 12
-        for indice, (texto, acao, cor) in enumerate(botoes):
-            bx = x + indice * (largura + vao)
-            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), cor, -1)
-            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), LINE, 1)
-            cv2.putText(canvas, texto, (bx + 14, y + 22), FONT, 0.45, TEXT, 1)
-            self._region((bx, y, bx + largura, y + altura), acao, None)
+        buttons = [("Choose folder", "pick_archive", ACTIVE)]
+        if report["archive_path"]:
+            buttons.append(("Archive now", "archive_now", ACTIVE))
+            buttons.append(("Remove folder", "clear_archive", PANEL))
+        button_w, button_h, spacing = 170, 34, 12
+        for index, (caption, action, colour) in enumerate(buttons):
+            bx = x + index * (button_w + spacing)
+            cv2.rectangle(canvas, (bx, y), (bx + button_w, y + button_h), colour, -1)
+            cv2.rectangle(canvas, (bx, y), (bx + button_w, y + button_h), LINE, 1)
+            cv2.putText(canvas, caption, (bx + 14, y + 22), FONT, 0.45, TEXT, 1)
+            self._region((bx, y, bx + button_w, y + button_h), action, None)
 
-        y += altura + 24
+        y += button_h + 24
         if self.archive_report:
-            movidos = self.archive_report["moved"]
-            liberados = self.archive_report["freed"]
-            recado = (f"Movidos {movidos['moved']} evento(s), "
-                      f"{gigabytes(movidos['bytes'])}. "
-                      f"Apagados {liberados['removed']} do arquivo.")
-            if movidos["skipped"]:
-                recado = f"Nada feito: {movidos['skipped']}"
-            cv2.putText(canvas, recado, (x, y), FONT, 0.45, GREEN, 1)
+            moved = self.archive_report["moved"]
+            freed = self.archive_report["freed"]
+            message = (f"Moved {moved['moved']} event(s), "
+                      f"{gigabytes(moved['bytes'])}. "
+                      f"Deleted {freed['removed']} from the archive.")
+            if moved["skipped"]:
+                message = f"Nothing done: {moved['skipped']}"
+            cv2.putText(canvas, message, (x, y), FONT, 0.45, GREEN, 1)
             y += 24
 
         config = settings.load()
         y += 26
-        cv2.putText(canvas, "4. Notificacao no celular (Telegram)", (x, y),
+        cv2.putText(canvas, "4. Phone notifications (Telegram)", (x, y),
                     FONT, 0.5, TEXT, 1)
-        tem_token = bool(config.get("notify_token"))
-        tem_chat = bool(config.get("notify_chat"))
-        linha("token do bot", "configurado" if tem_token else "faltando",
-              GREEN if tem_token else RED)
-        linha("conversa", config.get("notify_chat") or "faltando",
-              GREEN if tem_chat else RED)
-        linha("avisa sobre", ", ".join(config.get("notify_labels") or []))
-        linha("intervalo minimo por camera", f"{config.get('notify_cooldown')} s")
+        has_token = bool(config.get("notify_token"))
+        has_chat = bool(config.get("notify_chat"))
+        row("bot token", "set" if has_token else "missing",
+              GREEN if has_token else RED)
+        row("chat", config.get("notify_chat") or "missing",
+              GREEN if has_chat else RED)
+        row("notifies about", ", ".join(config.get("notify_labels") or []))
+        row("minimum interval per camera", f"{config.get('notify_cooldown')} s")
 
         y += 30
-        acoes = [("Abrir config.json", "open_config", PANEL),
-                 ("Descobrir conversa", "find_chat", ACTIVE),
-                 ("Enviar teste", "test_notify", ACTIVE)]
-        for indice, (texto, acao, cor) in enumerate(acoes):
-            bx = x + indice * (largura + vao)
-            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), cor, -1)
-            cv2.rectangle(canvas, (bx, y), (bx + largura, y + altura), LINE, 1)
-            cv2.putText(canvas, texto, (bx + 12, y + 22), FONT, 0.45, TEXT, 1)
-            self._region((bx, y, bx + largura, y + altura), acao, None)
+        actions = [("Open config.json", "open_config", PANEL),
+                 ("Find the chat", "find_chat", ACTIVE),
+                 ("Send a test", "test_notify", ACTIVE)]
+        for index, (caption, action, colour) in enumerate(actions):
+            bx = x + index * (button_w + spacing)
+            cv2.rectangle(canvas, (bx, y), (bx + button_w, y + button_h), colour, -1)
+            cv2.rectangle(canvas, (bx, y), (bx + button_w, y + button_h), LINE, 1)
+            cv2.putText(canvas, caption, (bx + 12, y + 22), FONT, 0.45, TEXT, 1)
+            self._region((bx, y, bx + button_w, y + button_h), action, None)
 
         if self.notify_report:
-            y += altura + 24
+            y += button_h + 24
             cv2.putText(canvas, self.notify_report, (x, y), FONT, 0.45, GREEN, 1)
 
     def _draw_calendar(self, canvas, area):
@@ -612,5 +612,5 @@ class Interface:
                 self._region(box, "day", this_day)
 
         legend_y = min(header_y + 20 + len(weeks) * cell + 24, y1 - 12)
-        cv2.putText(canvas, "verde = tem gravacao", (x0 + 14, legend_y),
+        cv2.putText(canvas, "green = has recordings", (x0 + 14, legend_y),
                     FONT, 0.4, MUTED, 1)

@@ -43,13 +43,13 @@ def events(directory):
 def destination_state(path):
     """Whether the archive folder can be written to right now, and its room."""
     if not path:
-        return {"ready": False, "reason": "nenhuma pasta configurada"}
+        return {"ready": False, "reason": "no folder configured"}
     folder = Path(path)
     try:
         folder.mkdir(parents=True, exist_ok=True)
         usage = shutil.disk_usage(folder)
     except OSError:
-        return {"ready": False, "reason": "pasta indisponivel (HD desconectado?)"}
+        return {"ready": False, "reason": "folder unavailable (drive disconnected?)"}
     return {"ready": True, "reason": "", "free": usage.free, "total": usage.total,
             "path": folder}
 

@@ -63,8 +63,8 @@ def build_camera_list(env):
             continue
         label = key[len("CAM_"):-len("_IP")]
         if env[key] == PLACEHOLDER_IP:
-            raise SystemExit(f"Preencha {key} no .env com o IP da camera "
-                             f"(app Tapo > engrenagem > Informacoes do dispositivo).")
+            raise SystemExit(f"Fill in {key} in .env with the camera's IP "
+                             f"(Tapo app > gear > Device Info).")
         user = env.get(f"CAM_{label}_USER", "")
         password = env.get(f"CAM_{label}_PASSWORD", "")
         credentials = f"{quote(user, safe='')}:{quote(password, safe='')}"
