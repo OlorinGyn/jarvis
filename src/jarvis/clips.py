@@ -26,7 +26,7 @@ from pathlib import Path
 import cv2
 
 from jarvis import ROOT, faces, notify
-from jarvis.capture import NO_WINDOW, SEGMENT_SECONDS, ffmpeg_exe
+from jarvis.capture import NO_WINDOW, SEGMENT_FORMAT, SEGMENT_SECONDS, ffmpeg_exe
 
 CLIP_DIR = ROOT / "clips"
 BUFFER_DIR = CLIP_DIR / "_buffer"
@@ -35,6 +35,7 @@ POST_SECONDS = 5.0
 MAX_SECONDS = 60.0
 THUMB_WIDTH = 480
 ASSEMBLY_DELAY = SEGMENT_SECONDS + 2.0
+PERSON_GAP_SECONDS = 2.0
 
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
@@ -68,7 +69,22 @@ def _concat(segments, destination):
         listing.unlink(missing_ok=True)
 
 
-def _assemble(camera, start, end, destination, labels, notified=False, best_view=None):
+def _clip_moments(segments, spans):
+    """Turn wall-clock person spans into seconds into the clip the segments make.
+
+    The clip starts where its first segment does, and a segment is named
+    after the moment ffmpeg opened it.
+    """
+    try:
+        clip_start = datetime.strptime(Path(segments[0]).stem, SEGMENT_FORMAT)
+    except (IndexError, ValueError):
+        return []
+    return [((first - clip_start).total_seconds(), (last - clip_start).total_seconds())
+            for first, last in spans]
+
+
+def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
+              person_spans=()):
     """Wait for the final segment to close, build the clip, then read faces.
 
     When the event notified and no face was found, the phone gets the best
@@ -83,7 +99,8 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     found = []
     if "person" in labels and destination.exists():
         try:
-            found = faces.scan_clip(destination, camera.label, start)
+            found = faces.scan_clip(destination, camera.label, start,
+                                    moments=_clip_moments(segments, person_spans))
         except Exception as problem:
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if notified and found:
@@ -153,6 +170,7 @@ class EventRecorder:
         self.moment = 0
         self.sent_moment = None
         self.best_view = None
+        self.person_spans = []
 
     @property
     def protect_from(self):
@@ -198,6 +216,7 @@ class EventRecorder:
         self.moment = 0
         self.sent_moment = None
         self.best_view = None
+        self.person_spans = []
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
 
@@ -240,10 +259,18 @@ class EventRecorder:
         persons = [s for s in subjects if s.is_person]
         if not persons:
             return
+        self._note_person(datetime.now())
         score = max(s.confidence * s.h for s in persons)
         if self.best_view is None or score > self.best_view["score"]:
             self.best_view = {"score": score, "frame": frame.copy(),
                               "subjects": list(subjects), "moment": self.moment}
+
+    def _note_person(self, now):
+        """Extend the current span of person sightings, or open a new one after a gap."""
+        if self.person_spans and (now - self.person_spans[-1][1]).total_seconds() <= PERSON_GAP_SECONDS:
+            self.person_spans[-1][1] = now
+        else:
+            self.person_spans.append([now, now])
 
     def _write_best_view(self):
         """Save the best view as HH-MM-SS.best.jpg. Returns its path, or None."""
@@ -302,7 +329,7 @@ class EventRecorder:
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
                                      destination, set(self.labels), self.notified,
-                                     followup))
+                                     followup, [tuple(s) for s in self.person_spans]))
         job.start()
         _jobs.append(job)
 

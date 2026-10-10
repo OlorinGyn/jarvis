@@ -10,6 +10,7 @@ docs/ARQUITETURA.md section 10.
 """
 
 import json
+import math
 import re
 import subprocess
 import threading
@@ -48,6 +49,9 @@ LEARN_THRESHOLD = 0.45
 SAME_FACE_THRESHOLD = 0.40
 SAMPLE_EVERY = 6
 MAX_SAMPLES = 60
+DENSE_EVERY = 2
+DENSE_MARGIN_SECONDS = 1.5
+MAX_DENSE_SAMPLES = 300
 THUMB_SIZE = 300
 THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
@@ -337,7 +341,7 @@ def _sighting_folder(when):
 
 
 def _describe(clip):
-    """(width, height, approximate frame count) read from ffmpeg's header text.
+    """(width, height, approximate frame count, fps) read from ffmpeg's header text.
 
     Running ffmpeg with only an input makes it print the stream description
     and stop, without decoding the video.
@@ -349,32 +353,62 @@ def _describe(clip):
     duration = re.search(r"Duration: (\d+):(\d+):([\d.]+)", header)
     rate = re.search(r"([\d.]+) fps", header)
     if not size:
-        return 0, 0, 0
+        return 0, 0, 0, 0.0
     width, height = int(size.group(1)), int(size.group(2))
-    total = 0
-    if duration and rate:
+    total, fps = 0, float(rate.group(1)) if rate else 0.0
+    if duration and fps:
         hours, minutes, seconds = duration.groups()
-        total = int((int(hours) * 3600 + int(minutes) * 60 + float(seconds)) * float(rate.group(1)))
-    return width, height, total
+        total = int((int(hours) * 3600 + int(minutes) * 60 + float(seconds)) * fps)
+    return width, height, total, fps
 
 
-def _sampled_frames(clip):
-    """Yield up to MAX_SAMPLES frames spread over the whole clip, at full size.
+def _windows(moments):
+    """Widen each (start, end) second range by the margin and merge the overlaps."""
+    merged = []
+    for start, end in sorted(moments):
+        start, end = max(start - DENSE_MARGIN_SECONDS, 0.0), end + DENSE_MARGIN_SECONDS
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return merged
+
+
+def _selection(total, fps, moments):
+    """The ffmpeg select expression and frame limit for one clip.
+
+    A sparse pass over the whole clip, plus every DENSE_EVERY-th frame where
+    persons were seen: a face is frontal and large enough for only a few
+    frames, and one frame in fourteen misses them (CONTEXTO 13.6, R20).
+    """
+    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
+    expression = f"not(mod(n\\,{step}))"
+    windows = _windows(moments)
+    if not windows:
+        return expression, MAX_SAMPLES
+    seconds = sum(end - start for start, end in windows)
+    dense = max(DENSE_EVERY, math.ceil(seconds * (fps or 15.0) / MAX_DENSE_SAMPLES))
+    inside = "+".join(f"between(t\\,{start:.2f}\\,{end:.2f})" for start, end in windows)
+    return f"{expression}+({inside})*not(mod(n\\,{dense}))", MAX_SAMPLES + MAX_DENSE_SAMPLES
+
+
+def _sampled_frames(clip, moments=()):
+    """Yield sampled frames of the clip at full size, denser around the given moments.
 
     Decoding goes through our own ffmpeg rather than cv2.VideoCapture: the
     camera sometimes sends a damaged block, and OpenCV's bundled decoder
     prints every one to the terminal with no way to silence it. ffmpeg's
     select filter also drops the unsampled frames before they reach the pipe.
     """
-    width, height, total = _describe(clip)
+    width, height, total, fps = _describe(clip)
     if not width or not height:
         return
-    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
+    expression, limit = _selection(total, fps, moments)
 
     process = subprocess.Popen(
         [ffmpeg_exe(), "-hide_banner", "-loglevel", "quiet", "-nostdin",
-         "-i", str(clip), "-vf", f"select=not(mod(n\\,{step}))",
-         "-fps_mode", "passthrough", "-frames:v", str(MAX_SAMPLES),
+         "-i", str(clip), "-vf", f"select={expression}",
+         "-fps_mode", "passthrough", "-frames:v", str(limit),
          "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         creationflags=NO_WINDOW)
@@ -391,23 +425,25 @@ def _sampled_frames(clip):
         process.wait()
 
 
-def scan_clip(clip, camera, started_at, gallery=None):
+def scan_clip(clip, camera, started_at, gallery=None, moments=()):
     """Find every distinct face in a finished clip and record the sightings.
 
-    One scan at a time: each event assembles in its own thread, and the face
-    and YOLO networks are shared objects that cannot run concurrently.
+    moments are (start, end) seconds into the clip where persons were seen;
+    the scan reads those densely. One scan at a time: each event assembles in
+    its own thread, and the face and YOLO networks are shared objects that
+    cannot run concurrently.
     """
     with _SCAN_LOCK:
-        return _scan_clip(clip, camera, started_at, gallery)
+        return _scan_clip(clip, camera, started_at, gallery, moments)
 
 
-def _scan_clip(clip, camera, started_at, gallery):
+def _scan_clip(clip, camera, started_at, gallery, moments):
     clip = Path(clip)
     if not clip.exists():
         return []
 
     observations = []
-    for frame in _sampled_frames(clip):
+    for frame in _sampled_frames(clip, moments):
         found = faces_in(frame)
         if found:
             bodies = people.person_boxes(frame)
