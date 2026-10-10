@@ -728,8 +728,9 @@ decidir.
 |---|---|---|---|
 | 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARQUITETURA 18) |
 | 2 | 09/10/2026 | `760d68e..67f7d23` — everything before production: logging, clean stop, per-install stream and port, R1–R3, R5, R8, `check_data`, `production.ps1` | 4 code problems fixed in `8a81084` (13.5); full production cycle tested including a forced rollback; HANDOFF integrated; R11–R14 opened; **first release `v2026.10.09` tagged** |
+| 3 | 10/10/2026 | `87e736b`, developer session 1 — R15, R16, R10 in part, R19, R20, R11 | no code fixed: the diff, `check_data`, the comment check and the redaction and `select` expressions all checked out; HANDOFF integrated; R18 raised to high, R21–R22 opened; release `v2026.10.10` tagged |
 
-**Last review covers up to the `v2026.10.09` release commit.** The next one
+**Last review covers up to the `v2026.10.10` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -764,17 +765,19 @@ subir de novo em 09/10.
 | | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | partly: `production.ps1` checks it; `instalar.bat` still does not |
 | ✓ | R8 | baixa | Falha de rede na página não aparece para o usuário | done `760d68e` (ARQUITETURA 17.8) |
 | | R9 | verificação | `python-preference = "system"` na máquina de desenvolvimento | aberta |
-| | R10 | **high** | Move everything except the conversation to English (user decision) | in progress: web, terminal, flags, notifications and new docs done; see 13.5 |
-| | R11 | **high** | `settings.save()` drops keys it does not know | open |
+| | R10 | **high** | Move everything except the conversation to English (user decision) | in progress; left: older docs, `ui.py`, `cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, Portuguese file names (13.7) |
+| ✓ | R11 | **high** | `settings.save()` drops keys it does not know | done `524b14f` (ARQUITETURA 19.2) |
 | | R12 | medium | Production and test copy on the same M900 double the CPU load | open |
 | | R13 | verification | The startup task survives a reboot, and restarts after a crash | partly: the 5-minute trigger fires and leaves the running copy alone (result 0, 09/10 23:16); reboot and crash still untested, see 13.6 |
 | | R14 | low | Live MJPEG is encoded once per viewer | open |
-| | R15 | **high** | ffmpeg opens console windows on the user's desktop | open — dev session 1 (14.4) |
-| | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | open — dev session 1 |
+| ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
+| ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
 | | R17 | medium | No way to tell why something was *not* recorded: a replay tool | open — dev session 2; was high until the "miss" proved not to be one |
-| | R18 | medium | The white dog lying on the Front mat is detected as `person` | open — needs R17 first |
-| | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | open — dev session 1 |
-| | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | open — dev session 1 |
+| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — now costs two false messages per event (13.7); needs R17 first |
+| ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARQUITETURA 12.9) |
+| ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARQUITETURA 12.9) |
+| | R21 | **high** | What the dense face scan costs live analysis on the M900 | open — verification, dev session 2 |
+| | R22 | medium | Nothing records where the dense scan looked | open — dev session 2 |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1069,6 +1072,53 @@ a **copy** of `22-29-22.mp4` in the test copy finds the user's face. Never
 write into `C:\JARVIS` from a test — copy the event into the test copy's
 `clips/` first.
 
+### 13.7 Review 3 — developer session 1
+
+Reviewed `2ed3fb4..87e736b`, the whole diff, against the HANDOFF's claims.
+Nothing needed fixing: the code does what the HANDOFF says, `check_data`
+reads all 150 events, no comments, and the two pieces worth re-running by
+hand behaved — the token is redacted both literal and `%3A`-encoded, and the
+`select` expression for a person seen 36–44 s into the clip comes out as
+`not(mod(n\,14))+(between(t\,34.50\,45.50))*not(mod(n\,2))`. The developer
+reproduced every problem before fixing it, which is what the `dev` skill asks.
+What changed is in ARQUITETURA 12.9, 18.7 and 19.2.
+
+**What the review weighed hardest:**
+
+1. **R20's cost is real and unmeasured where it matters.** A dense scan is
+   ~45 s of multi-threaded DNN per event with a person, on the same 4 cores as
+   live analysis. Capture drops frames rather than queueing them, so the cost
+   would show as fewer analysed frames — and temporal confirmation counts
+   frames, so a fast walker right after an event could go unconfirmed. On the
+   first night, 9 of 19 events had a person label. Released anyway: the face
+   message is what the user asked for, the sparse scan already took 12 s, and
+   the measurement needs production-like load. → **R21.**
+2. **R19 doubles R18's false alarms.** An event started by the dog on the mat
+   (detected as `person`) now sends its first message with the dog and, with no
+   face found, a follow-up with the best view — the dog again. → **R18 raised
+   to high.**
+3. **Where did the dense scan look?** Nothing logs or stores the spans, so the
+   clock alignment (spans and segment names both use the PC clock, so it
+   should hold) can only be confirmed by replay. → **R22.**
+
+**R21 — Measure what the dense scan costs live analysis (high, verification).**
+Count analysed frames per camera per minute — a counter in the `Core`, exposed
+in `/api/status` and logged once a minute while a scan runs — and compare the
+rate during a dense scan with the rate without one, on the M900 with
+production's load. If it falls by more than a third, options in order of
+cost: run the scan's DNN with fewer threads (`cv2.setNumThreads` is global, so
+this needs care), run YuNet only on the head region of person boxes, or scan
+with a lower priority.
+
+**R22 — Log where the dense scan looked (medium).** One INFO line per scan:
+the clip, the spans in seconds, frames read and time taken. Storing the spans
+in the event JSON, as the developer proposed, would also let
+`refazer_rostos.py` rescan densely; it is additive, so allowed, but not needed
+until a rescan is.
+
+**R10, left:** older documentation, `ui.py` (including its Telegram test text),
+`cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, and the
+Portuguese file names.
 ---
 
 ## 14. Sessions and token budget
@@ -1103,55 +1153,30 @@ disk, which is exactly why the roles hand over through files.
 | — | both | high / ultracode | 29/09–09/10 | everything before this table | not measured | — | one conversation since 29/09, compacted several times |
 | A3 | architect | ultracode | 09/10 23:10–23:40 | finish review 2's docs, check production's first night, diagnose the windows, R15–R18, plan dev session 1 (to 23:25: 25%); then the user's Tapo videos — contact sheets, a frame-by-frame face probe, R19–R20, plan revised (+9 points); then pandoc, the EPUB and its checker, the `dev` skill (+3 points) | 0% → 37% at 23:46 (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 32% | 106k → 223k tokens |
 | A4 | architect | ultracode | 09/10 23:50 – 10/10 00:31 | user's Tapo videos already counted in A3; here: the raid log, issue 1 (6 pages of SVG, page renders checked as images), its tool and section 15 | 37% → 61%, **shared with developer session 1 running at the same time** in another conversation — its own numbers are in its HANDOFF | 32% → 35% | 223k → 314k tokens |
+| D1 | developer | high | 10/10 00:00–00:30 | session 1: R15, R16, R10 in part, R19, R20, R11 (HANDOFF) | 39% → 52%: R15 3, R16 + R10 2, R19 4, R20 4, R11 and HANDOFF under 1 | 32% → 34% | 66k → 210k tokens |
+| A5 | architect | ultracode | 10/10 00:52–01:00 | review 3, HANDOFF integrated, release `v2026.10.10` | 77% → 82%: review and docs, about 5 points | 37% → 37% | 404k → 445k tokens |
 
-### 14.4 Next session: developer 1
+### 14.4 Next session: developer 2
 
-**How the architect prioritised** — the user asked for the criteria:
-
-1. **Production first.** It is the only copy that guards the house now;
-   anything that makes it miss, mislead or show something wrong comes before
-   new features.
-2. **What the user saw comes before what Claude predicted.** The windows and
-   the trip that "was not recorded" are observations; most of 13.4 is review
-   findings.
-3. **Data and security rules are not negotiable.** The bot token leaking into a
-   log is a security finding, so it rides with the first item that touches
-   notifications.
-4. **Bundle by file.** Items that touch the same files go in the same session:
-   one read of the code, one review.
-5. **Cheap and certain before large and uncertain**, and the session ends at a
-   reviewable delivery, not mid-item.
-6. **Proposals wait for the user.** Backlog items marked (proposto) are not in
-   the plan; the architect asks about them.
-
-**The plan, in order** (details and acceptance in 13.6):
+Developer session 1 finished its whole plan (R15, R16, R10 in part, R19, R20,
+R11), reviewed in 13.7. Same criteria as before (production first, what the
+user saw before what Claude predicted, data and security, bundle by file,
+cheap and certain first, proposals wait). In order:
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **R15** — no console windows | the user saw it; a closed window cuts a camera; small | `capture.py`, `clips.py`, `faces.py` |
-| 2 | **R16** — log notification outcomes, redact the token | security, and without it no one can answer "did the phone get it?" | `notify.py` |
-| 3 | **R10, the part in those files** — `capture.py` `TRANSLATIONS` and "FALHOU", `notify.discover_chat()` messages | same files as 1 and 2, nearly free now (criterion 4) | `capture.py`, `notify.py` |
-| 4 | **R19** — the event's picture shows the person | what made the user believe the trip was not recorded | `clips.py`, `notify.py`, `web.py`, `static/` |
-| 5 | **R20** — denser face scan where persons were seen | the face message that never came; `faces.py` is already open for item 1 | `faces.py`, `clips.py` |
-| 6 | **R11** — `settings.save()` keeps unknown keys | the never-break-files rule; tiny. The one that can wait if the budget runs out: nothing in this session adds a setting | `settings.py` |
+| 1 | **R21** — measure live analysis during a dense scan | production safety: the release just shipped the cost; cheap, and decides whether anything else must change first | `cameras.py`, `web.py` |
+| 2 | **R22** — log where the dense scan looked | rides with 1: same moment, same files open | `clips.py`, `faces.py` |
+| 3 | **R17** — `tools/replay.py` | the developer already built a replay by hand for R19; make it a tool | `tools/`, maybe a trace in `motion.py` / `people.py` |
+| 4 | **R18** — the dog on the mat as `person` | now two false messages per event; needs 3's data | `people.py`, maybe `clips.py` |
+| 5 | **R10, the code part** — `ui.py` text, `build_camera_list()` | small, and cleans what the user still sees in Portuguese | `ui.py`, `cameras.py` |
 
-`tools/check_data.py` must pass before committing: R19 adds a field to the
-event files, R11 touches `config.json`. The delivery ends as always:
-`HANDOFF.md`, then *"Arquiteto, precisamos da sua análise"*. After the review,
-a release goes to production, which is what finally removes the windows there.
+If the budget ends early, stop after 3: R18 deserves a session that starts
+with the replay's data in hand.
 
-**Not in this session, and why:**
-
-| Item | Why not now |
-|---|---|
-| R17 — replay tool | the trip was not a miss after all; first item of developer session 2 |
-| R18 — dog as person | needs R17's data first; tuning without it is guessing |
-| R6 — tests | worth a session of its own; R16 and R11 make good first targets for it |
-| R12 — two copies on one M900 | operational: run the test copy on the other computer or briefly |
-| R13 — reboot and crash | needs the user (13.6, item 5) |
-| R14, R7, R9 | low priority or a check on the other machine |
-| Backlog 3, stage 4 (People and Settings on the web) | the next feature, after production is trustworthy |
-| Backlog 1 and 2 (zones, daily health) | (proposto): asked on 09/10; the user decides on 10/10 |
+**Not in this session:** R6 (tests, a session of its own), R12 and R13
+(operational; R13 needs a reboot by the user), R14, R7, R9, backlog item 3
+stage 4 (the next feature), and backlog items 1–2, which wait for the user.
 ---
 
 ## 15. Raid log — the comic of each release

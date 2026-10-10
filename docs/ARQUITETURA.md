@@ -1870,6 +1870,60 @@ no name, `unknown face`. Messages are in English since 09/10/2026 (CLAUDE.md).
 **`notify_prefix`** in `config.json`, empty by default, is put in front of every
 message. The test copy uses `[TEST]` (18.7).
 
+### 12.9 The picture, the face that passes fast, and a trace of every message (10/10/2026)
+
+Developer session 1 answered what the first night of production showed
+(CONTEXTO 13.6): the user went out and came back, was recorded, and still
+believed they were not, because the event's picture was the dog and no face
+message came.
+
+**The event's picture is its best view of a person (R19).** While an event is
+open, `EventRecorder._consider_view()` keeps a copy of the frame where a person
+scores best, `confidence × box height` — height so that a person standing beats
+a dog lying down even when the detector calls the dog a person. At the end it
+is written as `HH-MM-SS.best.jpg`, and the event JSON gains the optional
+`best_thumbnail`. The page shows it when present; older events, and events with
+no person, keep showing the first frame, which is also kept on disk because it
+shows what triggered the event. `frame.copy()` matters: a numpy array is a
+reference to a buffer the capture keeps reusing.
+
+**The phone ends with a picture of the person.** The first message still goes
+at the start with the first frame — speed beats beauty there. After the clip
+is scanned, a notified event gets either the face messages (12.7) or, when no
+face was found, one more message with the best view — unless the best view is
+the very frame already sent.
+
+**Faces that are frontal for a fraction of a second (R20).** On the 22:29 clip
+only 4 or 5 of ~840 frames held a face that was both frontal and at least
+36 px wide, and one frame in fourteen missed them all. The recorder now notes
+the wall-clock spans when a person was seen (a gap over
+`PERSON_GAP_SECONDS` = 2 opens a new span); `_assemble` turns them into
+seconds into the clip, counted from the first segment's name, which is the PC
+clock at the moment ffmpeg opened it — the same clock the spans use. The scan
+then reads every `DENSE_EVERY` = 2nd frame inside those spans widened by
+`DENSE_MARGIN_SECONDS` = 1.5, plus the old sparse pass elsewhere, at most
+`MAX_DENSE_SAMPLES` = 300 extra frames. All of it is one ffmpeg `select`
+expression — `n` is the frame number, `t` its time, `+` is a logical or:
+
+```
+not(mod(n\,14))+(between(t\,34.50\,45.50))*not(mod(n\,2))
+```
+
+Measured on the M900 on that clip: sparse, 60 frames, 12 s, no face; dense,
+300 frames, **45 s**, the user found as "probably" (41 px, 0.421). YuNet costs
+~143 ms per 1080p frame there. `tools/refazer_rostos.py` does not know the
+spans, so a rescan stays sparse. **Open:** what 45 s of multi-threaded DNN
+does to live analysis on 4 cores (R21).
+
+**Every message leaves a line in the log (R16).** `Notification <camera>
+<labels>: sent` and `skipped: cooldown` at INFO, `failed: <detail>` at
+WARNING, so a check for warnings finds a failed send. `_allowed()` became
+`_wanted()` and `_cooled_down()` to tell the two skips apart; a label nobody
+asked for stays silent. **The token never reaches text:** a `requests`
+exception quotes the URL, and the URL holds the token (`/bot<token>/…`).
+`_redact()` removes it inside `_call()` and `discover_chat()`, the only places
+the token can enter a string, so no caller has to remember.
+
 ---
 
 ## 13. Restrição importante das câmeras Tapo
@@ -2527,7 +2581,14 @@ no console, and a console program started from a process without one gets a
 saw two windows that stayed (one capture per camera, titled with the ffmpeg
 path under `site-packages\imageio_ffmpeg`) and others that flashed (clip
 assembly and the face scan). Closing one kills that ffmpeg. The fix is in the
-code, not the script: start every subprocess with `CREATE_NO_WINDOW` (R15).
+code, not the script: every subprocess now starts with `CREATE_NO_WINDOW` (R15,
+10/10/2026) — C#'s `ProcessStartInfo.CreateNoWindow`. Checking it taught two
+things: a `conhost.exe` child is not a sign of a window (Windows creates one
+with the flag too, and with Windows Terminal the window belongs to
+`WindowsTerminal.exe`); what works is `AttachConsole(pid)` then
+`GetConsoleWindow()`, NULL without a window. And a script under `pythonw.exe`
+that captures a subprocess's output needs `stdin=subprocess.DEVNULL`, or it
+dies silently on an invalid handle.
 
 **An update**, in order, and where it stops:
 
@@ -2614,12 +2675,13 @@ migration with it (CLAUDE.md).
 |---|---|---|---|
 | `clips/<cam>/<day>/HH-MM-SS.mp4` | `clips._concat` | the user, the face scan, `tools/verificar_clipes.py` | the camera's own H.264, never re-encoded (8.1) |
 | `clips/<cam>/<day>/HH-MM-SS.jpg` | `EventRecorder._start` | Records, web, notification | first frame with the subject, boxes drawn (8.5) |
-| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason` |
+| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026** |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
+| `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen` |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
-| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026** |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
 | `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
 | `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
 | `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |
