@@ -35,7 +35,7 @@ exists behind `--window` until stage 4 replaces it.
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
-release `v2026.10.09`, started with Windows by a scheduled task. The folder
+release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. The folder
 above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
 INSTALACAO 9).
 
