@@ -2513,6 +2513,22 @@ middle of an update, on half-switched code. `main()` therefore refuses to start
 while `C:\JARVIS\HOLD` exists. `update` creates it before stopping and
 `start` removes it; `stop` leaves it in place, which is what "stop" should mean.
 
+**Two ways production starts, and they do not look the same** (seen on the
+first night, 09/10/2026):
+
+| Started by | Runs in | Visible? | At logoff |
+|---|---|---|---|
+| the task (boot, or the 5-minute trigger) | session 0, as S4U | nothing | keeps running |
+| `production.ps1` (`install`, `update`, `start`) | the logged-on user's session | **every ffmpeg it starts gets a console window** | ends with the session; the 5-minute trigger starts it again in session 0 |
+
+The windows come from how Windows treats console programs. `pythonw.exe` has
+no console, and a console program started from a process without one gets a
+**new** console window of its own. ffmpeg is a console program, so the user
+saw two windows that stayed (one capture per camera, titled with the ffmpeg
+path under `site-packages\imageio_ffmpeg`) and others that flashed (clip
+assembly and the face scan). Closing one kills that ffmpeg. The fix is in the
+code, not the script: start every subprocess with `CREATE_NO_WINDOW` (R15).
+
 **An update**, in order, and where it stops:
 
 1. Check the data with the **current** version. Unreadable already → refuse,

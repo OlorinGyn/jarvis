@@ -84,6 +84,12 @@ it, and ship a migration. `tools/check_data.py` reads every existing file with
 the current code; run it before committing anything that touches what is read
 from or written to disk.
 
+**Token budget (decided 09/10/2026).** The user is on Claude Pro and wants to
+learn how many developer and architect sessions fit in one 5-hour window. At
+the start and end of every session, read the plan usage (`get_usage`) and log
+it in `docs/CONTEXTO.md` section 14.3. Start each session in a new
+conversation; the planned scope for the next one is in 14.4.
+
 ## When opening this folder
 
 **Before answering anything,** run the resume routine in `docs/CONTEXTO.md`

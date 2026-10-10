@@ -21,8 +21,10 @@ Vigilância doméstica com duas câmeras TP-Link **Tapo C310** externas, via RTS
 O sistema detecta movimento, decide se é pessoa ou animal, grava o evento,
 reconhece rostos e permite cadastrar nomes.
 
-Interface OpenCV com três abas: **Live**, **Records** (gravações, com calendário
-e rolagem) e **People** (rostos, com cadastro de nome).
+Since 09/10/2026 the interface is a web page served by the service itself
+(**Live** and **Recordings**; People and Settings are stage 4, backlog item 3).
+The old OpenCV window, with **Live**, **Records** and **People** tabs, still
+exists behind `--window` until stage 4 replaces it.
 
 **Duas máquinas:**
 
@@ -31,6 +33,11 @@ e rolagem) e **People** (rostos, com cadastro de nome).
 | Máquina | Ryzen 9 7950X, 64 GB, RTX 4080 | Lenovo M900, i5 Skylake 4 núcleos, 16 GB |
 | Caminho | `D:\Personal Projects\J.A.R.V.I.S\jarvis` | `C:\Personal Projects\jarvis` |
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
+
+**Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
+release `v2026.10.09`, started with Windows by a scheduled task. The folder
+above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
+INSTALACAO 9).
 
 **A RTX 4080 é deliberadamente ignorada.** Nada aqui é treinado, e desenvolver
 no mesmo caminho de CPU que o M900 usará evita divergência entre as máquinas.
@@ -279,6 +286,7 @@ prioridade própria; as de prioridade **alta** vêm antes dos itens daqui.
 | ✓ | **Notificação no celular** (decidido) — Telegram com miniatura, aviso no começo do evento | ARQUITETURA 12 |
 | ✓ | **Rosto e nome na notificação** (decidido, 09/10) — segunda mensagem após a varredura, com o recorte do rosto e o nome se conhecido | ARQUITETURA 12.7 |
 | ✓ | **Núcleo sem janela** (decidido) — `--sem-janela`; gravar e avisar não dependem mais de ter alguém olhando | ARQUITETURA 15 |
+| ✓ | **17. Production and test environments** (decided, 09/10) — `C:\JARVIS` runs release `v2026.10.09` since 20:20 that day, started with Windows by a scheduled task; the dev folder is the test copy on `stream2`. Verified the same night: task ready, both cameras fresh, 19 events recorded. Still to verify: reboot and crash recovery (R13) | ARQUITETURA 18.7, INSTALACAO 9 |
 
 ### Crítico
 
@@ -312,20 +320,11 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    | ✓ | Estágio 1 — lista de eventos | feito 09/10 (ARQUITETURA 17.6) |
    | ✓ | Estágio 3 — ao vivo, rede local, atalho abre serviço + navegador | feito 09/10 (ARQUITETURA 17.7) |
    | | **Estágio 4 — People e Ajustes na web** | **próximo** |
-   | | Remover a janela do OpenCV (`ui.py`, `--janela`) e subir com o Windows, sem console | depois do 4 |
+   | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
+   | | Remove the OpenCV window (`ui.py`, `--window`) | after stage 4 |
    | | Estágio 2 — reprodução do vídeo na página | depois |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
-17. **Production and test environments** (decided 09/10/2026; design
-    proposed) — the user wants a production copy installed on the M900 and
-    always running, a process to update it, and a separate test copy to keep
-    evolving the system. Measured the same day: the cameras take one client on
-    `stream1` (1080p) but several on `stream2` (640x360), even alongside
-    `stream1` — so production keeps `stream1` and records in HD, and the test
-    copy watches the same cameras on `stream2`. Production runs only reviewed
-    release tags, as a Task Scheduler task with no console. Design, required
-    code changes and the two open decisions: ARQUITETURA 18. This also absorbs
-    the "remove the window and start with Windows" step of item 3.
 
 ### Importante
 
@@ -375,50 +374,76 @@ alguém propuser um deles, a resposta já está aqui.
 
 ```
 src/jarvis/
-  __init__.py     ROOT, a raiz do projeto
-  cameras.py      Core (vigilância, sem janela) + run_window / run_headless
-  capture.py      ffmpeg por câmera: segmentos originais + frames de análise
-  motion.py       camada 1: MOG2 + confirmação temporal
-  people.py       camada 2: YOLO via cv2.dnn, pessoas e animais
-  clips.py        camada 3: eventos, montagem sem perda, metadados
-  faces.py        camada 4: YuNet + SFace, galeria, cadastro de nome
-  archive.py      camada 5: move para o HD externo, apaga só lá se lotar
-  settings.py     configuração editável pela interface (config.json)
-  notify.py       aviso no celular via Telegram, com miniatura
-  ui.py           janela OpenCV: menu lateral e as quatro telas
-  web.py          interface web: FastAPI numa thread ao lado do Core
-  static/         a página web: index.html, style.css, app.js
-  geometry.py     tipo Detection e utilitários de caixas
+  __init__.py     ROOT, the project root
+  __main__.py     python -m jarvis
+  cameras.py      Core (surveillance, no window), main(), run_window / run_headless
+  capture.py      one ffmpeg per camera: original segments + analysis frames
+  motion.py       layer 1: MOG2 + temporal confirmation
+  people.py       layer 2: YOLO through cv2.dnn, people and animals
+  clips.py        layer 3: events, lossless assembly, metadata
+  faces.py        layer 4: YuNet + SFace, gallery, naming
+  archive.py      layer 5: moves to the external drive, deletes only there when full
+  settings.py     settings editable from the interface (config.json)
+  notify.py       phone notification through Telegram, with thumbnail and face
+  log.py          logging: console, crash hooks, logs/jarvis.log for the service
+  web.py          web interface: FastAPI in a thread beside the Core
+  static/         the web page: index.html, style.css, app.js
+  ui.py           old OpenCV window (--window), until web stage 4
+  geometry.py     Detection type and box utilities
 tools/
-  diagnostico.py  diagnóstico de captura (variantes, e --local sem câmera)
-  probe_rtsp.py   diagnóstico de RTSP puro (DESCRIBE → SETUP → PLAY)
-  gerar_epub.py   junta todos os .md num EPUB para e-reader
-  epub.css        estilo do EPUB, legível em tela de 7 polegadas
-  refazer_rostos.py  reconstrói faces/ a partir dos clipes gravados
-  verificar_clipes.py  conta blocos danificados por câmera num dia
-  gerar_icone.py  desenha o ícone do olho robótico em assets/jarvis.ico
-  criar_atalho.ps1   atalho com ícone na Área de Trabalho
-assets/           jarvis.ico e prévia PNG (gerados, mas versionados)
-docs/             ARQUITETURA, INSTALACAO, PYTHON e este arquivo
-instalar.bat      instalação numa máquina nova
-jarvis.bat        atalho para iniciar com janela
-jarvis_vigilancia.bat  só grava e avisa, sem janela (--sem-janela)
+  production.ps1  production on the M900: install, update, start, stop, status, check
+  check_data.py   reads every file on disk with the current code (ARQUITETURA 19)
+  diagnostico.py  capture diagnosis (variants, and --local without a camera)
+  probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
+  gerar_epub.py   joins every .md into one EPUB for an e-reader
+  epub.css        EPUB style, readable on a 7-inch screen
+  refazer_rostos.py  rebuilds faces/ from the recorded clips
+  verificar_clipes.py  counts damaged blocks per camera on one day
+  gerar_icone.py  draws the robotic-eye icon into assets/jarvis.ico
+  criar_atalho.ps1   desktop shortcut with the icon
+assets/           jarvis.ico and a PNG preview (generated, but versioned)
+docs/             ARQUITETURA, INSTALACAO, PYTHON and this file
+CLAUDE.md         instructions for Claude Code (roles, language, rules)
+HANDOFF.md        developer → architect notes; empty between deliveries
+instalar.bat      install on a new machine
+jarvis.bat        start the service and open the browser
+jarvis_vigilancia.bat  service only, no browser (--headless)
 ```
 
-Estrutura explicada em ARQUITETURA seção 3.
+Structure explained in ARQUITETURA section 3.
 
-Não versionados: `.env` (credenciais), `models/` (~73 MB, baixados sob demanda),
-`clips/`, `faces/`, `backups/` (cópias que as ferramentas fazem antes de mexer
-em dados).
+Not versioned: `.env` (credentials), `config.json` (Telegram token),
+`models/` (~73 MB, downloaded on demand), `clips/`, `faces/`, `backups/`
+(copies the tools make before touching data), `logs/` and `HOLD`.
+
+**Outside the repository:** `C:\JARVIS` on the M900 is production — a clone of
+the same GitHub repository checked out at a release tag, with its own `.env`,
+`config.json`, `clips/`, `faces/` and `logs/`. Never edit it by hand;
+`tools/production.ps1` is the only thing that changes it (ARQUITETURA 18.7).
 
 ## 10. Comandos úteis
 
+Production, on the M900 (prefix every line with
+`powershell -ExecutionPolicy Bypass -File`):
+
 ```bat
-jarvis.bat                                              iniciar
-http://127.0.0.1:8765                                   ao vivo e gravações (com o programa rodando)
-uv run python -m jarvis --sem-janela                    só o serviço, sem abrir navegador
-uv run python -m jarvis --janela                        janela antiga do OpenCV (provisória)
-uv run jarvis                                           iniciar, sem o .bat
+tools\production.ps1 -Action status      version, task, port, age of each camera's last frame
+tools\production.ps1 -Action update      to the latest release tag; rolls back on its own if it fails
+tools\production.ps1 -Action stop        stays stopped, even after a reboot, until start
+tools\production.ps1 -Action start       releases the hold and starts
+tools\production.ps1 -Action check       tools/check_data.py against production's data
+C:\JARVIS\logs\jarvis.log                what production did
+http://127.0.0.1:8765                    production's page (another computer: http://192.168.0.18:8765)
+```
+
+Test copy and tools, from this folder:
+
+```bat
+jarvis.bat                                              test copy: service + browser (port 8766 here)
+uv run python -m jarvis --headless                      service only, no browser
+uv run python -m jarvis --window                        old OpenCV window (until web stage 4)
+uv run python -m jarvis --stop                          stop the copy running from this folder, cleanly
+uv run python tools/check_data.py                       can the current code read every file on disk?
 uv run tools/diagnostico.py Front                       testar variantes de captura
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
 uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
@@ -572,6 +597,19 @@ O `uv sync` porque as dependências mudam entre commits. Em 09/10/2026 entraram
 `origin` do `git clone` e foi renomeado em 09/10/2026, para os comandos desta
 seção valerem igual. Numa máquina nova: `git remote rename origin jarvis`.
 
+**On the M900, check production too:**
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action status
+```
+
+Every camera's last frame should be a few seconds old at most. Anything else —
+HELD when nobody stopped it, not running, an old frame — goes to the user
+before anything else, with the tail of `C:\JARVIS\logs\jarvis.log`.
+
+**Record the usage at the start of the session** (section 14): plan usage from
+the `get_usage` tool, one row in 14.3, filled in at the end.
+
 **Confira se o Python ainda roda.** Se o `uv sync` ou o `uv run` falhar com
 `Failed to spawn: python` ou `WinError 4551`, é o Smart App Control bloqueando
 um interpretador sem assinatura. A saída está em INSTALACAO 1.2 — Python
@@ -608,6 +646,10 @@ você conseguia rodar.
 Leia também as recomendações **abertas** da seção 13 (revisão de arquitetura).
 As de prioridade alta vêm antes do próximo item do backlog, a menos que o
 usuário diga outra coisa.
+
+**If section 14.4 holds a planned session for your role, that is the plan** —
+the architect wrote it with the order and the reasons. Follow it, and say so
+when you deviate.
 
 ### 12.4 O que não viaja pelo git, e o que fazer
 
@@ -711,8 +753,12 @@ subir de novo em 09/10.
 | | R10 | **high** | Move everything except the conversation to English (user decision) | in progress: web, terminal, flags, notifications and new docs done; see 13.5 |
 | | R11 | **high** | `settings.save()` drops keys it does not know | open |
 | | R12 | medium | Production and test copy on the same M900 double the CPU load | open |
-| | R13 | verification | The startup task survives a reboot, and restarts after a crash | open |
+| | R13 | verification | The startup task survives a reboot, and restarts after a crash | partly: the 5-minute trigger fires and leaves the running copy alone (result 0, 09/10 23:16); reboot and crash still untested, see 13.6 |
 | | R14 | low | Live MJPEG is encoded once per viewer | open |
+| | R15 | **high** | ffmpeg opens console windows on the user's desktop | open — dev session 1 (14.4) |
+| | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | open — dev session 1 |
+| | R17 | **high** | No way to tell why something was *not* recorded: a replay tool | open — dev session 1 |
+| | R18 | medium | The white dog lying on the Front mat is detected as `person` | open — needs R17 first |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -875,3 +921,169 @@ every section written since 09/10/2026. Still Portuguese: older documentation,
 `capture.py` error messages (`TRANSLATIONS`, "FALHOU - ..."), `ui.py`,
 `notify.discover_chat()`, and the Portuguese file names in `tools/` and the
 `.bat` files.
+
+### 13.6 The first night of production — 09/10/2026
+
+The architect checked the install at 23:14, two hours after it went live.
+
+**Healthy.** `status`: `v2026.10.09`, task ready, port 8765, both cameras'
+last frame 0.0 s old. The task is S4U with the boot and 5-minute triggers, no
+time limit, last result 0, no `HOLD`. The log has no warning or error since
+the start at 20:20:55, and 19 events: 7 on Front, 12 on Back.
+
+**What the user reported, and what was found:**
+
+1. **Windows named "site-pack…" — two that stayed, others that flashed.**
+   Production's ffmpeg. The install started production in the user's session
+   (session 6), not through the task, and every console program started from
+   `pythonw.exe` gets a window of its own (ARQUITETURA 18.7). The two that
+   stay are the captures, the ones that flash are clip assembly and the face
+   scan. Closing one kills that ffmpeg. → **R15.**
+2. **Not recorded going out for a delivery, nor coming back.** The time is not
+   known yet. What the data says: **nothing recorded anything between
+   30/09 22:54 and 09/10 20:21** — the test copy only ran for tests (its last
+   clip is from 30/09), and production started at 20:20:55. After that, Front
+   recorded people at 20:23:07 (at the door) and 20:26:31, then nothing with a
+   person until 22:29 (which is the dog, item 3). So if the trip was before
+   20:20 there was no system running; if it was after, it is either one of
+   those two events or a real miss, and today nothing can tell which: the log
+   says what was recorded, never what was seen and dropped. → **R17**, and the
+   user can export the trip from the Tapo app to replay it.
+
+**Found while looking:**
+
+3. **The white dog lying on the dark mat (or bed) at the bottom of the Front
+   frame is detected as `person`** — 0.64 at 20:29:03, 0.72 at 22:29:22 (the
+   thumbnails show the box around the dog and the mat). Each one records as a
+   person event and notifies "person". → **R18.**
+4. **Nobody can tell whether a notification went out.** `notify.event()` sends
+   in a thread and throws the result away; a failed send leaves no trace. →
+   **R16.**
+5. **R13, crash test not run.** The architect tried to kill production's
+   process to time the restart; Claude Code's auto mode refused it as
+   interfering with a running workload. Left for the user: a reboot tests the
+   boot trigger and, as a bonus, brings production back in session 0, without
+   windows, until R15 ships.
+
+**New recommendations:**
+
+**R15 — ffmpeg console windows (high).** Start every subprocess in `src/` with
+`creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)` — the flag only
+exists on Windows, hence the `getattr`. Four places: `capture.py`
+(`FFmpegCamera.start`), `clips.py` (`_concat`), `faces.py` (`_describe`,
+`_sampled_frames`). Not `clips.reveal`, which opens Explorer on purpose. One
+shared constant, not four copies. Acceptance: reproduce first — start the test
+copy with `pythonw.exe -m jarvis --headless` from PowerShell
+(`Start-Process`), and `Get-Process | Where-Object MainWindowTitle -like
+'*ffmpeg*'` lists the windows; after the fix it lists nothing, also while a
+clip is assembled. Production gets it with the next release.
+
+**R16 — Log every notification outcome, without the token (high).** Log at
+INFO, per attempt: camera, labels, and `sent`, `failed: <Telegram's
+description>` or `skipped: cooldown`. Same for each face message of
+`faces_seen`. **Security:** a `requests` exception message contains the URL,
+and the URL contains the bot token (`/bot<token>/sendPhoto`). Redact it inside
+`_call()`, before the detail reaches anyone — the log, a future Settings page,
+a Telegram error — not at each caller. Acceptance: in the test copy, with a
+wrong token and with the network cut, the log shows the failure and the token
+appears nowhere (`Select-String` for the real token in `logs/` finds nothing).
+
+**R17 — A replay tool: why was this not recorded? (high).** Missing a person
+is the system failing its purpose, and today a miss cannot be diagnosed. Add
+`tools/replay.py <video>`: it reads any video (a clip, or one exported from the
+Tapo app), scales it to the analysis size the way `capture.py` does, feeds it
+at `ANALYSIS_FPS` through the **real** `MotionDetector` and
+`SubjectDetector`, and prints, per frame, what each layer kept and what it
+dropped, and why — too small, not confirmed, lighting change, below
+`MIN_PERSON_HEIGHT_FRACTION`, no motion overlap, static spot. If the classes
+do not expose the reason, add an optional trace (a callback or a list) that
+changes nothing when absent. `people.py` uses the clock (`MIN_INTERVAL`,
+static spots): drive it with the video's time, not the wall clock, or a replay
+faster than real time will decide differently from production. Acceptance: on
+`Front/2026-10-09/20-29-03.mp4` it shows the dog detected as `person`; on
+`20-23-07.mp4`, the person at the door; on the trip's video, if the user
+exports it, the layer that dropped it.
+
+**R18 — Dog on the mat as `person` (medium).** Do not tune before R17 shows
+which frames and scores produce it. Candidate fixes, to choose with the data:
+backlog item 1 (zones), or a rule against "persons" that never stand up in a
+spot where a static object lives. Note that `notify_labels` is `person`, so
+every one of these is a false alarm on the phone too.
+
+---
+
+## 14. Sessions and token budget
+
+### 14.1 Why — decided by the user on 09/10/2026
+
+The plan is **Claude Pro**: a usage limit that resets every **5 hours**, and a
+weekly one. The user wants to learn how many developer and architect sessions
+fit in one 5-hour window, so each session can be scoped to use it well instead
+of stopping halfway. Nothing here is guessed: a row is a measurement.
+
+### 14.2 How to measure
+
+At the start and at the end of every session, Claude reads the plan usage with
+the desktop app's `get_usage` tool (5-hour %, weekly %, reset time) and the
+conversation's context size, and fills one row of 14.3. A session is one role's
+stint — a developer delivery or an architect review — even when both happen in
+the same conversation.
+
+What drives the cost, as far as one night shows: every turn re-sends the whole
+conversation, so a long conversation makes every later step expensive. In this
+one, ~50k of the context are tool definitions alone. **Start each session in a
+new conversation**: the resume routine (section 12) reads what is needed from
+disk, which is exactly why the roles hand over through files.
+
+### 14.3 Log
+
+| # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
+|---|---|---|---|---|---|---|---|
+| — | both | high / ultracode | 29/09–09/10 | everything before this table | not measured | — | one conversation since 29/09, compacted several times |
+| A3 | architect | ultracode | 09/10 23:10–23:25 | finish review 2's docs, check production's first night, diagnose the windows and the missed trip, R15–R18, plan dev session 1 | 0% → 25% (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 30% | 106k → 144k tokens |
+
+### 14.4 Next session: developer 1
+
+**How the architect prioritised** — the user asked for the criteria:
+
+1. **Production first.** It is the only copy that guards the house now;
+   anything that makes it miss, mislead or show something wrong comes before
+   new features.
+2. **What the user saw comes before what Claude predicted.** The windows and
+   the missed trip are observations; most of 13.4 is review findings.
+3. **Data and security rules are not negotiable.** The bot token leaking into a
+   log is a security finding, so it rides with the first item that touches
+   notifications.
+4. **Bundle by file.** Items that touch the same files go in the same session:
+   one read of the code, one review.
+5. **Cheap and certain before large and uncertain**, and the session ends at a
+   reviewable delivery, not mid-item.
+6. **Proposals wait for the user.** Backlog items marked (proposto) are not in
+   the plan; the architect asks about them.
+
+**The plan, in order** (details and acceptance in 13.6):
+
+| | Item | Why here | Files |
+|---|---|---|---|
+| 1 | **R15** — no console windows | the user saw it; a closed window cuts a camera; small | `capture.py`, `clips.py`, `faces.py` |
+| 2 | **R16** — log notification outcomes, redact the token | security, and without it no one can answer "did the phone get it?" | `notify.py` |
+| 3 | **R10, the part in those files** — `capture.py` `TRANSLATIONS` and "FALHOU", `notify.discover_chat()` messages | same files as 1 and 2, nearly free now (criterion 4) | `capture.py`, `notify.py` |
+| 4 | **R11** — `settings.save()` keeps unknown keys | the never-break-files rule; small; must land before any version adds a setting | `settings.py` |
+| 5 | **R17** — `tools/replay.py` | the core purpose: today a miss cannot be diagnosed. Largest item, so last; if the budget ends first, stop after 4 and deliver | `tools/`, maybe a trace hook in `motion.py` / `people.py` |
+
+`tools/check_data.py` must pass before committing (4 touches `config.json`).
+The delivery ends as always: `HANDOFF.md`, then *"Arquiteto, precisamos da sua
+análise"*. After the review, a release with 1–4 goes to production, which is
+what finally removes the windows there.
+
+**Not in this session, and why:**
+
+| Item | Why not now |
+|---|---|
+| R18 — dog as person | needs R17's data first; tuning without it is guessing |
+| R6 — tests | worth a session of its own; R16 and R11 make good first targets for it |
+| R12 — two copies on one M900 | operational: run the test copy on the other computer or briefly |
+| R13 — reboot and crash | needs the user (13.6, item 5) |
+| R14, R7, R9 | low priority or a check on the other machine |
+| Backlog 3, stage 4 (People and Settings on the web) | the next feature, after production is trustworthy |
+| Backlog 1 and 2 (zones, daily health) | (proposto): asked to the user on 09/10, answer pending |
