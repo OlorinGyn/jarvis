@@ -35,7 +35,7 @@ page, with Live, Recordings, People and Settings, is the only interface.
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
-release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. And to `v2026.10.10.4` at 15:37: 205 events read before and after; then, as the user decided, production was stopped, its `faces/` deleted and started again — the gallery is empty, waiting for the user to name the people again. The folder
+release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. And to `v2026.10.10.4` at 15:37: 205 events read before and after; then, as the user decided, production was stopped, its `faces/` deleted and started again — the gallery is empty, waiting for the user to name the people again. And to `v2026.10.10.5` at 16:45 (R25, tests). The folder
 above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
 INSTALACAO 9).
 
@@ -794,6 +794,7 @@ subir de novo em 09/10.
 | ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARQUITETURA 12.10) |
 | ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
 | ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
+| | R26 | low | Production installs the development tools (pytest, httpx2) | open — dev session 6: `uv sync --frozen --no-dev` in `production.ps1` |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1289,7 +1290,7 @@ disk, which is exactly why the roles hand over through files.
 | D4 | developer | high | 10/10 14:35–15:30 | session 4: R24, backlog 19 and 20, window removed | 43% → 62%: R24 5, backlog 19 10, backlog 20 2, window 2 | 48% → 50% | 412k → 505k, old conversation |
 | A9 | architect | ultracode | 10/10 15:35–15:55 | the face-message question, review 6, R25, release and deploy `v2026.10.10.4`, gallery deleted, script 5 | 64% → 68% | 50% → 51% | 610k → 645k tokens |
 | D5 | developer | high | 10/10 15:40–15:50 | session 5: R25, R6 (23 tests) | see its HANDOFF; small | — | 509k at the start, old conversation |
-| A10 | architect | ultracode | 10/10 16:00– | review 7, httpx2 check, backlog 21, release `v2026.10.10.5`, script 6 | (filled at the end) | | 650k → |
+| A10 | architect | ultracode | 10/10 16:00–16:50 | review 7, httpx2 check, backlog 21, release and deploy `v2026.10.10.5`, script 6 | 68% → 78% (shared with developer session 5 in the same window) | 51% → 52% | 650k → 663k tokens |
 
 ### 14.4 Next session: developer 6
 
@@ -1298,6 +1299,7 @@ Developer session 5 did its whole plan (R25, R6) in about 10 minutes.
 | | Item | Why here | Files |
 |---|---|---|---|
 | 1 | **Backlog 21** — the favourite photo per person | the user's request; small, and the tests from R6 make it safe to touch the gallery | `faces.py`, `web.py`, `static/`, `tools/check_data.py`, `tests/` |
+| 2 | **R26** — `--no-dev` in `production.ps1`'s `uv sync`: the deploy of `v2026.10.10.5` installed pytest and httpx2 into production | one flag; production needs no test tools | `tools/production.ps1` |
 
 Run `uv run pytest` before every commit from now on, and add a test for each change to the gallery or the guard. **Start in a new conversation** — session 5 began at 509k tokens.
 
