@@ -169,6 +169,12 @@ class SubjectDetector:
         self.subjects = []
         self.static = []
         self.cycle = 0
+        self.trace = None
+
+    def _drop(self, reason, subject):
+        """Note why a detection was dropped, when someone asked for a trace."""
+        if self.trace is not None:
+            self.trace.append((reason, subject))
 
     def _note_position(self, subject, now):
         """Record where this detection is, and return its static-spot record."""
@@ -187,19 +193,27 @@ class SubjectDetector:
         """Drop detections pinned to a spot that has not moved for STATIC_HITS cycles."""
         self.cycle += 1
         self.static = [s for s in self.static if now - s.last_seen < STATIC_TTL]
-        kept = [s for s in subjects if not self._note_position(s, now).is_scenery]
+        kept = []
+        for subject in subjects:
+            if self._note_position(subject, now).is_scenery:
+                self._drop("static spot", subject)
+            else:
+                kept.append(subject)
         for spot in self.static:
             if spot.last_cycle != self.cycle:
                 spot.hits = 0
         return kept
 
-    def detect(self, frame, motion_boxes):
-        """Return a list of Detection in full-frame pixels."""
+    def detect(self, frame, motion_boxes, now=None):
+        """Return a list of Detection in full-frame pixels.
+
+        now defaults to the monotonic clock; a replay passes the video's time.
+        """
         if not motion_boxes:
             self.subjects = []
             return self.subjects
 
-        now = time.monotonic()
+        now = time.monotonic() if now is None else now
         if now - self.last_run < MIN_INTERVAL:
             return self.subjects
         self.last_run = now
@@ -207,14 +221,22 @@ class SubjectDetector:
         minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
         found = []
         for box, confidence, class_id in _raw_detections(self.model, frame):
+            detection = Detection(*box, confidence, CLASS_NAMES[class_id])
             if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
+                self._drop("animal below confidence", detection)
                 continue
             if class_id == PERSON_CLASS and box[3] < minimum_person:
+                self._drop("person too short", detection)
                 continue
             if REQUIRE_MOTION_OVERLAP and not any(
                     overlap_area(box, m) for m in motion_boxes):
+                self._drop("no motion overlap", detection)
                 continue
-            found.append(Detection(*box, confidence, CLASS_NAMES[class_id]))
+            found.append(detection)
 
-        self.subjects = self._reject_scenery(drop_duplicates(found), now)
+        unique = drop_duplicates(found)
+        for subject in found:
+            if subject not in unique:
+                self._drop("duplicate", subject)
+        self.subjects = self._reject_scenery(unique, now)
         return self.subjects

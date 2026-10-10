@@ -60,6 +60,12 @@ class MotionDetector:
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         self.frames_seen = 0
         self.candidates = []
+        self.trace = None
+
+    def _drop(self, reason, box=None):
+        """Note why a blob was dropped, when someone asked for a trace."""
+        if self.trace is not None:
+            self.trace.append((reason, box))
 
     @property
     def warming_up(self):
@@ -80,6 +86,7 @@ class MotionDetector:
         mask = self.subtractor.apply(small)
         self.frames_seen += 1
         if self.warming_up:
+            self._drop("warming up")
             return []
 
         _, mask = cv2.threshold(mask, 200, 255, cv2.THRESH_BINARY)
@@ -88,6 +95,7 @@ class MotionDetector:
         mask[int(top * mh):int(bottom * mh), int(left * mw):int(right * mw)] = 0
 
         if cv2.countNonZero(mask) > MAX_MOTION_FRACTION * mask.size:
+            self._drop("whole frame changed")
             return []
 
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.kernel,
@@ -99,21 +107,24 @@ class MotionDetector:
         gray = background = None
         boxes = []
         for contour in contours:
-            if cv2.contourArea(contour) < MIN_AREA:
-                continue
             x, y, bw, bh = cv2.boundingRect(contour)
+            full = (int(x / scale), int(y / scale), int(bw / scale), int(bh / scale))
+            if cv2.contourArea(contour) < MIN_AREA:
+                self._drop("too small", full)
+                continue
             if gray is None:
                 gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
                 background = cv2.cvtColor(self.subtractor.getBackgroundImage(),
                                           cv2.COLOR_BGR2GRAY)
             inside = changed[y:y + bh, x:x + bw] > 0
             if inside.sum() < MIN_CHANGED_PIXELS:
+                self._drop("few changed pixels", full)
                 continue
             if correlation(gray[y:y + bh, x:x + bw][inside],
                            background[y:y + bh, x:x + bw][inside]) >= LIGHTING_CORRELATION:
+                self._drop("lighting change", full)
                 continue
-            boxes.append((int(x / scale), int(y / scale),
-                          int(bw / scale), int(bh / scale)))
+            boxes.append(full)
         return boxes
 
     def _confirm(self, boxes):
@@ -139,4 +150,7 @@ class MotionDetector:
         self.candidates = [c for c in self.candidates if c.misses <= FORGET_FRAMES]
         self.candidates.extend(_Candidate(box) for box in unmatched)
 
+        for candidate in self.candidates:
+            if not candidate.confirmed and candidate.misses == 0:
+                self._drop(f"not confirmed ({candidate.hits}/{CONFIRM_FRAMES})", candidate.box)
         return [c.box for c in self.candidates if c.confirmed and c.misses == 0]
