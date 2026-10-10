@@ -360,7 +360,7 @@ Funciona sem, mas incompleto.
     busca
 14. **OpenVINO no M900** (proposto) — o `cv2.dnn` aceita esse backend, e era o
     plano para recuperar a velocidade perdida ao sair do PyTorch
-15. **Re-ID de animais** (wanted by the user since 10/10, with item 19; needs research first) — classificador sobre o corpo inteiro
+15. **Re-ID de animais** — **researched 10/10/2026, parked: no solution good enough for its cost now** (the user accepted that outcome in advance). *Measured:* the cheapest idea, telling the dogs apart by fur tone (works day and night in principle, since IR keeps white bright and black dark), failed on production's data: 168 dog detections in 89 events give a continuous spread of median tones from 7 to 249, with no clusters — a box holds the mat, the floor, sun and shade as much as the dog. *Read:* the models made for it are MegaDescriptor (WildlifeDatasets; Swin and EfficientNet variants on Hugging Face, best published for animals) and frozen DINOv2 with nearest-neighbour matching (weaker; a community dog model reports about 0.54 top-1 on whole-body dogs). Neither ships as ONNX: export needs PyTorch on the development PC, the run would be `onnxruntime` or a newer `cv2.dnn`, at an unmeasured CPU cost per crop on the M900. *What it would take:* a dog gallery the user labels by hand, a new model, and two or three sessions; expected to work on clear daytime views and poorly at night or with the dog lying down. Revisit only if knowing *which* dog becomes worth that. Today every event already says *that* a dog was there (item 20). — classificador sobre o corpo inteiro
     (ARQUITETURA 10.8)
 
 ### Fora de software
@@ -1297,7 +1297,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next session: developer 7
 
-**Nothing is planned.** Every decided item and every open recommendation of priority medium or above is done. Left: R10 (the older docs, the architect's own work, and `tools/diagnostico.py` with the Portuguese file names), R12, R14, R7, R9 (low), and what waits for the user — backlog items 1–2 (zones, daily health) and 15 (animal identity, research first). The next session starts from the user's next request.
+**Nothing is planned.** Every decided item and every open recommendation of priority medium or above is done. Left: R10 (the older docs, the architect's own work, and `tools/diagnostico.py` with the Portuguese file names), R12, R14, R7, R9 (low), and what waits for the user — backlog items 1–2 (zones, daily health) and 15 is parked after research (section 8). The next session starts from the user's next request.
 
 ---
 
