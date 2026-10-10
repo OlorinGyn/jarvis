@@ -331,7 +331,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
-22. **A Dogs tab: each household teaches the system its own dogs** (decided 10/10/2026). The user confirmed the two-dog measurement (item 15) — the dark group is Mirana, the light one Aurora — and set the rule: **nothing about their dogs goes into the code.** The software is not only for this house; anyone must be able to teach it their own animals. So it mirrors People: (a) every dog detection keeps a crop cut out of its box (GrabCut) and an **appearance descriptor** computed from the fur pixels only — a normalised tone histogram, plus hue and saturation when the frame is in colour; (b) a **Dogs** tab next to People: a grid of named dogs, the unnamed crops with a name field and "Belongs to…", and a dog page with its views, favourite photo and calendar — the same screens and rules as items 19 and 21; (c) a dog gallery in its own folder, `dogs/` (`gallery.json` + `views/`), new files only, read by `check_data`; (d) matching by nearest neighbour against each named dog's views, **day views compared with day views and infrared with infrared**, and a name given only when the nearest dog is clearly closer than the second and within a distance limit — otherwise just "dog"; (e) the event's `animals` list, the Recordings card and the Telegram text use the names. **Notification rule (the user, 10/10):** the alert is about *a dog being there*, not about knowing which — so whenever a dog is detected and `dog` is among the alert labels, notify, and word it by certainty, the same three levels as faces (12.8): a clear match → the dog's name; a weak one → "probably <name>"; none → "unidentified dog". The thresholds start conservative and are tuned as the named views grow; if the patterns never firm up, the feature still works as "a dog was there", which is what exists today. Dogs that look alike stay "dog", which is the honest answer. Acceptance on this house's data: after the user names a few crops of each, production's past dog events are named correctly in most clear cases and at night, with no colour rule anywhere in the code. Supersedes item 15's model research.
+22. **Done in code 10/10 (`v2026.10.10.7`, ARQUITETURA 20); the thresholds wait for the user's names.** **A Dogs tab: each household teaches the system its own dogs** (decided 10/10/2026). The user confirmed the two-dog measurement (item 15) — the dark group is Mirana, the light one Aurora — and set the rule: **nothing about their dogs goes into the code.** The software is not only for this house; anyone must be able to teach it their own animals. So it mirrors People: (a) every dog detection keeps a crop cut out of its box (GrabCut) and an **appearance descriptor** computed from the fur pixels only — a normalised tone histogram, plus hue and saturation when the frame is in colour; (b) a **Dogs** tab next to People: a grid of named dogs, the unnamed crops with a name field and "Belongs to…", and a dog page with its views, favourite photo and calendar — the same screens and rules as items 19 and 21; (c) a dog gallery in its own folder, `dogs/` (`gallery.json` + `views/`), new files only, read by `check_data`; (d) matching by nearest neighbour against each named dog's views, **day views compared with day views and infrared with infrared**, and a name given only when the nearest dog is clearly closer than the second and within a distance limit — otherwise just "dog"; (e) the event's `animals` list, the Recordings card and the Telegram text use the names. **Notification rule (the user, 10/10):** the alert is about *a dog being there*, not about knowing which — so whenever a dog is detected and `dog` is among the alert labels, notify, and word it by certainty, the same three levels as faces (12.8): a clear match → the dog's name; a weak one → "probably <name>"; none → "unidentified dog". The thresholds start conservative and are tuned as the named views grow; if the patterns never firm up, the feature still works as "a dog was there", which is what exists today. Dogs that look alike stay "dog", which is the honest answer. Acceptance on this house's data: after the user names a few crops of each, production's past dog events are named correctly in most clear cases and at night, with no colour rule anywhere in the code. Supersedes item 15's model research.
 
 21. **Done 10/10 (`v2026.10.10.6`).** **A favourite photo per person** (decided 10/10/2026). On the person's page the user picks which of the stored views is the photo shown on the People grid. Additive: an optional `cover` per person in `gallery.json`, the portable path of the chosen view's crop; the grid uses it when set and the file exists, otherwise today's `thumbnail`. When the favourite view is removed (`remove_view`) or merged away, `cover` falls back to the first view that has a photo. The write goes through the R24 guard; `check_data` and `tests/test_gallery.py` cover the new key.
 
@@ -745,8 +745,9 @@ decidir.
 | 6 | 10/10/2026 | `3a91964..5eb8964`, developer session 4 — R24, backlog 19 and 20, the window removed | no code fixed; R25 decided from the user's question about face messages; release `v2026.10.10.4`; production's gallery deleted at the deploy, as the user decided |
 | 7 | 10/10/2026 | `5eb8964..0707670`, developer session 5 — R25, R6 | no code fixed; 23 tests pass; the new `httpx2` dependency checked as legitimate; backlog 21 added; release `v2026.10.10.5` |
 | 8 | 10/10/2026 | `0707670..7bde4db`, developer session 6 — backlog 21, R26 | no code fixed; 29 tests pass; release `v2026.10.10.6` |
+| 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production |
 
-**Last review covers up to the `v2026.10.10.6` release commit.** The next one
+**Last review covers up to the `v2026.10.10.7` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -798,6 +799,7 @@ subir de novo em 09/10.
 | ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
 | ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
 | ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
+| | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | open — dev session 8: keep the newest unnamed dog entries only (named ones never), plus a "dismiss" on each |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1296,15 +1298,17 @@ disk, which is exactly why the roles hand over through files.
 | A10 | architect | ultracode | 10/10 16:00–16:50 | review 7, httpx2 check, backlog 21, release and deploy `v2026.10.10.5`, script 6 | 68% → 78% (shared with developer session 5 in the same window) | 51% → 52% | 650k → 663k tokens |
 | D6 | developer | high | 10/10 16:10–16:20 | session 6: backlog 21, R26 | 81% → 84% | 53% → 53% | 542k → 560k, old conversation |
 | A11 | architect | ultracode | 10/10 16:25–16:35 | review 8, release and deploy `v2026.10.10.6`, script 7 | 86% → about 89% | 53% → 53% | 669k → 680k tokens |
+| D7 | developer | high | 10/10 evening | session 7: backlog 22 parts 1 and 2 | 10% → 23% (new window) | 56% → 57% | 564k → 635k, old conversation |
+| A12 | architect | ultracode | 10/10 21:00– | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → (end) | 59% → | 705k → |
 
-### 14.4 Next session: developer 7
+### 14.4 Next session: developer 8
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **Backlog 22, part 1** — dog crops and descriptors from the post-event scan, the `dogs/` gallery, the Dogs tab with naming | the user's decision; the measurement in item 15 shows it can work | `clips.py`, a new `dogs.py`, `web.py`, `static/`, `check_data.py`, `tests/` |
-| 2 | **Backlog 22, part 2** — matching by nearest neighbour per lighting, names in events and notifications | needs the user's first labels from part 1 | `dogs.py`, `web.py`, `notify.py` |
+| 1 | **R27** — cap the unnamed dog entries (newest N kept, named never touched, files removed with them) and a "dismiss" on each unnamed crop | the Dogs tab fills with every uncertain dog | `dogs.py`, `web.py`, `static/`, `tests/` |
+| 2 | **Tune the dog thresholds** with the user's names: measure sure/probable/none on the named crops (leave-one-out), adjust `SURE_*`/`PROBABLE_*` | backlog 22's acceptance | `dogs.py`, `tests/` |
 
-Reuse the People code where it fits (the gallery's views, queue and cover; the page's grid, picker and calendar) rather than copying it. **No rule about any particular dog in the code.** Run `uv run pytest` before every commit. **Start in a new conversation.** If the budget ends after part 1, deliver it: the user can start naming dogs before matching exists.
+Item 2 needs the user to have named a few crops of each dog first. **Start in a new conversation.**
 
 ---
 
@@ -1333,3 +1337,4 @@ review and commits.
 | 5 | `v2026.10.10.4` | The Lock and the Album / A Tranca e o Álbum | written |
 | 6 | `v2026.10.10.5` | The Safety Net / A Rede de Proteção | written |
 | 7 | `v2026.10.10.6` | The Favourite / A Favorita | written |
+| 8 | `v2026.10.10.7` | Mirana and Aurora / Mirana e Aurora | written |

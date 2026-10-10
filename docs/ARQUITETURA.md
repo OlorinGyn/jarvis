@@ -2805,6 +2805,7 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10) |
+| `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per stored or queued view |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
 | `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10). Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
@@ -2857,3 +2858,50 @@ still readable, and failing would block going back to an older version.
 ### 19.5 Automatic tests (10/10/2026)
 
 `uv run pytest` runs 23 tests in `tests/` in about 3 s (R6): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, removal pulling from the queue, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), and the notification rules (`test_notify.py`: redaction, labels, both cooldowns). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+
+---
+
+## 20. Dogs: each household teaches its own (10/10/2026)
+
+**The rule (the user's):** nothing about any particular dog lives in the code.
+The software is for any house; the user names their dogs on the **Dogs** tab,
+and the system learns from those names.
+
+**Seeing a dog's fur, not its box.** `dogs.fur_mask` cuts the dog out of its
+YOLO box (+10 % margin) with OpenCV's **GrabCut** — a segmentation that starts
+from a rectangle and iterates a graph cut over colour models of "inside" and
+"outside". The first measurement without it failed: a box holds the mat, the
+floor, sun and shade, and the fur tone of 168 detections was a continuous
+smear. With it, 89 detections split into a dark and a light group, and at
+night cleanly (CONTEXTO, backlog 15 and 22).
+
+**The descriptor.** 41 numbers: an infrared flag, 16 tone bins of the fur,
+and 16 hue + 8 saturation bins when the frame is in colour (zeros at night).
+`is_infrared`: the mean channel difference is 3.98 on every night clip and
+15–24 by day, so a threshold of 8 is safe.
+
+**The gallery.** `DogGallery` subclasses `faces.Gallery` — the same views,
+queue and favourite photo, in `dogs/`, with ids `d_…` — by overriding two
+class attributes (`id_prefix`, `sighting_key`): the same code with different
+constants, the way a Java subclass overrides a constant. Naming never gathers
+other crops on its own (`_absorb` is off): two dogs' histograms can look alike.
+The page reuses one JavaScript factory, `galleryTab(...)`, for People and Dogs.
+
+**Matching.** `dogs.distance` is the mean Bhattacharyya distance over the
+histograms (a standard measure of how much two distributions overlap), and
+`None` between day and infrared — they are never compared. `match` takes the
+nearest named dog: **sure** within 0.35 and at most 0.6× the second nearest,
+**probable** within 0.5 and 0.8×; otherwise nobody. The margin to the second
+is what lets it honestly say "I don't know". Measured on 20 test crops: day
+distances 0.16–0.81 (median 0.53), infrared 0.18–1.0 (median 0.82); the
+thresholds sit below the medians and **are not yet validated** — they wait for
+the user's names.
+
+**The wording (the user's rule).** A dog alerts because a dog is there,
+whenever `dog` is an alert label; certainty only changes the words: the name,
+"probably <name>", or "unidentified dog" (plain "dog" while nothing is named).
+The first message names the dogs of the triggering frame (~100 ms, once per
+dog event); the Recordings card shows the event's best dog frame, so the two
+can differ. A sure match reinforces that dog with one more view; anything less
+becomes an unnamed crop (R27 caps them). `tools/dog_crops.py [--days N]` gives
+crops to events recorded before the feature (~21 s per event on the M900).

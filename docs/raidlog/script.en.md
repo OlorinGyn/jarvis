@@ -646,3 +646,42 @@ ARCHITECT: That warning was already there. Nothing to build.
 (backlog 21) · **Light Luggage** — production without test tools (R26).
 Decrees: "Let me pick my favourite photo." · "No undo; warn me and go on
 yes." Next: Issue #8.
+---
+
+## Issue #8 — Mirana and Aurora
+
+`v2026.10.10.7` · 10 Oct 2026, night
+
+**Panel 1.** The owl holds up a sheet of dog crops in two rows, one dark, one
+white. The Owner's gold balloon from off-panel.
+THE OWNER: First row is Mirana, the black one. Second is Aurora, the white
+one. But careful — this software isn't only for me.
+
+**Panel 2.** The Owner's balloon grows bigger.
+THE OWNER: No colour rule in the code. Give me a Dogs tab, and I'll teach it
+my dogs. Anyone else teaches it theirs.
+
+**Panel 3.** The beaver at the workbench with a pair of scissors cutting a dog
+out of its box — the mat and the floor fall away.
+DEV: GrabCut: the dog, not the box. Then a fingerprint of its fur — tones,
+and colours by day.
+
+**Panel 4.** Two scales, one labelled DAY, one labelled NIGHT; a dog's
+fingerprint is only ever weighed on its own scale.
+DEV: Day against day, infrared against infrared. Never mixed.
+
+**Panel 5.** Three phone notifications side by side: "Front: Mirana",
+"Front: probably Aurora", "Front: unidentified dog".
+THE OWNER: A dog alerts because a dog is there. How sure we are just changes
+the words.
+
+**Panel 6.** The new Dogs tab, full of unnamed crops piling up off the edge
+of the screen; the owl frowns.
+ARCHITECT: Every dog it isn't sure about becomes a new card. Thirty a day…
+CAPTION (black bar): NEXT — ISSUE #9
+
+**Closing card.** Abilities: **The Kennel** — a Dogs tab where each household
+names its own dogs (backlog 22) · **Three Words** — name, probably name,
+unidentified dog. Lurking: the pile of unnamed cards (R27); thresholds not yet
+tested on real names. Decrees: "No colour rule in the code." · "Notify when
+there is a dog; certainty only changes the words."

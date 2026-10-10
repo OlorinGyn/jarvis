@@ -673,3 +673,43 @@ ARQUITETO: Esse aviso já existia. Nada a construir.
 (backlog 21) · **Bagagem Leve** — produção sem ferramentas de teste (R26).
 Decretos: "Quero escolher minha foto favorita." · "Sem desfazer; me avise e
 siga no sim." Próxima: Edição nº 8.
+---
+
+## Edição nº 8 — Mirana e Aurora
+
+`v2026.10.10.7` · 10 out 2026, à noite
+
+**Quadro 1.** A coruja ergue uma folha de recortes de cachorro em duas
+fileiras, uma escura, uma branca. O balão dourado do Dono vem de fora do
+quadro.
+O DONO: Na primeira linha é a Mirana, a preta. Na segunda é a Aurora, a
+branca. Mas cuidado — esse software não é só pra mim.
+
+**Quadro 2.** O balão do Dono cresce.
+O DONO: Nada de regra de cor no código. Me dá uma aba Dogs, e eu ensino as
+minhas cadelas. Qualquer outro ensina as dele.
+
+**Quadro 3.** O castor na bancada com uma tesoura, recortando um cachorro da
+caixa — o tapete e o chão caem fora.
+DEV: GrabCut: o cachorro, não a caixa. Depois uma impressão digital do pelo —
+os tons, e as cores de dia.
+
+**Quadro 4.** Duas balanças, uma escrita DIA, outra NOITE; a impressão de um
+cachorro só é pesada na balança dela.
+DEV: Dia com dia, infravermelho com infravermelho. Nunca misturado.
+
+**Quadro 5.** Três notificações de celular lado a lado: "Front: Mirana",
+"Front: probably Aurora", "Front: unidentified dog".
+O DONO: O alerta é porque tem um cachorro. A certeza só muda as palavras.
+
+**Quadro 6.** A aba Dogs nova, cheia de recortes sem nome se empilhando para
+fora da tela; a coruja franze a testa.
+ARQUITETO: Todo cachorro de que ele não tem certeza vira um cartão novo.
+Trinta por dia…
+LEGENDA (faixa preta): A SEGUIR — EDIÇÃO #9
+
+**Ficha final.** Habilidades: **O Canil** — uma aba Dogs onde cada casa nomeia
+os seus cachorros (backlog 22) · **Três Palavras** — nome, probably nome,
+unidentified dog. À espreita: a pilha de cartões sem nome (R27); limites ainda
+não testados com nomes reais. Decretos: "Nada de regra de cor no código." ·
+"Notifique quando tiver cachorro; a certeza só muda as palavras."
