@@ -346,7 +346,7 @@ Funciona sem, mas incompleto.
    parada e faz um clipe corresponder a uma pessoa
 8. **Rótulos de animal** (proposto) — só aceitar espécie que se repita no
    evento, em vez de acumular cada hesitação do YOLO
-9. **Desfazer junção na tela People** (proposto) — corrigir um merge errado
+9. ~~**Desfazer junção na tela People**~~ — **closed by the user, 10/10/2026:** no undo; a warning before every merge, and a yes goes ahead. That warning already exists since `v2026.10.10.4` ("Belongs to…" and a rename onto someone else's name both ask first)
 10. **Áudio** (proposto) — as câmeras mandam PCM e o `-an` descarta. Latido,
    grito, vidro quebrando
 
@@ -1303,7 +1303,7 @@ Developer session 5 did its whole plan (R25, R6) in about 10 minutes.
 
 Run `uv run pytest` before every commit from now on, and add a test for each change to the gallery or the guard. **Start in a new conversation** — session 5 began at 509k tokens.
 
-**Waiting for the user:** backlog 9 (undo a merge — recommended), items 1–2 (zones, daily health), item 15 (animal identity, research first).
+**Waiting for the user:** items 1–2 (zones, daily health), item 15 (animal identity, research first).
 
 ---
 
