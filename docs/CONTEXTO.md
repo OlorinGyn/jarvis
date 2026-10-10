@@ -395,7 +395,6 @@ src/jarvis/
 tools/
   production.ps1  production on the M900: install, update, start, stop, status, check
   check_data.py   reads every file on disk with the current code (ARQUITETURA 19)
-  build_raidlog.py  prints the raid log comic to PDF (section 15)
   diagnostico.py  capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   gerar_epub.py   joins every .md into one EPUB for an e-reader
@@ -409,7 +408,7 @@ docs/             ARQUITETURA, INSTALACAO, PYTHON and this file
 CLAUDE.md         instructions for Claude Code (roles, language, rules)
 .claude/skills/dev/SKILL.md  the developer's session: /dev or "Dev, ..."
 HANDOFF.md        developer → architect notes; empty between deliveries
-docs/raidlog/     the comic of each release (section 15)
+docs/raidlog/     the comic script of each release, English and Portuguese (section 15)
 instalar.bat      install on a new machine
 jarvis.bat        start the service and open the browser
 jarvis_vigilancia.bat  service only, no browser (--headless)
@@ -1183,60 +1182,23 @@ with the replay's data in hand.
 stage 4 (the next feature), and backlog items 1–2, which wait for the user.
 ---
 
-## 15. Raid log — the comic of each release
+## 15. Raid log — the comic script of each release
 
-**The user's idea, 10/10/2026.** Every release gets an issue of a comic: the
-conversation between the architect and the developer during that version,
-simplified, ending with what J.A.R.V.I.S. learned. Together the issues form
-the project's raid log, printed as one PDF. The artistic choices were left to
-the architect.
+**The user's idea, 10/10/2026, revised the same night.** Every release gets an
+issue of a comic: the architect and the developer talking through what really
+happened in that version, simplified. **The architect writes the script, not
+the drawing**; the user draws it later with a tool made for comics. A first
+issue was drawn here as SVG and printed to PDF, and the user replaced it with
+scripts after seeing what a drawn issue costs in tokens.
 
-**Two languages — decided by the user the same night.** The comic is the one
-exception to the English-only rule for documents: every issue exists in English
-**and** Portuguese. Both live in the same file, each text next to its
-translation (`<span lang="en">` / `<span lang="pt">`, and `lang` on SVG
-`<text>`), and `?lang=pt` shows the Portuguese one. One drawing, two texts:
-they cannot drift apart. Verbatim system output — log lines, error messages,
-`person 0.72`, camera names — stays as the system prints it, in both.
+Two files, and only two: `docs/raidlog/script.en.md` and
+`docs/raidlog/script.pt.md`, the same story panel for panel — the one
+document kept in both languages. Each opens with the series bible (cast,
+style, the truth rule: simplified, never invented); a new issue is appended to
+both when the architect tags a release, from that version's `HANDOFF.md`,
+review and commits.
 
-**What is fixed, so the issues stay one series:**
-
-| | |
-|---|---|
-| J.A.R.V.I.S. | a small round robot with one big cyan eye (the app icon), and two flying eye-drones, **Front** and **Back** |
-| The developer | a beaver in a hard hat — builds |
-| The architect | an owl in round gold glasses — reviews at night, keeps the books |
-| The user | never drawn: **The Owner**, a gold speech balloon. Every decision of theirs appears as a quote |
-| Problems | **bosses**, in black balloons with red letters |
-| J.A.R.V.I.S.'s voice | its log lines, in a dark terminal balloon |
-
-**Each issue:** a cover, three or four chapter pages of six panels at most, and
-a closing card — abilities unlocked, bosses defeated, what still lurks, the
-Owner's decrees, the party, the numbers. It ends on a cliffhanger that the
-next issue opens with (issue 1 ends on the dog detected as a person, which is
-where issue 2 begins).
-
-**Truth rule:** the dialogue is simplified, never invented in substance. Every
-boss is a real bug or limit of that version, every ability a real feature,
-every Owner quote a real decision. The sources are that version's
-`HANDOFF.md`, its review (13.x) and the commits.
-
-**Whose job:** the architect's, when tagging a release — the same moment the
-review is written, so the material is fresh. A new issue is a new set of
-`<section class="page">` blocks appended to `docs/raidlog/raidlog.html`; the
-characters are SVG symbols defined once at the top of that file and reused.
-
-```bat
-uv run python tools/build_raidlog.py     docs/raidlog/JARVIS - Raid Log (EN).pdf and (PT).pdf
-```
-
-Edge in headless mode prints it, so it needs nothing installed. The fonts come
-from Google Fonts, so build it online. The PDF is not versioned, like the
-EPUB. Run it from PowerShell: launched from Git Bash, Edge once exited without
-printing. Adding `?p=3` (or `?lang=pt&p=3`) to the HTML's address shows only page 3 — that is how the
-architect checks each page as an image before printing.
-
-| Issue | Version | Title |
-|---|---|---|
-| 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite |
-| 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente — **to draw**: first task of the next architect session, in a new conversation (14.2) |
+| Issue | Version | Title | Script |
+|---|---|---|---|
+| 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite | written |
+| 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente | **to write** — first task of the next architect session |

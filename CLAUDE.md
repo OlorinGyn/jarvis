@@ -11,7 +11,7 @@ not be undone without a new reason, and what has already been ruled out.
 | Code, identifiers, commit messages | English |
 | Documentation (`docs/`, `README.md`, this file) | English |
 | Text the program shows: web page, notifications, terminal | English |
-| The raid log comic (`docs/raidlog/`) | **both**, English and Portuguese |
+| The raid log comic scripts (`docs/raidlog/`) | **both**, English and Portuguese |
 
 Technical terms stay in English everywhere. Until the migration in
 `docs/CONTEXTO.md` R10 is done, older documents and parts of the code are
@@ -64,7 +64,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
 | Documentation EPUB | no | regenerates it at the end of every session that changed the docs |
-| Raid log comic (docs/raidlog/) | no | draws one issue per release (CONTEXTO 15) |
+| Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (CONTEXTO 15) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
 
 **The developer's session is the `dev` skill** (`.claude/skills/dev/SKILL.md`):
