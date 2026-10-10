@@ -66,3 +66,64 @@ def test_a_merge_repoints_the_dog_sightings(gallery, tmp_path):
     gallery.rename(second, "Alpha")
     assert [a["camera"] for a in dogs.appearances(first, tmp_path)] == ["Front", "Front"]
     assert dogs.DogGallery(gallery.path).label(second) == "?"
+
+
+def descriptor(tone_bin, infrared, spread=0.0):
+    tone = [0.0] * dogs.TONE_BINS
+    tone[tone_bin] = 1.0 - spread
+    tone[(tone_bin + 1) % dogs.TONE_BINS] += spread
+    colour = [0.0] * (dogs.HUE_BINS + dogs.SATURATION_BINS)
+    if not infrared:
+        colour[0] = colour[dogs.HUE_BINS] = 1.0
+    return [1.0 if infrared else 0.0] + tone + colour
+
+
+@pytest.fixture
+def two_dogs(gallery):
+    dark = gallery.add([descriptor(1, True), descriptor(1, False)], "a.jpg")
+    light = gallery.add([descriptor(13, True)], "b.jpg")
+    gallery.rename(dark, "Dark one")
+    gallery.rename(light, "Light one")
+    return dogs.DogGallery(gallery.path)
+
+
+def test_a_clear_match_names_the_dog(two_dogs):
+    result = dogs.match(descriptor(13, True, 0.1), two_dogs)
+    assert result["certainty"] == "sure" and result["name"] == "Light one"
+    assert dogs.wording(result, two_dogs) == "Light one"
+
+
+def test_day_is_only_compared_with_day(two_dogs):
+    light_by_day = descriptor(13, False)
+    assert dogs.distance(light_by_day, descriptor(13, True)) is None
+    assert dogs.match(light_by_day, two_dogs)["name"] != "Light one"
+
+
+def test_a_dog_halfway_between_is_not_named(two_dogs):
+    halfway = descriptor(7, True)
+    result = dogs.match(halfway, two_dogs)
+    assert result["certainty"] is None
+    assert dogs.wording(result, two_dogs) == "unidentified dog"
+
+
+def test_a_weaker_match_is_probable(two_dogs, monkeypatch):
+    monkeypatch.setattr(dogs, "SURE_DISTANCE", 0.1)
+    result = dogs.match(descriptor(13, True, 0.3), two_dogs)
+    assert result["certainty"] == "probable"
+    assert dogs.wording(result, two_dogs) == "probably Light one"
+
+
+def test_without_named_dogs_a_dog_is_just_a_dog(gallery):
+    result = dogs.match(descriptor(1, True), gallery)
+    assert result["certainty"] is None and dogs.wording(result, gallery) == "dog"
+
+
+def test_a_sure_match_teaches_that_dog_instead_of_adding_a_crop(two_dogs, tmp_path, monkeypatch):
+    light = two_dogs.by_name("Light one")["id"]
+    monkeypatch.setattr(dogs, "describe", lambda frame, box: (descriptor(13, True, 0.05), scene(False)))
+    added = dogs.record(scene(False), [(110, 60, 100, 140)], "Front", START, tmp_path / "c.mp4", two_dogs)
+    reloaded = dogs.DogGallery(two_dogs.path)
+    assert added == [light]
+    assert len(reloaded.people) == 2 and len(reloaded.get(light)["embeddings"]) == 2
+    sighting = json.loads(next((tmp_path / "2026-10-10").glob("*.json")).read_text(encoding="utf-8"))
+    assert sighting["certainty"] == "sure" and sighting["words"] == "Light one"

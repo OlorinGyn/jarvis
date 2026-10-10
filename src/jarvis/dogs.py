@@ -31,6 +31,10 @@ GRABCUT_ITERATIONS = 3
 MIN_FUR_PIXELS = 50
 GREY_DIFFERENCE = 8.0
 CROP_SIDE = 320
+SURE_DISTANCE = 0.35
+SURE_RATIO = 0.6
+PROBABLE_DISTANCE = 0.5
+PROBABLE_RATIO = 0.8
 
 logger = logging.getLogger(__name__)
 
@@ -122,11 +126,86 @@ def describe(frame, box):
     return descriptor, crop
 
 
-def record(frame, boxes, camera, started_at, clip, gallery=None):
-    """Add every dog of the event's best dog frame to the gallery, unnamed, with a sighting.
+def _bhattacharyya(a, b):
+    """Distance between two normalised histograms: 0 identical, 1 nothing in common."""
+    a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)
+    if a.sum() <= 0 or b.sum() <= 0:
+        return 1.0
+    coefficient = float(np.sum(np.sqrt(a * b)))
+    return float(np.sqrt(max(1.0 - coefficient, 0.0)))
 
-    Returns the new dog ids. Naming happens on the Dogs tab; until matching
-    exists each crop is its own entry, which the user names or merges.
+
+def distance(first, second):
+    """How unlike two descriptors are, or None when one is day and the other infrared."""
+    if first[0] != second[0]:
+        return None
+    tone_end = 1 + TONE_BINS
+    parts = [_bhattacharyya(first[1:tone_end], second[1:tone_end])]
+    if not first[0]:
+        hue_end = tone_end + HUE_BINS
+        parts.append(_bhattacharyya(first[tone_end:hue_end], second[tone_end:hue_end]))
+        parts.append(_bhattacharyya(first[hue_end:], second[hue_end:]))
+    return sum(parts) / len(parts)
+
+
+def match(descriptor, gallery):
+    """Which named dog this looks like: {"dog_id", "name", "certainty", "distance"}.
+
+    Nearest neighbour over every named dog's views in the same lighting. A
+    name is given only when the nearest dog is close and clearly closer than
+    the second ("sure"), or close enough and somewhat closer ("probable");
+    otherwise certainty is None. Dogs that look alike stay "dog".
+    """
+    nearest = []
+    for dog in gallery.people:
+        if not dog["name"]:
+            continue
+        found = [d for d in (distance(descriptor, view) for view in dog["embeddings"]) if d is not None]
+        if found:
+            nearest.append((min(found), dog))
+    nearest.sort(key=lambda pair: pair[0])
+    if not nearest:
+        return {"dog_id": None, "name": "", "certainty": None, "distance": None}
+    best, dog = nearest[0]
+    second = nearest[1][0] if len(nearest) > 1 else float("inf")
+    certainty = None
+    if best <= SURE_DISTANCE and best <= SURE_RATIO * second:
+        certainty = "sure"
+    elif best <= PROBABLE_DISTANCE and best <= PROBABLE_RATIO * second:
+        certainty = "probable"
+    return {"dog_id": dog["id"] if certainty else None, "name": dog["name"] if certainty else "",
+            "certainty": certainty, "distance": round(best, 3)}
+
+
+def wording(result, gallery):
+    """The words for one dog, by certainty: its name, "probably <name>", or "unidentified dog".
+
+    A household that has named no dog keeps today's plain "dog".
+    """
+    if result["certainty"] == "sure":
+        return result["name"]
+    if result["certainty"] == "probable":
+        return f"probably {result['name']}"
+    return "unidentified dog" if any(d["name"] for d in gallery.people) else "dog"
+
+
+def words_for(frame, boxes, gallery=None):
+    """The words for every dog box of a frame, for a message. Never raises."""
+    try:
+        gallery = gallery or DogGallery()
+        words = [wording(match(describe(frame, box)[0], gallery), gallery) for box in boxes]
+    except Exception as problem:
+        logger.warning("  dog matching failed: %s", problem)
+        return ["dog"] * len(boxes)
+    return list(dict.fromkeys(words))
+
+
+def record(frame, boxes, camera, started_at, clip, gallery=None):
+    """Record every dog of the event's best dog frame, with a sighting each.
+
+    A sure match teaches that dog one more view; anything less becomes an
+    unnamed crop for the Dogs tab, where the user names or merges it.
+    Returns the dog ids the sightings point to.
     """
     if frame is None or not boxes:
         return []
@@ -140,13 +219,21 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
         name = f"{stamp}_{uuid.uuid4().hex[:6]}"
         thumbnail = folder / f"{name}.jpg"
         cv2.imwrite(str(thumbnail), crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
-        dog_id = gallery.add([descriptor], thumbnail, [crop])
+        result = match(descriptor, gallery)
+        if result["certainty"] == "sure":
+            dog_id = result["dog_id"]
+            gallery.reinforce(dog_id, descriptor, crop)
+        else:
+            dog_id = gallery.add([descriptor], thumbnail, [crop])
         sighting = {
             "dog_id": dog_id,
             "camera": camera,
             "at": started_at.isoformat(timespec="seconds"),
             "time": started_at.strftime("%H:%M:%S"),
             "infrared": bool(descriptor[0]),
+            "certainty": result["certainty"] or "",
+            "match": result["name"],
+            "words": wording(result, gallery),
             "clip": faces._portable(clip),
             "thumbnail": thumbnail.name,
         }

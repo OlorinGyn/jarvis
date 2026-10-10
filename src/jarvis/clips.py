@@ -122,6 +122,18 @@ def recording_now():
     return any(recorder.recording for recorder in list(_recorders))
 
 
+def _message_words(frame, subjects, labels):
+    """The words of a notification: the labels, with each dog named by certainty.
+
+    None when no dog is among them, so the message stays as it always was.
+    """
+    if "dog" not in labels:
+        return None
+    boxes = [(s.x, s.y, s.w, s.h) for s in subjects if s.label == "dog"]
+    others = [label for label in sorted(labels) if label != "dog"]
+    return others + (dogs.words_for(frame, boxes) if boxes else ["dog"])
+
+
 def available_days():
     """Every day that has at least one recording with metadata."""
     days = set()
@@ -239,7 +251,8 @@ class EventRecorder:
 
         seen = {s.label for s in subjects}
         self.notify_tried = set(seen)
-        self.notified = notify.event(self.label, sorted(seen), str(thumbnail))
+        self.notified = notify.event(self.label, sorted(seen), str(thumbnail),
+                                     names=_message_words(frame, subjects, seen))
         if self.notified:
             self.sent_moment = self.moment
 
@@ -260,7 +273,8 @@ class EventRecorder:
         self.notify_tried |= new
         photo = self.base.with_name(f"{self.base.name}.alert.jpg")
         self._save_thumbnail(frame, subjects, photo)
-        self.notified = notify.event(self.label, sorted(new), str(photo))
+        self.notified = notify.event(self.label, sorted(new), str(photo),
+                                     names=_message_words(frame, subjects, new))
         if self.notified:
             self.sent_moment = self.moment
         else:

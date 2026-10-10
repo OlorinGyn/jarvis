@@ -128,7 +128,27 @@ def _who_was_seen(day):
     return seen
 
 
-def _event(entry, seen=None):
+def _dogs_seen(day):
+    """For each recording of a day, the words its dog crops were given: names by certainty."""
+    seen = {}
+    for sighting in dogs.sightings_of(day):
+        key = _clip_key(sighting.get("clip", ""))
+        words = sighting.get("words") or "dog"
+        if key is not None and words not in seen.setdefault(key, []):
+            seen[key].append(words)
+    return seen
+
+
+def _animals(entry, camera, day, dogs_seen):
+    """The event's animal labels, with "dog" replaced by the dogs' names when there are any."""
+    labels = [label for label in entry.get("labels", []) if label != "person"]
+    named = (dogs_seen or {}).get((camera, day, entry["thumbnail_path"].stem))
+    if "dog" in labels and named:
+        labels = [label for label in labels if label != "dog"] + named
+    return labels
+
+
+def _event(entry, seen=None, dogs_seen=None):
     """What the page needs from one event, with URLs instead of disk paths.
 
     The picture is the best view of a person when the event has one; older
@@ -149,7 +169,7 @@ def _event(entry, seen=None):
         "reason": entry.get("reason", ""),
         "thumbnail": f"/thumbnail/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
         "people": (seen or {}).get((camera, day, entry["thumbnail_path"].stem), []),
-        "animals": [label for label in entry.get("labels", []) if label != "person"],
+        "animals": _animals(entry, camera, day, dogs_seen),
     }
 
 
@@ -193,8 +213,9 @@ def days():
 def events(day: str = None):
     """The events of one day, newest first. Without a day, today."""
     chosen = _parse_day(day) if day else date.today()
-    seen = _who_was_seen(chosen)
-    return {"day": chosen.isoformat(), "events": [_event(e, seen) for e in list_clips(chosen)]}
+    seen, dogs_seen = _who_was_seen(chosen), _dogs_seen(chosen)
+    return {"day": chosen.isoformat(),
+            "events": [_event(e, seen, dogs_seen) for e in list_clips(chosen)]}
 
 
 @app.get("/thumbnail/{camera}/{day}/{name}")
