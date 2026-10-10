@@ -775,7 +775,7 @@ subir de novo em 09/10.
 | ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
 | ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
 | ✓ | R17 | medium | No way to tell why something was *not* recorded: a replay tool | done `cc08df1` (ARQUITETURA 12.10) |
-| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — **the user chose to wait** (10/10, with the replay's data and two rule options in hand; 13.8) |
+| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — **decided by the user on 10/10: the architect's rule** (13.8); dev session 3 |
 | ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARQUITETURA 12.9) |
 | ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARQUITETURA 12.9) |
 | ✓ | R21 | **high** | What the dense face scan costs live analysis on the M900 | measured `6ff6eda`: YOLO 1.6× slower during a scan; fix decided as R23 (13.8) |
@@ -1153,11 +1153,20 @@ The face message arrives later during long activity; the first message is
 untouched. Acceptance: with the measurement of R21 repeated during an event,
 YOLO's time is back to its unloaded value while the scan is paused.
 
-**R18 waits on the user**, who chose, with the replay's data in hand, to leave
-the dog for later. What the data says, for when it comes back: the dog's box
-is 3–4× wider than tall and touches the bottom edge; every real person seen
-was taller than wide.
-
+**R18 — decided.** The user first chose to wait, then asked the architect to
+set the rule. The replay's data: the dog's `person` boxes are 3.3–4.2× wider
+than tall and their bottom touches the frame's bottom edge (y ≈ 538 of 540);
+every real person seen was taller than wide (110–152 × 267–320). The rule, in
+`SubjectDetector.detect()`: **drop a `person` whose box is more than
+`WIDE_PERSON_RATIO` = 2.5× wider than tall and whose bottom lies within
+`BOTTOM_EDGE_FRACTION` = 3 % of the frame's bottom**, with the trace reason
+"wide at the bottom edge". Both conditions, not one: a wide box alone could be
+a person lying on the lawn mid-frame — rare, but worth keeping; the mat is at
+the bottom edge, where a standing person's box is always tall. The margin from
+2.5 to the dog's 3.3 is deliberate. Acceptance: `tools/replay.py` drops the dog
+on `20-29-03` and `22-29-22` and keeps the user; then replay **every** event
+with a `person` label from 09/10 and 10/10 (copies, in the test copy) and list
+each detection the rule changes — none may be a real person.
 **Lesson worth keeping:** "give the scan fewer threads" sounded obviously
 right and measured wrong. Measure before choosing, even the obvious.
 ---
@@ -1208,14 +1217,15 @@ Same criteria as before. In order:
 | | Item | Why here | Files |
 |---|---|---|---|
 | 1 | **R23** — pause the face scan while a camera records | production safety: the cost R21 measured lands exactly during events | `faces.py`, `clips.py` |
-| 2 | **Backlog 3, stage 4** — People and Settings on the web | the next decided feature: the web is the only access the user wants, and naming faces still needs the old OpenCV window | `web.py`, `static/`, maybe `faces.py` |
+| 2 | **R18** — the dog on the mat as `person`: the rule in 13.8 | the user's decision; two false messages per event until it lands; small | `people.py` |
+| 3 | **Backlog 3, stage 4** — People and Settings on the web | the next decided feature: the web is the only access the user wants, and naming faces still needs the old OpenCV window | `web.py`, `static/`, maybe `faces.py` |
 
 Stage 4 is large; if the budget ends inside it, deliver what is complete
 (People first, then Settings) and say where it stopped. **Start in a new
 conversation**: session 2 began at 240k tokens of context carried over from
 session 1, and paid for it on every step.
 
-**Not in this session:** R18 (the user's call), R6, R12, R14, R7, R9, backlog
+**Not in this session:** R6, R12, R14, R7, R9, backlog
 items 1–2 (waiting for the user).
 ---
 
