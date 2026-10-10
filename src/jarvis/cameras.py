@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, log, ui, web
+from jarvis import ROOT, faces, log, ui, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -34,6 +34,7 @@ LABEL_Y = 62
 STALE_SECONDS = 5.0
 WINDOW = "J.A.R.V.I.S."
 PRUNE_SECONDS = 10.0
+RATE_SECONDS = 60.0
 REDRAW_SECONDS = 0.15
 IDLE_SLEEP = 0.005
 HEADLESS_FLAGS = ("--headless", "--sem-janela")
@@ -198,6 +199,10 @@ class Core:
         self.draw = draw
         self.housekeeper = Housekeeper()
         self.last_prune = time.monotonic()
+        self.analysed = {cam.label: 0 for cam in streams}
+        self.per_minute = {}
+        self.rate_started = self.last_prune
+        self.scan_seen = False
         self.panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
                        for cam in streams} if draw else {}
 
@@ -217,6 +222,7 @@ class Core:
             motion_boxes = cam.motion.detect(frame)
             subjects = cam.subjects.detect(frame, motion_boxes)
 
+            self.analysed[cam.label] += 1
             saved = cam.recorder.update(frame, subjects)
             if saved:
                 names = ", ".join(saved["labels"]) or "?"
@@ -234,11 +240,27 @@ class Core:
             for cam in self.streams:
                 cam.prune()
 
+        self._tally(now)
         done = self.housekeeper.tick()
         if done and (done["moved"]["moved"] or done["freed"]["removed"]):
             logger.info("  archive: %d moved, %d deleted from the external drive",
                         done["moved"]["moved"], done["freed"]["removed"])
         return fresh
+
+    def _tally(self, now):
+        """Every minute, how many frames each camera analysed; logged when a face scan ran."""
+        self.scan_seen = self.scan_seen or faces.scanning()
+        elapsed = now - self.rate_started
+        if elapsed < RATE_SECONDS:
+            return
+        self.per_minute = {label: round(count * 60 / elapsed)
+                           for label, count in self.analysed.items()}
+        if self.scan_seen:
+            logger.info("  analysed per minute during a face scan: %s",
+                        ", ".join(f"{k} {v}" for k, v in self.per_minute.items()))
+        self.analysed = dict.fromkeys(self.analysed, 0)
+        self.rate_started = now
+        self.scan_seen = False
 
     def mosaic(self):
         """The cameras side by side, for whoever is drawing."""

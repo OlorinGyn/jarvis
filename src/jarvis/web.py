@@ -107,7 +107,8 @@ def status():
     uses `frame_age` to decide whether the new version really sees the cameras.
     """
     ages = _core.frame_ages() if _core is not None else {}
-    return {"cameras": cameras(), "started": _started,
+    per_minute = _core.per_minute if _core is not None else {}
+    return {"cameras": cameras(), "started": _started, "analysed_per_minute": per_minute,
             "frame_age": {k: (round(v, 1) if v is not None else None) for k, v in ages.items()}}
 
 

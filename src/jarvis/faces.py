@@ -425,6 +425,11 @@ def _sampled_frames(clip, moments=()):
         process.wait()
 
 
+def scanning():
+    """Whether a clip scan is running right now."""
+    return _SCAN_LOCK.locked()
+
+
 def scan_clip(clip, camera, started_at, gallery=None, moments=()):
     """Find every distinct face in a finished clip and record the sightings.
 
