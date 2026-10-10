@@ -6,5 +6,5 @@ See `CLAUDE.md`, "Developer and architect".
 
 Last integrated: review 3, 10/10/2026 (CONTEXTO 13.7).
 
-Next developer session: planned in CONTEXTO 14.4 — R21, R22, R17, R18, then
+Next developer session: planned in CONTEXTO 14.4 — R21, backlog 18 (version on the page), R22, R17, R18, then
 the code part of R10. Start it with `/dev`, in a new conversation.

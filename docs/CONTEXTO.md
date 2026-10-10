@@ -330,6 +330,8 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
+18. **The running version on the web page** (decided 10/10/2026) — the user wants to see, somewhere in the interface, which version is running. Design: read `git describe --tags --always --dirty` once at startup (production is a clone checked out at a tag, so it shows `v2026.10.10`; the test copy shows something like `v2026.10.10-6-g906b64b`, which tells the two apart at a glance), add an optional `version` field to `/api/status` (additive), and show it discreetly on the page. The `git` call needs `CREATE_NO_WINDOW` like every other subprocess (R15), and must not stop the service if `git` is missing — show `unknown`.
+
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
 5. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
@@ -1167,12 +1169,13 @@ cheap and certain first, proposals wait). In order:
 | | Item | Why here | Files |
 |---|---|---|---|
 | 1 | **R21** — measure live analysis during a dense scan | production safety: the release just shipped the cost; cheap, and decides whether anything else must change first | `cameras.py`, `web.py` |
-| 2 | **R22** — log where the dense scan looked | rides with 1: same moment, same files open | `clips.py`, `faces.py` |
-| 3 | **R17** — `tools/replay.py` | the developer already built a replay by hand for R19; make it a tool | `tools/`, maybe a trace in `motion.py` / `people.py` |
-| 4 | **R18** — the dog on the mat as `person` | now two false messages per event; needs 3's data | `people.py`, maybe `clips.py` |
-| 5 | **R10, the code part** — `ui.py` text, `build_camera_list()` | small, and cleans what the user still sees in Portuguese | `ui.py`, `cameras.py` |
+| 2 | **Backlog 18** — the running version on the page | the user asked for it; touches `/api/status`, which 1 already opens | `cameras.py` or `web.py`, `static/` |
+| 3 | **R22** — log where the dense scan looked | rides with 1: same moment, same files open | `clips.py`, `faces.py` |
+| 4 | **R17** — `tools/replay.py` | the developer already built a replay by hand for R19; make it a tool | `tools/`, maybe a trace in `motion.py` / `people.py` |
+| 5 | **R18** — the dog on the mat as `person` | now two false messages per event; needs 3's data | `people.py`, maybe `clips.py` |
+| 6 | **R10, the code part** — `ui.py` text, `build_camera_list()` | small, and cleans what the user still sees in Portuguese | `ui.py`, `cameras.py` |
 
-If the budget ends early, stop after 3: R18 deserves a session that starts
+If the budget ends early, stop after 4: R18 deserves a session that starts
 with the replay's data in hand.
 
 **Not in this session:** R6 (tests, a session of its own), R12 and R13
