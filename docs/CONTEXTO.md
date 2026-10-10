@@ -286,6 +286,7 @@ prioridade própria; as de prioridade **alta** vêm antes dos itens daqui.
 | ✓ | **Notificação no celular** (decidido) — Telegram com miniatura, aviso no começo do evento | ARQUITETURA 12 |
 | ✓ | **Rosto e nome na notificação** (decidido, 09/10) — segunda mensagem após a varredura, com o recorte do rosto e o nome se conhecido | ARQUITETURA 12.7 |
 | ✓ | **Núcleo sem janela** (decidido) — `--sem-janela`; gravar e avisar não dependem mais de ter alguém olhando | ARQUITETURA 15 |
+| ✓ | **18. The running version on the page** (decided, 10/10) — `git describe` at startup: the tag in production, tag + commits in the test copy | ARQUITETURA 12.10 |
 | ✓ | **17. Production and test environments** (decided, 09/10) — `C:\JARVIS` runs release `v2026.10.09` since 20:20 that day, started with Windows by a scheduled task; the dev folder is the test copy on `stream2`. Verified the same night: task ready, both cameras fresh, 19 events recorded. Still to verify: reboot and crash recovery (R13) | ARQUITETURA 18.7, INSTALACAO 9 |
 
 ### Crítico
@@ -329,8 +330,6 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 ### Importante
 
 Funciona sem, mas incompleto.
-
-18. **The running version on the web page** (decided 10/10/2026) — the user wants to see, somewhere in the interface, which version is running. Design: read `git describe --tags --always --dirty` once at startup (production is a clone checked out at a tag, so it shows `v2026.10.10`; the test copy shows something like `v2026.10.10-6-g906b64b`, which tells the two apart at a glance), add an optional `version` field to `/api/status` (additive), and show it discreetly on the page. The `git` call needs `CREATE_NO_WINDOW` like every other subprocess (R15), and must not stop the service if `git` is missing — show `unknown`.
 
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
@@ -448,6 +447,7 @@ uv run python -m jarvis --headless                      service only, no browser
 uv run python -m jarvis --window                        old OpenCV window (until web stage 4)
 uv run python -m jarvis --stop                          stop the copy running from this folder, cleanly
 uv run python tools/check_data.py                       can the current code read every file on disk?
+uv run python tools/replay.py <video> [--prime]         why each frame was kept or dropped (ARQUITETURA 12.10)
 uv run tools/diagnostico.py Front                       testar variantes de captura
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
 uv run tools/probe_rtsp.py <ip> <user> <senha> stream1  testar RTSP puro
@@ -696,7 +696,7 @@ impact, suggested documentation by section, topics worth teaching, what to
 review hardest — and asks: *"Arquiteto, precisamos da sua análise."* The
 architect decides what is worth documenting, integrates it, empties the file,
 pushes, and tags a release when the code is fit for production. Production only
-ever runs tags (ARQUITETURA 18.7). The architect's last step, whenever the
+ever runs tags (ARQUITETURA 18.7), named `vYYYY.MM.DD`; a second release on the same day is `vYYYY.MM.DD.2` — `production.ps1` sorts tags as versions, so it ranks after the first. The architect's last step, whenever the
 docs changed, is the EPUB (section 10). The developer's session is written down
 as the `dev` skill (`.claude/skills/dev/SKILL.md`), which the architect
 maintains.
@@ -730,8 +730,9 @@ decidir.
 | 1 | 09/10/2026 | `b3d9c94..456b613` — Python assinado, web estágios 1 e 3, rosto na notificação | 2 erros de documentação corrigidos; R1–R9 abertas. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARQUITETURA 18) |
 | 2 | 09/10/2026 | `760d68e..67f7d23` — everything before production: logging, clean stop, per-install stream and port, R1–R3, R5, R8, `check_data`, `production.ps1` | 4 code problems fixed in `8a81084` (13.5); full production cycle tested including a forced rollback; HANDOFF integrated; R11–R14 opened; **first release `v2026.10.09` tagged** |
 | 3 | 10/10/2026 | `87e736b`, developer session 1 — R15, R16, R10 in part, R19, R20, R11 | no code fixed: the diff, `check_data`, the comment check and the redaction and `select` expressions all checked out; HANDOFF integrated; R18 raised to high, R21–R22 opened; release `v2026.10.10` tagged |
+| 4 | 10/10/2026 | `5d91305..1b8822d`, developer session 2 — R21 measured, backlog 18, R22, R17, R10 code part | no code fixed; R21's fix decided (R23); release `v2026.10.10.2` tagged |
 
-**Last review covers up to the `v2026.10.10` release commit.** The next one
+**Last review covers up to the `v2026.10.10.2` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -766,19 +767,20 @@ subir de novo em 09/10.
 | | R7 | baixa | `instalar.bat` não confere se o Python ficou assinado | partly: `production.ps1` checks it; `instalar.bat` still does not |
 | ✓ | R8 | baixa | Falha de rede na página não aparece para o usuário | done `760d68e` (ARQUITETURA 17.8) |
 | | R9 | verificação | `python-preference = "system"` na máquina de desenvolvimento | aberta |
-| | R10 | **high** | Move everything except the conversation to English (user decision) | in progress; left: older docs, `ui.py`, `cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, Portuguese file names (13.7) |
+| | R10 | **high** | Move everything except the conversation to English (user decision) | in progress; the code is done except `tools/diagnostico.py`; left: older docs and Portuguese file names (13.8) |
 | ✓ | R11 | **high** | `settings.save()` drops keys it does not know | done `524b14f` (ARQUITETURA 19.2) |
 | | R12 | medium | Production and test copy on the same M900 double the CPU load | open |
 | ✓ | R13 | verification | The startup task survives a reboot, and restarts after a crash | **reboot verified 10/10**: Windows up 00:58:07, task at 00:58:16, cameras ok 00:59:06, in session 0 with no window. **crash verified the same night**: the user ended Python in Task Manager about 01:01 (the task shows result 1, Task Manager's exit code); the 5-minute trigger at 01:06:10 started it again, cameras ok at 01:06:16. A crash costs at most ~5 min of recording |
 | | R14 | low | Live MJPEG is encoded once per viewer | open |
 | ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
 | ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
-| | R17 | medium | No way to tell why something was *not* recorded: a replay tool | open — dev session 2; was high until the "miss" proved not to be one |
-| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — now costs two false messages per event (13.7); needs R17 first |
+| ✓ | R17 | medium | No way to tell why something was *not* recorded: a replay tool | done `cc08df1` (ARQUITETURA 12.10) |
+| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — **the user chose to wait** (10/10, with the replay's data and two rule options in hand; 13.8) |
 | ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARQUITETURA 12.9) |
 | ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARQUITETURA 12.9) |
-| | R21 | **high** | What the dense face scan costs live analysis on the M900 | open — verification, dev session 2 |
-| | R22 | medium | Nothing records where the dense scan looked | open — dev session 2 |
+| ✓ | R21 | **high** | What the dense face scan costs live analysis on the M900 | measured `6ff6eda`: YOLO 1.6× slower during a scan; fix decided as R23 (13.8) |
+| ✓ | R22 | medium | Nothing records where the dense scan looked | done `c5166d1` (ARQUITETURA 12.10) |
+| | R23 | **high** | A face scan slows YOLO while an event may be happening | open — dev session 3 (13.8) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1120,6 +1122,44 @@ until a rescan is.
 **R10, left:** older documentation, `ui.py` (including its Telegram test text),
 `cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, and the
 Portuguese file names.
+### 13.8 Review 4 — developer session 2
+
+Reviewed `5d91305..1b8822d`. No code fixed. The trace hooks in `motion.py`
+and `people.py` change no decision (the developer compared old and new on all
+561 frames of the 22:29 clip); every module imports, `ui.py` included after
+its translation; no comments; the version reads `v2026.10.10-12-g1b8822d` in
+the test copy. Integrated into ARQUITETURA 12.10.
+
+**R21's fix, decided by the architect — R23.** The developer measured that a
+dense scan makes YOLO 1.6× slower and that fewer threads only make YOLO slower
+still, and left the choice to the review. It is a design call, not the
+user's. The options weighed:
+
+| Option | Verdict |
+|---|---|
+| Fewer OpenCV threads for the scan | measured wrong: the setting is process-wide |
+| YuNet only on head regions | cheaper scan, but needs person boxes per clip frame, aligned in time — complex, and the scan still overlaps events |
+| Lower thread priority | does not reach OpenCV's shared worker threads |
+| Wait to start the scan while a camera records (the developer's idea) | good, but a 45 s scan that has started still collides with the next event |
+| **Pause the scan between frames while any camera records** | chosen: the collision only matters during an event, and this removes it wherever the event starts |
+
+**R23 — Pause the face scan while any camera is recording (high).** Before
+each frame, `_scan_clip()` asks a callable `busy()` and sleeps in short steps
+while it is true; the ffmpeg feeding the pipe simply blocks meanwhile.
+`clips` provides `busy()` — any `EventRecorder` recording — and passes it in,
+so `faces` knows nothing of cameras. A ceiling, 10 minutes of pause per scan,
+keeps a busy evening from starving it; the R22 log line gains the pause total.
+The face message arrives later during long activity; the first message is
+untouched. Acceptance: with the measurement of R21 repeated during an event,
+YOLO's time is back to its unloaded value while the scan is paused.
+
+**R18 waits on the user**, who chose, with the replay's data in hand, to leave
+the dog for later. What the data says, for when it comes back: the dog's box
+is 3–4× wider than tall and touches the bottom edge; every real person seen
+was taller than wide.
+
+**Lesson worth keeping:** "give the scan fewer threads" sounded obviously
+right and measured wrong. Measure before choosing, even the obvious.
 ---
 
 ## 14. Sessions and token budget
@@ -1157,29 +1197,26 @@ disk, which is exactly why the roles hand over through files.
 | D1 | developer | high | 10/10 00:00–00:30 | session 1: R15, R16, R10 in part, R19, R20, R11 (HANDOFF) | 39% → 52%: R15 3, R16 + R10 2, R19 4, R20 4, R11 and HANDOFF under 1 | 32% → 34% | 66k → 210k tokens |
 | A5 | architect | ultracode | 10/10 00:52–01:00 | review 3, HANDOFF integrated, release `v2026.10.10` | 77% → 82%: review and docs, about 5 points | 37% → 37% | 404k → 445k tokens |
 | A6 | architect | ultracode | 10/10 00:55–01:15 | production update to `v2026.10.10`, R13 reboot and crash checks, EPUB | 82% → 87% | 37% → 38% | 445k → 470k tokens — at this size every turn costs about a point, the strongest reason yet for a new conversation per session |
+| D2 | developer | high | 10/10 04:10–04:40 | session 2: R21 measured, backlog 18, R22, R17, R10 code part; R18 deferred by the user | 0% → 11% (new window): R21 3, backlog 18 + R22 2, R17 3, R18 question + R10 3 | 39% → 41% | 241k → 330k tokens, carried over from session 1 |
+| A7 | architect | ultracode | 10/10 13:25–13:35 | review 4, R23 decided, release `v2026.10.10.2`, comic scripts 2 and 3 (one failed shell append re-sent them) | 9% → 15% | 43% → 44% | 500k → 540k tokens, in the old conversation |
 
-### 14.4 Next session: developer 2
+### 14.4 Next session: developer 3
 
-Developer session 1 finished its whole plan (R15, R16, R10 in part, R19, R20,
-R11), reviewed in 13.7. Same criteria as before (production first, what the
-user saw before what Claude predicted, data and security, bundle by file,
-cheap and certain first, proposals wait). In order:
+Developer session 2 did its plan except R18, which the user chose to defer.
+Same criteria as before. In order:
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **R21** — measure live analysis during a dense scan | production safety: the release just shipped the cost; cheap, and decides whether anything else must change first | `cameras.py`, `web.py` |
-| 2 | **Backlog 18** — the running version on the page | the user asked for it; touches `/api/status`, which 1 already opens | `cameras.py` or `web.py`, `static/` |
-| 3 | **R22** — log where the dense scan looked | rides with 1: same moment, same files open | `clips.py`, `faces.py` |
-| 4 | **R17** — `tools/replay.py` | the developer already built a replay by hand for R19; make it a tool | `tools/`, maybe a trace in `motion.py` / `people.py` |
-| 5 | **R18** — the dog on the mat as `person` | now two false messages per event; needs 3's data | `people.py`, maybe `clips.py` |
-| 6 | **R10, the code part** — `ui.py` text, `build_camera_list()` | small, and cleans what the user still sees in Portuguese | `ui.py`, `cameras.py` |
+| 1 | **R23** — pause the face scan while a camera records | production safety: the cost R21 measured lands exactly during events | `faces.py`, `clips.py` |
+| 2 | **Backlog 3, stage 4** — People and Settings on the web | the next decided feature: the web is the only access the user wants, and naming faces still needs the old OpenCV window | `web.py`, `static/`, maybe `faces.py` |
 
-If the budget ends early, stop after 4: R18 deserves a session that starts
-with the replay's data in hand.
+Stage 4 is large; if the budget ends inside it, deliver what is complete
+(People first, then Settings) and say where it stopped. **Start in a new
+conversation**: session 2 began at 240k tokens of context carried over from
+session 1, and paid for it on every step.
 
-**Not in this session:** R6 (tests, a session of its own), R12 and R13
-(operational; R13 needs a reboot by the user), R14, R7, R9, backlog item 3
-stage 4 (the next feature), and backlog items 1–2, which wait for the user.
+**Not in this session:** R18 (the user's call), R6, R12, R14, R7, R9, backlog
+items 1–2 (waiting for the user).
 ---
 
 ## 15. Raid log — the comic script of each release
@@ -1201,4 +1238,5 @@ review and commits.
 | Issue | Version | Title | Script |
 |---|---|---|---|
 | 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite | written |
-| 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente | **to write** — first task of the next architect session |
+| 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente | written |
+| 3 | `v2026.10.10.2` | The Watcher's Instruments / Os Instrumentos do Vigia | written |

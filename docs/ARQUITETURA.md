@@ -1924,6 +1924,47 @@ exception quotes the URL, and the URL holds the token (`/bot<token>/…`).
 `_redact()` removes it inside `_call()` and `discover_chat()`, the only places
 the token can enter a string, so no caller has to remember.
 
+### 12.10 Watching the watcher (10/10/2026)
+
+Developer session 2 added the instruments that 12.9 lacked.
+
+**Frames analysed per minute (R21).** The `Core` counts analysed frames per
+camera; every 60 s `_tally()` turns them into `analysed_per_minute`, served by
+`/api/status`, and logs the numbers when a face scan ran in that minute
+(`faces.scanning()` asks `_SCAN_LOCK.locked()` — whether a lock is held,
+without taking it). Measured on the M900: a quiet scene barely notices a dense
+scan (584 → 575–583 frames a minute), but **YOLO runs 1.6× slower during one**
+(280 → 454 ms), because every `cv2.dnn` network in the process shares one pool
+of worker threads. Giving the scan fewer threads does not help:
+`cv2.setNumThreads` is process-wide and slowed YOLO itself (472 ms at 2
+threads, 772 ms at 1). The decision is in CONTEXTO 13.8 (R23).
+
+**Where each scan looked (R22).** One INFO line per scan:
+`face scan 22-29-22.mp4: dense 7.3-15.7 s, 36.3-42.1 s, 162 frames, 23.1 s, 3 face view(s)`.
+
+**`tools/replay.py` (R17).** Plays any video through the real
+`MotionDetector` and `SubjectDetector` and prints why each candidate was kept
+or dropped. Both classes gained an optional `trace` list, `None` by default —
+when nobody set it, nothing is recorded and nothing changes (the Python version
+of an optional listener in Java); the old and new code gave identical results
+on all 561 frames of the 22:29 clip. `SubjectDetector.detect()` gained an
+optional `now`, so `MIN_INTERVAL` and the static spots follow the video's
+clock instead of the wall clock. The reasons are the clearest list of what each
+layer filters: too small, few changed pixels, lighting change, not confirmed
+(n/3), whole frame changed, warming up; animal below confidence, person too
+short, no motion overlap, duplicate, static spot. `--prime` teaches MOG2 the
+background from the first 6 s first, because a fresh MOG2 is blind for 6 s —
+exactly where an event's pre-roll ends. The primed background already holds
+whatever was in the scene, which production's long-learned one would not:
+good enough to reproduce an event, not identical to production.
+
+**The running version (backlog 18).** `web._read_version()` runs
+`git describe --tags --always --dirty` once at startup: production shows its
+tag (`v2026.10.10`), the test copy something like `v2026.10.10-12-g1b8822d`,
+"12 commits after that tag" — which also tells the two pages apart. Served as
+`version` in `/api/status` and shown muted at the right of the header;
+`unknown` if git cannot answer, never an error.
+
 ---
 
 ## 13. Restrição importante das câmeras Tapo

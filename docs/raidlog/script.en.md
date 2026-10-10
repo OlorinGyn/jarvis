@@ -219,3 +219,190 @@ J.A.R.V.I.S. — two eyes, one house, guided by the Owner's every decision.
 events.
 
 **Next:** Issue #2 — The Dog Who Wore a Person's Face (`v2026.10.10`).
+
+---
+
+## Issue #2 — The Dog Who Wore a Person's Face
+
+`v2026.10.10` · 10 Oct 2026, one long night
+
+### Cover
+
+Close-up of a phone screen showing a notification photo: the white dog asleep
+on its dark mat, a green box around it labelled "person 0.72". Reflected in
+the screen, J.A.R.V.I.S.'s eye, puzzled. Badge: **ISSUE #2**.
+
+### Chapter 1 — The Case of the Missing Owner
+
+**Panel 1.** Night, the house. The owl at a desk, lantern lit, logs unrolled.
+THE OWNER: I went out for a delivery and came back. It didn't catch me —
+not going, not coming back!
+ARCHITECT: Production's first night: 19 events, no errors. Let's look.
+
+**Panel 2.** The Owner's desktop: two black console windows stay open, others
+flash and vanish. Their titles read "…site-packages\imageio_ffmpeg…".
+THE OWNER: And these windows keep popping up.
+ARCHITECT: Those are the cameras' ffmpeg. Don't close them — you'd cut a
+camera.
+
+**Panel 3.** The owl watches two videos side by side: the Tapo app's clip and
+production's clip. Same scene: the Owner leaving, the gate, coming back with
+a box.
+ARCHITECT: You were recorded. Both ways. Fifty-six seconds.
+
+**Panel 4.** The event card in the browser: the picture is the dog on the mat.
+ARCHITECT: But the picture is the first frame of the event — and the dog
+started it, wearing a person's label.
+
+**Panel 5.** A filmstrip of ninety frames; only four glow green.
+ARCHITECT: And your face was frontal and big enough in only 4 of 90 frames.
+The scan read one in fourteen. It missed them all.
+
+### Chapter 2 — The Builder's Night
+
+**Panel 1.** The beaver with a lamp on the hard hat, five tasks pinned on a
+board.
+DEV: Windows first. CREATE_NO_WINDOW on every ffmpeg.
+BOSS (a swarm of tiny black windows): WE OPEN WHEN WE PLEASE!
+DEV: Not anymore.
+
+**Panel 2.** A paper plane trailing a long URL; inside the URL, a glowing key.
+BOSS (the key): EVERY ERROR MESSAGE CARRIES ME — /bot<token>/!
+DEV: Redacted where you enter. And every message now leaves a line in the log.
+
+**Panel 3.** J.A.R.V.I.S. flips through frames like a photographer and picks
+one: the Owner, standing, carrying the box.
+J.A.R.V.I.S.: best view: person, standing. Saved as .best.jpg.
+
+**Panel 4.** The scan grows dense around the moments a person was seen: the
+frames glow where the Owner walks.
+J.A.R.V.I.S.: face found. probably Owner.
+
+**Panel 5.** A scroll labelled config.json, safe under a glass dome.
+DEV: And settings this version doesn't know are kept, not erased.
+
+### Chapter 3 — Two Ways to Fall
+
+**Panel 1.** Production on the roof, a new tag: v2026.10.10. No windows on the
+desktop below.
+CAPTION: 00:56. The update takes ten seconds.
+
+**Panel 2.** The house goes dark, then the lights come back.
+CAPTION: 00:58. The Owner reboots the machine.
+J.A.R.V.I.S.: Back: ok. Front: ok. (59 s after Windows)
+
+**Panel 3.** The Owner's hand (only the hand) clicks "End task" on "Python" in
+Task Manager. J.A.R.V.I.S. collapses.
+CAPTION: 01:01. The Owner pulls the plug on purpose.
+
+**Panel 4.** A big drum labelled "every 5 minutes" beats; J.A.R.V.I.S. stands
+up again.
+CAPTION: 01:06. The drumbeat brings it back.
+ARCHITECT: Reboot or crash: it comes back on its own.
+
+**Panel 5.** The owl looks at a stopwatch reading "45 s" over the scan's
+thinking cloud, while the drones keep watching outside.
+ARCHITECT: Forty-five seconds of thinking per face scan… on the same four
+cores that watch the cameras?
+CAPTION (black bar): TO BE CONTINUED — ISSUE #3: THE WATCHER'S INSTRUMENTS
+
+### Closing card — Raid Log, Issue #2
+
+**Abilities unlocked:** **Silent Machinery** — no console windows (R15) ·
+**Sealed Lips** — the bot token never reaches text (R16) · **The Best Side** —
+the event's picture is its best view of a person (R19) · **Patient Reader** —
+the face scan reads densely where a person was seen (R20) · **Long Memory** —
+settings a newer version added survive an older one (R11) · **Unbreakable** —
+back after a reboot and after a crash (R13).
+
+**Bosses defeated:** The Window Swarm · The Key in the URL · The Missed Face.
+
+**Still lurking:** the dog on the mat, now two false messages per event (R18) ·
+the cost of a 45 s scan (R21).
+
+**The Owner's decrees:** "Prepare the Dev's session; you set the priorities,
+tell me the criteria." · "Count how many sessions fit in one token window." ·
+"Show me the running version somewhere." · "Weigh the cost before drawing."
+
+**Numbers:** 6 fixes · 1 release · 1 reboot and 1 crash, both survived.
+
+**Next:** Issue #3 — The Watcher's Instruments (`v2026.10.10.2`).
+
+---
+
+## Issue #3 — The Watcher's Instruments
+
+`v2026.10.10.2` · 10 Oct 2026, before dawn
+
+### Cover
+
+The beaver at a workbench building instruments: a frame counter with a
+needle, a magnifying lens on a tripod, a small brass plate engraved with a
+version number. J.A.R.V.I.S. watches, curious. Badge: **ISSUE #3**.
+
+### Chapter 1 — Measure Before You Choose
+
+**Panel 1.** A dial labelled "frames per minute" on J.A.R.V.I.S.'s chest; the
+needle barely moves while the scan runs.
+DEV: Quiet scene: 584 frames a minute, 578 during a scan. Fine.
+
+**Panel 2.** A second dial labelled YOLO: the needle swings into the red.
+DEV: But YOLO goes from 280 to 454 milliseconds while a scan runs.
+
+**Panel 3.** The beaver turns a knob labelled "threads: 1"; both dials get
+worse.
+DEV: Fewer threads for the scan? The knob is shared — YOLO gets slower too.
+CAPTION: It sounded obviously right. It measured wrong.
+
+**Panel 4.** The owl at night with a list of five options, four crossed out.
+ARCHITECT: The scan pauses between frames whenever a camera is recording. The
+collision only matters during an event — so that is where we remove it.
+
+### Chapter 2 — Instruments
+
+**Panel 1.** A small brass plate in the corner of the web page reads
+v2026.10.10.2.
+THE OWNER: I want to see the running version somewhere.
+DEV: git describe, once at startup. Production shows its tag.
+
+**Panel 2.** A logbook: "face scan 22-29-22.mp4: dense 7.3-15.7 s, 36.3-42.1 s,
+162 frames, 23.1 s, 3 face view(s)".
+J.A.R.V.I.S.: now I write down where I looked.
+
+**Panel 3.** The replay machine: the 22:29 clip runs through it; a ticker
+prints reasons — "too short", "static spot", "no motion overlap".
+DEV: Every frame, and why it was kept or dropped.
+
+**Panel 4.** On the replay screen: the dog's box, very wide, touching the
+bottom edge; beside it the Owner's box, tall and narrow.
+DEV: The dog is three or four times wider than tall. Every real person is
+taller than wide.
+THE OWNER: Let it sleep for now. Later.
+
+**Panel 5.** The owl hands the beaver's drawings back as a written script.
+THE OWNER: Don't draw the comic. Write the script — I'll draw it with a proper
+tool.
+ARCHITECT: Cheaper, and only the script needs to know what really happened.
+
+**Panel 6.** Night. The dog still asleep on the mat, one eye half open. A
+green box flickers around it.
+CAPTION (black bar): TO BE CONTINUED — ISSUE #4
+
+### Closing card — Raid Log, Issue #3
+
+**Abilities unlocked:** **The Pulse** — frames analysed per minute, in
+`/api/status` (R21) · **Name Plate** — the running version on the page
+(backlog 18) · **The Logbook** — where every face scan looked (R22) · **The
+Replay** — `tools/replay.py`, why each frame was kept or dropped (R17) ·
+**Plain Speech** — the code speaks English, the old window included (R10).
+
+**Bosses defeated:** The Obvious Wrong Answer (fewer threads).
+
+**Still lurking:** the dog on the mat (R18, waiting on the Owner) · the scan
+that collides with events (R23, decided, to build).
+
+**The Owner's decrees:** "Show the running version." · "Write the comic's
+script, not the drawing." · "Before handing me a decision, look for a better
+solution."
+
+**Next:** Issue #4.

@@ -225,3 +225,202 @@ dois olhos, uma casa, guiado por cada decisão do Dono.
 eventos.
 
 **Próxima:** Edição nº 2 — O Cachorro com Cara de Gente (`v2026.10.10`).
+
+---
+
+## Edição nº 2 — O Cachorro com Cara de Gente
+
+`v2026.10.10` · 10 out 2026, uma noite longa
+
+### Capa
+
+Close na tela de um celular mostrando a foto de uma notificação: o cachorro
+branco dormindo no tapete escuro, uma caixa verde em volta escrita
+"person 0.72". Refletido na tela, o olho de J.A.R.V.I.S., intrigado. Selo:
+**EDIÇÃO #2**.
+
+### Capítulo 1 — O Caso do Dono Desaparecido
+
+**Quadro 1.** Noite, a casa. A coruja numa mesa, lanterna acesa, logs
+desenrolados.
+O DONO: Saí para buscar uma entrega e voltei. Não fui gravado — nem na ida,
+nem na volta!
+ARQUITETO: Primeira noite da produção: 19 eventos, nenhum erro. Vamos ver.
+
+**Quadro 2.** A área de trabalho do Dono: duas janelas pretas de console
+ficam abertas, outras piscam e somem. Os títulos dizem
+"…site-packages\imageio_ffmpeg…".
+O DONO: E essas janelas não param de aparecer.
+ARQUITETO: São o ffmpeg das câmeras. Não feche — você cortaria uma câmera.
+
+**Quadro 3.** A coruja assiste a dois vídeos lado a lado: o clipe do app Tapo e
+o da produção. A mesma cena: o Dono saindo, o portão, a volta com uma caixa.
+ARQUITETO: Você foi gravado. Ida e volta. Cinquenta e seis segundos.
+
+**Quadro 4.** O cartão do evento no navegador: a foto é o cachorro no tapete.
+ARQUITETO: Mas a foto é o primeiro quadro do evento — e quem o começou foi o
+cachorro, vestindo a etiqueta de pessoa.
+
+**Quadro 5.** Uma tira de filme com noventa quadros; só quatro brilham em
+verde.
+ARQUITETO: E o seu rosto ficou de frente e grande o bastante em só 4 de 90
+quadros. A varredura lia um em catorze. Perdeu todos.
+
+### Capítulo 2 — A Noite do Construtor
+
+**Quadro 1.** O castor com lanterna no capacete, cinco tarefas presas num
+quadro.
+DEV: Primeiro as janelas. CREATE_NO_WINDOW em todo ffmpeg.
+CHEFÃO (um enxame de janelinhas pretas): A GENTE ABRE QUANDO QUISER!
+DEV: Não mais.
+
+**Quadro 2.** Um avião de papel arrastando uma URL comprida; dentro da URL,
+uma chave brilhando.
+CHEFÃO (a chave): TODA MENSAGEM DE ERRO ME CARREGA — /bot<token>/!
+DEV: Censurada onde você entra. E toda mensagem agora deixa uma linha no log.
+
+**Quadro 3.** J.A.R.V.I.S. folheia quadros como um fotógrafo e escolhe um: o
+Dono, em pé, carregando a caixa.
+J.A.R.V.I.S.: best view: person, standing. Saved as .best.jpg.
+
+**Quadro 4.** A varredura fica densa nos momentos em que uma pessoa foi vista:
+os quadros brilham onde o Dono caminha.
+J.A.R.V.I.S.: face found. probably Dono.
+
+**Quadro 5.** Um pergaminho escrito config.json, protegido sob uma redoma de
+vidro.
+DEV: E os ajustes que esta versão não conhece são mantidos, não apagados.
+
+### Capítulo 3 — Duas Formas de Cair
+
+**Quadro 1.** A produção no telhado, uma tag nova: v2026.10.10. Nenhuma janela
+na área de trabalho lá embaixo.
+LEGENDA: 00:56. A atualização leva dez segundos.
+
+**Quadro 2.** A casa escurece, depois as luzes voltam.
+LEGENDA: 00:58. O Dono reinicia a máquina.
+J.A.R.V.I.S.: Back: ok. Front: ok. (59 s depois do Windows)
+
+**Quadro 3.** A mão do Dono (só a mão) clica em "Finalizar tarefa" no
+"Python" do Gerenciador de Tarefas. J.A.R.V.I.S. desaba.
+LEGENDA: 01:01. O Dono puxa o fio de propósito.
+
+**Quadro 4.** Um grande tambor escrito "a cada 5 minutos" bate; J.A.R.V.I.S.
+se levanta de novo.
+LEGENDA: 01:06. O tambor o traz de volta.
+ARQUITETO: Reboot ou queda: ele volta sozinho.
+
+**Quadro 5.** A coruja olha um cronômetro marcando "45 s" sobre a nuvem de
+pensamento da varredura, enquanto os drones continuam vigiando lá fora.
+ARQUITETO: Quarenta e cinco segundos de raciocínio por varredura de rosto…
+nos mesmos quatro núcleos que vigiam as câmeras?
+LEGENDA (faixa preta): CONTINUA — EDIÇÃO #3: OS INSTRUMENTOS DO VIGIA
+
+### Ficha final — Raid Log, Edição nº 2
+
+**Habilidades desbloqueadas:** **Maquinário Silencioso** — sem janelas de
+console (R15) · **Boca Fechada** — o token do bot nunca vira texto (R16) ·
+**O Melhor Ângulo** — a foto do evento é a melhor vista da pessoa (R19) ·
+**Leitor Paciente** — a varredura lê denso onde houve pessoa (R20) · **Memória
+Longa** — ajustes de uma versão nova sobrevivem a uma antiga (R11) ·
+**Inquebrável** — volta depois de reboot e de queda (R13).
+
+**Chefões derrotados:** O Enxame de Janelas · A Chave na URL · O Rosto
+Perdido.
+
+**Ainda à espreita:** o cachorro no tapete, agora duas mensagens falsas por
+evento (R18) · o custo de uma varredura de 45 s (R21).
+
+**Os decretos do Dono:** "Prepare a sessão do Dev; quem prioriza é você, me
+diga os critérios." · "Conte quantas sessões cabem numa janela de tokens." ·
+"Quero ver a versão vigente em algum lugar." · "Pese o custo antes de
+desenhar."
+
+**Números:** 6 correções · 1 release · 1 reboot e 1 queda, os dois superados.
+
+**Próxima:** Edição nº 3 — Os Instrumentos do Vigia (`v2026.10.10.2`).
+
+---
+
+## Edição nº 3 — Os Instrumentos do Vigia
+
+`v2026.10.10.2` · 10 out 2026, antes do amanhecer
+
+### Capa
+
+O castor numa bancada construindo instrumentos: um contador de quadros com
+ponteiro, uma lente de aumento num tripé, uma plaquinha de latão gravada com
+um número de versão. J.A.R.V.I.S. observa, curioso. Selo: **EDIÇÃO #3**.
+
+### Capítulo 1 — Meça Antes de Escolher
+
+**Quadro 1.** Um mostrador escrito "quadros por minuto" no peito de
+J.A.R.V.I.S.; o ponteiro mal se mexe durante a varredura.
+DEV: Cena parada: 584 quadros por minuto, 578 durante uma varredura. Tudo bem.
+
+**Quadro 2.** Um segundo mostrador escrito YOLO: o ponteiro vai para o
+vermelho.
+DEV: Mas o YOLO vai de 280 para 454 milissegundos durante uma varredura.
+
+**Quadro 3.** O castor gira um botão escrito "threads: 1"; os dois mostradores
+pioram.
+DEV: Menos threads para a varredura? O botão é compartilhado — o YOLO fica
+mais lento também.
+LEGENDA: Parecia obviamente certo. A medição disse que não.
+
+**Quadro 4.** A coruja, de noite, com uma lista de cinco opções, quatro
+riscadas.
+ARQUITETO: A varredura pausa entre os quadros sempre que uma câmera estiver
+gravando. A colisão só importa durante um evento — então é ali que a gente a
+tira.
+
+### Capítulo 2 — Instrumentos
+
+**Quadro 1.** Uma plaquinha de latão no canto da página web diz
+v2026.10.10.2.
+O DONO: Quero ver a versão vigente em algum lugar.
+DEV: git describe, uma vez ao iniciar. A produção mostra a tag dela.
+
+**Quadro 2.** Um diário de bordo: "face scan 22-29-22.mp4: dense 7.3-15.7 s,
+36.3-42.1 s, 162 frames, 23.1 s, 3 face view(s)".
+J.A.R.V.I.S.: agora eu anoto onde olhei.
+
+**Quadro 3.** A máquina de replay: o clipe das 22:29 passa por ela; uma fita
+imprime motivos — "too short", "static spot", "no motion overlap".
+DEV: Cada quadro, e por que foi mantido ou descartado.
+
+**Quadro 4.** Na tela do replay: a caixa do cachorro, bem larga, encostando na
+borda de baixo; ao lado, a caixa do Dono, alta e estreita.
+DEV: O cachorro é três ou quatro vezes mais largo que alto. Toda pessoa de
+verdade é mais alta que larga.
+O DONO: Deixa ele dormir por enquanto. Depois.
+
+**Quadro 5.** A coruja devolve os desenhos do castor como um roteiro escrito.
+O DONO: Não desenhe o gibi. Escreva o roteiro — eu desenho com uma ferramenta
+própria.
+ARQUITETO: Mais barato, e só o roteiro precisa saber o que aconteceu de
+verdade.
+
+**Quadro 6.** Noite. O cachorro ainda dorme no tapete, um olho meio aberto.
+Uma caixa verde pisca em volta dele.
+LEGENDA (faixa preta): CONTINUA — EDIÇÃO #4
+
+### Ficha final — Raid Log, Edição nº 3
+
+**Habilidades desbloqueadas:** **O Pulso** — quadros analisados por minuto, no
+`/api/status` (R21) · **Plaquinha** — a versão vigente na página (backlog 18) ·
+**O Diário de Bordo** — onde cada varredura de rosto olhou (R22) · **O
+Replay** — `tools/replay.py`, por que cada quadro foi mantido ou descartado
+(R17) · **Fala Clara** — o código fala inglês, a janela antiga inclusive
+(R10).
+
+**Chefões derrotados:** A Resposta Óbvia e Errada (menos threads).
+
+**Ainda à espreita:** o cachorro no tapete (R18, esperando o Dono) · a
+varredura que colide com os eventos (R23, decidida, a construir).
+
+**Os decretos do Dono:** "Mostre a versão vigente." · "Escreva o roteiro do
+gibi, não o desenho." · "Antes de me devolver uma decisão, procure uma solução
+melhor."
+
+**Próxima:** Edição nº 4.
