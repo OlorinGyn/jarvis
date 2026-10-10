@@ -1,9 +1,10 @@
-"""Print the raid log comic, docs/raidlog/raidlog.html, to a PDF beside it.
+"""Print the raid log comic, docs/raidlog/raidlog.html, to one PDF per language.
 
 Usage: uv run python tools/build_raidlog.py
 
-Uses Microsoft Edge in headless mode, which every Windows machine here has,
-so the comic needs no extra dependency. See docs/CONTEXTO.md section 15.
+The comic keeps English and Portuguese side by side in the same file; the page
+shows one of them according to ?lang=. Edge in headless mode prints each, so
+nothing has to be installed. See docs/CONTEXTO.md section 15.
 """
 
 import os
@@ -14,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "docs" / "raidlog" / "raidlog.html"
-OUTPUT = SOURCE.with_name("JARVIS - Raid Log.pdf")
+LANGUAGES = {"en": "JARVIS - Raid Log (EN).pdf", "pt": "JARVIS - Raid Log (PT).pdf"}
 EDGE_CANDIDATES = [
     Path(os.environ.get("ProgramFiles(x86)", "")) / "Microsoft/Edge/Application/msedge.exe",
     Path(os.environ.get("ProgramFiles", "")) / "Microsoft/Edge/Application/msedge.exe",
@@ -29,17 +30,23 @@ def find_edge():
     raise SystemExit("Microsoft Edge not found.")
 
 
-def main():
-    edge = find_edge()
-    OUTPUT.unlink(missing_ok=True)
+def print_pdf(edge, language, output):
+    """Have Edge print the comic in one language."""
+    output.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory() as profile:
         subprocess.run([str(edge), "--headless", "--disable-gpu", "--no-pdf-header-footer",
                         f"--user-data-dir={profile}", "--virtual-time-budget=15000",
-                        f"--print-to-pdf={OUTPUT}", SOURCE.as_uri()],
+                        f"--print-to-pdf={output}", f"{SOURCE.as_uri()}?lang={language}"],
                        check=False, capture_output=True, stdin=subprocess.DEVNULL)
-    if not OUTPUT.exists():
-        raise SystemExit("Edge did not write the PDF.")
-    print(f"{OUTPUT.relative_to(ROOT)}  ({OUTPUT.stat().st_size / 1024:.0f} KB)")
+    if not output.exists():
+        raise SystemExit(f"Edge did not write {output.name}.")
+    print(f"{output.relative_to(ROOT)}  ({output.stat().st_size / 1024:.0f} KB)")
+
+
+def main():
+    edge = find_edge()
+    for language, name in LANGUAGES.items():
+        print_pdf(edge, language, SOURCE.with_name(name))
     return 0
 
 

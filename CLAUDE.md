@@ -11,6 +11,7 @@ not be undone without a new reason, and what has already been ruled out.
 | Code, identifiers, commit messages | English |
 | Documentation (`docs/`, `README.md`, this file) | English |
 | Text the program shows: web page, notifications, terminal | English |
+| The raid log comic (`docs/raidlog/`) | **both**, English and Portuguese |
 
 Technical terms stay in English everywhere. Until the migration in
 `docs/CONTEXTO.md` R10 is done, older documents and parts of the code are

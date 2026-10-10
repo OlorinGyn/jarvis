@@ -1162,6 +1162,14 @@ simplified, ending with what J.A.R.V.I.S. learned. Together the issues form
 the project's raid log, printed as one PDF. The artistic choices were left to
 the architect.
 
+**Two languages — decided by the user the same night.** The comic is the one
+exception to the English-only rule for documents: every issue exists in English
+**and** Portuguese. Both live in the same file, each text next to its
+translation (`<span lang="en">` / `<span lang="pt">`, and `lang` on SVG
+`<text>`), and `?lang=pt` shows the Portuguese one. One drawing, two texts:
+they cannot drift apart. Verbatim system output — log lines, error messages,
+`person 0.72`, camera names — stays as the system prints it, in both.
+
 **What is fixed, so the issues stay one series:**
 
 | | |
@@ -1190,14 +1198,15 @@ review is written, so the material is fresh. A new issue is a new set of
 characters are SVG symbols defined once at the top of that file and reused.
 
 ```bat
-uv run python tools/build_raidlog.py     docs/raidlog/JARVIS - Raid Log.pdf
+uv run python tools/build_raidlog.py     docs/raidlog/JARVIS - Raid Log (EN).pdf and (PT).pdf
 ```
 
 Edge in headless mode prints it, so it needs nothing installed. The fonts come
 from Google Fonts, so build it online. The PDF is not versioned, like the
-EPUB. Adding `?p=3` to the HTML's address shows only page 3 — that is how the
+EPUB. Run it from PowerShell: launched from Git Bash, Edge once exited without
+printing. Adding `?p=3` (or `?lang=pt&p=3`) to the HTML's address shows only page 3 — that is how the
 architect checks each page as an image before printing.
 
 | Issue | Version | Title |
 |---|---|---|
-| 1 | `v2026.10.09` | The First Night Shift |
+| 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite |

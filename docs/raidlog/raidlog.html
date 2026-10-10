@@ -4,10 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>J.A.R.V.I.S. Raid Log</title>
+<script>
+const query = new URLSearchParams(location.search);
+document.documentElement.lang = query.get("lang") === "pt" ? "pt" : "en";
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#111;--paper:#fdf3dc;--gold:#ffd84d;--red:#c8102e;--cyan:#33d6ff}
+html[lang="en"] body [lang="pt"],html[lang="pt"] body [lang="en"]{display:none!important}
 @page{size:A4;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#555}
@@ -22,14 +27,18 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 .p{position:relative;border:3px solid var(--ink);overflow:hidden;background:#fff;box-shadow:3px 3px 0 var(--ink)}
 .p>svg{position:absolute;inset:0;width:100%;height:100%}
 .b{position:absolute;max-width:60%;background:#fff;border:2.5px solid var(--ink);border-radius:16px;padding:5px 9px;font:700 12.5px/1.25 'Comic Neue',cursive;box-shadow:2px 2px 0 var(--ink);z-index:3}
+html[lang="pt"] .b{font-size:12px}
 .b::after{content:"";position:absolute;bottom:-8px;left:20px;width:12px;height:12px;background:inherit;border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);border-color:inherit;transform:rotate(45deg)}
 .b.r::after{left:auto;right:20px}
 .b.c::after{left:calc(50% - 6px)}
 .b.n::after{display:none}
 .owner{background:#fff4c2;border-color:#8a6d00}
 .owner::before{content:"THE OWNER";position:absolute;top:-10px;left:10px;background:#8a6d00;color:#fff;font:11px Bangers,cursive;letter-spacing:1px;padding:0 6px;border-radius:3px}
+html[lang="pt"] .owner::before{content:"O DONO"}
 .boss{background:#111;color:#ff5468;border-color:#ff5468;font:15px/1.15 Bangers,cursive;letter-spacing:.6px;border-radius:5px}
+html[lang="pt"] .boss{font-size:14.5px}
 .jv{background:#0b1020;color:#8ff3ff;border-color:var(--cyan);font:700 11.5px/1.3 Consolas,'Courier New',monospace;border-radius:8px}
+html[lang="pt"] .jv{font-size:11px}
 .cap{position:absolute;top:0;left:0;max-width:72%;background:var(--gold);border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);font:700 11.5px/1.25 'Comic Neue',cursive;padding:4px 8px;z-index:4}
 .cap.bot{top:auto;bottom:0;border-bottom:0;border-top:2.5px solid var(--ink)}
 .cap.end{max-width:100%;left:0;right:0;background:#111;color:var(--gold);font:17px/1.2 Bangers,cursive;letter-spacing:1px;text-align:center;border:0;padding:6px}
@@ -51,20 +60,21 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:9mm}
 .sheet ul{list-style:none;margin:0;padding:0}
 .sheet li{font:13px/1.32 'Comic Neue',cursive;margin:0 0 6px 22px;position:relative}
+html[lang="pt"] .sheet li{font-size:12.5px}
 .sheet li::before{position:absolute;left:-21px;top:-1px;font:16px Bangers,cursive}
 .loot li::before{content:"\2605";color:#c99400;-webkit-text-stroke:.6px #111}
 .boss-l li::before{content:"\2716";color:var(--red)}
 .lurk li::before{content:"?";color:#5b3fa0}
 .sheet li b{font-weight:700}
+.decrees{display:grid;grid-template-columns:1fr 1fr;gap:6px 9mm;margin-top:4px}
+.decrees div{background:#fff4c2;border:2.5px solid #8a6d00;border-radius:12px;padding:5px 9px;font:700 12.5px/1.3 'Comic Neue',cursive}
+.decrees i{display:block;font:400 11px 'Comic Neue',cursive;font-style:normal;color:#6b5a3a}
 .party{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
 .party div{border:3px solid var(--ink);background:#fff;padding:6px;text-align:center;font:12px/1.25 'Comic Neue'}
 .party svg{width:66px;height:72px;display:block;margin:0 auto 2px}
 .party b{font:17px Bangers,cursive;letter-spacing:1px;display:block}
 .stats{display:flex;justify-content:space-between;margin-top:12px;background:var(--ink);color:var(--gold);font:17px Bangers,cursive;letter-spacing:1px;padding:7px 12px}
 .next{margin-top:10px;text-align:center;font:18px Bangers,cursive;letter-spacing:1px}
-.decrees{display:grid;grid-template-columns:1fr 1fr;gap:6px 9mm;margin-top:4px}
-.decrees div{background:#fff4c2;border:2.5px solid #8a6d00;border-radius:12px;padding:5px 9px;font:700 12.5px/1.3 'Comic Neue',cursive}
-.decrees i{display:block;font:400 11px 'Comic Neue',cursive;font-style:normal;color:#6b5a3a}
 </style>
 </head>
 <body>
@@ -195,7 +205,7 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 </defs>
 </svg>
 
-<!-- PAGE 1 -->
+<!-- ISSUE 1 · PAGE 1 -->
 <section class="page cover">
 <svg viewBox="0 0 760 1080" preserveAspectRatio="xMidYMax slice">
 <rect width="760" height="1080" fill="url(#night)"/>
@@ -216,13 +226,13 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect width="760" height="1080" fill="url(#wdots)" opacity=".05"/>
 </svg>
 <div class="title"><h1>J.A.R.V.I.S.</h1><div class="ribbon">RAID LOG</div></div>
-<div class="badge"><span>ISSUE</span><b>#1</b></div>
-<div class="band"><div class="name">The First Night Shift</div><div class="meta">v2026.10.09 &middot; 24 Sep &ndash; 9 Oct 2026 &middot; 52 commits &middot; 2 cameras &middot; 1 house</div></div>
+<div class="badge"><span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span><b>#1</b></div>
+<div class="band"><div class="name"><span lang="en">The First Night Shift</span><span lang="pt">O Primeiro Turno da Noite</span></div><div class="meta"><span lang="en">v2026.10.09 &middot; 24 Sep &ndash; 9 Oct 2026 &middot; 52 commits &middot; 2 cameras &middot; 1 house</span><span lang="pt">v2026.10.09 &middot; 24 set &ndash; 9 out 2026 &middot; 52 commits &middot; 2 câmeras &middot; 1 casa</span></div></div>
 </section>
 
-<!-- PAGE 2 -->
+<!-- ISSUE 1 · PAGE 2 -->
 <section class="page">
-<div class="chap"><span class="no">CHAPTER 1</span><span class="t">The Gate of Signatures</span></div>
+<div class="chap"><span class="no"><span lang="en">CHAPTER 1</span><span lang="pt">CAPÍTULO 1</span></span><span class="t"><span lang="en">The Gate of Signatures</span><span lang="pt">O Portão das Assinaturas</span></span></div>
 <div class="grid">
 <div class="p w">
 <svg viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice">
@@ -238,8 +248,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="686" y="152" text-anchor="middle" font-family="Bangers" font-size="15" fill="#3a4d85">FRONT</text><text x="746" y="152" text-anchor="middle" font-family="Bangers" font-size="15" fill="#3a4d85">BACK</text>
 <rect width="800" height="350" fill="url(#dots)" opacity=".06"/>
 </svg>
-<div class="cap">24 September 2026. Two Tapo cameras, one Lenovo M900 &mdash; and a builder.</div>
-<div class="b" style="left:6%;top:22%;max-width:34%">Motion, YOLO, clips&hellip; it all runs on the big PC. Now, on the M900&mdash;</div>
+<div class="cap"><span lang="en">24 September 2026. Two Tapo cameras, one Lenovo M900 &mdash; and a builder.</span><span lang="pt">24 de setembro de 2026. Duas câmeras Tapo, um Lenovo M900 &mdash; e um construtor.</span></div>
+<div class="b" style="left:6%;top:22%;max-width:34%"><span lang="en">Motion, YOLO, clips&hellip; it all runs on the big PC. Now, on the M900&mdash;</span><span lang="pt">Movimento, YOLO, clipes&hellip; tudo roda no PC grande. Agora, no M900&mdash;</span></div>
 </div>
 
 <div class="p">
@@ -256,8 +266,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="55" y="252" text-anchor="middle" font-family="Bangers" font-size="15" fill="#fff" transform="rotate(-8 55 252)">PyTorch</text>
 <use href="#beaver" x="56" y="196" width="96" height="117"/>
 </svg>
-<div class="b boss r" style="left:34%;top:4%;max-width:62%">UNSIGNED DLLs SHALL NOT PASS!</div>
-<div class="b" style="left:4%;top:34%;max-width:44%">But PyTorch is only two gigabytes&hellip;</div>
+<div class="b boss r" style="left:34%;top:4%;max-width:62%"><span lang="en">UNSIGNED DLLs SHALL NOT PASS!</span><span lang="pt">DLLs SEM ASSINATURA NÃO PASSARÃO!</span></div>
+<div class="b" style="left:4%;top:34%;max-width:44%"><span lang="en">But PyTorch is only two gigabytes&hellip;</span><span lang="pt">Mas o PyTorch tem só dois gigabytes&hellip;</span></div>
 </div>
 
 <div class="p">
@@ -271,7 +281,7 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="305" y="244" text-anchor="middle" font-family="Bangers" font-size="17" fill="#111">cv2.dnn</text>
 <path d="M356 214 l6 -10 M366 232 l12 -2 M354 252 l8 8" stroke="#e8a800" stroke-width="3" stroke-linecap="round"/>
 </svg>
-<div class="b r" style="left:6%;top:6%;max-width:80%">Then we travel light: YOLO through OpenCV's own <b>dnn</b>. No PyTorch at all.</div>
+<div class="b r" style="left:6%;top:6%;max-width:80%"><span lang="en">Then we travel light: YOLO through OpenCV's own <b>dnn</b>. No PyTorch at all.</span><span lang="pt">Então viajamos leves: YOLO pelo próprio <b>dnn</b> do OpenCV. Nada de PyTorch.</span></div>
 </div>
 
 <div class="p">
@@ -282,9 +292,9 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#jarvis" x="14" y="186" width="100" height="120"/>
 <use href="#mosq" x="190" y="160" width="40" height="30"/><use href="#mosq" x="250" y="200" width="34" height="26"/><use href="#mosq" x="310" y="150" width="44" height="32"/><use href="#mosq" x="230" y="240" width="30" height="22"/><use href="#mosq" x="340" y="226" width="38" height="28"/><use href="#mosq" x="290" y="270" width="30" height="22"/>
 </svg>
-<div class="cap">26 Sep. The first night outside.</div>
-<div class="b boss r" style="left:36%;top:12%;max-width:60%">BZZZ! EVERY WING IS AN INTRUDER!</div>
-<div class="b jv" style="left:4%;top:33%;max-width:58%">Seen for several frames in a row, or it never happened.</div>
+<div class="cap"><span lang="en">26 Sep. The first night outside.</span><span lang="pt">26 set. A primeira noite lá fora.</span></div>
+<div class="b boss r" style="left:36%;top:12%;max-width:60%"><span lang="en">BZZZ! EVERY WING IS AN INTRUDER!</span><span lang="pt">BZZZ! TODA ASA É UM INVASOR!</span></div>
+<div class="b jv" style="left:4%;top:33%;max-width:58%"><span lang="en">Seen for several frames in a row, or it never happened.</span><span lang="pt">Visto em vários quadros seguidos, ou não aconteceu.</span></div>
 </div>
 
 <div class="p">
@@ -298,21 +308,22 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#beaver" x="18" y="196" width="96" height="117"/>
 <rect x="106" y="226" width="82" height="46" rx="6" fill="#fff6d8" stroke="#111" stroke-width="3"/>
 <text x="147" y="246" text-anchor="middle" font-family="Bangers" font-size="13" fill="#111">python.org</text>
-<text x="147" y="263" text-anchor="middle" font-family="Bangers" font-size="12" fill="#1f6feb">SIGNED: PSF</text>
+<text lang="en" x="147" y="263" text-anchor="middle" font-family="Bangers" font-size="12" fill="#1f6feb">SIGNED: PSF</text>
+<text lang="pt" x="147" y="263" text-anchor="middle" font-family="Bangers" font-size="12" fill="#1f6feb">ASSINADO: PSF</text>
 <circle cx="186" cy="270" r="9" fill="#c8102e" stroke="#111" stroke-width="2"/>
 <use href="#owl" x="186" y="222" width="80" height="98"/>
 </svg>
-<div class="cap">9 Oct. After nine quiet days, the gate rises again &mdash; this time against uv's own Python.</div>
-<div class="b boss r" style="left:52%;top:23%;max-width:46%">SIGNED. YOU MAY PASS.</div>
-<div class="b r" style="left:4%;top:38%;max-width:62%">First review, first finding: our own chronicle was wrong. Read the whole log line, not just the word &ldquo;python&rdquo;.</div>
+<div class="cap"><span lang="en">9 Oct. After nine quiet days, the gate rises again &mdash; this time against uv's own Python.</span><span lang="pt">9 out. Depois de nove dias parado, o portão se ergue de novo &mdash; agora contra o Python do próprio uv.</span></div>
+<div class="b boss r" style="left:52%;top:25%;max-width:46%"><span lang="en">SIGNED. YOU MAY PASS.</span><span lang="pt">ASSINADO. PODE PASSAR.</span></div>
+<div class="b r" style="left:4%;top:40%;max-width:62%"><span lang="en">First review, first finding: our own chronicle was wrong. Read the whole log line, not just the word &ldquo;python&rdquo;.</span><span lang="pt">Primeira revisão, primeiro achado: a nossa própria crônica estava errada. Leia a linha inteira do log, não só a palavra &ldquo;python&rdquo;.</span></div>
 </div>
 </div>
-<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 2</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; <span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span> #1 &middot; 2</div>
 </section>
 
-<!-- PAGE 3 -->
+<!-- ISSUE 1 · PAGE 3 -->
 <section class="page">
-<div class="chap"><span class="no">CHAPTER 2</span><span class="t">Eyes, Faces and Paper Planes</span></div>
+<div class="chap"><span class="no"><span lang="en">CHAPTER 2</span><span lang="pt">CAPÍTULO 2</span></span><span class="t"><span lang="en">Eyes, Faces and Paper Planes</span><span lang="pt">Olhos, Rostos e Aviões de Papel</span></span></div>
 <div class="grid">
 <div class="p">
 <svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
@@ -326,9 +337,9 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <polygon points="236,180 228,196 240,196 232,212 252,190 240,190 246,180" fill="#ffd84d" stroke="#111" stroke-width="2"/>
 <use href="#beaver" x="14" y="220" width="90" height="110"/>
 </svg>
-<div class="cap">Two threads, one neural net.</div>
+<div class="cap"><span lang="en">Two threads, one neural net.</span><span lang="pt">Duas threads, uma rede neural.</span></div>
 <div class="b boss c" style="left:16%;top:56%;max-width:70%">buf.shape() == m.shape()&hellip; CRASH!</div>
-<div class="b" style="left:30%;top:76%;max-width:66%">Each thread gets its own brain. Faces wait their turn.</div>
+<div class="b" style="left:30%;top:76%;max-width:66%"><span lang="en">Each thread gets its own brain. Faces wait their turn.</span><span lang="pt">Cada thread com o seu cérebro. Os rostos esperam a vez.</span></div>
 </div>
 
 <div class="p">
@@ -336,12 +347,12 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect width="400" height="350" fill="url(#room)"/>
 <rect y="300" width="400" height="50" fill="#c48a52" stroke="#111" stroke-width="3"/>
 <g transform="rotate(-16 130 170)"><rect x="104" y="128" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="131" cy="156" r="14" fill="#e8c39e" stroke="#111" stroke-width="2"/><path d="M116 192 q15 -16 30 0" fill="#7a8fd0" stroke="#111" stroke-width="2"/></g>
-<g><rect x="173" y="116" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="200" cy="144" r="14" fill="#d9a77b" stroke="#111" stroke-width="2"/><path d="M185 180 q15 -16 30 0" fill="#3c3c3c" stroke="#111" stroke-width="2"/><rect x="170" y="104" width="60" height="14" fill="#ffd84d" stroke="#111" stroke-width="2"/><text x="200" y="115" text-anchor="middle" font-family="Bangers" font-size="11">OWNER</text></g>
+<g><rect x="173" y="116" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="200" cy="144" r="14" fill="#d9a77b" stroke="#111" stroke-width="2"/><path d="M185 180 q15 -16 30 0" fill="#3c3c3c" stroke="#111" stroke-width="2"/><rect x="170" y="104" width="60" height="14" fill="#ffd84d" stroke="#111" stroke-width="2"/><text lang="en" x="200" y="115" text-anchor="middle" font-family="Bangers" font-size="11">OWNER</text><text lang="pt" x="200" y="115" text-anchor="middle" font-family="Bangers" font-size="11">DONO</text></g>
 <g transform="rotate(16 270 170)"><rect x="242" y="128" width="54" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="3"/><circle cx="269" cy="156" r="14" fill="#f0d0b0" stroke="#111" stroke-width="2"/><path d="M254 192 q15 -16 30 0" fill="#c06060" stroke="#111" stroke-width="2"/></g>
 <use href="#jarvis" x="150" y="196" width="100" height="120"/>
 </svg>
-<div class="b owner c" style="left:8%;top:6%;max-width:84%">Name a face once &mdash; and know it every time after.</div>
-<div class="b jv n" style="left:62%;top:62%;max-width:36%">gallery: merged by name.</div>
+<div class="b owner c" style="left:8%;top:6%;max-width:84%"><span lang="en">Name a face once &mdash; and know it every time after.</span><span lang="pt">Dê nome a um rosto uma vez &mdash; e reconheça-o para sempre.</span></div>
+<div class="b jv n" style="left:62%;top:62%;max-width:36%"><span lang="en">gallery: merged by name.</span><span lang="pt">galeria: unida pelo nome.</span></div>
 </div>
 
 <div class="p">
@@ -359,11 +370,12 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect x="302" y="114" width="72" height="62" rx="6" fill="#fff" stroke="#9ab" stroke-width="1.5"/>
 <rect x="320" y="119" width="36" height="30" fill="#777"/><circle cx="338" cy="131" r="8" fill="#d9a77b"/>
 <text x="307" y="161" font-family="Arial" font-weight="bold" font-size="9" fill="#111">Front 20:23:</text>
-<text x="307" y="172" font-family="Arial" font-weight="bold" font-size="9" fill="#c8102e">probably Owner</text>
+<text lang="en" x="307" y="172" font-family="Arial" font-weight="bold" font-size="9" fill="#c8102e">probably Owner</text>
+<text lang="pt" x="307" y="172" font-family="Arial" font-weight="bold" font-size="9" fill="#c8102e">probably Dono</text>
 <use href="#owl" x="300" y="222" width="86" height="105"/>
 </svg>
-<div class="cap">Then the phone learned to ring.</div>
-<div class="b r" style="left:4%;top:13%;max-width:66%">Below 0.45 it says &ldquo;probably&rdquo;. Humility is a feature.</div>
+<div class="cap"><span lang="en">Then the phone learned to ring.</span><span lang="pt">Então o celular aprendeu a tocar.</span></div>
+<div class="b r" style="left:4%;top:13%;max-width:66%"><span lang="en">Below 0.45 it says &ldquo;probably&rdquo;. Humility is a feature.</span><span lang="pt">Abaixo de 0.45 ele diz &ldquo;probably&rdquo;. Humildade também é recurso.</span></div>
 </div>
 
 <div class="p">
@@ -384,8 +396,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#beaver" x="20" y="200" width="104" height="127"/>
 <path d="M112 250 l26 -24" stroke="#777" stroke-width="7" stroke-linecap="round"/><circle cx="140" cy="224" r="7" fill="none" stroke="#777" stroke-width="4"/>
 </svg>
-<div class="b owner" style="left:4%;top:6%;max-width:90%">I don't want two ways in. Everything on the web, one service.</div>
-<div class="b" style="left:3%;top:34%;max-width:34%">FastAPI + MJPEG: the browser is the window now.</div>
+<div class="b owner" style="left:4%;top:6%;max-width:90%"><span lang="en">I don't want two ways in. Everything on the web, one service.</span><span lang="pt">Não quero duas formas de acesso. Tudo na web, um serviço só.</span></div>
+<div class="b" style="left:3%;top:34%;max-width:34%"><span lang="en">FastAPI + MJPEG: the browser is the window now.</span><span lang="pt">FastAPI + MJPEG: agora a janela é o navegador.</span></div>
 </div>
 
 <div class="p w">
@@ -393,7 +405,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect width="800" height="350" fill="url(#room)"/>
 <rect y="292" width="800" height="58" fill="#c48a52" stroke="#111" stroke-width="3"/>
 <use href="#pc" x="34" y="120" width="190" height="149"/>
-<rect x="49" y="135" width="105" height="70" fill="#3a0a12"/><rect x="178" y="222" width="40" height="16" fill="#2a2a2a"/><text x="197" y="234" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="11" fill="#ddd">PC 2</text>
+<rect x="49" y="135" width="105" height="70" fill="#3a0a12"/>
+<rect x="178" y="222" width="40" height="16" fill="#2a2a2a"/><text x="197" y="234" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="11" fill="#ddd">PC 2</text>
 <text x="101" y="164" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="11" fill="#ff5468">Invalid HTTP</text>
 <text x="101" y="180" text-anchor="middle" font-family="Consolas,monospace" font-weight="bold" font-size="11" fill="#ff5468">request</text>
 <path d="M240 170 Q400 70 560 150" fill="none" stroke="#c8102e" stroke-width="4" stroke-dasharray="10 7"/>
@@ -406,17 +419,17 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#house" x="580" y="140" width="196" height="147"/>
 <use href="#jarvis" x="726" y="216" width="62" height="74"/>
 </svg>
-<div class="cap">From the other computer: an error.</div>
-<div class="b c" style="left:31%;top:7%;max-width:38%">Your browser knocked with <b>https://</b>. This house answers <b>http://</b>.</div>
-<div class="b owner r" style="left:72%;top:14%;max-width:26%">Typed http:// &mdash; it works!</div>
+<div class="cap"><span lang="en">From the other computer: an error.</span><span lang="pt">No outro computador: um erro.</span></div>
+<div class="b c" style="left:31%;top:7%;max-width:38%"><span lang="en">Your browser knocked with <b>https://</b>. This house answers <b>http://</b>.</span><span lang="pt">Seu navegador bateu com <b>https://</b>. Esta casa atende em <b>http://</b>.</span></div>
+<div class="b owner r" style="left:72%;top:14%;max-width:26%"><span lang="en">Typed http:// &mdash; it works!</span><span lang="pt">Digitei http:// &mdash; funcionou!</span></div>
 </div>
 </div>
-<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 3</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; <span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span> #1 &middot; 3</div>
 </section>
 
-<!-- PAGE 4 -->
+<!-- ISSUE 1 · PAGE 4 -->
 <section class="page">
-<div class="chap"><span class="no">CHAPTER 3</span><span class="t">Twins, Oaths and Curses</span></div>
+<div class="chap"><span class="no"><span lang="en">CHAPTER 3</span><span lang="pt">CAPÍTULO 3</span></span><span class="t"><span lang="en">Twins, Oaths and Curses</span><span lang="pt">Gêmeos, Juramentos e Maldições</span></span></div>
 <div class="grid">
 <div class="p">
 <svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
@@ -429,8 +442,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect x="214" y="258" width="172" height="22" rx="4" fill="#8ff3ff" stroke="#111" stroke-width="3"/>
 <text x="300" y="274" text-anchor="middle" font-family="Bangers" font-size="13">[TEST] &middot; stream2 &middot; 640&times;360</text>
 </svg>
-<div class="b owner" style="left:4%;top:6%;max-width:90%">One copy always on guard. Another one to train.</div>
-<div class="cap bot">The camera gives stream1 to one viewer &mdash; stream2 to many.</div>
+<div class="b owner" style="left:4%;top:6%;max-width:90%"><span lang="en">One copy always on guard. Another one to train.</span><span lang="pt">Uma cópia sempre de guarda. Outra para treinar.</span></div>
+<div class="cap bot"><span lang="en">The camera gives stream1 to one viewer &mdash; stream2 to many.</span><span lang="pt">A câmera dá o stream1 a um só &mdash; o stream2, a muitos.</span></div>
 </div>
 
 <div class="p">
@@ -438,13 +451,15 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <rect width="400" height="350" fill="url(#sky)"/>
 <rect y="304" width="400" height="46" fill="#8bc34a" stroke="#111" stroke-width="3"/>
 <path d="M24 304 V140 Q24 96 68 96 H170 Q214 96 214 140 V304Z" fill="#a9a9b3" stroke="#111" stroke-width="4"/>
-<g font-family="Bangers" font-size="27" text-anchor="middle" fill="#55555e" letter-spacing="1" transform="translate(-36 0)">
-<text x="155" y="150">GENERATED</text><text x="155" y="186">FILES</text><text x="155" y="222">NEVER</text><text x="155" y="258">BREAK</text></g>
+<g lang="en" font-family="Bangers" font-size="27" text-anchor="middle" fill="#55555e" letter-spacing="1">
+<text x="119" y="150">GENERATED</text><text x="119" y="186">FILES</text><text x="119" y="222">NEVER</text><text x="119" y="258">BREAK</text></g>
+<g lang="pt" font-family="Bangers" font-size="27" text-anchor="middle" fill="#55555e" letter-spacing="1">
+<text x="119" y="150">ARQUIVOS</text><text x="119" y="186">GERADOS</text><text x="119" y="222">NUNCA</text><text x="119" y="258">QUEBRAM</text></g>
 <use href="#owl" x="262" y="190" width="104" height="127"/>
 <path d="M262 238 l-40 -16" stroke="#555" stroke-width="7" stroke-linecap="round"/>
 </svg>
-<div class="b owner" style="left:4%;top:4%;max-width:92%">Never break what an older version wrote.</div>
-<div class="b r" style="left:56%;top:20%;max-width:42%;font-size:11.5px">Carved. <b>check_data</b> reads every file before and after each update.</div>
+<div class="b owner" style="left:4%;top:4%;max-width:92%"><span lang="en">Never break what an older version wrote.</span><span lang="pt">Nunca quebre o que uma versão antiga escreveu.</span></div>
+<div class="b r" style="left:56%;top:19%;max-width:42%;font-size:11.5px"><span lang="en">Carved. <b>check_data</b> reads every file before and after each update.</span><span lang="pt">Gravado. O <b>check_data</b> relê todos os arquivos antes e depois de cada atualização.</span></div>
 </div>
 
 <div class="p">
@@ -461,26 +476,27 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#beaver" x="282" y="200" width="100" height="122"/>
 <circle cx="292" cy="238" r="20" fill="#cfefff" fill-opacity=".55" stroke="#111" stroke-width="4"/><path d="M306 254 l14 14" stroke="#111" stroke-width="6" stroke-linecap="round"/>
 </svg>
-<div class="b boss" style="left:4%;top:5%;max-width:72%">HIDDEN AT BYTE ZERO, I MADE YOUR WHOLE CONFIG VANISH!</div>
-<div class="b r" style="left:50%;top:36%;max-width:48%"><b>utf-8-sig</b>. I see you now.</div>
+<div class="b boss" style="left:4%;top:5%;max-width:72%"><span lang="en">HIDDEN AT BYTE ZERO, I MADE YOUR WHOLE CONFIG VANISH!</span><span lang="pt">ESCONDIDO NO BYTE ZERO, FIZ SUA CONFIG INTEIRA SUMIR!</span></div>
+<div class="b r" style="left:50%;top:36%;max-width:48%"><span lang="en"><b>utf-8-sig</b>. I see you now.</span><span lang="pt"><b>utf-8-sig</b>. Agora eu te vejo.</span></div>
 </div>
 
 <div class="p">
 <svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
 <rect width="400" height="350" fill="url(#night)"/>
 <rect y="304" width="400" height="46" fill="#1a2140"/>
-<circle cx="100" cy="270" r="44" fill="#ffd84d" opacity=".22"/>
+<circle cx="100" cy="270" r="44" fill="#ffd84d" opacity=".18"/>
 <use href="#owl" x="18" y="214" width="92" height="112"/>
 <rect x="92" y="258" width="18" height="24" rx="3" fill="#ffd84d" stroke="#111" stroke-width="2.5"/>
 <use href="#jarvis" x="150" y="196" width="94" height="113"/>
 <use href="#jarvis" x="290" y="196" width="94" height="113"/>
 <path d="M232 182 a42 36 0 0 1 84 0z" fill="#ffcf33" stroke="#111" stroke-width="4"/>
 <rect x="228" y="180" width="92" height="16" fill="#ffcf33" stroke="#111" stroke-width="3"/>
-<text x="274" y="193" text-anchor="middle" font-family="Bangers" font-size="13">PORT 8765</text>
+<text lang="en" x="274" y="193" text-anchor="middle" font-family="Bangers" font-size="13">PORT 8765</text>
+<text lang="pt" x="274" y="193" text-anchor="middle" font-family="Bangers" font-size="13">PORTA 8765</text>
 <path d="M236 236 L250 196 M304 236 L296 196" stroke="#3a4d85" stroke-width="7" stroke-linecap="round"/>
 </svg>
-<div class="cap">Review 2, late at night.</div>
-<div class="b" style="left:4%;top:14%;max-width:92%">Two launches at the same instant both saw the port free. Take it in one move: <b>SO_EXCLUSIVEADDRUSE</b>.</div>
+<div class="cap"><span lang="en">Review 2, late at night.</span><span lang="pt">Revisão 2, tarde da noite.</span></div>
+<div class="b" style="left:4%;top:14%;max-width:92%"><span lang="en">Two launches at the same instant both saw the port free. Take it in one move: <b>SO_EXCLUSIVEADDRUSE</b>.</span><span lang="pt">Dois lançamentos no mesmo instante viram a porta livre. Tome-a num só movimento: <b>SO_EXCLUSIVEADDRUSE</b>.</span></div>
 </div>
 
 <div class="p">
@@ -495,8 +511,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="262" y="208" text-anchor="middle" font-family="Bangers" font-size="34" fill="#c8102e">72h</text>
 <use href="#owl" x="16" y="214" width="96" height="117"/>
 </svg>
-<div class="b boss r" style="left:4%;top:4%;max-width:62%">EVERY THREE DAYS, I END THE WATCH!</div>
-<div class="b" style="left:28%;top:66%;max-width:70%">Time limit: none. And for crashes, a drumbeat every 5 minutes.</div>
+<div class="b boss r" style="left:4%;top:4%;max-width:62%"><span lang="en">EVERY THREE DAYS, I END THE WATCH!</span><span lang="pt">A CADA TRÊS DIAS, EU ENCERRO A VIGÍLIA!</span></div>
+<div class="b" style="left:28%;top:66%;max-width:70%"><span lang="en">Time limit: none. And for crashes, a drumbeat every 5 minutes.</span><span lang="pt">Limite de tempo: nenhum. E para as quedas, um tambor a cada 5 minutos.</span></div>
 </div>
 
 <div class="p">
@@ -515,16 +531,16 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <path d="M164 227 l-6 14 M180 227 l2 14 M200 227 l-4 14 M214 227 l6 14" stroke="#ffd84d" stroke-width="3" stroke-linecap="round"/>
 <use href="#beaver" x="290" y="204" width="100" height="122"/>
 </svg>
-<div class="b boss" style="left:4%;top:4%;max-width:86%">HEE HEE! POWERSHELL 5.1 READS ME AS A CLOSING QUOTE!</div>
-<div class="b r" style="left:56%;top:47%;max-width:42%">ASCII only. Goodbye, em dash.</div>
+<div class="b boss" style="left:4%;top:4%;max-width:86%"><span lang="en">HEE HEE! POWERSHELL 5.1 READS ME AS A CLOSING QUOTE!</span><span lang="pt">HI HI! O POWERSHELL 5.1 ME LÊ COMO ASPAS DE FECHAMENTO!</span></div>
+<div class="b r" style="left:56%;top:47%;max-width:42%"><span lang="en">ASCII only. Goodbye, em dash.</span><span lang="pt">Só ASCII. Adeus, travessão.</span></div>
 </div>
 </div>
-<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 4</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; <span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span> #1 &middot; 4</div>
 </section>
 
-<!-- PAGE 5 -->
+<!-- ISSUE 1 · PAGE 5 -->
 <section class="page">
-<div class="chap"><span class="no">CHAPTER 4</span><span class="t">The First Night Shift</span></div>
+<div class="chap"><span class="no"><span lang="en">CHAPTER 4</span><span lang="pt">CAPÍTULO 4</span></span><span class="t"><span lang="en">The First Night Shift</span><span lang="pt">O Primeiro Turno da Noite</span></span></div>
 <div class="grid">
 <div class="p">
 <svg viewBox="0 0 400 350" preserveAspectRatio="xMidYMid slice">
@@ -537,7 +553,7 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#beaver" x="20" y="226" width="82" height="100"/>
 <path d="M30 236 l-10 -16 M92 236 l10 -16" stroke="#111" stroke-width="3" stroke-linecap="round"/>
 </svg>
-<div class="b r" style="left:4%;top:6%;max-width:92%">First release. Production only ever runs tags.</div>
+<div class="b r" style="left:4%;top:6%;max-width:92%"><span lang="en">First release. Production only ever runs tags.</span><span lang="pt">Primeira release. A produção só roda tags.</span></div>
 </div>
 
 <div class="p">
@@ -547,11 +563,12 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="330" y="140" text-anchor="middle" font-family="Bangers" font-size="74" fill="#ffd84d" stroke="#111" stroke-width="3">&#9664;&#9664;</text>
 <g transform="rotate(-24 190 214)"><use href="#jarvis" x="130" y="134" width="120" height="144"/></g>
 <rect x="22" y="196" width="96" height="30" rx="4" fill="#fff" stroke="#111" stroke-width="3"/>
-<text x="70" y="217" text-anchor="middle" font-family="Bangers" font-size="15" fill="#c8102e">BROKEN</text>
+<text lang="en" x="70" y="217" text-anchor="middle" font-family="Bangers" font-size="15" fill="#c8102e">BROKEN</text>
+<text lang="pt" x="70" y="217" text-anchor="middle" font-family="Bangers" font-size="15" fill="#c8102e">QUEBRADA</text>
 <path d="M22 196 l96 30 M118 196 l-96 30" stroke="#c8102e" stroke-width="4"/>
 </svg>
-<div class="cap">Dress rehearsal: an update broken on purpose.</div>
-<div class="b jv n" style="left:4%;top:81%;max-width:92%">health check failed. rolling back&hellip; Front: fresh. Back: fresh.</div>
+<div class="cap"><span lang="en">Dress rehearsal: an update broken on purpose.</span><span lang="pt">Ensaio geral: uma atualização quebrada de propósito.</span></div>
+<div class="b jv n" style="left:4%;top:81%;max-width:92%"><span lang="en">health check failed. rolling back&hellip; Front: fresh. Back: fresh.</span><span lang="pt">health check falhou. voltando à versão anterior&hellip; Front: ok. Back: ok.</span></div>
 </div>
 
 <div class="p w">
@@ -567,9 +584,9 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#drone" x="160" y="104" width="62" height="54"/><use href="#drone" x="580" y="104" width="62" height="54"/>
 <text x="191" y="174" text-anchor="middle" font-family="Bangers" font-size="15" fill="#8ff3ff">FRONT</text><text x="611" y="174" text-anchor="middle" font-family="Bangers" font-size="15" fill="#8ff3ff">BACK</text>
 </svg>
-<div class="cap">9 October, 20:20:55. Production goes live.</div>
+<div class="cap"><span lang="en">9 October, 20:20:55. Production goes live.</span><span lang="pt">9 de outubro, 20:20:55. A produção entra no ar.</span></div>
 <div class="b jv n" style="left:2%;top:56%;max-width:33%">Starting 2 camera(s) on stream1&hellip;<br>Back: ok<br>Front: ok<br>Surveillance running.</div>
-<div class="b jv n" style="left:69%;top:74%;max-width:29%">first night: 19 events, 0 errors.</div>
+<div class="b jv n" style="left:69%;top:74%;max-width:29%"><span lang="en">first night: 19 events, 0 errors.</span><span lang="pt">primeira noite: 19 eventos, 0 erros.</span></div>
 </div>
 
 <div class="p">
@@ -586,8 +603,8 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <use href="#drone" x="20" y="30" width="60" height="52"/>
 <circle cx="98" cy="46" r="7" fill="#f33"/><text x="110" y="52" font-family="Bangers" font-size="18" fill="#fff">REC</text>
 </svg>
-<div class="cap">22:29. The Owner steps out for a delivery&hellip;</div>
-<div class="b jv n" style="left:4%;top:80%;max-width:92%">event: Front. 56 s &mdash; out, the gate, and back.</div>
+<div class="cap"><span lang="en">22:29. The Owner steps out for a delivery&hellip;</span><span lang="pt">22:29. O Dono sai para buscar uma entrega&hellip;</span></div>
+<div class="b jv n" style="left:4%;top:80%;max-width:92%"><span lang="en">event: Front. 56 s &mdash; out, the gate, and back.</span><span lang="pt">evento: Front. 56 s &mdash; saída, portão e volta.</span></div>
 </div>
 
 <div class="p">
@@ -605,21 +622,21 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <text x="188" y="144" font-family="Arial" font-weight="bold" font-size="15" fill="#39ff5a">person 0.72</text>
 </svg>
 <div class="b jv" style="left:52%;top:6%;max-width:44%">&hellip;person?</div>
-<div class="cap end bot">TO BE CONTINUED &mdash; ISSUE #2: THE DOG WHO WORE A PERSON'S FACE</div>
+<div class="cap end bot"><span lang="en">TO BE CONTINUED &mdash; ISSUE #2: THE DOG WHO WORE A PERSON'S FACE</span><span lang="pt">CONTINUA &mdash; EDIÇÃO #2: O CACHORRO COM CARA DE GENTE</span></div>
 </div>
 </div>
-<div class="foot">J.A.R.V.I.S. RAID LOG &middot; ISSUE #1 &middot; 5</div>
+<div class="foot">J.A.R.V.I.S. RAID LOG &middot; <span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span> #1 &middot; 5</div>
 </section>
 
-<!-- PAGE 6 -->
+<!-- ISSUE 1 · PAGE 6 -->
 <section class="page card">
 <div class="sheet">
-<h2>RAID LOG &middot; ISSUE #1</h2>
-<div class="sub">v2026.10.09 &middot; The First Night Shift &middot; 24 Sep &ndash; 9 Oct 2026</div>
+<h2>RAID LOG &middot; <span lang="en">ISSUE</span><span lang="pt">EDIÇÃO</span> #1</h2>
+<div class="sub"><span lang="en">v2026.10.09 &middot; The First Night Shift &middot; 24 Sep &ndash; 9 Oct 2026</span><span lang="pt">v2026.10.09 &middot; O Primeiro Turno da Noite &middot; 24 set &ndash; 9 out 2026</span></div>
 <div class="cols">
 <div>
-<h3>Abilities unlocked</h3>
-<ul class="loot">
+<h3><span lang="en">Abilities unlocked</span><span lang="pt">Habilidades desbloqueadas</span></h3>
+<ul class="loot" lang="en">
 <li><b>Patient Eyes</b> &mdash; motion by MOG2, believed only when it lasts several frames; YOLO11 through <i>cv2.dnn</i>, no PyTorch.</li>
 <li><b>Memory for Faces</b> &mdash; YuNet finds, SFace recognises; a face named once is named forever.</li>
 <li><b>Paper Planes</b> &mdash; Telegram with the photo, then the face and the name, and &ldquo;probably&rdquo; when unsure.</li>
@@ -629,10 +646,20 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <li><b>Oath of Unbroken Scrolls</b> &mdash; every file an older version wrote is read again before and after each update.</li>
 <li><b>Time-Turner</b> &mdash; an update that fails its health check puts the old version back on its own.</li>
 </ul>
+<ul class="loot" lang="pt">
+<li><b>Olhos Pacientes</b> &mdash; movimento pelo MOG2, só aceito quando dura vários quadros; YOLO11 pelo <i>cv2.dnn</i>, sem PyTorch.</li>
+<li><b>Memória para Rostos</b> &mdash; o YuNet encontra, o SFace reconhece; rosto nomeado uma vez fica nomeado para sempre.</li>
+<li><b>Aviões de Papel</b> &mdash; Telegram com a foto, depois o rosto e o nome, e &ldquo;probably&rdquo; quando há dúvida.</li>
+<li><b>Uma Janela em Qualquer Lugar</b> &mdash; uma página web para ao vivo e gravações, em qualquer computador da casa.</li>
+<li><b>Nunca Dorme</b> &mdash; um serviço sem janela, iniciado pelo Windows, de volta em até 5 minutos após uma queda.</li>
+<li><b>Treino de Gêmeos</b> &mdash; produção em HD no stream1, uma cópia de teste no stream2.</li>
+<li><b>Juramento dos Pergaminhos Inteiros</b> &mdash; todo arquivo de uma versão antiga é relido antes e depois de cada atualização.</li>
+<li><b>Vira-Tempo</b> &mdash; a atualização que falha no health check devolve sozinha a versão anterior.</li>
+</ul>
 </div>
 <div>
-<h3>Bosses defeated</h3>
-<ul class="boss-l">
+<h3><span lang="en">Bosses defeated</span><span lang="pt">Chefões derrotados</span></h3>
+<ul class="boss-l" lang="en">
 <li><b>The Gate of Signatures</b> &mdash; Smart App Control, twice</li>
 <li><b>The Mosquito Swarm</b></li>
 <li><b>The Two-Headed Net</b> &mdash; one model, two threads</li>
@@ -642,16 +669,31 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <li><b>The 72-Hour Curse</b></li>
 <li><b>The Em Dash</b></li>
 </ul>
-<h3>Still lurking</h3>
-<ul class="lurk">
+<ul class="boss-l" lang="pt">
+<li><b>O Portão das Assinaturas</b> &mdash; Smart App Control, duas vezes</li>
+<li><b>O Enxame de Mosquitos</b></li>
+<li><b>A Rede de Duas Cabeças</b> &mdash; um modelo, duas threads</li>
+<li><b>A Crônica Falsa</b> &mdash; nossa própria história, errada</li>
+<li><b>O BOM Invisível</b></li>
+<li><b>O Gêmeo que Subiu Duas Vezes</b></li>
+<li><b>A Maldição das 72 Horas</b></li>
+<li><b>O Travessão</b></li>
+</ul>
+<h3><span lang="en">Still lurking</span><span lang="pt">Ainda à espreita</span></h3>
+<ul class="lurk" lang="en">
 <li>Black windows that open on their own (R15)</li>
 <li>The dog on the mat (R18)</li>
 <li>A face that passed too fast (R20)</li>
 </ul>
+<ul class="lurk" lang="pt">
+<li>Janelas pretas que abrem sozinhas (R15)</li>
+<li>O cachorro no tapete (R18)</li>
+<li>Um rosto que passou rápido demais (R20)</li>
+</ul>
 </div>
 </div>
-<h3>The Owner's decrees</h3>
-<div class="decrees">
+<h3><span lang="en">The Owner's decrees</span><span lang="pt">Os decretos do Dono</span></h3>
+<div class="decrees" lang="en">
 <div>&ldquo;Everything on the web, one service.&rdquo;<i>no second way in &middot; 9 Oct</i></div>
 <div>&ldquo;Keep the door open to the home network.&rdquo;<i>reach it from the other computer &middot; R4</i></div>
 <div>&ldquo;One copy on guard, another to train.&rdquo;<i>production and test &middot; backlog 17</i></div>
@@ -659,19 +701,28 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Comi
 <div>&ldquo;Only our conversation stays in Portuguese.&rdquo;<i>code, docs and screens in English</i></div>
 <div>&ldquo;The Dev builds. The Architect writes it down.&rdquo;<i>HANDOFF.md between them</i></div>
 </div>
-<h3>The party</h3>
-<div class="party">
-<div><svg viewBox="0 0 100 122"><use href="#beaver"/></svg><b>The Dev</b>Claude, <i>high</i>. Builds, tests, hands over.</div>
-<div><svg viewBox="0 0 100 122"><use href="#owl"/></svg><b>The Architect</b>Claude, <i>ultracode</i>. Reviews at night, keeps the books.</div>
-<div><svg viewBox="0 0 100 120"><use href="#jarvis"/></svg><b>J.A.R.V.I.S.</b>Two eyes, one house. Guided by the Owner's every decision.</div>
+<div class="decrees" lang="pt">
+<div>&ldquo;Tudo na web, um serviço só.&rdquo;<i>sem segunda porta de entrada &middot; 9 out</i></div>
+<div>&ldquo;Deixe a porta aberta para a rede de casa.&rdquo;<i>acesso pelo outro computador &middot; R4</i></div>
+<div>&ldquo;Uma cópia de guarda, outra para treinar.&rdquo;<i>produção e teste &middot; backlog 17</i></div>
+<div>&ldquo;Nunca quebre o que já foi escrito.&rdquo;<i>mudanças aditivas, ou uma migração</i></div>
+<div>&ldquo;Só a nossa conversa fica em português.&rdquo;<i>código, docs e telas em inglês</i></div>
+<div>&ldquo;O Dev constrói. O Arquiteto registra.&rdquo;<i>o HANDOFF.md entre os dois</i></div>
 </div>
-<div class="stats"><span>16 days</span><span>52 commits</span><span>2 reviews</span><span>1 release</span><span>first night: 19 events</span></div>
-<div class="next">Next: Issue #2 &mdash; The Dog Who Wore a Person's Face</div>
+<h3><span lang="en">The party</span><span lang="pt">O grupo</span></h3>
+<div class="party">
+<div><svg viewBox="0 0 100 122"><use href="#beaver"/></svg><b><span lang="en">The Dev</span><span lang="pt">O Dev</span></b><span lang="en">Claude, <i>high</i>. Builds, tests, hands over.</span><span lang="pt">Claude, <i>high</i>. Constrói, testa, entrega.</span></div>
+<div><svg viewBox="0 0 100 122"><use href="#owl"/></svg><b><span lang="en">The Architect</span><span lang="pt">O Arquiteto</span></b><span lang="en">Claude, <i>ultracode</i>. Reviews at night, keeps the books.</span><span lang="pt">Claude, <i>ultracode</i>. Revisa de madrugada, cuida dos registros.</span></div>
+<div><svg viewBox="0 0 100 120"><use href="#jarvis"/></svg><b>J.A.R.V.I.S.</b><span lang="en">Two eyes, one house. Guided by the Owner's every decision.</span><span lang="pt">Dois olhos, uma casa. Guiado por cada decisão do Dono.</span></div>
+</div>
+<div class="stats" lang="en"><span>16 days</span><span>52 commits</span><span>2 reviews</span><span>1 release</span><span>first night: 19 events</span></div>
+<div class="stats" lang="pt"><span>16 dias</span><span>52 commits</span><span>2 revisões</span><span>1 release</span><span>primeira noite: 19 eventos</span></div>
+<div class="next"><span lang="en">Next: Issue #2 &mdash; The Dog Who Wore a Person's Face</span><span lang="pt">Próxima: Edição #2 &mdash; O Cachorro com Cara de Gente</span></div>
 </div>
 </section>
 
 <script>
-const only = new URLSearchParams(location.search).get("p");
+const only = query.get("p");
 if (only) document.querySelectorAll(".page").forEach((page, i) => { if (i + 1 !== Number(only)) page.style.display = "none"; });
 </script>
 </body>
