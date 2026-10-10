@@ -2,10 +2,11 @@
 
 import json
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from jarvis import settings, web
+from jarvis import faces, settings, web
 
 HEADER = {"X-Jarvis-Request": "1"}
 TOKEN = "123456789:AAFakeTokenForTheGuardTests_x"
@@ -82,3 +83,16 @@ def test_settings_are_checked_one_by_one(local):
 
 def test_shutdown_is_local_only(remote):
     assert remote.post("/api/shutdown", headers=pin("482913")).status_code == 403
+
+
+def test_choosing_a_favourite_goes_through_the_guard(local, remote, tmp_path, monkeypatch):
+    monkeypatch.setattr(faces, "GALLERY_FILE", tmp_path / "gallery.json")
+    monkeypatch.setattr(faces, "FACE_DIR", tmp_path)
+    person_id = faces.Gallery().add([[0.1] * 128, [0.2] * 128], "t.jpg",
+                                    [np.zeros((40, 40, 3), np.uint8), None])
+    route = f"/api/persons/{person_id}/views/0/cover"
+    assert remote.post(route, headers=HEADER).status_code == 403
+    assert local.post(f"/api/persons/{person_id}/views/1/cover", headers=HEADER).status_code == 400
+    answer = local.post(route, headers=HEADER)
+    assert answer.status_code == 200 and answer.json()["cover_index"] == 0
+    assert local.get("/api/persons").json()["unnamed"][0]["photo"].startswith("/view/")

@@ -333,6 +333,20 @@ h1 {
   cursor: pointer;
 }
 
+.view button.cover {
+  left: 4px;
+  right: auto;
+  color: #bbb;
+}
+
+.view button.cover.chosen {
+  color: #f5c518;
+}
+
+.view button.cover:hover {
+  background: var(--accent);
+}
+
 .view button:hover {
   background: var(--alarm);
 }

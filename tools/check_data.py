@@ -66,6 +66,9 @@ def check_faces(problems):
                                   or len(views) > len(person["embeddings"])):
             problems.append(f"gallery person {person['id']}: views do not match its embeddings")
         faces.views_of(person)
+        if "cover" in person and not isinstance(person["cover"], str):
+            problems.append(f"gallery person {person['id']}: cover is not a path")
+        faces.cover_of(person)
         for waiting in person.get("pending") or []:
             if not isinstance(waiting, dict) or len(waiting.get("embedding") or []) != EMBEDDING_SIZE:
                 problems.append(f"gallery person {person['id']}: a queued view is unreadable")

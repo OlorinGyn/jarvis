@@ -219,9 +219,18 @@ def _photo_url(stored):
     return None
 
 
+def _stored_file(stored):
+    """A portable path from gallery.json as a real path."""
+    path = Path(stored)
+    return path if path.is_absolute() else ROOT / path
+
+
 def _person_card(person):
     """One person as the People tab lists them: the newest view with a photo stands for them."""
-    photo = next((v for v in reversed(faces.views_of(person)) if v), None)
+    cover = faces.cover_of(person)
+    if cover and not _stored_file(cover).is_file():
+        cover = None
+    photo = cover or next((v for v in reversed(faces.views_of(person)) if v), None)
     return {
         "id": person["id"],
         "name": person["name"],
@@ -271,7 +280,10 @@ def person_page(person_id: str):
     """One person: the photo of each stored view, the queue, and every appearance."""
     person = _person_or_404(faces.Gallery(), person_id)
     card = _person_card(person)
-    card["view_photos"] = [_photo_url(v) for v in faces.views_of(person)]
+    views = faces.views_of(person)
+    card["view_photos"] = [_photo_url(v) for v in views]
+    cover = faces.cover_of(person)
+    card["cover_index"] = views.index(cover) if cover else None
     card["appearances"] = _appearances(person_id)
     return card
 
@@ -315,6 +327,16 @@ def name_person(person_id: str, payload: dict = Body(...)):
     merged = gallery.rename(person_id, name)
     result = faces.Gallery().by_name(name)
     return {"id": result["id"] if result else person_id, "name": name.strip(), "merged": merged}
+
+
+@app.post("/api/persons/{person_id}/views/{index}/cover")
+def choose_cover(person_id: str, index: int):
+    """Make one view, which must have a photo, the person's picture on the People grid."""
+    gallery = faces.Gallery()
+    _person_or_404(gallery, person_id)
+    if not gallery.set_cover(person_id, index):
+        raise HTTPException(400, "only a view with a photo can be the favourite")
+    return person_page(person_id)
 
 
 @app.post("/api/persons/{person_id}/views/{index}/remove")

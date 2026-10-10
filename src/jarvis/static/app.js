@@ -353,6 +353,24 @@ function viewTile(id, photo, index, person) {
     missing.textContent = "no photo";
     tile.append(missing);
   }
+  if (photo) {
+    const favourite = document.createElement("button");
+    favourite.type = "button";
+    favourite.className = "cover";
+    const chosen = person.cover_index === index;
+    favourite.classList.toggle("chosen", chosen);
+    favourite.title = chosen ? "The photo shown on People" : "Show this photo on People";
+    favourite.textContent = "★";
+    favourite.addEventListener("click", async () => {
+      try {
+        showPerson(await send(`/api/persons/${id}/views/${index}/cover`));
+        personResult.textContent = "Favourite photo saved.";
+      } catch (problem) {
+        personResult.textContent = `Not saved: ${problem.message}`;
+      }
+    });
+    tile.append(favourite);
+  }
   if (person.views > 1 || person.pending > 0) {
     const remove = document.createElement("button");
     remove.type = "button";

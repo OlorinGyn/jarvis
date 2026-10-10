@@ -188,6 +188,12 @@ def _group(observations):
     return groups
 
 
+def cover_of(person):
+    """The person's favourite view, when it is still one of their views; else None."""
+    cover = person.get("cover")
+    return cover if cover and cover in views_of(person) else None
+
+
 def views_of(person):
     """The face crop path of each stored view, aligned with its embeddings; None where none was kept."""
     views = list(person.get("views") or [])
@@ -342,8 +348,28 @@ class Gallery:
                 waiting = pending.pop(0)
                 person["embeddings"].append(waiting["embedding"])
                 person["views"].append(waiting.get("view"))
+            if removed and person.get("cover") == removed:
+                fallback = next((v for v in person["views"] if v), None)
+                if fallback:
+                    person["cover"] = fallback
+                else:
+                    person.pop("cover")
             self.save()
         self._forget_view(removed)
+        return True
+
+    def set_cover(self, person_id, index):
+        """Make one stored view, which must have a photo, the person's favourite picture."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            if person is None or not 0 <= index < len(person["embeddings"]):
+                return False
+            view = views_of(person)[index]
+            if not view:
+                return False
+            person["cover"] = view
+            self.save()
         return True
 
     def rename(self, person_id, full_name):

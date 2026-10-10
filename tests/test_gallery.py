@@ -122,3 +122,44 @@ def test_a_merge_also_carries_the_source_queue(gallery, monkeypatch):
     assert_aligned(person)
     assert [w["embedding"][0] for w in person["pending"]] == [5.0, 6.0, 7.0]
     assert len(photos(gallery)) == len(stored_photos(person))
+
+
+def test_the_favourite_must_be_a_view_with_a_photo(gallery):
+    person_id = gallery.add([embedding(0), embedding(1)], "t.jpg", [None, CROP])
+    assert not gallery.set_cover(person_id, 0)
+    assert not gallery.set_cover(person_id, 9)
+    assert gallery.set_cover(person_id, 1)
+    person = reloaded(gallery, person_id)
+    assert faces.cover_of(person) == faces.views_of(person)[1]
+
+
+def test_removing_the_favourite_falls_back_to_the_first_view_with_a_photo(gallery):
+    person_id = gallery.add([embedding(0), embedding(1), embedding(2)], "t.jpg", [None, CROP, CROP])
+    gallery.set_cover(person_id, 2)
+    first_photo = faces.views_of(reloaded(gallery, person_id))[1]
+    assert gallery.remove_view(person_id, 2)
+    assert faces.cover_of(reloaded(gallery, person_id)) == first_photo
+
+
+def test_removing_the_only_photo_clears_the_favourite(gallery):
+    person_id = gallery.add([embedding(0), embedding(1)], "t.jpg", [CROP, None])
+    gallery.set_cover(person_id, 0)
+    assert gallery.remove_view(person_id, 0)
+    person = reloaded(gallery, person_id)
+    assert "cover" not in person and faces.cover_of(person) is None
+
+
+def test_a_merge_keeps_the_target_favourite(gallery):
+    target = gallery.add([embedding(0)], "t.jpg", [CROP])
+    source = gallery.add([embedding(5)], "s.jpg", [CROP])
+    gallery.set_cover(target, 0)
+    gallery.set_cover(source, 0)
+    kept = faces.views_of(reloaded(gallery, target))[0]
+    gallery.rename(target, "Alpha")
+    gallery.rename(source, "Alpha")
+    assert faces.cover_of(faces.Gallery(gallery.path).by_name("Alpha")) == kept
+
+
+def test_a_favourite_that_is_no_longer_a_view_is_ignored():
+    assert faces.cover_of({"embeddings": [embedding(0)], "views": ["a.jpg"], "cover": "b.jpg"}) is None
+    assert faces.cover_of({"embeddings": [embedding(0)]}) is None
