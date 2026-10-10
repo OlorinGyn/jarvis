@@ -10,10 +10,12 @@ docs/ARQUITETURA.md section 10.
 """
 
 import json
+import logging
 import math
 import re
 import subprocess
 import threading
+import time
 import urllib.request
 import uuid
 from datetime import date, datetime
@@ -58,6 +60,7 @@ MAX_EMBEDDINGS = 40
 
 _GALLERY_LOCK = threading.Lock()
 _SCAN_LOCK = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 def ensure_models():
@@ -447,12 +450,18 @@ def _scan_clip(clip, camera, started_at, gallery, moments):
     if not clip.exists():
         return []
 
+    began = time.monotonic()
     observations = []
+    frames = 0
     for frame in _sampled_frames(clip, moments):
+        frames += 1
         found = faces_in(frame)
         if found:
             bodies = people.person_boxes(frame)
             observations.extend(f for f in found if _on_a_person(f["box"], bodies))
+    dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
+    logger.info("  face scan %s: dense %s, %d frames, %.1f s, %d face view(s)",
+                clip.name, dense, frames, time.monotonic() - began, len(observations))
 
     if not observations:
         return []
