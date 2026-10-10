@@ -35,7 +35,7 @@ LOOPBACK = {"127.0.0.1", "::1"}
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}\.jpg$")
+SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best)?\.jpg$")
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,16 @@ def _parse_day(text):
 
 
 def _event(entry):
-    """What the page needs from one event, with URLs instead of disk paths."""
+    """What the page needs from one event, with URLs instead of disk paths.
+
+    The picture is the best view of a person when the event has one; older
+    events, and those without a person, show the frame that started them.
+    """
     thumb = entry["thumbnail_path"]
     camera, day = thumb.parent.parent.name, thumb.parent.name
+    best = entry.get("best_thumbnail")
+    if isinstance(best, str) and SAFE_THUMB.match(best) and (thumb.parent / best).is_file():
+        thumb = thumb.parent / best
     return {
         "camera": entry.get("camera", camera),
         "started_at": entry.get("started_at", ""),

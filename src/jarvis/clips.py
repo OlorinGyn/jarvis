@@ -4,11 +4,12 @@ Nothing is re-encoded. The clip is built by concatenating whole segments from
 the rolling buffer with ffmpeg's stream copy, so the saved video is bit for bit
 what the camera produced.
 
-Each event produces three files sharing one basename, plus an optional fourth:
+Each event produces three files sharing one basename, plus two optional ones:
     19-17-30.mp4        the video, assembled losslessly from segments
     19-17-30.jpg        the first frame where the subject appeared
     19-17-30.json       metadata, so the Records screen never decodes a video
     19-17-30.alert.jpg  only when the notification went out after the start
+    19-17-30.best.jpg   only when a person was seen: the frame showing one best
 
 See docs/ARQUITETURA.md sections 5, 8 and 19.
 """
@@ -67,23 +68,28 @@ def _concat(segments, destination):
         listing.unlink(missing_ok=True)
 
 
-def _assemble(camera, start, end, destination, labels, notified=False):
-    """Wait for the final segment to close, build the clip, then read faces."""
+def _assemble(camera, start, end, destination, labels, notified=False, best_view=None):
+    """Wait for the final segment to close, build the clip, then read faces.
+
+    When the event notified and no face was found, the phone gets the best
+    view of the person instead, so it always ends with a picture of them.
+    """
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
                                end + timedelta(seconds=POST_SECONDS))
     if not segments:
         return
     _concat(segments, destination)
-    if "person" not in labels or not destination.exists():
-        return
-    try:
-        found = faces.scan_clip(destination, camera.label, start)
-    except Exception as problem:
-        logger.exception("  face scan failed on %s: %s", destination.name, problem)
-        return
+    found = []
+    if "person" in labels and destination.exists():
+        try:
+            found = faces.scan_clip(destination, camera.label, start)
+        except Exception as problem:
+            logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if notified and found:
         notify.faces_seen(camera.label, start, found)
+    elif notified and best_view:
+        notify.best_view(camera.label, start, best_view)
 
 
 def available_days():
@@ -144,6 +150,9 @@ class EventRecorder:
         self.best_confidence = 0.0
         self.notified = False
         self.notify_tried = set()
+        self.moment = 0
+        self.sent_moment = None
+        self.best_view = None
 
     @property
     def protect_from(self):
@@ -159,7 +168,9 @@ class EventRecorder:
             if not self.recording:
                 self._start(frame, subjects)
             else:
+                self.moment += 1
                 self._notify_late(frame, subjects)
+            self._consider_view(frame, subjects)
             self.labels.update(s.label for s in subjects)
             self.best_confidence = max(
                 [self.best_confidence] + [s.confidence for s in subjects])
@@ -184,12 +195,17 @@ class EventRecorder:
         self.recording = True
         self.labels = set()
         self.best_confidence = 0.0
+        self.moment = 0
+        self.sent_moment = None
+        self.best_view = None
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
 
         seen = {s.label for s in subjects}
         self.notify_tried = set(seen)
         self.notified = notify.event(self.label, sorted(seen), str(thumbnail))
+        if self.notified:
+            self.sent_moment = self.moment
 
     def _notify_late(self, frame, subjects):
         """Notify when a wanted subject shows up after the event began.
@@ -209,8 +225,33 @@ class EventRecorder:
         photo = self.base.with_name(f"{self.base.name}.alert.jpg")
         self._save_thumbnail(frame, subjects, photo)
         self.notified = notify.event(self.label, sorted(new), str(photo))
-        if not self.notified:
+        if self.notified:
+            self.sent_moment = self.moment
+        else:
             photo.unlink(missing_ok=True)
+
+    def _consider_view(self, frame, subjects):
+        """Keep the frame where a person shows best, to be the event's picture.
+
+        The first frame is whatever triggered the event, often a pet. Taller
+        boxes win, so a person standing beats a dog lying down even when the
+        detector mistakes it for one.
+        """
+        persons = [s for s in subjects if s.is_person]
+        if not persons:
+            return
+        score = max(s.confidence * s.h for s in persons)
+        if self.best_view is None or score > self.best_view["score"]:
+            self.best_view = {"score": score, "frame": frame.copy(),
+                              "subjects": list(subjects), "moment": self.moment}
+
+    def _write_best_view(self):
+        """Save the best view as HH-MM-SS.best.jpg. Returns its path, or None."""
+        if self.best_view is None:
+            return None
+        path = self.base.with_name(f"{self.base.name}.best.jpg")
+        self._save_thumbnail(self.best_view["frame"], self.best_view["subjects"], path)
+        return path if path.exists() else None
 
     def _save_thumbnail(self, frame, subjects, path):
         shot = frame.copy()
@@ -228,7 +269,7 @@ class EventRecorder:
         cv2.imwrite(str(path), shot,
                     [cv2.IMWRITE_JPEG_QUALITY, 88])
 
-    def _write_metadata(self, ended_at, reason):
+    def _write_metadata(self, ended_at, reason, best=None):
         seconds = (ended_at - self.started_at).total_seconds() + PRE_SECONDS
         meta = {
             "camera": self.label,
@@ -241,6 +282,8 @@ class EventRecorder:
             "thumbnail": self.base.with_suffix(".jpg").name,
             "reason": reason,
         }
+        if best is not None:
+            meta["best_thumbnail"] = best.name
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
@@ -250,16 +293,21 @@ class EventRecorder:
         if not self.recording:
             return None
         ended_at = datetime.now()
-        meta = self._write_metadata(ended_at, reason)
+        best = self._write_best_view()
+        meta = self._write_metadata(ended_at, reason, best)
         destination = self.base.with_suffix(".mp4")
+        already_sent = best is not None and self.best_view["moment"] == self.sent_moment
+        followup = None if already_sent else best
 
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
-                                     destination, set(self.labels), self.notified))
+                                     destination, set(self.labels), self.notified,
+                                     followup))
         job.start()
         _jobs.append(job)
 
         self.recording = False
+        self.best_view = None
         summary = dict(meta)
         summary["path"] = destination
         return summary

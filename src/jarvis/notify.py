@@ -155,6 +155,20 @@ def faces_seen(camera, started_at, sightings, settings=None):
     return sent
 
 
+def best_view(camera, started_at, image, settings=None):
+    """Follow up an event whose clip showed no face with its best view of the person.
+
+    The first message carries the frame that started the event, which is
+    often not the person. Same rules as faces_seen: only after a sent event.
+    """
+    settings = settings or load()
+    if not settings.get("notify_token") or not settings.get("notify_chat"):
+        return False
+    when = started_at.strftime("%H:%M:%S")
+    return _send_logged(f"{camera} best view", f"{camera} {when}: no face seen, best view",
+                        str(image), settings)
+
+
 def _who(sighting):
     """Name the face, and say so when the match is too weak to be sure.
 
