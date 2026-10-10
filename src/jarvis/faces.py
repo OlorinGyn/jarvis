@@ -54,6 +54,8 @@ MAX_SAMPLES = 60
 DENSE_EVERY = 2
 DENSE_MARGIN_SECONDS = 1.5
 MAX_DENSE_SAMPLES = 300
+PAUSE_STEP_SECONDS = 0.2
+MAX_PAUSE_SECONDS = 600.0
 THUMB_SIZE = 300
 THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
@@ -433,7 +435,22 @@ def scanning():
     return _SCAN_LOCK.locked()
 
 
-def scan_clip(clip, camera, started_at, gallery=None, moments=()):
+def _wait_while(busy, budget):
+    """Sleep while busy() holds, at most budget seconds. Returns the time paused.
+
+    A dense scan makes YOLO 1.6 times slower (R21), and YOLO matters most while
+    an event is being recorded; pausing between frames removes the collision.
+    The ffmpeg feeding the pipe just blocks meanwhile.
+    """
+    if busy is None or budget <= 0:
+        return 0.0
+    began = time.monotonic()
+    while busy() and time.monotonic() - began < budget:
+        time.sleep(PAUSE_STEP_SECONDS)
+    return time.monotonic() - began
+
+
+def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None):
     """Find every distinct face in a finished clip and record the sightings.
 
     moments are (start, end) seconds into the clip where persons were seen;
@@ -442,10 +459,10 @@ def scan_clip(clip, camera, started_at, gallery=None, moments=()):
     cannot run concurrently.
     """
     with _SCAN_LOCK:
-        return _scan_clip(clip, camera, started_at, gallery, moments)
+        return _scan_clip(clip, camera, started_at, gallery, moments, busy)
 
 
-def _scan_clip(clip, camera, started_at, gallery, moments):
+def _scan_clip(clip, camera, started_at, gallery, moments, busy=None):
     clip = Path(clip)
     if not clip.exists():
         return []
@@ -453,15 +470,17 @@ def _scan_clip(clip, camera, started_at, gallery, moments):
     began = time.monotonic()
     observations = []
     frames = 0
+    paused = 0.0
     for frame in _sampled_frames(clip, moments):
+        paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
         frames += 1
         found = faces_in(frame)
         if found:
             bodies = people.person_boxes(frame)
             observations.extend(f for f in found if _on_a_person(f["box"], bodies))
     dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
-    logger.info("  face scan %s: dense %s, %d frames, %.1f s, %d face view(s)",
-                clip.name, dense, frames, time.monotonic() - began, len(observations))
+    logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s)",
+                clip.name, dense, frames, time.monotonic() - began, paused, len(observations))
 
     if not observations:
         return []

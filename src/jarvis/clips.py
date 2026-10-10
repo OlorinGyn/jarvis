@@ -20,6 +20,7 @@ import os
 import subprocess
 import threading
 import time
+import weakref
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -41,6 +42,7 @@ GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
 
 _jobs = []
+_recorders = weakref.WeakSet()
 logger = logging.getLogger(__name__)
 
 
@@ -100,13 +102,19 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     if "person" in labels and destination.exists():
         try:
             found = faces.scan_clip(destination, camera.label, start,
-                                    moments=_clip_moments(segments, person_spans))
+                                    moments=_clip_moments(segments, person_spans),
+                                    busy=recording_now)
         except Exception as problem:
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if notified and found:
         notify.faces_seen(camera.label, start, found)
     elif notified and best_view:
         notify.best_view(camera.label, start, best_view)
+
+
+def recording_now():
+    """Whether any camera is recording an event at this moment."""
+    return any(recorder.recording for recorder in list(_recorders))
 
 
 def available_days():
@@ -156,6 +164,7 @@ class EventRecorder:
 
     def __init__(self, camera, directory=CLIP_DIR):
         self.camera = camera
+        _recorders.add(self)
         self.label = camera.label
         self.directory = Path(directory)
         self.recording = False
