@@ -95,14 +95,14 @@ def _wanted(labels, settings):
     return any(label in wanted for label in labels)
 
 
-def _cooled_down(camera, settings):
-    """Whether the camera's last notification is old enough, claiming the slot if so."""
+def _cooled_down(key, settings):
+    """Whether the last notification for key (a camera, or a person's face) is old enough, claiming the slot if so."""
     cooldown = float(settings.get("notify_cooldown", COOLDOWN_SECONDS))
     now = time.monotonic()
     with _lock:
-        if now - _last_sent.get(camera, -cooldown) < cooldown:
+        if now - _last_sent.get(key, -cooldown) < cooldown:
             return False
-        _last_sent[camera] = now
+        _last_sent[key] = now
     return True
 
 
@@ -136,21 +136,29 @@ def _send_logged(subject, text, image, settings):
 
 
 def faces_seen(camera, started_at, sightings, settings=None):
-    """Follow up an event with each face the clip scan found, named when known.
+    """Announce each face the clip scan found, named when known.
 
     Runs in the clip-assembly thread, after the event, so it can block on the
-    network without touching capture. Only called when the event's own
-    notification went out, so the cooldown that silenced the first message
-    silences this one too.
+    network without touching capture. Sent whether or not the event's own
+    message went out: the camera's cooldown is against repeated events, and a
+    face is rare and the most useful message (R25). Each person has a cooldown
+    of their own instead, so the same face is not announced twice in a row.
     """
     settings = settings or load()
     if not settings.get("notify_token") or not settings.get("notify_chat"):
+        return 0
+    if not _wanted(["person"], settings):
         return 0
     sent = 0
     when = started_at.strftime("%H:%M:%S")
     for sighting in sightings[:MAX_FACES]:
         who = _who(sighting)
-        sent += _send_logged(f"{camera} face, {who}", f"{camera} {when}: {who}",
+        subject = f"{camera} face, {who}"
+        person = sighting.get("person_id")
+        if person and not _cooled_down(("face", person), settings):
+            logger.info("Notification %s: skipped: cooldown", subject)
+            continue
+        sent += _send_logged(subject, f"{camera} {when}: {who}",
                              sighting.get("thumbnail_path"), settings)
     return sent
 
@@ -159,7 +167,7 @@ def best_view(camera, started_at, image, settings=None):
     """Follow up an event whose clip showed no face with its best view of the person.
 
     The first message carries the frame that started the event, which is
-    often not the person. Same rules as faces_seen: only after a sent event.
+    often not the person. Only after a sent event, unlike faces_seen.
     """
     settings = settings or load()
     if not settings.get("notify_token") or not settings.get("notify_chat"):

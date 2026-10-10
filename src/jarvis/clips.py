@@ -106,7 +106,7 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
                                     busy=recording_now)
         except Exception as problem:
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
-    if notified and found:
+    if found:
         notify.faces_seen(camera.label, start, found)
     elif notified and best_view:
         notify.best_view(camera.label, start, best_view)
