@@ -14,6 +14,8 @@
     <nav class="tabs">
       <a href="#live" data-tab="live">Live</a>
       <a href="#recordings" data-tab="recordings">Recordings</a>
+      <a href="#people" data-tab="people">People</a>
+      <a href="#settings" data-tab="settings">Settings</a>
     </nav>
     <span id="connection" hidden>No connection to J.A.R.V.I.S.</span>
     <span id="version" title="Running version"></span>
@@ -33,6 +35,75 @@
     </nav>
     <main id="events"></main>
   </section>
+
+  <section id="people" class="tab">
+    <nav class="toolbar">
+      <button id="people-previous" title="Previous day with faces">◀</button>
+      <input type="date" id="people-day">
+      <button id="people-next" title="Next day with faces">▶</button>
+      <button id="people-today">Today</button>
+      <span id="people-summary"></span>
+    </nav>
+    <main id="faces"></main>
+  </section>
+
+  <section id="settings" class="tab">
+    <main class="settings">
+      <form id="notify-form" class="panel">
+        <h2>Phone notifications (Telegram)</h2>
+        <label>Bot token
+          <input type="password" name="notify_token" autocomplete="off" placeholder="paste the token to set or replace it">
+        </label>
+        <p class="hint" id="token-state"></p>
+        <label>Chat <input name="notify_chat" autocomplete="off"></label>
+        <fieldset id="label-choices"><legend>Notify about</legend></fieldset>
+        <label>Minimum interval per camera, seconds
+          <input type="number" name="notify_cooldown" min="0" step="1">
+        </label>
+        <label>Message prefix <input name="notify_prefix" autocomplete="off"></label>
+        <div class="actions">
+          <button type="submit">Save</button>
+          <button type="button" id="find-chat">Find the chat</button>
+          <button type="button" id="send-test">Send a test</button>
+        </div>
+        <p class="result" id="notify-result"></p>
+      </form>
+
+      <form id="archive-form" class="panel">
+        <h2>Archive (external drive)</h2>
+        <label>Folder on this computer <input name="archive_path" autocomplete="off"></label>
+        <label>Move recordings to the drive after, days
+          <input type="number" name="archive_after_days" min="1" step="1">
+        </label>
+        <label>Keep this much free on the drive, GB
+          <input type="number" name="archive_min_free_gb" min="0" step="1">
+        </label>
+        <dl id="archive-state"></dl>
+        <div class="actions"><button type="submit">Save</button></div>
+        <p class="result" id="archive-result"></p>
+      </form>
+    </main>
+  </section>
+
+  <template id="face-card">
+    <article class="card face">
+      <div class="photo"><img alt="" loading="lazy"></div>
+      <div class="caption">
+        <div class="row">
+          <span class="name"></span>
+          <span class="camera"></span>
+        </div>
+        <div class="row">
+          <span class="time"></span>
+          <span class="score"></span>
+        </div>
+        <form class="naming">
+          <input name="name" maxlength="60" autocomplete="off" placeholder="Full name">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+    </article>
+  </template>
 
   <template id="card">
     <article class="card">

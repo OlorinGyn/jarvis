@@ -19,11 +19,12 @@ from pathlib import Path
 import cv2
 import requests
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT
+from jarvis import ROOT, archive, faces, notify, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -38,6 +39,19 @@ LOOPBACK = {"127.0.0.1", "::1"}
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best)?\.jpg$")
+SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
+SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
+NAME_MAX = 60
+NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
+EDITABLE = {
+    "notify_chat": str,
+    "notify_prefix": str,
+    "notify_labels": list,
+    "notify_cooldown": float,
+    "archive_path": str,
+    "archive_after_days": int,
+    "archive_min_free_gb": float,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +165,124 @@ def thumbnail(camera: str, day: str, name: str):
     if not path.is_relative_to(CLIP_DIR.resolve()) or not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type="image/jpeg")
+
+
+def _sighting(entry):
+    """What the People tab needs from one face sighting."""
+    thumb = entry["thumbnail_path"]
+    return {
+        "person_id": entry.get("person_id", ""),
+        "name": entry.get("name", ""),
+        "named": bool(entry.get("named")),
+        "time": entry.get("time", ""),
+        "camera": entry.get("camera", ""),
+        "score": entry.get("score", 0),
+        "reliable": entry.get("reliable", True),
+        "face_width": entry.get("face_width", 0),
+        "thumbnail": f"/face/{thumb.parent.name}/{thumb.name}" if thumb.exists() else None,
+    }
+
+
+@app.get("/api/face-days")
+def face_days():
+    """Every day with face sightings, newest first."""
+    return [day.isoformat() for day in sorted(faces.days_with_faces(), reverse=True)]
+
+
+@app.get("/api/people")
+def people_seen(day: str = None):
+    """The faces seen on one day, newest first, named with the gallery's current names."""
+    chosen = _parse_day(day) if day else date.today()
+    return {"day": chosen.isoformat(),
+            "faces": [_sighting(e) for e in faces.list_sightings(chosen)]}
+
+
+@app.get("/face/{day}/{name}")
+def face_thumbnail(day: str, name: str):
+    """One face crop. The checks keep requests inside faces/."""
+    if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
+        raise HTTPException(404)
+    root = faces.FACE_DIR.resolve()
+    path = (root / day / name).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@app.post("/api/people/{person_id}/name")
+def name_person(person_id: str, payload: dict = Body(...)):
+    """Name a person; the same name on another face merges the two (Gallery.rename)."""
+    name = payload.get("name")
+    if not SAFE_PERSON.match(person_id):
+        raise HTTPException(404)
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > NAME_MAX:
+        raise HTTPException(400, f"a name of 1 to {NAME_MAX} characters")
+    gallery = faces.Gallery()
+    if gallery.get(person_id) is None:
+        raise HTTPException(404, "no such person")
+    merged = gallery.rename(person_id, name)
+    return {"name": name.strip(), "merged": merged}
+
+
+def _settings_view():
+    """The settings for the page. The bot token never leaves: only whether it is set."""
+    values = settings.load()
+    token = values.pop("notify_token", "")
+    values["notify_token_set"] = bool((token or "").strip())
+    values["notify_label_choices"] = list(NOTIFY_LABELS)
+    values["archive"] = jsonable_encoder(archive.summary())
+    return values
+
+
+def _clean(key, value):
+    """One setting from the page, checked and converted, or a 400."""
+    kind = EDITABLE[key]
+    if kind is str and isinstance(value, str):
+        return value.strip()
+    if kind is list and isinstance(value, list) and all(v in NOTIFY_LABELS for v in value):
+        return list(dict.fromkeys(value))
+    if kind in (int, float) and isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value >= (1 if key == "archive_after_days" else 0):
+            return kind(value)
+    raise HTTPException(400, f"invalid value for {key}")
+
+
+@app.get("/api/settings")
+def read_settings():
+    return _settings_view()
+
+
+@app.post("/api/settings")
+def write_settings(payload: dict = Body(...)):
+    """Change some settings. A token is only ever written, never read back."""
+    changes = {}
+    for key, value in payload.items():
+        if key == "notify_token":
+            if not isinstance(value, str) or not value.strip():
+                raise HTTPException(400, "invalid value for notify_token")
+            changes[key] = value.strip()
+        elif key in EDITABLE:
+            changes[key] = _clean(key, value)
+        else:
+            raise HTTPException(400, f"unknown setting {key}")
+    if changes:
+        settings.update(**changes)
+    return _settings_view()
+
+
+@app.post("/api/notify/discover")
+def discover_chat():
+    """Find the chat from the last message sent to the bot, and keep it."""
+    chat, problem = notify.discover_chat(settings.load().get("notify_token") or "")
+    if chat:
+        settings.update(notify_chat=chat)
+    return {"chat": chat, "error": problem}
+
+
+@app.post("/api/notify/test")
+def test_notification():
+    ok, detail = notify.send("J.A.R.V.I.S.: test notification")
+    return {"ok": ok, "detail": detail}
 
 
 def _mjpeg(label):
