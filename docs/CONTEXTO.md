@@ -320,9 +320,9 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    |---|---|---|
    | ✓ | Estágio 1 — lista de eventos | feito 09/10 (ARQUITETURA 17.6) |
    | ✓ | Estágio 3 — ao vivo, rede local, atalho abre serviço + navegador | feito 09/10 (ARQUITETURA 17.7) |
-   | | **Estágio 4 — People e Ajustes na web** | **próximo** |
+   | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARQUITETURA 17.9) |
    | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
-   | | Remove the OpenCV window (`ui.py`, `--window`) | after stage 4 |
+   | | Remove the OpenCV window (`ui.py`, `--window`) | **next** — the user already decided the web is the only access |
    | | Estágio 2 — reprodução do vídeo na página | depois |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
@@ -733,8 +733,9 @@ decidir.
 | 2 | 09/10/2026 | `760d68e..67f7d23` — everything before production: logging, clean stop, per-install stream and port, R1–R3, R5, R8, `check_data`, `production.ps1` | 4 code problems fixed in `8a81084` (13.5); full production cycle tested including a forced rollback; HANDOFF integrated; R11–R14 opened; **first release `v2026.10.09` tagged** |
 | 3 | 10/10/2026 | `87e736b`, developer session 1 — R15, R16, R10 in part, R19, R20, R11 | no code fixed: the diff, `check_data`, the comment check and the redaction and `select` expressions all checked out; HANDOFF integrated; R18 raised to high, R21–R22 opened; release `v2026.10.10` tagged |
 | 4 | 10/10/2026 | `5d91305..1b8822d`, developer session 2 — R21 measured, backlog 18, R22, R17, R10 code part | no code fixed; R21's fix decided (R23); release `v2026.10.10.2` tagged |
+| 5 | 10/10/2026 | `11c6663..5f3c356`, developer session 3 — R23, R18, web stage 4 | no code fixed; R18's 2.0 accepted; R24 opened for writes from the network; release `v2026.10.10.3` tagged |
 
-**Last review covers up to the `v2026.10.10.2` release commit.** The next one
+**Last review covers up to the `v2026.10.10.3` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -777,12 +778,13 @@ subir de novo em 09/10.
 | ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
 | ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
 | ✓ | R17 | medium | No way to tell why something was *not* recorded: a replay tool | done `cc08df1` (ARQUITETURA 12.10) |
-| | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | open — **decided by the user on 10/10: the architect's rule** (13.8); dev session 3 |
+| ✓ | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | done `13bb4d5`, ratio 2.0 after the replay (ARQUITETURA 12.10) |
 | ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARQUITETURA 12.9) |
 | ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARQUITETURA 12.9) |
 | ✓ | R21 | **high** | What the dense face scan costs live analysis on the M900 | measured `6ff6eda`: YOLO 1.6× slower during a scan; fix decided as R23 (13.8) |
 | ✓ | R22 | medium | Nothing records where the dense scan looked | done `c5166d1` (ARQUITETURA 12.10) |
-| | R23 | **high** | A face scan slows YOLO while an event may be happening | open — dev session 3 (13.8) |
+| ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARQUITETURA 12.10) |
+| | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | open — dev session 4 (13.9) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1171,6 +1173,42 @@ with a `person` label from 09/10 and 10/10 (copies, in the test copy) and list
 each detection the rule changes — none may be a real person.
 **Lesson worth keeping:** "give the scan fewer threads" sounded obviously
 right and measured wrong. Measure before choosing, even the obvious.
+### 13.9 Review 5 — developer session 3
+
+Reviewed `11c6663..5f3c356`: R23, R18 and web stage 4. No code fixed. The new
+routes check every input, the face route stays inside `faces/`, the page never
+builds HTML from data (no `innerHTML`), and the token is write-only. Integrated
+into ARQUITETURA 12.10 and 17.9. The three points the developer left open,
+decided here rather than handed to the user:
+
+1. **R18 at 2.0 instead of 2.5 — accepted.** The replay found the dog sitting
+   up at 2.42–2.48; real persons measure 0.4–0.6.
+2. **A paused scan keeps the lock — accepted.** Late face messages on a busy
+   evening are the price of an undisturbed YOLO; the first message never waits.
+3. **Writes from the network — R24.** R4 accepted that anyone on the Wi-Fi can
+   *see* the cameras; stage 4 lets them also rename faces (and a merge cannot
+   be undone yet) or point the notifications elsewhere. Restricting writes to
+   the M900 would lock out the user's other computer, which R4 wanted to keep.
+   There is also a second door: a web page the user opens could make the
+   browser post to the service (cross-site request forgery). The solution
+   keeps both the convenience and the safety:
+
+**R24 — Guard every write (high).** (a) Every `POST` must carry a custom header
+(`X-Jarvis-Request: 1`), which `app.js` adds; a foreign page cannot add it
+without the browser first asking permission, and the service never grants it —
+that closes the forgery door for free. (b) Writes from any address other than
+127.0.0.1 need the device to be **paired once**: a PIN set on the M900's own
+page, kept in `config.json` as `write_pin` (an additive key), typed once on
+the other computer, remembered by that browser and sent with each write;
+compared with `hmac.compare_digest`. With no PIN set, writes from the network
+are refused with a message saying how to set one. Reading stays open, as R4
+decided; shutdown stays local only. Acceptance: a write from the other
+computer fails without the PIN and works after pairing; a `POST` without the
+header fails even from 127.0.0.1; `check_data` reads the new key.
+
+Released anyway as `v2026.10.10.3`: the user wants People on the web, the
+exposure needs someone on the home Wi-Fi who knows the address, and R24 is
+the next session's first item.
 ---
 
 ## 14. Sessions and token budget
@@ -1210,25 +1248,25 @@ disk, which is exactly why the roles hand over through files.
 | A6 | architect | ultracode | 10/10 00:55–01:15 | production update to `v2026.10.10`, R13 reboot and crash checks, EPUB | 82% → 87% | 37% → 38% | 445k → 470k tokens — at this size every turn costs about a point, the strongest reason yet for a new conversation per session |
 | D2 | developer | high | 10/10 04:10–04:40 | session 2: R21 measured, backlog 18, R22, R17, R10 code part; R18 deferred by the user | 0% → 11% (new window): R21 3, backlog 18 + R22 2, R17 3, R18 question + R10 3 | 39% → 41% | 241k → 330k tokens, carried over from session 1 |
 | A7 | architect | ultracode | 10/10 13:25–13:35 | review 4, R23 decided, release `v2026.10.10.2`, comic scripts 2 and 3 (one failed shell append re-sent them) | 9% → 15% | 43% → 44% | 500k → 540k tokens, in the old conversation |
+| D3 | developer | high | 10/10 13:45–14:20 | session 3: R23, R18, web stage 4 | 22% → 34%: R23 2, R18 2, stage 4 8 | 45% → 46% | 336k → 405k, old conversation again |
+| A8 | architect | ultracode | 10/10 14:25– | backlog 19, review 5, R24, release `v2026.10.10.3`, script 4 | 35% → (end) | 47% → | 557k → |
 
-### 14.4 Next session: developer 3
+### 14.4 Next session: developer 4
 
-Developer session 2 did its plan except R18, which the user chose to defer.
-Same criteria as before. In order:
+Developer session 3 did its whole plan. In order:
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **R23** — pause the face scan while a camera records | production safety: the cost R21 measured lands exactly during events | `faces.py`, `clips.py` |
-| 2 | **R18** — the dog on the mat as `person`: the rule in 13.8 | the user's decision; two false messages per event until it lands; small | `people.py` |
-| 3 | **Backlog 3, stage 4** — People and Settings on the web | the next decided feature: the web is the only access the user wants, and naming faces still needs the old OpenCV window | `web.py`, `static/`, maybe `faces.py` |
+| 1 | **R24** — guard every write: custom header, PIN pairing for other devices | security, and before more write features land | `web.py`, `static/`, `settings.py` |
+| 2 | **Backlog 19** — "belongs to…" picker on People; when a person's views are full, replace the most redundant one | the user's request; the merge engine exists | `static/`, `web.py`, `faces.py` |
+| 3 | **Remove the OpenCV window** — `ui.py`, `--window` | decided by the user (the web is the only access); stage 4 made it redundant | `ui.py`, `cameras.py`, `.bat`, `tools/` |
 
-Stage 4 is large; if the budget ends inside it, deliver what is complete
-(People first, then Settings) and say where it stopped. **Start in a new
-conversation**: session 2 began at 240k tokens of context carried over from
-session 1, and paid for it on every step.
+Item 3 removes a way to start the program: keep `--window` and `--janela` as
+flags that print where the web page is, instead of failing, for one release.
+**Start in a new conversation** — session 3 began at 336k tokens of context.
 
-**Not in this session:** R6, R12, R14, R7, R9, backlog
-items 1–2 (waiting for the user).
+**Not in this session:** R6, R12, R14, R7, R9; backlog 9 (undo a merge) and
+1–2, which wait for the user.
 ---
 
 ## 15. Raid log — the comic script of each release
@@ -1252,3 +1290,4 @@ review and commits.
 | 1 | `v2026.10.09` | The First Night Shift / O Primeiro Turno da Noite | written |
 | 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente | written |
 | 3 | `v2026.10.10.2` | The Watcher's Instruments / Os Instrumentos do Vigia | written |
+| 4 | `v2026.10.10.3` | The House Gets a Front Desk / A Casa Ganha uma Recepção | written |

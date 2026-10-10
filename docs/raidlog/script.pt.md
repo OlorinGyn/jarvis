@@ -424,3 +424,85 @@ gibi, não o desenho." · "Antes de me devolver uma decisão, procure uma soluç
 melhor."
 
 **Próxima:** Edição nº 4.
+
+---
+
+## Edição nº 4 — A Casa Ganha uma Recepção
+
+`v2026.10.10.3` · 10 out 2026, à tarde
+
+### Capa
+
+Dentro da janela do navegador, J.A.R.V.I.S. atrás de um pequeno balcão de
+recepção. Atrás dele, duas portas novas com placas: PEOPLE e SETTINGS. O
+cachorro dorme no tapete na frente do balcão, finalmente sem caixa verde.
+Selo: **EDIÇÃO #4**.
+
+### Capítulo 1 — Dar Licença
+
+**Quadro 1.** A varredura de rosto, desenhada como uma bibliotecária lendo uma
+pilha de quadros, para e põe um marcador quando a luz vermelha REC de um drone
+acende.
+DEV: Enquanto alguma câmera grava, a varredura espera entre os quadros.
+
+**Quadro 2.** O mostrador do YOLO da Edição nº 3 sai do vermelho.
+DEV: 590 milissegundos durante uma varredura. 342 com ela pausada — quase tão
+rápido quanto sozinho.
+
+**Quadro 3.** A tela do replay: o cachorro branco sentado no tapete, a caixa
+com o rótulo "2.4".
+DEV: O cachorro senta, e a caixa deixa de ser tão larga. Com 2,5 ele escapava.
+ARQUITETO: Pessoas de verdade medem de 0,4 a 0,6. Use 2,0 — a folga continua
+sendo de quatro vezes.
+
+**Quadro 4.** O cachorro boceja no tapete; nenhuma caixa em volta.
+J.A.R.V.I.S. faz joinha.
+J.A.R.V.I.S.: wide at the bottom edge — dropped. Em 25 eventos, todo descarte
+foi o tapete.
+
+### Capítulo 2 — A Recepção
+
+**Quadro 1.** A porta PEOPLE abre para uma parede de cartões de rosto, cada um
+com um campo de nome.
+DEV: People na web. Digite um nome; o mesmo nome duas vezes junta os dois.
+
+**Quadro 2.** A porta SETTINGS: um pequeno cofre com uma fenda de moeda
+escrita TOKEN — as coisas entram, nada sai.
+DEV: O token pode ser gravado, nunca lido de volta. Qualquer um no Wi-Fi
+consegue abrir esta página.
+
+**Quadro 3.** Dois carregadores levando a mesma caixa em direções opostas,
+com os rótulos "web" e "Housekeeper".
+DEV: E nada de botão "Archive now": dois carregadores na mesma pilha de
+arquivos é como caixas se perdem.
+
+**Quadro 4.** O balão dourado do Dono entra de fora do quadro, apontando para
+um cartão de rosto sem nome.
+O DONO: Às vezes o meu próprio rosto chega sem nome. Quero poder dizer "este
+também sou eu" — e o mesmo para os cachorros.
+ARQUITETO: Rostos, sim: a junção já existe, falta uma lista para escolher.
+Cachorros precisam de uma camada nova antes.
+
+**Quadro 5.** Noite. A coruja passa pela recepção e para: nenhuma tranca na
+porta, uma chave pendurada no gancho para quem quiser.
+ARQUITETO: Qualquer um no Wi-Fi pode renomear um rosto aqui… ou uma página
+que você abrir pode fazer isso por ele.
+LEGENDA (faixa preta): CONTINUA — EDIÇÃO #5: A TRANCA DA RECEPÇÃO
+
+### Ficha final — Raid Log, Edição nº 4
+
+**Habilidades desbloqueadas:** **Boas Maneiras** — a varredura de rosto dá
+licença durante os eventos (R23) · **O Cachorro Dormindo** — "pessoa" larga na
+borda de baixo é o tapete (R18) · **Recepção** — People e Settings na web
+(estágio 4) · **Cofre de Mão Única** — o token só é gravado, nunca lido.
+
+**Chefões derrotados:** A Colisão · O Cachorro que Sentou.
+
+**Ainda à espreita:** a recepção sem tranca (R24) · uma junção não pode ser
+desfeita (backlog 9) · nenhuma identidade para os cachorros (item 15).
+
+**Os decretos do Dono:** "Você define a regra do cachorro." · "Um rosto meu
+que não foi reconhecido deve poder ir para o meu nome — e o mesmo para os
+cachorros."
+
+**Próxima:** Edição nº 5 — A Tranca da Recepção.

@@ -1964,6 +1964,27 @@ tag (`v2026.10.10`), the test copy something like `v2026.10.10-12-g1b8822d`,
 "12 commits after that tag" — which also tells the two pages apart. Served as
 `version` in `/api/status` and shown muted at the right of the header;
 `unknown` if git cannot answer, never an error.
+**The scan steps aside during events (R23, 10/10/2026).** Before each frame,
+`_scan_clip()` calls `_wait_while(busy, budget)`: while `busy()` is true it
+sleeps in 0.2 s steps, at most `MAX_PAUSE_SECONDS` = 600 per scan, and the
+ffmpeg feeding the pipe simply blocks. `busy` is a function passed in —
+Java's `BooleanSupplier`, C#'s `Func<bool>` — so `faces` knows nothing of
+cameras: `clips.recording_now()` asks every `EventRecorder`, kept in a
+`weakref.WeakSet` (a set that does not keep its members alive, like the keys of
+Java's `WeakHashMap`). Measured: YOLO 328 ms alone, ~590 ms during a dense
+scan, **342 ms while the scan is paused**. A paused scan still holds
+`_SCAN_LOCK`, so on a long busy evening the face messages arrive late; the
+first message of each event never waits.
+
+**The dog on the mat (R18).** `SubjectDetector.detect()` drops a `person`
+whose box is more than `WIDE_PERSON_RATIO` = 2.0× wider than tall **and**
+whose bottom lies within `BOTTOM_EDGE_FRACTION` = 3 % of the frame's bottom
+(`people.wide_at_bottom()`, trace reason "wide at the bottom edge"). Both
+conditions: a wide box mid-frame could be a person lying down, and a standing
+person whose feet touch the edge is always tall. The architect had specified
+2.5; the replay of all 25 person events showed the dog **sitting up** on the
+mat at 2.42–2.48, so 2.0 — real persons measure 0.4–0.6, still a fourfold
+margin. Every box the rule drops in those events is the mat.
 
 ---
 
@@ -2446,6 +2467,23 @@ warning on every visit, so it is not worth it now.
 
 ---
 
+### 17.9 Stage 4: People and Settings on the web (10/10/2026)
+
+The page gained the two tabs that only the OpenCV window had.
+
+| Route | Does |
+|---|---|
+| `GET /api/face-days`, `GET /api/people?day=` | days with faces; that day's sightings with the gallery's current names |
+| `GET /face/<day>/<HH-MM-SS_xxxxxx>.jpg` | one face crop; name checked by pattern, then must resolve inside `faces/` |
+| `POST /api/people/<p_xxxxxxxx>/name` | `Gallery.rename`: the same name on another face merges them (10.4) |
+| `GET` / `POST /api/settings` | read, or change some keys; each one type-checked, labels limited to YOLO's classes, unknown keys refused |
+| `POST /api/notify/discover`, `POST /api/notify/test` | find the chat, send a test |
+
+**The token is write-only.** The page can set it but never read it back —
+only `notify_token_set` — because anyone on the Wi-Fi can open the page (R4).
+**"Archive now" was left out on purpose:** it would move files from the web
+thread while the `Housekeeper` may be moving the same files in the main loop.
+Writes from the network are guarded by R24 (CONTEXTO 13.9).
 ## 18. Production and test (designed and built 09/10/2026)
 
 Written in English: the user decided on 09/10/2026 that documentation moves to

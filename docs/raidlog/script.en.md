@@ -406,3 +406,82 @@ script, not the drawing." · "Before handing me a decision, look for a better
 solution."
 
 **Next:** Issue #4.
+
+---
+
+## Issue #4 — The House Gets a Front Desk
+
+`v2026.10.10.3` · 10 Oct 2026, afternoon
+
+### Cover
+
+Inside the browser window, J.A.R.V.I.S. stands behind a small reception desk.
+Behind it, two new doors with signs: PEOPLE and SETTINGS. The dog sleeps on
+its mat in front of the desk, finally without a green box. Badge: **ISSUE #4**.
+
+### Chapter 1 — Stepping Aside
+
+**Panel 1.** The face scan, drawn as a librarian reading a pile of frames,
+stops and puts a bookmark in when a drone's red REC light comes on.
+DEV: While any camera records, the scan waits between frames.
+
+**Panel 2.** The YOLO dial from Issue #3 swings back out of the red.
+DEV: 590 milliseconds during a scan. 342 with the scan paused — almost as
+fast as alone.
+
+**Panel 3.** The replay screen: the white dog sitting up on the mat, its box
+labelled "2.4".
+DEV: The dog sits up, and the box stops being so wide. 2.5 missed it.
+ARCHITECT: Real people measure 0.4 to 0.6. Make it 2.0 — still four times the
+margin.
+
+**Panel 4.** The dog yawns on the mat; no box around it. J.A.R.V.I.S. gives a
+thumbs-up.
+J.A.R.V.I.S.: wide at the bottom edge — dropped. Every drop in 25 events: the
+mat.
+
+### Chapter 2 — The Front Desk
+
+**Panel 1.** The PEOPLE door opens on a wall of face cards, each with a name
+field.
+DEV: People on the web. Type a name; the same name twice merges the two.
+
+**Panel 2.** The SETTINGS door: a small safe with a coin slot labelled TOKEN —
+things go in, nothing comes out.
+DEV: The token can be written, never read back. Anyone on the Wi-Fi can open
+this page.
+
+**Panel 3.** Two movers carrying the same box in opposite directions, labelled
+"web" and "Housekeeper".
+DEV: And no "Archive now" button: two movers on the same files is how boxes
+get lost.
+
+**Panel 4.** The Owner's gold balloon comes in from off-panel, pointing at an
+unnamed face card.
+THE OWNER: Sometimes my own face comes in unnamed. I want to say "this one is
+me too" — and the same for the dogs.
+ARCHITECT: Faces, yes: the merge already exists, it needs a picker. Dogs need
+a new layer first.
+
+**Panel 5.** Night. The owl walks past the front desk and stops: no lock on
+the door, a key hanging from the hook for anyone.
+ARCHITECT: Anyone on the Wi-Fi can rename a face here… or a web page you open
+can do it for them.
+CAPTION (black bar): TO BE CONTINUED — ISSUE #5: THE LOCK ON THE FRONT DESK
+
+### Closing card — Raid Log, Issue #4
+
+**Abilities unlocked:** **Good Manners** — the face scan steps aside during
+events (R23) · **The Sleeping Dog** — a wide "person" at the bottom edge is
+the mat (R18) · **Front Desk** — People and Settings on the web (stage 4) ·
+**One-Way Safe** — the token is write-only.
+
+**Bosses defeated:** The Collision · The Dog Who Sat Up.
+
+**Still lurking:** the unlocked front desk (R24) · a merge cannot be undone
+(backlog 9) · no identity for the dogs (item 15).
+
+**The Owner's decrees:** "You set the rule for the dog." · "A face of mine
+that was missed should join my name — and the same for the dogs."
+
+**Next:** Issue #5 — The Lock on the Front Desk.
