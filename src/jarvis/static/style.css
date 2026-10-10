@@ -67,6 +67,16 @@ h1 {
   border-radius: 6px;
 }
 
+#version {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#connection:not([hidden]) + #version {
+  margin-left: 0;
+}
+
 .tab {
   display: none;
 }

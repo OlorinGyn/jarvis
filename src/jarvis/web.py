@@ -10,6 +10,7 @@ See docs/ARQUITETURA.md sections 17 and 18.
 import logging
 import re
 import socket
+import subprocess
 import threading
 import time
 from datetime import date, datetime
@@ -23,6 +24,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from jarvis import ROOT
+from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
 HOST = "0.0.0.0"
@@ -46,6 +48,20 @@ _core = None
 _on_stop = None
 _stopping = threading.Event()
 _started = time.time()
+
+
+def _read_version():
+    """The checked-out version, as git describes it; "unknown" when git cannot say."""
+    try:
+        result = subprocess.run(["git", "describe", "--tags", "--always", "--dirty"],
+                                cwd=ROOT, capture_output=True, text=True, timeout=10,
+                                stdin=subprocess.DEVNULL, creationflags=NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else "unknown"
+
+
+_version = _read_version()
 
 
 def local_url(port=PORT):
@@ -108,7 +124,8 @@ def status():
     """
     ages = _core.frame_ages() if _core is not None else {}
     per_minute = _core.per_minute if _core is not None else {}
-    return {"cameras": cameras(), "started": _started, "analysed_per_minute": per_minute,
+    return {"cameras": cameras(), "started": _started, "version": _version,
+            "analysed_per_minute": per_minute,
             "frame_age": {k: (round(v, 1) if v is not None else None) for k, v in ages.items()}}
 
 

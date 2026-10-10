@@ -9,6 +9,7 @@ const previousButton = document.getElementById("previous");
 const nextButton = document.getElementById("next");
 const cameraGrid = document.getElementById("cameras");
 const connectionBanner = document.getElementById("connection");
+const versionLabel = document.getElementById("version");
 
 let daysWithRecordings = [];
 let cameras = [];
@@ -153,6 +154,7 @@ async function checkHealth() {
   if (online) {
     cameras = status.cameras;
     serverStarted = status.started;
+    versionLabel.textContent = status.version || "";
   }
   if (changed) {
     stopLive();
