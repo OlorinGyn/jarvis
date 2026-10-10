@@ -40,9 +40,10 @@ Detailed in `docs/CONTEXTO.md` section 2:
 ## Backlog, biases, reviews
 
 **The backlog is `docs/CONTEXTO.md` section 8.** It is the single list, and both
-machines see it through git. When an item is done, strike it in the same commit
-as the change. Items marked **(proposto)** are Claude's suggestions with no
-decision from the user — never start one without asking.
+machines see it through git. When an item is done, the developer reports it in
+`HANDOFF.md` and the architect strikes it. Items marked **(proposto)** are
+Claude's suggestions with no decision from the user — never start one without
+asking.
 
 **`docs/CONTEXTO.md` section 11 is the bias log**: constraints Claude adopted on
 its own, without a decision from the user. When you catch yourself justifying a
@@ -59,8 +60,14 @@ architect reviewing a developer's work. The roles do not overlap:
 | Code, tests, local commits | yes | only to fix what a review finds |
 | `docs/`, `README.md`, this file | **never** | yes — decides what is worth documenting and what deserves a learning explanation |
 | Backlog, review log, recommendations | reads them | manages them |
-| `git pull` / `git push`, release tags | no | yes |
+| `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
+| Documentation EPUB | no | regenerates it at the end of every session that changed the docs |
+| Skills in `.claude/skills/` | uses them | writes and maintains them |
+
+**The developer's session is the `dev` skill** (`.claude/skills/dev/SKILL.md`):
+the user calls it with `/dev` or "Dev, ...". It holds the start, the rules per
+item and the HANDOFF that ends a delivery.
 
 **The developer never edits documentation.** At the end of a delivery it writes
 `HANDOFF.md` at the repository root: what changed and why, data-format impact,
@@ -86,9 +93,10 @@ from or written to disk.
 
 **Token budget (decided 09/10/2026).** The user is on Claude Pro and wants to
 learn how many developer and architect sessions fit in one 5-hour window. At
-the start and end of every session, read the plan usage (`get_usage`) and log
-it in `docs/CONTEXTO.md` section 14.3. Start each session in a new
-conversation; the planned scope for the next one is in 14.4.
+the start and end of every session, read the plan usage (`get_usage`). The
+architect logs it in `docs/CONTEXTO.md` section 14.3; the developer writes its
+numbers in `HANDOFF.md`, and the architect moves them there. Start each session
+in a new conversation; the planned scope for the next one is in 14.4.
 
 ## When opening this folder
 

@@ -404,6 +404,7 @@ tools/
 assets/           jarvis.ico and a PNG preview (generated, but versioned)
 docs/             ARQUITETURA, INSTALACAO, PYTHON and this file
 CLAUDE.md         instructions for Claude Code (roles, language, rules)
+.claude/skills/dev/SKILL.md  the developer's session: /dev or "Dev, ..."
 HANDOFF.md        developer → architect notes; empty between deliveries
 instalar.bat      install on a new machine
 jarvis.bat        start the service and open the browser
@@ -464,13 +465,20 @@ ARQUITETURA e o CONTEXTO se citam o tempo todo.
 Documentos novos entram sozinhos: a lista `ORDEM` define a sequência dos
 conhecidos, e qualquer `.md` fora dela é acrescentado ao final.
 
-Os `.md` nunca são alterados, e os EPUBs **não são versionados nem mantidos
-atualizados** — rode quando quiser uma cópia fresca. O script apaga EPUBs
+Os `.md` nunca são alterados, e os EPUBs **não são versionados**. O script apaga EPUBs
 antigos da pasta e confere, ao final, se a contagem de tabelas e blocos de
 código bate com a dos arquivos de origem.
 
+**Whose job — decided on 09/10/2026: the architect's.** The book is made of
+the documentation, and only the architect changes the documentation, so the
+architect regenerates it as the last step of every session that changed a
+`.md`, and tells the user it is ready. A developer session never needs to. The
+check counts table separators even when indented: it used to miss a table
+nested in a list item (backlog item 3) and report a loss that was not one.
+
 Precisa do pandoc (`winget install --id JohnMacFarlane.Pandoc -e`), que o
-script localiza mesmo sem estar no PATH. O `tools/epub.css` é o que deixa o
+script localiza mesmo sem estar no PATH. Installed on the M900 on 09/10/2026
+(3.12.1); Smart App Control let it run. O `tools/epub.css` é o que deixa o
 resultado legível em 7 polegadas: código a 0.68em com quebra forçada, já que
 código não reflui e linhas longas sairiam da tela.
 
@@ -608,7 +616,8 @@ HELD when nobody stopped it, not running, an old frame — goes to the user
 before anything else, with the tail of `C:\JARVIS\logs\jarvis.log`.
 
 **Record the usage at the start of the session** (section 14): plan usage from
-the `get_usage` tool, one row in 14.3, filled in at the end.
+the `get_usage` tool. The architect writes one row in 14.3 and fills it in at
+the end; the developer keeps its numbers for `HANDOFF.md`.
 
 **Confira se o Python ainda roda.** Se o `uv sync` ou o `uv run` falhar com
 `Failed to spawn: python` ou `WinError 4551`, é o Smart App Control bloqueando
@@ -684,7 +693,10 @@ impact, suggested documentation by section, topics worth teaching, what to
 review hardest — and asks: *"Arquiteto, precisamos da sua análise."* The
 architect decides what is worth documenting, integrates it, empties the file,
 pushes, and tags a release when the code is fit for production. Production only
-ever runs tags (ARQUITETURA 18.7).
+ever runs tags (ARQUITETURA 18.7). The architect's last step, whenever the
+docs changed, is the EPUB (section 10). The developer's session is written down
+as the `dev` skill (`.claude/skills/dev/SKILL.md`), which the architect
+maintains.
 
 **O desenvolvedor avisa quando é hora de revisar.** Ao terminar uma entrega,
 diga ao usuário que há material para revisão e peça para ele ativar o
@@ -704,8 +716,8 @@ documentação errada. O que é código vira **recomendação** aqui, com priori
 para o desenvolvedor implementar. Ao final, atualiza 13.2.
 
 **O desenvolvedor lê as recomendações abertas** antes de começar (rotina de
-retomada, 12.3). Ao implementar uma, marque como feita no mesmo commit, dizendo
-onde. Se discordar de uma, não ignore: escreva o porquê aqui e deixe o usuário
+retomada, 12.3). When it implements one, it says so in `HANDOFF.md`, with
+the commit; the architect marks it done here. Se discordar de uma, não ignore: escreva o porquê aqui e deixe o usuário
 decidir.
 
 ### 13.2 Registro de revisões
@@ -1070,9 +1082,11 @@ of stopping halfway. Nothing here is guessed: a row is a measurement.
 
 At the start and at the end of every session, Claude reads the plan usage with
 the desktop app's `get_usage` tool (5-hour %, weekly %, reset time) and the
-conversation's context size, and fills one row of 14.3. A session is one role's
-stint — a developer delivery or an architect review — even when both happen in
-the same conversation.
+conversation's context size. A session is one role's stint — a developer
+delivery or an architect review — even when both happen in the same
+conversation. The architect fills its own row of 14.3; the developer, who
+never edits `docs/`, writes its numbers in `HANDOFF.md` (the `dev` skill asks
+for them), and the architect copies them into 14.3 when integrating.
 
 What drives the cost, as far as one night shows: every turn re-sends the whole
 conversation, so a long conversation makes every later step expensive. In this
@@ -1085,7 +1099,7 @@ disk, which is exactly why the roles hand over through files.
 | # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
 |---|---|---|---|---|---|---|---|
 | — | both | high / ultracode | 29/09–09/10 | everything before this table | not measured | — | one conversation since 29/09, compacted several times |
-| A3 | architect | ultracode | 09/10 23:10–23:40 | finish review 2's docs, check production's first night, diagnose the windows, R15–R18, plan dev session 1 (to 23:25: 25%); then the user's Tapo videos — contact sheets, a frame-by-frame face probe, R19–R20, plan revised (+9 points) | 0% → 34% (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 31% | 106k → 200k tokens |
+| A3 | architect | ultracode | 09/10 23:10–23:40 | finish review 2's docs, check production's first night, diagnose the windows, R15–R18, plan dev session 1 (to 23:25: 25%); then the user's Tapo videos — contact sheets, a frame-by-frame face probe, R19–R20, plan revised (+9 points); then pandoc, the EPUB and its checker, the `dev` skill (+3 points) | 0% → 37% at 23:46 (the window opened at 23:10 and resets at 04:10; the first 22% includes resuming a compacted conversation) | 30% → 32% | 106k → 223k tokens |
 
 ### 14.4 Next session: developer 1
 

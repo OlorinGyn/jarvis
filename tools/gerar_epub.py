@@ -72,7 +72,7 @@ def conferir(epub, documentos):
     origem_tabelas = origem_codigo = 0
     for documento in documentos:
         texto = documento.read_text(encoding="utf-8")
-        origem_tabelas += sum(1 for l in texto.splitlines() if l.startswith("|---"))
+        origem_tabelas += sum(1 for l in texto.splitlines() if l.lstrip().startswith("|---"))
         origem_codigo += texto.count("```") // 2
 
     print(f"  tabelas: {tabelas} (origem {origem_tabelas})")

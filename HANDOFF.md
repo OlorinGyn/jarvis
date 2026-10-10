@@ -7,4 +7,4 @@ See `CLAUDE.md`, "Developer and architect".
 Last integrated: review 2, 09/10/2026 (CONTEXTO 13.5).
 
 Next developer session: planned in CONTEXTO 14.4 — R15, R16, R10 (those
-files), R19, R20, then R11.
+files), R19, R20, then R11. Start it with `/dev`, in a new conversation.
