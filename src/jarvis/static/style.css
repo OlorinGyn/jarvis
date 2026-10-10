@@ -186,6 +186,16 @@ h1 {
   font-size: 0.9rem;
 }
 
+.who {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.who:empty {
+  display: none;
+}
+
 .labels.person {
   color: var(--person);
 }

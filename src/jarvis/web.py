@@ -97,7 +97,37 @@ def _parse_day(text):
         raise HTTPException(400, "invalid day, use YYYY-MM-DD")
 
 
-def _event(entry):
+def _clip_key(clip):
+    """(camera, day, HH-MM-SS) of a clip path, whichever slashes it was stored with."""
+    parts = re.split(r"[\\/]", str(clip))
+    if len(parts) < 3:
+        return None
+    return parts[-3], parts[-2], parts[-1].rsplit(".", 1)[0]
+
+
+def _who_was_seen(day):
+    """For each recording of a day, the people whose faces its clip scan found."""
+    gallery = faces.Gallery()
+    seen = {}
+    for path in (faces.FACE_DIR / day.isoformat()).glob("*.json"):
+        try:
+            sighting = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        key = _clip_key(sighting.get("clip", ""))
+        person = gallery.get(sighting.get("person_id"))
+        if key is None:
+            continue
+        name = (person or {}).get("name") or "unknown"
+        names = seen.setdefault(key, [])
+        if name not in names:
+            names.append(name)
+    for names in seen.values():
+        names.sort(key=lambda n: (n == "unknown", n.casefold()))
+    return seen
+
+
+def _event(entry, seen=None):
     """What the page needs from one event, with URLs instead of disk paths.
 
     The picture is the best view of a person when the event has one; older
@@ -117,6 +147,8 @@ def _event(entry):
         "confidence": entry.get("best_confidence", 0),
         "reason": entry.get("reason", ""),
         "thumbnail": f"/thumbnail/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
+        "people": (seen or {}).get((camera, day, entry["thumbnail_path"].stem), []),
+        "animals": [label for label in entry.get("labels", []) if label != "person"],
     }
 
 
@@ -160,7 +192,8 @@ def days():
 def events(day: str = None):
     """The events of one day, newest first. Without a day, today."""
     chosen = _parse_day(day) if day else date.today()
-    return {"day": chosen.isoformat(), "events": [_event(e) for e in list_clips(chosen)]}
+    seen = _who_was_seen(chosen)
+    return {"day": chosen.isoformat(), "events": [_event(e, seen) for e in list_clips(chosen)]}
 
 
 @app.get("/thumbnail/{camera}/{day}/{name}")

@@ -54,6 +54,10 @@ function card(event) {
   labels.textContent = event.labels.join(", ") || "?";
   labels.classList.toggle("person", event.labels.includes("person"));
   node.querySelector(".duration").textContent = `${event.seconds} s`;
+  const who = [];
+  if (event.people.length) who.push(`People: ${event.people.join("; ")}`);
+  if (event.animals.length) who.push(`Animals: ${event.animals.join(", ")}`);
+  node.querySelector(".who").textContent = who.join(" · ");
   return node;
 }
 
