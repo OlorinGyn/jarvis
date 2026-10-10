@@ -45,7 +45,12 @@ write into the repository is in English.
    `HOLD`. Never print the Telegram token, in chat or in a log.
 5. Explain to the user what you changed in the code, briefly, with Java/C#
    comparisons where they help: they are learning Python and OpenCV.
-6. Before the next item, read `get_usage` again. If what is left of the 5-hour
+6. **Shell commands.** The working directory already is the project: never
+   start a command with `cd "/c/Personal Projects/jarvis" && …`. A compound
+   command that begins with `cd` makes Claude Code ask the user for permission
+   every time — 124 such commands in one session was the main reason the user
+   kept being interrupted. Use relative or absolute paths instead.
+7. Before the next item, read `get_usage` again. If what is left of the 5-hour
    window looks smaller than what the item just finished cost, do not start
    another one: deliver.
 
