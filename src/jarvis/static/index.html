@@ -69,6 +69,16 @@
         <p class="result" id="notify-result"></p>
       </form>
 
+      <form id="pin-form" class="panel">
+        <h2>Other devices</h2>
+        <p class="hint" id="pin-state"></p>
+        <label>PIN
+          <input type="password" name="pin" inputmode="numeric" autocomplete="off" maxlength="12">
+        </label>
+        <div class="actions"><button type="submit" id="pin-button">Save PIN</button></div>
+        <p class="result" id="pin-result"></p>
+      </form>
+
       <form id="archive-form" class="panel">
         <h2>Archive (external drive)</h2>
         <label>Folder on this computer <input name="archive_path" autocomplete="off"></label>

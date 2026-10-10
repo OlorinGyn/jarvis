@@ -191,10 +191,32 @@ const faceList = document.getElementById("faces");
 const faceTemplate = document.getElementById("face-card");
 let daysWithFaces = [];
 
+const PIN_KEY = "jarvis-pin";
+
+function storedPin() {
+  try {
+    return localStorage.getItem(PIN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function rememberPin(pin) {
+  try {
+    if (pin) localStorage.setItem(PIN_KEY, pin);
+    else localStorage.removeItem(PIN_KEY);
+  } catch {
+    return;
+  }
+}
+
 async function send(url, payload) {
+  const headers = { "Content-Type": "application/json", "X-Jarvis-Request": "1" };
+  const pin = storedPin();
+  if (pin) headers["X-Jarvis-Pin"] = pin;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload || {}),
   });
   const data = await response.json().catch(() => ({}));
@@ -341,6 +363,7 @@ function fillSettings(values) {
     option.append(box, ` ${label}`);
     return option;
   }));
+  showPairing(values);
   archiveForm.archive_path.value = values.archive_path || "";
   archiveForm.archive_after_days.value = values.archive_after_days;
   archiveForm.archive_min_free_gb.value = values.archive_min_free_gb;
@@ -385,6 +408,55 @@ archiveForm.addEventListener("submit", (submitted) => {
     archive_after_days: Number(archiveForm.archive_after_days.value),
     archive_min_free_gb: Number(archiveForm.archive_min_free_gb.value),
   }, archiveResult);
+});
+
+const pinForm = document.getElementById("pin-form");
+const pinResult = document.getElementById("pin-result");
+let localDevice = false;
+
+function showPairing(values) {
+  localDevice = values.local;
+  pinForm.pin.value = "";
+  let state;
+  if (localDevice) {
+    state = values.pin_set
+      ? "This is the M900. A PIN is set: other devices need it once to change anything. " +
+        "Save a new one to replace it, or save it empty to remove it."
+      : "This is the M900. Set a PIN of 4 to 12 digits so other devices on the network " +
+        "can change names and settings after entering it once.";
+  } else if (!values.pin_set) {
+    state = "Changes from this device are refused until a PIN is set on the M900 itself.";
+  } else {
+    state = storedPin()
+      ? "This device is paired. Enter the PIN again only if it changed."
+      : "Enter the PIN set on the M900 to pair this device.";
+  }
+  document.getElementById("pin-state").textContent = state;
+  document.getElementById("pin-button").textContent = localDevice ? "Save PIN" : "Pair";
+}
+
+pinForm.addEventListener("submit", async (submitted) => {
+  submitted.preventDefault();
+  const pin = pinForm.pin.value.trim();
+  try {
+    if (localDevice) {
+      const result = await send("/api/pin", { pin });
+      pinResult.textContent = result.pin_set ? "PIN saved." : "PIN removed.";
+    } else {
+      const previous = storedPin();
+      rememberPin(pin);
+      try {
+        await send("/api/pair");
+        pinResult.textContent = "This device is paired.";
+      } catch (problem) {
+        rememberPin(previous);
+        throw problem;
+      }
+    }
+    loadSettings();
+  } catch (problem) {
+    pinResult.textContent = `Not done: ${problem.message}`;
+  }
 });
 
 document.getElementById("find-chat").addEventListener("click", async () => {

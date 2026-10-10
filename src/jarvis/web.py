@@ -7,6 +7,7 @@ Core.live_view(), which only reads. The Core does not know the web exists.
 See docs/ARQUITETURA.md sections 17 and 18.
 """
 
+import hmac
 import logging
 import re
 import socket
@@ -21,7 +22,7 @@ import requests
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from jarvis import ROOT, archive, faces, notify, settings
@@ -35,6 +36,10 @@ LIVE_FPS = 8
 LIVE_QUALITY = 75
 BOUNDARY = "frame"
 LOOPBACK = {"127.0.0.1", "::1"}
+REQUEST_HEADER = "X-Jarvis-Request"
+PIN_HEADER = "X-Jarvis-Pin"
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+PIN_PATTERN = re.compile(r"^[0-9]{4,12}$")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -224,11 +229,49 @@ def name_person(person_id: str, payload: dict = Body(...)):
     return {"name": name.strip(), "merged": merged}
 
 
-def _settings_view():
+def _is_local(request):
+    """Whether the request comes from this machine itself."""
+    return request.client is not None and request.client.host in LOOPBACK
+
+
+def _write_refusal(request):
+    """Why this write must be refused, or "" when it may go ahead.
+
+    The header closes cross-site forgery: a foreign page cannot add it without
+    a preflight the service never grants. From another device the paired PIN
+    is also needed, since anyone on the Wi-Fi can open the page (R4, R24).
+    """
+    if request.headers.get(REQUEST_HEADER) != "1":
+        return "writes are only accepted from the J.A.R.V.I.S. page"
+    if _is_local(request):
+        return ""
+    pin = (settings.load().get("write_pin") or "").strip()
+    if not pin:
+        return ("no PIN is set: on the M900 itself, open Settings and set one "
+                "to pair other devices")
+    offered = request.headers.get(PIN_HEADER, "")
+    if not hmac.compare_digest(offered.encode(), pin.encode()):
+        return "this device is not paired: enter the PIN in Settings, Other devices"
+    return ""
+
+
+@app.middleware("http")
+async def guard_writes(request: Request, call_next):
+    """Every write passes _write_refusal first; reading stays open (R4)."""
+    if request.method in WRITE_METHODS:
+        problem = _write_refusal(request)
+        if problem:
+            return JSONResponse({"detail": problem}, status_code=403)
+    return await call_next(request)
+
+
+def _settings_view(request):
     """The settings for the page. The bot token never leaves: only whether it is set."""
     values = settings.load()
     token = values.pop("notify_token", "")
     values["notify_token_set"] = bool((token or "").strip())
+    values["pin_set"] = bool((values.pop("write_pin", "") or "").strip())
+    values["local"] = _is_local(request)
     values["notify_label_choices"] = list(NOTIFY_LABELS)
     values["archive"] = jsonable_encoder(archive.summary())
     return values
@@ -248,12 +291,12 @@ def _clean(key, value):
 
 
 @app.get("/api/settings")
-def read_settings():
-    return _settings_view()
+def read_settings(request: Request):
+    return _settings_view(request)
 
 
 @app.post("/api/settings")
-def write_settings(payload: dict = Body(...)):
+def write_settings(request: Request, payload: dict = Body(...)):
     """Change some settings. A token is only ever written, never read back."""
     changes = {}
     for key, value in payload.items():
@@ -267,7 +310,7 @@ def write_settings(payload: dict = Body(...)):
             raise HTTPException(400, f"unknown setting {key}")
     if changes:
         settings.update(**changes)
-    return _settings_view()
+    return _settings_view(request)
 
 
 @app.post("/api/notify/discover")
@@ -277,6 +320,24 @@ def discover_chat():
     if chat:
         settings.update(notify_chat=chat)
     return {"chat": chat, "error": problem}
+
+
+@app.post("/api/pin")
+def set_pin(request: Request, payload: dict = Body(...)):
+    """Set or clear the PIN that pairs other devices. Only from this machine."""
+    if not _is_local(request):
+        raise HTTPException(403, "the PIN can only be set on the M900 itself")
+    pin = payload.get("pin")
+    if not isinstance(pin, str) or (pin and not PIN_PATTERN.match(pin)):
+        raise HTTPException(400, "a PIN of 4 to 12 digits, or empty to remove it")
+    settings.update(write_pin=pin)
+    return {"pin_set": bool(pin)}
+
+
+@app.post("/api/pair")
+def pair():
+    """A write that does nothing: it only answers once the guard let it through."""
+    return {"paired": True}
 
 
 @app.post("/api/notify/test")
@@ -344,7 +405,8 @@ def already_running(port=PORT):
 def request_stop(port=PORT, timeout=120):
     """Ask the running service to stop, and wait until it has. Returns a message."""
     try:
-        answer = requests.post(f"{local_url(port)}/api/shutdown", timeout=5)
+        answer = requests.post(f"{local_url(port)}/api/shutdown",
+                               headers={REQUEST_HEADER: "1"}, timeout=5)
     except requests.RequestException:
         return f"Nothing is running on port {port}."
     if not answer.ok:
