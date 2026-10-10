@@ -152,7 +152,7 @@ A janela antiga do OpenCV ainda existe, **provisoriamente**, para nomear rostos
 e mexer nos ajustes até a web fazer isso (backlog, item 3):
 
 ```bat
-uv run python -m jarvis --window
+uv run python -m jarvis --headless
 ```
 
 **Since 09/10/2026 the copy that stays on is production, in `C:\JARVIS`**, and

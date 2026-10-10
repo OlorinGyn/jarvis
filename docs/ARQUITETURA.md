@@ -2484,6 +2484,50 @@ only `notify_token_set` — because anyone on the Wi-Fi can open the page (R4).
 **"Archive now" was left out on purpose:** it would move files from the web
 thread while the `Housekeeper` may be moving the same files in the main loop.
 Writes from the network are guarded by R24 (CONTEXTO 13.9).
+### 17.10 The lock, People by person, who appears, and the window gone (10/10/2026)
+
+**Every write is guarded (R24).** A FastAPI middleware — code that wraps every
+request, like a servlet `Filter` or ASP.NET middleware — refuses any
+`POST`/`PUT`/`PATCH`/`DELETE` unless (a) it carries `X-Jarvis-Request: 1`, even
+from 127.0.0.1, and (b) from any other address, `X-Jarvis-Pin` equals
+`write_pin`, compared with `hmac.compare_digest` (constant time, so the
+comparison does not leak how many digits matched). The header defeats
+cross-site forgery: a foreign page cannot add a custom header without the
+browser first asking the server (a CORS preflight), and this server never says
+yes. The PIN (4–12 digits) is set only from the M900's own page (Settings,
+Other devices) and typed once on each other device, which keeps it in
+`localStorage`. Threat model, honestly: good against a guest's phone and a
+forged request; not against someone sniffing the Wi-Fi, since the PIN travels
+in clear over HTTP, and it sits in plain text in `config.json`, like the token.
+`--stop` sends the header, and `production.ps1` always stops a service with
+that same version's `--stop`, so the guard cannot lock it out.
+
+**People by person (backlog 19).** A grid of the named, the unnamed with a name
+field and a "Belongs to…" picker, and a person page (`#people/<id>`) with
+rename, the stored views and a month calendar of their recordings. The gallery
+gained two optional keys per person: `views`, aligned by index with
+`embeddings`, holding the path of each view's face crop in `faces/views/`
+(`None` for views stored before, padded by `views_of()`), and `pending`, views
+waiting once a person holds 40 (`MAX_PENDING` 100, oldest dropped with its
+file). `Gallery._take()` is the one place that stores or queues a view —
+`add`, `reinforce` and `_merge` all go through it, and merge no longer drops
+the overflow. `remove_view()` frees a slot and pulls the oldest waiting view;
+it refuses a person's last view when nothing waits. A rename to a name that
+belongs to someone else answers **409 Conflict**, which the page turns into
+"this will merge with X — continue?" and resends with `merge: true`. After a
+rollback, an older version ignores both keys and only appends embeddings, so
+the alignment holds (its new views just get `None`).
+
+**Who appears (backlog 20).** `/api/events` reads the day's sightings once,
+keyed by camera, day and clip time, and adds `people` (current names; unnamed
+as "unknown") and `animals` to each event; the card shows them under the time.
+Sightings stored Windows paths, so the clip path is split on either slash.
+
+**The OpenCV window is gone.** `ui.py` and every drawing path in `cameras.py`
+were deleted; `--window`/`--janela` now log where the web page is and start
+as usual, for one release. A pitfall met on the way: content inside a
+`<template>` lives in an inert document, where `a.href = "#x"` resolves against
+`about:blank` — use `setAttribute`.
 ## 18. Production and test (designed and built 09/10/2026)
 
 Written in English: the user decided on 09/10/2026 that documentation moves to
@@ -2758,9 +2802,10 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
-| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen` |
+| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views` and `pending` **optional since 10/10/2026** (17.10) |
+| `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per stored or queued view |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
-| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10). Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
 | `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
 | `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
 | `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |

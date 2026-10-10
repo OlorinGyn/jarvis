@@ -23,8 +23,8 @@ reconhece rostos e permite cadastrar nomes.
 
 Since 09/10/2026 the interface is a web page served by the service itself
 (**Live** and **Recordings**; People and Settings are stage 4, backlog item 3).
-The old OpenCV window, with **Live**, **Records** and **People** tabs, still
-exists behind `--window` until stage 4 replaces it.
+The old OpenCV window was removed on 10/10/2026 (`v2026.10.10.4`): the web
+page, with Live, Recordings, People and Settings, is the only interface.
 
 **Duas máquinas:**
 
@@ -322,7 +322,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    | ✓ | Estágio 3 — ao vivo, rede local, atalho abre serviço + navegador | feito 09/10 (ARQUITETURA 17.7) |
    | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARQUITETURA 17.9) |
    | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
-   | | Remove the OpenCV window (`ui.py`, `--window`) | **next** — the user already decided the web is the only access |
+   | ✓ | Remove the OpenCV window (`ui.py`, `--window`) | done 10/10 (ARQUITETURA 17.10) |
    | | Estágio 2 — reprodução do vídeo na página | depois |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
@@ -331,9 +331,9 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
-19. **People by person, not by day; attach a face to an existing name** (decided 10/10/2026, redesigned by the user the same day). The People tab today lists sightings by day. The user wants instead: **(a)** one screen with every **named** person (they fit on one screen), and a separate place for the unnamed faces; **(b)** clicking a person opens their page: first **the stored views that recognise them** (up to `MAX_EMBEDDINGS` = 40), then **a calendar of every recording they appear in**; **(c)** on an unnamed face, a "belongs to…" picker of existing names instead of typing — the merge itself already exists (`Gallery.rename` → `_merge`); **(d)** when a person already holds 40 views, new ones **wait in a queue** instead of being dropped (today `_merge` and `reinforce` drop them); on the person's page the user can **remove** one of the 40, and the oldest waiting view takes its place. This replaces the architect's earlier idea of replacing the most redundant view automatically: the user wants the choice. **Data, additive only:** a view today is a bare embedding with no picture, so to show the 40 the gallery must start keeping each view's face crop — an optional list aligned with `embeddings` (`null` for the views stored before, shown as "no photo"), plus an optional `pending` queue; `check_data` must read old and new. **(e) Rename a person** from their page (added by the user, 10/10). `Gallery.rename` already does it, but a new name that belongs to someone else **merges the two** — the page must say so and ask before doing it. **Fresh start (decided by the user, 10/10):** production's gallery holds only two named people and views without pictures, so when this version is deployed the architect **deletes** production's `faces/` — the user chose no backup — and the gallery restarts empty; the user names the two people again, and every view from then on has its picture. Clearing it before the deploy would be pointless: the running version would keep storing views without pictures until then. **Animals:** the user wants the same for the dogs; that needs item 15 first.
+19. **Done 10/10 (`v2026.10.10.4`, ARQUITETURA 17.10).** **People by person, not by day; attach a face to an existing name** (decided 10/10/2026, redesigned by the user the same day). The People tab today lists sightings by day. The user wants instead: **(a)** one screen with every **named** person (they fit on one screen), and a separate place for the unnamed faces; **(b)** clicking a person opens their page: first **the stored views that recognise them** (up to `MAX_EMBEDDINGS` = 40), then **a calendar of every recording they appear in**; **(c)** on an unnamed face, a "belongs to…" picker of existing names instead of typing — the merge itself already exists (`Gallery.rename` → `_merge`); **(d)** when a person already holds 40 views, new ones **wait in a queue** instead of being dropped (today `_merge` and `reinforce` drop them); on the person's page the user can **remove** one of the 40, and the oldest waiting view takes its place. This replaces the architect's earlier idea of replacing the most redundant view automatically: the user wants the choice. **Data, additive only:** a view today is a bare embedding with no picture, so to show the 40 the gallery must start keeping each view's face crop — an optional list aligned with `embeddings` (`null` for the views stored before, shown as "no photo"), plus an optional `pending` queue; `check_data` must read old and new. **(e) Rename a person** from their page (added by the user, 10/10). `Gallery.rename` already does it, but a new name that belongs to someone else **merges the two** — the page must say so and ask before doing it. **Fresh start (decided by the user, 10/10):** production's gallery holds only two named people and views without pictures, so when this version is deployed the architect **deletes** production's `faces/` — the user chose no backup — and the gallery restarts empty; the user names the two people again, and every view from then on has its picture. Clearing it before the deploy would be pointless: the running version would keep storing views without pictures until then. **Animals:** the user wants the same for the dogs; that needs item 15 first.
 
-20. **Who appears in each recording** (decided 10/10/2026). On the Recordings tab, each event shows under its time the named people seen in it (`People: Gustavo; Izabel`, unknown faces as "unknown") and the animals (`Dogs: …` — today only the label and count, since dogs have no identity until item 15). The data exists: each face sighting records its `clip`; the event list can join on it, with no change on disk.
+20. **Done 10/10 (`v2026.10.10.4`).** **Who appears in each recording** (decided 10/10/2026). On the Recordings tab, each event shows under its time the named people seen in it (`People: Gustavo; Izabel`, unknown faces as "unknown") and the animals (`Dogs: …` — today only the label and count, since dogs have no identity until item 15). The data exists: each face sighting records its `clip`; the event list can join on it, with no change on disk.
 
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
@@ -393,7 +393,6 @@ src/jarvis/
   log.py          logging: console, crash hooks, logs/jarvis.log for the service
   web.py          web interface: FastAPI in a thread beside the Core
   static/         the web page: index.html, style.css, app.js
-  ui.py           old OpenCV window (--window), until web stage 4
   geometry.py     Detection type and box utilities
 tools/
   production.ps1  production on the M900: install, update, start, stop, status, check
@@ -448,7 +447,7 @@ Test copy and tools, from this folder:
 ```bat
 jarvis.bat                                              test copy: service + browser (port 8766 here)
 uv run python -m jarvis --headless                      service only, no browser
-uv run python -m jarvis --window                        old OpenCV window (until web stage 4)
+uv run python -m jarvis --window                        removed 10/10: only logs the web page's address
 uv run python -m jarvis --stop                          stop the copy running from this folder, cleanly
 uv run python tools/check_data.py                       can the current code read every file on disk?
 uv run python tools/replay.py <video> [--prime]         why each frame was kept or dropped (ARQUITETURA 12.10)
@@ -738,8 +737,9 @@ decidir.
 | 3 | 10/10/2026 | `87e736b`, developer session 1 — R15, R16, R10 in part, R19, R20, R11 | no code fixed: the diff, `check_data`, the comment check and the redaction and `select` expressions all checked out; HANDOFF integrated; R18 raised to high, R21–R22 opened; release `v2026.10.10` tagged |
 | 4 | 10/10/2026 | `5d91305..1b8822d`, developer session 2 — R21 measured, backlog 18, R22, R17, R10 code part | no code fixed; R21's fix decided (R23); release `v2026.10.10.2` tagged |
 | 5 | 10/10/2026 | `11c6663..5f3c356`, developer session 3 — R23, R18, web stage 4 | no code fixed; R18's 2.0 accepted; R24 opened for writes from the network; release `v2026.10.10.3` tagged |
+| 6 | 10/10/2026 | `3a91964..5eb8964`, developer session 4 — R24, backlog 19 and 20, the window removed | no code fixed; R25 decided from the user's question about face messages; release `v2026.10.10.4`; production's gallery deleted at the deploy, as the user decided |
 
-**Last review covers up to the `v2026.10.10.3` release commit.** The next one
+**Last review covers up to the `v2026.10.10.4` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -788,7 +788,8 @@ subir de novo em 09/10.
 | ✓ | R21 | **high** | What the dense face scan costs live analysis on the M900 | measured `6ff6eda`: YOLO 1.6× slower during a scan; fix decided as R23 (13.8) |
 | ✓ | R22 | medium | Nothing records where the dense scan looked | done `c5166d1` (ARQUITETURA 12.10) |
 | ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARQUITETURA 12.10) |
-| | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | open — dev session 4 (13.9) |
+| ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
+| | R25 | medium | A face found in an event that fell in the cooldown is never sent | open — dev session 5 (13.10) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1213,6 +1214,33 @@ header fails even from 127.0.0.1; `check_data` reads the new key.
 Released anyway as `v2026.10.10.3`: the user wants People on the web, the
 exposure needs someone on the home Wi-Fi who knows the address, and R24 is
 the next session's first item.
+### 13.10 Review 6 — developer session 4, and the face messages
+
+Reviewed `3a91964..5eb8964`. No code fixed: every path that touches a
+person's `embeddings` goes through `_take` or `remove_view`, both inside the
+gallery lock and both saving; imports, comments and `check_data` clean.
+Integrated into ARQUITETURA 17.10 and 19.2. The threat model of R24 is
+accepted as written there.
+
+**"Fewer face messages — is that normal?" (the user, 10/10).** Measured on
+production's log, from 13:31 to 15:15: 10 events with a person, 6 first
+messages sent, 4 skipped by the cooldown, 21 face scans, **2 with a usable
+face**, 1 face message and 4 best-view messages. Mostly normal: a face must be
+frontal and at least 36 px wide, which daytime walkers seen from the gate
+rarely are, and sightings per person event are about the same as on 30/09
+(4 of 18 against 15 of ~85). R18 also removed the dog's false person events,
+so there are fewer notifications overall. One part is a real gap: a face
+message is only sent when the event's own first message went out, so a face
+found in an event that fell in the 120 s cooldown is never announced — and a
+face is the most valuable message there is.
+
+**R25 — Send a found face even when its event was in the cooldown (medium,
+decided by the architect).** The cooldown exists against repeated events, not
+against faces, which are rare (2 of 21 scans). Rule: after the scan, send the
+face message whether or not the event's first message went out, with its own
+cooldown per person — the same person is not announced twice within
+`notify_cooldown`. The best-view follow-up keeps today's rule (only after a
+sent event), so the volume barely changes.
 ---
 
 ## 14. Sessions and token budget
@@ -1254,26 +1282,24 @@ disk, which is exactly why the roles hand over through files.
 | A7 | architect | ultracode | 10/10 13:25–13:35 | review 4, R23 decided, release `v2026.10.10.2`, comic scripts 2 and 3 (one failed shell append re-sent them) | 9% → 15% | 43% → 44% | 500k → 540k tokens, in the old conversation |
 | D3 | developer | high | 10/10 13:45–14:20 | session 3: R23, R18, web stage 4 | 22% → 34%: R23 2, R18 2, stage 4 8 | 45% → 46% | 336k → 405k, old conversation again |
 | A8 | architect | ultracode | 10/10 14:25–14:45 | backlog 19, review 5, R24, release and production `v2026.10.10.3`, script 4 | 35% → 38% | 47% → 47% | 557k → 580k tokens |
+| D4 | developer | high | 10/10 14:35–15:30 | session 4: R24, backlog 19 and 20, window removed | 43% → 62%: R24 5, backlog 19 10, backlog 20 2, window 2 | 48% → 50% | 412k → 505k, old conversation |
+| A9 | architect | ultracode | 10/10 15:35– | the face-message question, review 6, R25, release and deploy `v2026.10.10.4`, script 5 | 64% → (end) | 50% → | 610k → |
 
-### 14.4 Next session: developer 4
+### 14.4 Next session: developer 5
 
-Developer session 3 did its whole plan. In order:
+Developer session 4 did its whole plan. In order:
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **R24** — guard every write: custom header, PIN pairing for other devices | security, and before more write features land | `web.py`, `static/`, `settings.py` |
-| 2 | **Backlog 19** — People by person: named grid, person page with the 40 views (remove one, a queued view takes its place), calendar of their recordings, rename (asking before a merge), "belongs to…" picker for unnamed faces | the user's design, 10/10; the merge engine exists; the gallery change must stay additive | `static/`, `web.py`, `faces.py` |
-| 3 | **Backlog 20** — who appears in each recording | the user's request; reads data that already exists | `web.py`, `static/` |
-| 4 | **Remove the OpenCV window** — `ui.py`, `--window` | decided by the user (the web is the only access); stage 4 made it redundant | `ui.py`, `cameras.py`, `.bat`, `tools/` |
+| 1 | **R25** — send a found face even after a cooldown, once per person per cooldown | the user noticed fewer face messages; small | `notify.py`, `clips.py` |
+| 2 | **R6** — automatic tests: the gallery's view alignment (`_take`, `remove_view`, `_merge`), the write guard (R24), the notify rules | the gallery and the guard are now the riskiest code, and both were checked only by hand | `tests/`, `pyproject.toml` (pytest and httpx as dev dependencies) |
 
-**At this release the architect also deletes production's `faces/`** (item 19, fresh start; no backup, the user's choice), after the update succeeds and before telling the user to name the people again. Stop production around it (`-Action stop` / `start`) so no scan writes into the folder while it goes.
+**Start in a new conversation.** Session 4 began at 412k tokens of context and
+spent 19 points; the plan above is smaller on purpose.
 
-Item 4 removes a way to start the program: keep `--window` and `--janela` as
-flags that print where the web page is, instead of failing, for one release.
-**Start in a new conversation** — session 3 began at 336k tokens of context.
-
-**Not in this session:** R6, R12, R14, R7, R9; backlog 9 (undo a merge) and
-1–2, which wait for the user.
+**Waiting for the user:** backlog 9 (undo a merge — the architect recommends
+it, now that a merge is one click), items 1–2 (zones, daily health), item 15
+(animal identity, research first).
 ---
 
 ## 15. Raid log — the comic script of each release
@@ -1298,3 +1324,4 @@ review and commits.
 | 2 | `v2026.10.10` | The Dog Who Wore a Person's Face / O Cachorro com Cara de Gente | written |
 | 3 | `v2026.10.10.2` | The Watcher's Instruments / Os Instrumentos do Vigia | written |
 | 4 | `v2026.10.10.3` | The House Gets a Front Desk / A Casa Ganha uma Recepção | written |
+| 5 | `v2026.10.10.4` | The Lock and the Album / A Tranca e o Álbum | written |

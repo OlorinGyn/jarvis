@@ -485,3 +485,84 @@ the mat (R18) · **Front Desk** — People and Settings on the web (stage 4) ·
 that was missed should join my name — and the same for the dogs."
 
 **Next:** Issue #5 — The Lock on the Front Desk.
+
+---
+
+## Issue #5 — The Lock and the Album
+
+`v2026.10.10.4` · 10 Oct 2026, late afternoon
+
+### Cover
+
+The owl fits a small keypad lock on the front desk's door. Behind the desk,
+J.A.R.V.I.S. holds open a photo album full of face crops. Badge: **ISSUE #5**.
+
+### Chapter 1 — The Lock
+
+**Panel 1.** The beaver at the workbench, raising a paw every few seconds;
+above him a pile of little "May I?" cards.
+DEV: May I? … May I? … May I?
+THE OWNER: Five times in a row! This is absurd!
+
+**Panel 2.** The owl reads a long scroll of commands, every one starting with
+`cd`.
+ARCHITECT: 124 commands began with a cd into the folder we were already in.
+That is what kept asking. Not anymore.
+
+**Panel 3.** A foreign web page tries to slip a note under the front desk's
+door; the door only opens for notes stamped "X-Jarvis-Request".
+DEV: Every change must carry our stamp. A strange page can't stamp it.
+
+**Panel 4.** A guest's phone at the desk is refused; the Owner's other
+computer types a short PIN once and is let in.
+DEV: From another device, a PIN — set on the M900, typed once.
+
+### Chapter 2 — The Album
+
+**Panel 1.** The People page: a neat grid of named faces; below, a row of
+unnamed ones, each with a "Belongs to…" button.
+DEV: People by person now. And an unknown face can join a name with a click.
+
+**Panel 2.** The Owner's page open like an album: rows of face photos, one
+marked with a small trash can; a short queue of photos waits at the edge.
+DEV: Forty views. Remove one, and the next one waiting takes its place.
+
+**Panel 3.** A rename box: "Izabel" typed over "Gustavo"; a yellow warning
+pops up: "This will merge with Izabel — continue?"
+DEV: A name that belongs to someone else asks first. 409: conflict.
+
+**Panel 4.** A recording card on the Recordings tab, with a new line:
+"People: Gustavo · Animals: dog".
+J.A.R.V.I.S.: now every recording says who was there.
+
+**Panel 5.** Two movers wheel the old OpenCV window out of the house like an
+old TV set.
+CAPTION: The old window retires. The web page is the only door.
+
+**Panel 6.** The Owner's hand sweeps the old face cards off the table.
+THE OWNER: Delete the old faces. I'll register us again — with photos this
+time.
+
+**Panel 7.** The owl studies a chart: 21 face scans, 2 with a face, 1 message.
+THE OWNER: Fewer face messages lately… is it just me?
+ARCHITECT: Partly faces are rare by day. But one of them was lost to the
+cooldown.
+CAPTION (black bar): TO BE CONTINUED — ISSUE #6
+
+### Closing card — Raid Log, Issue #5
+
+**Abilities unlocked:** **The Stamp and the PIN** — every write guarded (R24) ·
+**The Album** — People by person, 40 views with photos and a queue
+(backlog 19) · **Roll Call** — who appears in each recording (backlog 20) ·
+**One Door** — the OpenCV window retired.
+
+**Bosses defeated:** The Hundred "May I?"s · The Forged Note.
+
+**Still lurking:** a face lost to the cooldown (R25) · a merge cannot be
+undone (backlog 9) · no tests guard the album (R6).
+
+**The Owner's decrees:** "People by person, with all my photos." · "Let me
+rename a person." · "Delete the old faces, no backup." · "Stop asking me for
+permission."
+
+**Next:** Issue #6.

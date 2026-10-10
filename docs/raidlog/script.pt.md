@@ -506,3 +506,89 @@ que não foi reconhecido deve poder ir para o meu nome — e o mesmo para os
 cachorros."
 
 **Próxima:** Edição nº 5 — A Tranca da Recepção.
+
+---
+
+## Edição nº 5 — A Tranca e o Álbum
+
+`v2026.10.10.4` · 10 out 2026, fim de tarde
+
+### Capa
+
+A coruja instala uma pequena fechadura com teclado na porta da recepção. Atrás
+do balcão, J.A.R.V.I.S. segura aberto um álbum cheio de fotos de rostos.
+Selo: **EDIÇÃO #5**.
+
+### Capítulo 1 — A Tranca
+
+**Quadro 1.** O castor na bancada, levantando a pata a cada poucos segundos;
+acima dele, uma pilha de cartõezinhos "Posso?".
+DEV: Posso? … Posso? … Posso?
+O DONO: Cinco vezes seguidas! Isso é absurdo!
+
+**Quadro 2.** A coruja lê um pergaminho comprido de comandos, todos começando
+com `cd`.
+ARQUITETO: 124 comandos começavam com um cd para a pasta em que a gente já
+estava. Era isso que pedia autorização. Não mais.
+
+**Quadro 3.** Uma página estranha tenta passar um bilhete por baixo da porta
+da recepção; a porta só abre para bilhetes carimbados "X-Jarvis-Request".
+DEV: Toda mudança precisa do nosso carimbo. Uma página estranha não consegue
+carimbar.
+
+**Quadro 4.** O celular de uma visita é barrado no balcão; o outro computador
+do Dono digita um PIN curto uma única vez e entra.
+DEV: De outro aparelho, um PIN — definido no M900, digitado uma vez.
+
+### Capítulo 2 — O Álbum
+
+**Quadro 1.** A página People: uma grade arrumada de rostos com nome; embaixo,
+uma fileira dos sem nome, cada um com um botão "Belongs to…".
+DEV: People por pessoa agora. E um rosto desconhecido entra num nome com um
+clique.
+
+**Quadro 2.** A página do Dono aberta como um álbum: fileiras de fotos de
+rosto, uma marcada com uma lixeirinha; uma fila curta de fotos espera na
+borda.
+DEV: Quarenta vistas. Tire uma, e a próxima da fila entra no lugar.
+
+**Quadro 3.** Uma caixa de renomear: "Izabel" digitado sobre "Gustavo"; um
+aviso amarelo aparece: "This will merge with Izabel — continue?"
+DEV: Um nome que já é de outra pessoa pergunta antes. 409: conflito.
+
+**Quadro 4.** Um cartão de gravação na aba Recordings, com uma linha nova:
+"People: Gustavo · Animals: dog".
+J.A.R.V.I.S.: agora cada gravação diz quem estava lá.
+
+**Quadro 5.** Dois carregadores levam a velha janela do OpenCV para fora da
+casa, como uma TV antiga.
+LEGENDA: A janela antiga se aposenta. A página web é a única porta.
+
+**Quadro 6.** A mão do Dono varre da mesa os cartões de rosto antigos.
+O DONO: Apague os rostos antigos. Eu cadastro a gente de novo — desta vez com
+foto.
+
+**Quadro 7.** A coruja estuda um gráfico: 21 varreduras de rosto, 2 com rosto,
+1 mensagem.
+O DONO: Tô recebendo menos mensagens com rosto… é impressão minha?
+ARQUITETO: Em parte, de dia os rostos são raros mesmo. Mas um deles se perdeu
+no cooldown.
+LEGENDA (faixa preta): CONTINUA — EDIÇÃO #6
+
+### Ficha final — Raid Log, Edição nº 5
+
+**Habilidades desbloqueadas:** **O Carimbo e o PIN** — toda alteração
+protegida (R24) · **O Álbum** — People por pessoa, 40 vistas com foto e uma
+fila (backlog 19) · **Chamada** — quem aparece em cada gravação (backlog 20) ·
+**Uma Porta Só** — a janela do OpenCV aposentada.
+
+**Chefões derrotados:** Os Cem "Posso?" · O Bilhete Falsificado.
+
+**Ainda à espreita:** um rosto perdido no cooldown (R25) · uma junção não pode
+ser desfeita (backlog 9) · nenhum teste protege o álbum (R6).
+
+**Os decretos do Dono:** "People por pessoa, com todas as minhas fotos." ·
+"Quero poder renomear uma pessoa." · "Apague os rostos antigos, sem backup." ·
+"Parem de me pedir autorização."
+
+**Próxima:** Edição nº 6.
