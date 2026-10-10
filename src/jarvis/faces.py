@@ -307,7 +307,7 @@ class Gallery:
         person = self.get(person_id)
         if person is None:
             return "?"
-        return person["name"] or "Desconhecido"
+        return person["name"] or "Unknown"
 
 
 def _repoint_sightings(folder, old_id, new_id):

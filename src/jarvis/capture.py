@@ -36,16 +36,16 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 TRANSLATIONS = (
-    ("401", "Credenciais incorretas. Confira a Conta da Camera no app Tapo."),
-    ("not one of 40", "Camera ocupada. Ela aceita uma conexao RTSP por vez - "
-                      "feche outro J.A.R.V.I.S., o app Tapo ou um ffmpeg orfao."),
-    ("406", "Camera ocupada. Ela aceita uma conexao RTSP por vez."),
-    ("Connection refused", "Conexao recusada. Confira o IP e se a camera esta ligada."),
-    ("timed out", "Tempo esgotado. Confira a rede e o IP da camera."),
-    ("Error number -138", "Tempo esgotado. Confira a rede e o IP da camera - "
-                          "o roteador pode ter trocado o IP dela."),
-    ("No route to host", "Camera inalcancavel pela rede. Confira o IP."),
-    ("404", "Caminho do stream invalido. Esperado /stream1 ou /stream2."),
+    ("401", "Wrong credentials. Check the Camera Account in the Tapo app."),
+    ("not one of 40", "Camera busy. It accepts one RTSP connection at a time - "
+                      "close any other J.A.R.V.I.S., the Tapo app or an orphan ffmpeg."),
+    ("406", "Camera busy. It accepts one RTSP connection at a time."),
+    ("Connection refused", "Connection refused. Check the IP and that the camera is on."),
+    ("timed out", "Timed out. Check the network and the camera's IP."),
+    ("Error number -138", "Timed out. Check the network and the camera's IP - "
+                          "the router may have given it a new one."),
+    ("No route to host", "Camera unreachable on the network. Check the IP."),
+    ("404", "Invalid stream path. Expected /stream1 or /stream2."),
 )
 
 
@@ -177,8 +177,8 @@ class FFmpegCamera:
             time.sleep(0.1)
         problem = self.last_error
         if problem:
-            return f"FALHOU - {problem}"
-        return "FALHOU - nenhum frame recebido"
+            return f"FAILED - {problem}"
+        return "FAILED - no frame received"
 
     @property
     def latest(self):
