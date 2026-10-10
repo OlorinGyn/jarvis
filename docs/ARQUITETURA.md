@@ -1986,6 +1986,8 @@ person whose feet touch the edge is always tall. The architect had specified
 mat at 2.42–2.48, so 2.0 — real persons measure 0.4–0.6, still a fourfold
 margin. Every box the rule drops in those events is the mat.
 
+**A found face is always announced (R25, 10/10/2026).** The face message used to go out only after the event's own first message, so a face found in an event that fell in the 120 s cooldown was never sent — and faces are rare (2 of 21 scans that afternoon). Now `faces_seen` runs whenever the scan found a face; `_cooled_down(key, settings)` takes any key, the camera for events and `("face", person_id)` for faces, in the same table, so the same person is not announced twice within `notify_cooldown`. The best-view follow-up keeps its rule: only after a sent event.
+
 ---
 
 ## 13. Restrição importante das câmeras Tapo
@@ -2851,3 +2853,7 @@ event JSON (exit 1) and the restored file (exit 0).
 
 Unknown keys in `config.json` are a **warning**, not a failure: the file is
 still readable, and failing would block going back to an older version.
+
+### 19.5 Automatic tests (10/10/2026)
+
+`uv run pytest` runs 23 tests in `tests/` in about 3 s (R6): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, removal pulling from the queue, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), and the notification rules (`test_notify.py`: redaction, labels, both cooldowns). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).

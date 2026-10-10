@@ -592,3 +592,58 @@ ser desfeita (backlog 9) · nenhum teste protege o álbum (R6).
 "Parem de me pedir autorização."
 
 **Próxima:** Edição nº 6.
+
+---
+
+## Edição nº 6 — A Rede de Proteção
+
+`v2026.10.10.5` · 10 out 2026, começo da noite
+
+### Capa
+
+Embaixo do álbum de fotos de J.A.R.V.I.S., o castor estica uma grande rede de
+proteção com 23 nós, cada nó um pequeno visto verde. Selo: **EDIÇÃO #6**.
+
+### Capítulo 1 — O Rosto Perdido, Encontrado
+
+**Quadro 1.** Um cartão de rosto preso atrás de uma catraca escrita
+"cooldown 2 min".
+ARQUITETO: A catraca é para eventos repetidos, não para rostos. Rostos são
+raros.
+
+**Quadro 2.** A catraca agora tem um portãozinho lateral com um ícone de
+rosto; o cartão passa. Um pequeno cronômetro por pessoa pendurado no portão.
+DEV: Um rosto encontrado sempre é enviado — mas a mesma pessoa só uma vez por
+cooldown.
+
+### Capítulo 2 — A Rede
+
+**Quadro 1.** O castor dá nós na rede: "40 vistas", "a fila", "junção", "a
+tranca", "cooldowns".
+DEV: Vinte e três testes. Rodam em três segundos, em pastas que somem depois.
+
+**Quadro 2.** Um pacote suspeito chega à porta com a etiqueta "httpx2". A
+coruja o examina com uma lupa: o remetente é o mesmo do antigo "httpx", e o
+próprio Starlette pediu por ele.
+ARQUITETO: Um nome a uma letra de um famoso é a cara de pacote falso. Este é
+verdadeiro.
+
+**Quadro 3.** O balão dourado do Dono vem de fora do quadro, apontando para o
+álbum.
+O DONO: Quero escolher qual das quarenta fotos é a minha favorita — a que
+aparece na página People.
+LEGENDA (faixa preta): A SEGUIR — EDIÇÃO #7
+
+### Ficha final — Raid Log, Edição nº 6
+
+**Habilidades desbloqueadas:** **Nenhum Rosto Fica Para Trás** — um rosto
+encontrado sempre é enviado, uma vez por pessoa a cada cooldown (R25) · **A
+Rede de Proteção** — 23 testes automáticos (R6).
+
+**Chefões derrotados:** A Catraca · O Pacote Sósia (alarme falso, conferido).
+
+**Ainda à espreita:** uma junção não pode ser desfeita (backlog 9).
+
+**Os decretos do Dono:** "Quero escolher a minha foto favorita." (backlog 21)
+
+**Próxima:** Edição nº 7.

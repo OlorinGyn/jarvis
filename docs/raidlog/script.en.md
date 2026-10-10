@@ -566,3 +566,58 @@ rename a person." · "Delete the old faces, no backup." · "Stop asking me for
 permission."
 
 **Next:** Issue #6.
+
+---
+
+## Issue #6 — The Safety Net
+
+`v2026.10.10.5` · 10 Oct 2026, early evening
+
+### Cover
+
+Under J.A.R.V.I.S.'s photo album, the beaver stretches a big safety net with
+23 knots, each knot a tiny green check mark. Badge: **ISSUE #6**.
+
+### Chapter 1 — The Lost Face, Found
+
+**Panel 1.** A face card stuck behind a turnstile labelled "cooldown 2 min".
+ARCHITECT: The turnstile is for repeated events, not for faces. Faces are
+rare.
+
+**Panel 2.** The turnstile now has a side gate marked with a face icon; the
+card goes through. A small timer per person hangs on the gate.
+DEV: A found face always goes out — but the same person only once per
+cooldown.
+
+### Chapter 2 — The Net
+
+**Panel 1.** The beaver ties knots in the net: "40 views", "the queue",
+"merge", "the lock", "cooldowns".
+DEV: Twenty-three tests. They run in three seconds, on folders that vanish
+after.
+
+**Panel 2.** A suspicious package arrives at the door labelled "httpx2". The
+owl inspects it with a magnifier: the sender is the same as the old "httpx",
+and Starlette itself asked for it.
+ARCHITECT: A name one character away from a famous one is how fake packages
+look. This one is real.
+
+**Panel 3.** The Owner's gold balloon from off-panel, pointing at the album.
+THE OWNER: I want to pick which of the forty photos is my favourite — the one
+on the People page.
+CAPTION (black bar): NEXT — ISSUE #7
+
+### Closing card — Raid Log, Issue #6
+
+**Abilities unlocked:** **No Face Left Behind** — a found face is always
+announced, once per person per cooldown (R25) · **The Safety Net** — 23
+automatic tests (R6).
+
+**Bosses defeated:** The Turnstile · The Look-Alike Package (a false alarm,
+checked).
+
+**Still lurking:** a merge cannot be undone (backlog 9).
+
+**The Owner's decrees:** "Let me choose my favourite photo." (backlog 21)
+
+**Next:** Issue #7.
