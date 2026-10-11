@@ -803,6 +803,10 @@ subir de novo em 09/10.
 | ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARQUITETURA 20) |
 | | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | open — dev session 9 (13.11) |
 | | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | open — dev session 9 (13.11) |
+| | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | open — dev session 9 (13.12) |
+| | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | open — dev session 10 (13.12) |
+| | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | open — dev session 10 (13.12) |
+| | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1294,6 +1298,59 @@ every face is "unknown" until named again. To tell a regression from the
 night, the user is asked for one or two events where their face was clearly
 visible and no face came; `tools/replay.py` and the face probe then show which
 filter dropped it.
+### 13.12 Review 11 — a general review, and the missing face messages (11/10/2026)
+
+The user asked, with no new feature in the queue, for a general review —
+efficiency, performance, UX, documentation — and pointed at the person
+notifications that are never followed by a face.
+
+**The faces: found, then dropped as "not frontal".** Since 10/10 13:31, 43
+person events: every one was scanned, 16 found a usable face, 27 did not. A
+sheet of the 27 best views shows the night ones are what infrared allows, but
+several daytime Front ones show a person close and well lit. Replaying three
+of them (17:51:51, 15:50:37, 15:47:40) through YuNet: faces in 61 frames,
+37–65 px wide, score about 0.8 — **and every one dropped by `is_frontal`**:
+nose offset 0.47–1.01 against the 0.35 limit, eye spread 0.14–0.27 of the face
+width against 0.38. Three-quarter and side views of someone walking to the
+door. The filter is strict on purpose (an embedding of a profile describes
+nobody, 10.9), but it also costs the user the face photo.
+
+**R30 — Show the face even when it cannot be recognised (high).** Two parts.
+(a) When a person event's scan keeps no recognisable face but YuNet saw faces
+on a person (score ≥ 0.75, width ≥ 36 px), send the best of them — closest to
+frontal, then largest — as a face photo ("face, side view"), **without adding
+it to the gallery**; it replaces the best-view message for that event. (b)
+Measure whether the frontal limits can be loosened for recognition: with the
+user's views named, compute the match score of the three-quarter faces of
+their own clips; loosen `MAX_NOSE_OFFSET` / `MIN_EYE_SPREAD` only as far as
+the right person still wins.
+
+**Performance — R31 (medium).** Outside events the scan is not paused, and
+live analysis dropped to ~270 frames a minute per camera while one ran
+(21:06 on 10/10), against ~580. YuNet runs on full 1080p frames (~143 ms
+each). Run detection on the half-size frame and only the alignment on the
+full-size crop, which should cut the scan's cost several times; measure
+before and after with the R21 counter.
+
+**Log noise — R32 (low).** 27 "Exception in callback
+`_ProactorBasePipeTransport._call_connection_lost`" tracebacks at ERROR: Windows'
+asyncio reporting a browser that closed the live view. Install a loop
+exception handler that drops `ConnectionResetError` there, so ERROR means a
+real problem.
+
+**UX.** The main failure is R28 (stale page, silent refusals); not clicked
+through beyond it. Worth a pass with the built-in browser after R28 lands.
+
+**Documentation — R33 (medium, the architect's own).** README still describes
+three OpenCV tabs and `jarvis.bat` opening a window; ARQUITETURA (2,909 lines)
+and CONTEXTO (1,388) grew by dated appendices (12.9, 12.10, 17.9, 17.10, 20).
+CONTEXTO is read by every session's resume routine — about 25k tokens each
+time. Plan: README rewritten in English; CONTEXTO cut to the current brief
+(rules, state, backlog, open recommendations, plan), with the review history
+and usage log moved to a `docs/HISTORY.md` read on demand; ARQUITETURA
+reorganised by subject with the dated sections folded in; and R10's
+translation done along the way. To be done in a new conversation, where the
+documents can be read whole without this one's 750k of context.
 ---
 
 ## 14. Sessions and token budget
@@ -1346,16 +1403,11 @@ disk, which is exactly why the roles hand over through files.
 | D8 | developer | high | 11/10 morning | session 8: R27, dog tuning tool | 11% → 15% | 61% → 61% | 638k → 655k, old conversation |
 | A13 | architect | ultracode | 11/10 morning | review 10: the three reports, R28, R29, release `v2026.10.11` | 29% → ~36% | 63% → 64% | 720k → 740k tokens |
 
-### 14.4 Next session: developer 9
+### 14.4 Next sessions
 
-| | Item | Why here | Files |
-|---|---|---|---|
-| 1 | **R28** — no stale page after updates; every refused write says why | the user's failures on the other computer | `web.py`, `static/` |
-| 2 | **R29** — naming a dog gathers its sure look-alikes | the user's parity request | `dogs.py`, `tests/` |
-| 3 | **The face check**, if the user gave events: replay them and report which filter dropped the face | the user's report | `tools/` |
-| 4 | **Dog thresholds**, if the user named dogs: run `dog_tuning.py` on production's gallery (read-only) and adjust | backlog 22's acceptance | `dogs.py` |
+**Developer 9:** R28 (stale page, refusals say why) → R30 (the face photo, then the measured loosening) → R29 (dog grouping). **Developer 10:** R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
 
-Test the other-computer path with the M900's own browser at 192.168.0.18. **Start in a new conversation.**
+Test the other-computer path with the M900's own browser at 192.168.0.18.
 
 ---
 

@@ -7,5 +7,4 @@ See `CLAUDE.md`, "Developer and architect".
 Last integrated: review 10, 11/10/2026 (CONTEXTO 13.11).
 
 Next developer session: planned in CONTEXTO 14.4 — R28 (no stale page; refusals
-say why), R29 (dog grouping), then the face check and dog thresholds if the
-user has given what they need. Start it with `/dev`, **in a new conversation**.
+say why), R30 (the face photo even from the side), R29 (dog grouping). Start it with `/dev`, **in a new conversation**.
