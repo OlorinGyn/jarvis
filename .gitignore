@@ -45,3 +45,6 @@ dogs/
 
 # devices paired with the PIN (R34): token hashes
 devices.json
+
+# bad detections the user reported (backlog 23)
+reports/
