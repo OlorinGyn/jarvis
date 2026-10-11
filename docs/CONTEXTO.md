@@ -815,6 +815,8 @@ subir de novo em 09/10.
 | ✓ | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | done `ef464f8` |
 | | R36 | low | A report can race a scan that reinforces the same entry, losing that one new view | open |
 | | R37 | low | A report says what it is not, never what it is (the user's own face filed as a dog) | open — an optional "actually: person / other animal / nothing" |
+| | R38 | **high** | A report made by mistake cannot be undone | open — the user made wrong reports on 11/10; nothing is lost (`reports/` keeps the crop, embeddings and sightings): a Reports list in Settings with **Undo**, which puts the entry back in its gallery or the label back on its event |
+| ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `(this commit)`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
 | ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARQUITETURA 21); rare cases go to bad-detection reports |
@@ -1445,7 +1447,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next sessions
 
-**Developer 12:** R37 (what a report really is) → R36 (the report race). R30 (b) waits for a second named person. **Architect, in a new or cleared conversation:** R33, the documentation. **Waiting for the user:** backlog 1–2.
+**Developer 12:** R38 (undo a report) → R37 → R36. R30 (b) waits for a second named person. **Architect:** R33. **Waiting for the user:** backlog 1–2.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 

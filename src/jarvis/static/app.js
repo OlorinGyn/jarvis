@@ -350,7 +350,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const listResult = section.querySelector(".list-result");
   const pageResult = section.querySelector(".page-result");
   const renameForm = section.querySelector(".rename-form");
-  const viewsGrid = section.querySelector(".views-grid");
+  const viewsGrid = section.querySelector(".views-grid:not(.spread-grid)");
   const calendarBox = section.querySelector(".calendar");
   const cardTemplate = document.getElementById("person-card");
   const analyse = section.querySelector(".analyse");
