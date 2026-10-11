@@ -379,6 +379,7 @@ def _page(gallery, entry_id):
     card = _card(entry)
     views = faces.views_of(entry)
     card["view_photos"] = [_photo_url(v) for v in views]
+    card["pending_photos"] = [_photo_url(w.get("view")) for w in entry.get("pending") or []]
     cover = faces.cover_of(entry)
     card["cover_index"] = views.index(cover) if cover else None
     card["appearances"] = _appearances(gallery.path.parent, gallery.sighting_key, entry_id)
@@ -406,10 +407,23 @@ def _cover(gallery, entry_id, index):
     return _page(gallery, entry_id)
 
 
-def _remove(gallery, entry_id, index):
+MOVES = {
+    "remove": ("remove_view", "that view cannot be removed: it is the last chosen one; "
+                              "move a waiting view up first"),
+    "demote": ("demote_view", "that view cannot wait: it is the last chosen one, or the "
+                              f"waiting views are full ({faces.MAX_PENDING}); delete one first"),
+    "promote": ("promote_view", f"the chosen views are full ({faces.MAX_EMBEDDINGS}): "
+                                "move one down or delete one first"),
+    "remove-waiting": ("remove_waiting", "there is no such waiting view"),
+}
+
+
+def _move(gallery, entry_id, move, index):
+    """Delete a view, or move it between the chosen and the waiting ones."""
     _entry_or_404(gallery, entry_id)
-    if not gallery.remove_view(entry_id, index):
-        raise HTTPException(400, "that view cannot be removed: it is the last one")
+    method, refusal = MOVES[move]
+    if not getattr(gallery, method)(entry_id, index):
+        raise HTTPException(400, refusal)
     return _page(gallery, entry_id)
 
 
@@ -428,7 +442,7 @@ def _keep_spread(gallery, entry_id, payload):
     if (not isinstance(keep, list) or not all(isinstance(i, int) for i in keep)
             or not isinstance(signature, str)):
         raise HTTPException(400, "a list of views to keep and the proposal's signature")
-    if not gallery.keep_spread(entry_id, keep, signature):
+    if not gallery.keep_spread(entry_id, keep, signature, payload.get("discard") is True):
         raise HTTPException(409, "the views changed since the analysis: analyse again")
     return _page(gallery, entry_id)
 
@@ -517,8 +531,26 @@ def choose_cover(person_id: str, index: int):
 
 @app.post("/api/persons/{person_id}/views/{index}/remove")
 def remove_view(person_id: str, index: int):
-    """Remove one stored view; the oldest queued view takes its place."""
-    return _remove(faces.Gallery(), person_id, index)
+    """Delete one chosen view; nothing takes its place unless the user moves a waiting one up."""
+    return _move(faces.Gallery(), person_id, "remove", index)
+
+
+@app.post("/api/persons/{person_id}/views/{index}/demote")
+def demote_view(person_id: str, index: int):
+    """Move one chosen view to the waiting ones."""
+    return _move(faces.Gallery(), person_id, "demote", index)
+
+
+@app.post("/api/persons/{person_id}/pending/{index}/promote")
+def promote_view(person_id: str, index: int):
+    """Move one waiting view into the chosen ones, while there is room."""
+    return _move(faces.Gallery(), person_id, "promote", index)
+
+
+@app.post("/api/persons/{person_id}/pending/{index}/remove")
+def remove_waiting(person_id: str, index: int):
+    """Delete one waiting view."""
+    return _move(faces.Gallery(), person_id, "remove-waiting", index)
 
 
 @app.get("/api/persons/{person_id}/spread")
@@ -529,7 +561,7 @@ def person_spread(person_id: str):
 
 @app.post("/api/persons/{person_id}/spread")
 def keep_person_spread(person_id: str, payload: dict = Body(...)):
-    """Keep the proposed 40; every other view waits in the queue."""
+    """Keep the proposed 40; every other view waits, or is deleted with "discard"."""
     return _keep_spread(faces.Gallery(), person_id, payload)
 
 
@@ -576,7 +608,22 @@ def choose_dog_cover(dog_id: str, index: int):
 
 @app.post("/api/dogs/{dog_id}/views/{index}/remove")
 def remove_dog_view(dog_id: str, index: int):
-    return _remove(dogs.DogGallery(), dog_id, index)
+    return _move(dogs.DogGallery(), dog_id, "remove", index)
+
+
+@app.post("/api/dogs/{dog_id}/views/{index}/demote")
+def demote_dog_view(dog_id: str, index: int):
+    return _move(dogs.DogGallery(), dog_id, "demote", index)
+
+
+@app.post("/api/dogs/{dog_id}/pending/{index}/promote")
+def promote_dog_view(dog_id: str, index: int):
+    return _move(dogs.DogGallery(), dog_id, "promote", index)
+
+
+@app.post("/api/dogs/{dog_id}/pending/{index}/remove")
+def remove_waiting_dog_view(dog_id: str, index: int):
+    return _move(dogs.DogGallery(), dog_id, "remove-waiting", index)
 
 
 @app.get("/api/dogs/{dog_id}/spread")

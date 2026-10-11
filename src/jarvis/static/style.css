@@ -463,6 +463,15 @@ h1 {
   background: var(--alarm);
 }
 
+.view button.move {
+  top: auto;
+  bottom: 4px;
+}
+
+.view button.move:hover {
+  background: var(--accent);
+}
+
 .calendar {
   display: flex;
   flex-wrap: wrap;

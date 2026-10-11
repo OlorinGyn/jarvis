@@ -306,6 +306,16 @@ def _signature(pool):
     return hashlib.sha1(json.dumps([e for e, _ in pool]).encode()).hexdigest()
 
 
+def _fix_cover(person):
+    """After views leave the chosen ones, fall back to the first chosen photo, or drop the favourite."""
+    if person.get("cover") and person["cover"] not in person["views"]:
+        fallback = next((v for v in person["views"] if v), None)
+        if fallback:
+            person["cover"] = fallback
+        else:
+            person.pop("cover")
+
+
 def _similarity(person, embedding):
     """How close an embedding is to the closest stored view of a person."""
     return max((cosine(known, embedding) for known in person["embeddings"]),
@@ -435,33 +445,68 @@ class Gallery:
             self.save()
 
     def remove_view(self, person_id, index):
-        """Drop one stored view; the oldest queued view takes its place.
+        """Delete one chosen view; nothing waiting takes its place unless the user moves it up.
 
         Returns False when there is no such view, or when it is the person's
-        last one with nothing queued: a person with no view can match nobody.
+        last chosen one: a person with no view can match nobody.
         """
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
-            if person is None or not 0 <= index < len(person["embeddings"]):
-                return False
-            pending = person.get("pending") or []
-            if len(person["embeddings"]) == 1 and not pending:
+            if person is None or not 0 <= index < len(person["embeddings"]) or len(person["embeddings"]) == 1:
                 return False
             views = views_of(person)
             person["embeddings"].pop(index)
             removed = views.pop(index)
             person["views"] = views
-            if pending:
-                waiting = pending.pop(0)
-                person["embeddings"].append(waiting["embedding"])
-                person["views"].append(waiting.get("view"))
-            if removed and person.get("cover") == removed:
-                fallback = next((v for v in person["views"] if v), None)
-                if fallback:
-                    person["cover"] = fallback
-                else:
-                    person.pop("cover")
+            _fix_cover(person)
+            self.save()
+        self._forget_view(removed)
+        return True
+
+    def demote_view(self, person_id, index):
+        """Move one chosen view to the end of the waiting ones. False for the last chosen view or a full queue."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            pending = (person or {}).get("pending") or []
+            if (person is None or not 0 <= index < len(person["embeddings"])
+                    or len(person["embeddings"]) == 1 or len(pending) >= MAX_PENDING):
+                return False
+            views = views_of(person)
+            pending.append({"embedding": person["embeddings"].pop(index), "view": views.pop(index)})
+            person["views"] = views
+            person["pending"] = pending
+            _fix_cover(person)
+            self.save()
+        return True
+
+    def promote_view(self, person_id, index):
+        """Move one waiting view into the chosen ones. False when none is there or the chosen are full."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            pending = (person or {}).get("pending") or []
+            if (person is None or not 0 <= index < len(pending)
+                    or len(person["embeddings"]) >= MAX_EMBEDDINGS):
+                return False
+            waiting = pending.pop(index)
+            person["views"] = views_of(person) + [waiting.get("view")]
+            person["embeddings"].append(waiting["embedding"])
+            person["pending"] = pending
+            self.save()
+        return True
+
+    def remove_waiting(self, person_id, index):
+        """Delete one waiting view and its photo."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            pending = (person or {}).get("pending") or []
+            if person is None or not 0 <= index < len(pending):
+                return False
+            removed = pending.pop(index).get("view")
+            person["pending"] = pending
             self.save()
         self._forget_view(removed)
         return True
@@ -515,8 +560,8 @@ class Gallery:
                 "closest_now": closest_pair(matrix, range(len(person["embeddings"]))),
                 "closest_after": closest_pair(matrix, keep)}
 
-    def keep_spread(self, person_id, keep, signature):
-        """Keep the chosen views and move every other one to the queue; nothing is lost.
+    def keep_spread(self, person_id, keep, signature, discard=False):
+        """Keep the chosen views and move every other one to the queue, or delete them with discard.
 
         False when the proposal no longer fits: the views changed since it was made.
         """
@@ -533,14 +578,13 @@ class Gallery:
             rest = [i for i in range(len(pool)) if i not in set(keep)]
             person["embeddings"] = [pool[i][0] for i in keep]
             person["views"] = [pool[i][1] for i in keep]
-            person["pending"] = [{"embedding": pool[i][0], "view": pool[i][1]} for i in rest]
-            if person.get("cover") and person["cover"] not in person["views"]:
-                fallback = next((v for v in person["views"] if v), None)
-                if fallback:
-                    person["cover"] = fallback
-                else:
-                    person.pop("cover")
+            waiting = [{"embedding": pool[i][0], "view": pool[i][1]} for i in rest]
+            person["pending"] = [] if discard else waiting
+            _fix_cover(person)
             self.save()
+        if discard:
+            for dropped in waiting:
+                self._forget_view(dropped["view"])
         return True
 
     def set_cover(self, person_id, index):

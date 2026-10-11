@@ -105,3 +105,37 @@ def test_the_web_analyses_and_keeps(crowded, monkeypatch):
     assert client.post(route, json={"keep": proposal["keep"], "signature": "x"}, headers=HEADER).status_code == 409
     answer = client.post(route, json={"keep": proposal["keep"], "signature": proposal["signature"]}, headers=HEADER)
     assert answer.status_code == 200 and answer.json()["views"] == 40 and answer.json()["pending"] == 60
+
+
+def test_discarding_the_rest_deletes_the_views_not_kept(crowded):
+    gallery, person_id = crowded
+    proposal = gallery.spread_proposal(person_id)
+    assert gallery.keep_spread(person_id, proposal["keep"], proposal["signature"], discard=True)
+    after = gallery.get(person_id)
+    assert len(after["embeddings"]) == faces.MAX_EMBEDDINGS and after["pending"] == []
+    assert {path.name for path in gallery.view_dir.glob("*.jpg")} == {
+        web._stored_file(view).name for view in faces.views_of(after)}
+
+
+def test_the_web_moves_views_between_chosen_and_waiting(crowded, monkeypatch):
+    gallery, person_id = crowded
+    monkeypatch.setattr(faces, "GALLERY_FILE", gallery.path)
+    client = TestClient(web.app, client=("127.0.0.1", 50000))
+    route = f"/api/persons/{person_id}"
+    page = client.get(route).json()
+    assert len(page["view_photos"]) == 40 and len(page["pending_photos"]) == 60
+    refused = client.post(f"{route}/pending/0/promote", headers=HEADER)
+    assert refused.status_code == 400 and "full" in refused.json()["detail"]
+    page = client.post(f"{route}/views/0/demote", headers=HEADER).json()
+    assert (page["views"], page["pending"]) == (39, 61)
+    page = client.post(f"{route}/pending/60/promote", headers=HEADER).json()
+    assert (page["views"], page["pending"]) == (40, 60)
+    page = client.post(f"{route}/pending/0/remove", headers=HEADER).json()
+    assert (page["views"], page["pending"]) == (40, 59)
+    page = client.post(f"{route}/views/0/remove", headers=HEADER).json()
+    assert (page["views"], page["pending"]) == (39, 59)
+    assert client.post(f"{route}/pending/99/remove", headers=HEADER).status_code == 400
+    proposal = client.get(f"{route}/spread").json()
+    page = client.post(f"{route}/spread", json={"keep": proposal["keep"], "signature": proposal["signature"],
+                                                "discard": True}, headers=HEADER).json()
+    assert (page["views"], page["pending"]) == (40, 0)

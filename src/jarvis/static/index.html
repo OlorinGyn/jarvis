@@ -56,18 +56,22 @@
         <button type="submit">Rename</button>
       </form>
       <p class="result heading-hint page-result"></p>
-      <h3 class="heading">Views that recognise them <span class="views-count"></span></h3>
-      <p class="hint heading-hint">Remove a poor view and the oldest waiting one takes its place.
+      <h3 class="heading">Chosen <span class="views-count"></span></h3>
+      <p class="hint heading-hint">The views that recognise them, up to 40. ↓ moves one to Waiting, × deletes it, ★ shows it on the grid.
         <button type="button" class="analyse" hidden>Analyse</button></p>
       <div class="spread" hidden>
         <p class="hint spread-text"></p>
         <main class="views-grid spread-grid"></main>
         <p class="spread-actions">
-          <button type="button" class="spread-keep">Keep these 40</button>
+          <button type="button" class="spread-keep">Keep these 40, the rest waits</button>
+          <button type="button" class="spread-discard">Keep these 40, discard the rest</button>
           <button type="button" class="spread-cancel">Cancel</button>
         </p>
       </div>
-      <main class="views-grid"></main>
+      <main class="views-grid chosen-grid"></main>
+      <h3 class="heading">Waiting <span class="waiting-count"></span></h3>
+      <p class="hint heading-hint">Seen after Chosen was full, and not used to recognise them. Compare them with the chosen ones: ↑ moves one into Chosen when there is room, × deletes it.</p>
+      <main class="views-grid waiting-grid"></main>
       <h3 class="heading">Days they were seen</h3>
       <div class="calendar"></div>
     </div>
@@ -92,18 +96,22 @@
         <button type="submit">Rename</button>
       </form>
       <p class="result heading-hint page-result"></p>
-      <h3 class="heading">Views that recognise them <span class="views-count"></span></h3>
-      <p class="hint heading-hint">Remove a poor view and the oldest waiting one takes its place.
+      <h3 class="heading">Chosen <span class="views-count"></span></h3>
+      <p class="hint heading-hint">The views that recognise them, up to 40. ↓ moves one to Waiting, × deletes it, ★ shows it on the grid.
         <button type="button" class="analyse" hidden>Analyse</button></p>
       <div class="spread" hidden>
         <p class="hint spread-text"></p>
         <main class="views-grid spread-grid"></main>
         <p class="spread-actions">
-          <button type="button" class="spread-keep">Keep these 40</button>
+          <button type="button" class="spread-keep">Keep these 40, the rest waits</button>
+          <button type="button" class="spread-discard">Keep these 40, discard the rest</button>
           <button type="button" class="spread-cancel">Cancel</button>
         </p>
       </div>
-      <main class="views-grid"></main>
+      <main class="views-grid chosen-grid"></main>
+      <h3 class="heading">Waiting <span class="waiting-count"></span></h3>
+      <p class="hint heading-hint">Seen after Chosen was full, and not used to recognise them. Compare them with the chosen ones: ↑ moves one into Chosen when there is room, × deletes it.</p>
+      <main class="views-grid waiting-grid"></main>
       <h3 class="heading">Days they were seen</h3>
       <div class="calendar"></div>
     </div>

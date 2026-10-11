@@ -351,7 +351,8 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const listResult = section.querySelector(".list-result");
   const pageResult = section.querySelector(".page-result");
   const renameForm = section.querySelector(".rename-form");
-  const viewsGrid = section.querySelector(".views-grid:not(.spread-grid)");
+  const viewsGrid = section.querySelector(".chosen-grid");
+  const waitingGrid = section.querySelector(".waiting-grid");
   const calendarBox = section.querySelector(".calendar");
   const cardTemplate = document.getElementById("person-card");
   const analyse = section.querySelector(".analyse");
@@ -472,7 +473,18 @@ function galleryTab(section, api, kind, unnamedLabel) {
       data.unnamed.length ? `(${data.unnamed.length})` : "";
   }
 
-  function viewTile(id, photo, index, entry) {
+  function tileButton(tile, className, symbol, title, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.title = title;
+    button.textContent = symbol;
+    button.addEventListener("click", action);
+    tile.append(button);
+    return button;
+  }
+
+  function photoTile(photo) {
     const tile = document.createElement("figure");
     tile.className = "view";
     if (photo) {
@@ -481,62 +493,58 @@ function galleryTab(section, api, kind, unnamedLabel) {
       image.alt = "";
       image.loading = "lazy";
       tile.append(image);
-      const favourite = document.createElement("button");
-      favourite.type = "button";
-      favourite.className = "cover";
-      const chosen = entry.cover_index === index;
-      favourite.classList.toggle("chosen", chosen);
-      favourite.title = chosen ? "The photo shown on the grid" : "Show this photo on the grid";
-      favourite.textContent = "★";
-      favourite.addEventListener("click", async () => {
-        try {
-          showEntry(await send(`${api}/${id}/views/${index}/cover`));
-          pageResult.textContent = "Favourite photo saved.";
-        } catch (problem) {
-          pageResult.textContent = `Not saved: ${problem.message}`;
-        }
-      });
-      tile.append(favourite);
     } else {
       const missing = document.createElement("span");
       missing.className = "no-photo";
       missing.textContent = "no photo";
       tile.append(missing);
-    }
-    if (entry.views > 1 || entry.pending > 0) {
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.title = "Remove this view";
-      remove.textContent = "×";
-      remove.addEventListener("click", async () => {
-        if (!confirm("Remove this view? It will no longer be used to recognise them.")) return;
-        try {
-          showEntry(await send(`${api}/${id}/views/${index}/remove`));
-          pageResult.textContent = "View removed.";
-        } catch (problem) {
-          pageResult.textContent = `Not removed: ${problem.message}`;
-        }
-      });
-      tile.append(remove);
     }
     return tile;
   }
 
-  function spreadTile(photo, kept) {
-    const tile = document.createElement("figure");
-    tile.className = kept ? "view" : "view moved";
-    if (photo) {
-      const image = document.createElement("img");
-      image.src = photo;
-      image.alt = "";
-      image.loading = "lazy";
-      tile.append(image);
-    } else {
-      const missing = document.createElement("span");
-      missing.className = "no-photo";
-      missing.textContent = "no photo";
-      tile.append(missing);
+  async function change(route, done, question) {
+    if (question && !confirm(question)) return;
+    try {
+      showEntry(await send(`${api}/${selected()}/${route}`));
+      pageResult.textContent = done;
+    } catch (problem) {
+      pageResult.textContent = `Not done: ${problem.message}`;
     }
+  }
+
+  function viewTile(photo, index, entry) {
+    const tile = photoTile(photo);
+    if (photo) {
+      const chosen = entry.cover_index === index;
+      const favourite = tileButton(tile, "cover", "★",
+        chosen ? "The photo shown on the grid" : "Show this photo on the grid",
+        () => change(`views/${index}/cover`, "Favourite photo saved."));
+      favourite.classList.toggle("chosen", chosen);
+    }
+    if (entry.views > 1) {
+      tileButton(tile, "", "×", "Delete this view",
+        () => change(`views/${index}/remove`, "View deleted.",
+          "Delete this view? It will no longer be used to recognise them."));
+      tileButton(tile, "move", "↓", "Move this view to Waiting",
+        () => change(`views/${index}/demote`, "View moved to Waiting."));
+    }
+    return tile;
+  }
+
+  function waitingTile(photo, index, entry) {
+    const tile = photoTile(photo);
+    tileButton(tile, "", "×", "Delete this waiting view",
+      () => change(`pending/${index}/remove`, "Waiting view deleted.", "Delete this waiting view?"));
+    const full = entry.views >= 40;
+    tileButton(tile, "move", "↑",
+      full ? "Chosen is full: move one down or delete one first" : "Move this view into Chosen",
+      () => change(`pending/${index}/promote`, "View moved into Chosen."));
+    return tile;
+  }
+
+  function spreadTile(photo, kept) {
+    const tile = photoTile(photo);
+    tile.classList.toggle("moved", !kept);
     return tile;
   }
 
@@ -546,7 +554,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
     const distance = (value) => (value === null ? "?" : value.toFixed(2));
     spreadBox.querySelector(".spread-text").textContent =
       `Proposal: keep the ${kept.size} most different views; ${plural(moved, "view", "views")} ` +
-      `(faded) wait in the queue. The two most alike views kept are ${distance(proposal.closest_now)} ` +
+      `(faded) wait, or are discarded. The two most alike views kept are ${distance(proposal.closest_now)} ` +
       `apart now and ${distance(proposal.closest_after)} after: higher means more varied.`;
     spreadBox.querySelector(".spread-grid").replaceChildren(
       ...proposal.photos.map((photo, index) => spreadTile(photo, kept.has(index))));
@@ -562,15 +570,22 @@ function galleryTab(section, api, kind, unnamedLabel) {
     }
   });
 
-  spreadBox.querySelector(".spread-keep").addEventListener("click", async () => {
+  async function keepSpread(discard) {
+    const moved = proposal.photos.length - proposal.keep.length;
+    if (discard && !confirm(`Delete the other ${plural(moved, "view", "views")} for good?`)) return;
     try {
       showEntry(await send(`${api}/${selected()}/spread`,
-        { keep: proposal.keep, signature: proposal.signature }));
-      pageResult.textContent = "Kept the most different views; the others wait in the queue.";
+        { keep: proposal.keep, signature: proposal.signature, discard }));
+      pageResult.textContent = discard
+        ? "Kept the most different views; the others were deleted."
+        : "Kept the most different views; the others wait.";
     } catch (problem) {
       pageResult.textContent = `Not kept: ${problem.message}`;
     }
-  });
+  }
+
+  spreadBox.querySelector(".spread-keep").addEventListener("click", () => keepSpread(false));
+  spreadBox.querySelector(".spread-discard").addEventListener("click", () => keepSpread(true));
 
   spreadBox.querySelector(".spread-cancel").addEventListener("click", () => {
     spreadBox.hidden = true;
@@ -582,10 +597,11 @@ function galleryTab(section, api, kind, unnamedLabel) {
     section.querySelector(".page-name").textContent = entry.name || unnamedLabel;
     renameForm.querySelector("input").value = entry.name;
     renameForm.querySelector("button").textContent = entry.name ? "Rename" : "Save name";
-    section.querySelector(".views-count").textContent =
-      `(${entry.views} of 40${entry.pending ? `, ${entry.pending} waiting` : ""})`;
-    viewsGrid.replaceChildren(...entry.view_photos.map((photo, index) =>
-      viewTile(entry.id, photo, index, entry)));
+    section.querySelector(".views-count").textContent = `(${entry.views} of 40)`;
+    section.querySelector(".waiting-count").textContent = entry.pending ? `(${entry.pending})` : "";
+    viewsGrid.replaceChildren(...entry.view_photos.map((photo, index) => viewTile(photo, index, entry)));
+    waitingGrid.replaceChildren(...entry.pending_photos.map((photo, index) => waitingTile(photo, index, entry)));
+    if (entry.pending === 0) showNotice(waitingGrid, "Nothing waiting.");
     drawCalendar(calendarBox, entry.appearances);
   }
 
@@ -595,6 +611,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
     } catch {
       section.querySelector(".page-name").textContent = "Not found";
       viewsGrid.replaceChildren();
+      waitingGrid.replaceChildren();
       calendarBox.replaceChildren();
       pageResult.textContent = `This ${kind} no longer exists; it may have been merged.`;
     }

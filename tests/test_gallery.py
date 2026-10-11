@@ -75,17 +75,65 @@ def test_the_queue_is_capped_and_its_dropped_photos_deleted(gallery, monkeypatch
     assert len(photos(gallery)) == len(stored_photos(person))
 
 
-def test_removing_a_view_pulls_the_oldest_waiting_one(gallery, monkeypatch):
+@pytest.fixture
+def queued(gallery, monkeypatch):
+    """A person with three chosen views (0, 1, 2) and two waiting (3, 4)."""
     monkeypatch.setattr(faces, "MAX_EMBEDDINGS", 3)
     person_id = gallery.add([embedding(0), embedding(1), embedding(2)], "t.jpg", [CROP] * 3)
     gallery.reinforce(person_id, embedding(3), CROP)
     gallery.reinforce(person_id, embedding(4), CROP)
-    assert gallery.remove_view(person_id, 0)
+    return person_id
+
+
+def chosen_and_waiting(gallery, person_id):
     person = reloaded(gallery, person_id)
     assert_aligned(person)
-    assert [e[0] for e in person["embeddings"]] == [1.0, 2.0, 3.0]
-    assert [w["embedding"][0] for w in person["pending"]] == [4.0]
     assert len(photos(gallery)) == len(stored_photos(person))
+    return [e[0] for e in person["embeddings"]], [w["embedding"][0] for w in person.get("pending") or []]
+
+
+def test_deleting_a_chosen_view_pulls_nothing_from_waiting(gallery, queued):
+    assert gallery.remove_view(queued, 0)
+    assert chosen_and_waiting(gallery, queued) == ([1.0, 2.0], [3.0, 4.0])
+
+
+def test_a_chosen_view_moves_down_and_a_waiting_one_moves_up(gallery, queued):
+    assert gallery.demote_view(queued, 1)
+    assert chosen_and_waiting(gallery, queued) == ([0.0, 2.0], [3.0, 4.0, 1.0])
+    person = reloaded(gallery, queued)
+    moved = person["pending"][-1]["view"]
+    assert moved and moved not in faces.views_of(person)
+    assert gallery.promote_view(queued, 0)
+    assert chosen_and_waiting(gallery, queued) == ([0.0, 2.0, 3.0], [4.0, 1.0])
+
+
+def test_moving_up_is_refused_while_chosen_is_full(gallery, queued):
+    assert not gallery.promote_view(queued, 0)
+    assert not gallery.promote_view(queued, 9)
+    assert chosen_and_waiting(gallery, queued) == ([0.0, 1.0, 2.0], [3.0, 4.0])
+
+
+def test_moving_down_is_refused_for_the_last_chosen_view_or_a_full_queue(gallery, queued, monkeypatch):
+    monkeypatch.setattr(faces, "MAX_PENDING", 2)
+    assert not gallery.demote_view(queued, 0)
+    monkeypatch.setattr(faces, "MAX_PENDING", 100)
+    assert gallery.demote_view(queued, 0) and gallery.demote_view(queued, 0)
+    assert not gallery.demote_view(queued, 0)
+    assert not gallery.remove_view(queued, 0)
+    assert chosen_and_waiting(gallery, queued) == ([2.0], [3.0, 4.0, 0.0, 1.0])
+
+
+def test_deleting_a_waiting_view_deletes_its_photo(gallery, queued):
+    assert gallery.remove_waiting(queued, 1)
+    assert not gallery.remove_waiting(queued, 1)
+    assert chosen_and_waiting(gallery, queued) == ([0.0, 1.0, 2.0], [3.0])
+
+
+def test_moving_the_favourite_down_falls_back_to_a_chosen_photo(gallery, queued):
+    assert gallery.set_cover(queued, 2)
+    assert gallery.demote_view(queued, 2)
+    person = reloaded(gallery, queued)
+    assert person["cover"] == faces.views_of(person)[0]
 
 
 def test_the_last_view_with_nothing_queued_is_kept(gallery):
