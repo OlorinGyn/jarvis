@@ -54,12 +54,49 @@ function card(event) {
   labels.textContent = event.labels.join(", ") || "?";
   labels.classList.toggle("person", event.labels.includes("person"));
   node.querySelector(".duration").textContent = `${event.seconds} s`;
+  const article = node.querySelector(".card");
+  if (event.video) {
+    article.classList.add("playable");
+    article.title = "Play this recording";
+    article.addEventListener("click", () => openPlayer(event));
+  }
   const who = [];
   if (event.people.length) who.push(`People: ${event.people.join("; ")}`);
   if (event.animals.length) who.push(`Animals: ${event.animals.join(", ")}`);
   node.querySelector(".who").textContent = who.join(" · ");
   return node;
 }
+
+const player = document.getElementById("player");
+const playerVideo = document.getElementById("player-video");
+const playerSide = document.getElementById("player-side");
+
+function openPlayer(event) {
+  playerVideo.src = event.video;
+  const parts = [`${event.camera} · ${event.time} · ${event.seconds} s`];
+  if (event.people.length) parts.push(`People: ${event.people.join("; ")}`);
+  if (event.animals.length) parts.push(`Animals: ${event.animals.join(", ")}`);
+  document.getElementById("player-text").textContent = parts.join(" · ");
+  playerSide.hidden = !event.side;
+  if (event.side) playerSide.src = event.side;
+  player.hidden = false;
+  playerVideo.play().catch(() => {});
+}
+
+function closePlayer() {
+  playerVideo.pause();
+  playerVideo.removeAttribute("src");
+  playerVideo.load();
+  player.hidden = true;
+}
+
+document.getElementById("player-close").addEventListener("click", closePlayer);
+player.addEventListener("click", (clicked) => {
+  if (clicked.target === player) closePlayer();
+});
+document.addEventListener("keydown", (pressed) => {
+  if (pressed.key === "Escape" && !player.hidden) closePlayer();
+});
 
 function countByCamera(events) {
   const counts = {};

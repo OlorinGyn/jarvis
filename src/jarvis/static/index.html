@@ -157,6 +157,17 @@
     </article>
   </template>
 
+  <div id="player" class="player" hidden>
+    <div class="player-box">
+      <button id="player-close" type="button" title="Close">×</button>
+      <video id="player-video" controls playsinline preload="metadata"></video>
+      <div class="player-info">
+        <p id="player-text"></p>
+        <img id="player-side" alt="Face, side view" hidden>
+      </div>
+    </div>
+  </div>
+
   <template id="card">
     <article class="card">
       <div class="photo"><img alt="" loading="lazy"></div>

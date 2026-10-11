@@ -45,7 +45,8 @@ PIN_PATTERN = re.compile(r"^[0-9]{4,12}$")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best)?\.jpg$")
+SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best|\.side)?\.jpg$")
+SAFE_VIDEO = re.compile(r"^\d{2}-\d{2}-\d{2}\.mp4$")
 SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
 SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
 SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
@@ -149,6 +150,13 @@ def _animals(entry, camera, day, dogs_seen):
     return labels
 
 
+def _event_file(entry, camera, day, suffix, route):
+    """The URL of one of an event's files, when it exists on disk."""
+    stem = entry["thumbnail_path"].stem
+    path = entry["thumbnail_path"].with_name(f"{stem}{suffix}")
+    return f"/{route}/{camera}/{day}/{path.name}" if path.is_file() else None
+
+
 def _event(entry, seen=None, dogs_seen=None):
     """What the page needs from one event, with URLs instead of disk paths.
 
@@ -169,6 +177,8 @@ def _event(entry, seen=None, dogs_seen=None):
         "confidence": entry.get("best_confidence", 0),
         "reason": entry.get("reason", ""),
         "thumbnail": f"/thumbnail/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
+        "video": _event_file(entry, camera, day, ".mp4", "video"),
+        "side": _event_file(entry, camera, day, ".side.jpg", "thumbnail"),
         "people": (seen or {}).get((camera, day, entry["thumbnail_path"].stem), []),
         "animals": _animals(entry, camera, day, dogs_seen),
     }
@@ -236,6 +246,17 @@ def events(day: str = None):
     seen, dogs_seen = _who_was_seen(chosen), _dogs_seen(chosen)
     return {"day": chosen.isoformat(),
             "events": [_event(e, seen, dogs_seen) for e in list_clips(chosen)]}
+
+
+@app.get("/video/{camera}/{day}/{name}")
+def video(camera: str, day: str, name: str):
+    """One recording, with HTTP Range so the browser can seek without downloading it all."""
+    if not (SAFE_NAME.match(camera) and SAFE_DAY.match(day) and SAFE_VIDEO.match(name)):
+        raise HTTPException(404)
+    path = (CLIP_DIR / camera / day / name).resolve()
+    if not path.is_relative_to(CLIP_DIR.resolve()) or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="video/mp4")
 
 
 @app.get("/thumbnail/{camera}/{day}/{name}")
