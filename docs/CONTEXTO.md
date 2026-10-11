@@ -1343,6 +1343,8 @@ disk, which is exactly why the roles hand over through files.
 | A11 | architect | ultracode | 10/10 16:25–16:35 | review 8, release and deploy `v2026.10.10.6`, script 7 | 86% → about 89% | 53% → 53% | 669k → 680k tokens |
 | D7 | developer | high | 10/10 evening | session 7: backlog 22 parts 1 and 2 | 10% → 23% (new window) | 56% → 57% | 564k → 635k, old conversation |
 | A12 | architect | ultracode | 10/10 21:00–21:20 | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → ~43% | 59% → 60% | 705k → 720k tokens |
+| D8 | developer | high | 11/10 morning | session 8: R27, dog tuning tool | 11% → 15% | 61% → 61% | 638k → 655k, old conversation |
+| A13 | architect | ultracode | 11/10 morning | review 10: the three reports, R28, R29, release `v2026.10.11` | 29% → ~36% | 63% → 64% | 720k → 740k tokens |
 
 ### 14.4 Next session: developer 9
 
@@ -1383,3 +1385,4 @@ review and commits.
 | 6 | `v2026.10.10.5` | The Safety Net / A Rede de Proteção | written |
 | 7 | `v2026.10.10.6` | The Favourite / A Favorita | written |
 | 8 | `v2026.10.10.7` | Mirana and Aurora / Mirana e Aurora | written |
+| 9 | `v2026.10.11` (and the next) | — | **to write with the next release**: a small release shares an issue with the one after it, to spend fewer tokens on scripts |
