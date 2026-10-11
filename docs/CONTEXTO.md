@@ -754,7 +754,7 @@ decidir.
 | 11 | 11/10/2026 | `8b019ea..db783cf`, developer session 9 — R28, R30 (a) | no code fixed; 48 tests pass; `a54f357` reached GitHub before this review by the architect's mistake (a push while the developer worked), no harm since production runs tags; release `v2026.10.11.2` |
 | 12 | 11/10/2026 | `5675cfe..a4cc3a2`, developer session 10 — R34, backlog 5, R29 (the first automatic cycle) | no code fixed; 64 tests pass; R35 kept open on the developer's data; release `v2026.10.11.3` |
 | 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no release code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4`. **The first deploy failed and rolled back on its own**: `--stop` returned while the old version still assembled a clip (22 s), the new one found both cameras busy. Fixed in `production.ps1` (`3ae5faa`: wait up to 180 s until no process runs from `C:\JARVIS`); the second deploy passed |
-| 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6` |
+| 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6`, deployed at 17:46: 352 events, 36 face and 147 dog sightings, 2 reports read before and after, cameras ok 4 s after the start; production lists both old reports with their photos |
 
 **Last review covers up to the `v2026.10.11.6` release commit.** The next one
 starts from the commit after it.
@@ -1492,7 +1492,7 @@ disk, which is exactly why the roles hand over through files.
 | D11 | developer | high | 11/10 13:00–14:50 | session 11, **a new conversation**: backlog 23, 24, R31, R32, R35 and R30 (b) measured | 47% → ~72% for six items | 78% → 81% | started light |
 | A16 | architect | ultracode | 11/10 14:50–15:15 | review 14, release `v2026.10.11.4`, a rolled-back deploy diagnosed and fixed, script 10 | 72% → ~78% | 81% → 82% | 860k → 880k |
 | D12 | developer | high | 11/10 17:25–17:40 | session 12, the scheduled cycle, a new conversation: R38, R40, R37, R36 (92 tests) | 34% → 44%: R38 4, R40 4, R37 1, R36 1 | 87% → 88% | 74k → 193k tokens |
-| A17 | architect | ultracode | 11/10 17:38– | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 52% at the release commit | 88% → 89% | 78k → 170k tokens, a new conversation |
+| A17 | architect | ultracode | 11/10 17:38–17:50 | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 53% | 88% → 89% | 78k → 180k tokens, a new conversation. **The whole scheduled cycle cost ~19 points of the 5-hour window (dev 10, architect 8) and ~2 of the week** |
 
 ### 14.4 Next sessions
 
