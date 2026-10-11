@@ -42,3 +42,6 @@ HOLD
 
 # dog gallery and crops (backlog 22)
 dogs/
+
+# devices paired with the PIN (R34): token hashes
+devices.json

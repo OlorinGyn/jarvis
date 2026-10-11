@@ -22,12 +22,12 @@ from pathlib import Path
 import cv2
 import requests
 import uvicorn
-from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, dogs, faces, notify, settings
+from jarvis import ROOT, archive, devices, dogs, faces, notify, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -475,6 +475,8 @@ def _write_refusal(request):
         return "writes are only accepted from the J.A.R.V.I.S. page"
     if _is_local(request):
         return ""
+    if devices.use(request.cookies.get(devices.COOKIE)):
+        return ""
     pin = (settings.load().get("write_pin") or "").strip()
     if not pin:
         return ("no PIN is set: on the M900 itself, open Settings and set one "
@@ -492,7 +494,18 @@ async def guard_writes(request: Request, call_next):
         problem = _write_refusal(request)
         if problem:
             return JSONResponse({"detail": problem}, status_code=403)
+        response = await call_next(request)
+        token = request.cookies.get(devices.COOKIE)
+        if token and not _is_local(request) and devices.known(token):
+            _remember_device(response, token)
+        return response
     return await call_next(request)
+
+
+def _remember_device(response, token):
+    """The pairing cookie: HttpOnly, same-site only, DAYS long, renewed with every write."""
+    response.set_cookie(devices.COOKIE, token, max_age=devices.DAYS * 86400,
+                        httponly=True, samesite="strict", path="/")
 
 
 def _settings_view(request):
@@ -502,6 +515,8 @@ def _settings_view(request):
     values["notify_token_set"] = bool((token or "").strip())
     values["pin_set"] = bool((values.pop("write_pin", "") or "").strip())
     values["local"] = _is_local(request)
+    values["paired"] = devices.known(request.cookies.get(devices.COOKIE))
+    values["devices"] = devices.listing() if values["local"] else []
     values["notify_label_choices"] = list(NOTIFY_LABELS)
     values["archive"] = jsonable_encoder(archive.summary())
     return values
@@ -561,13 +576,29 @@ def set_pin(request: Request, payload: dict = Body(...)):
     if not isinstance(pin, str) or (pin and not PIN_PATTERN.match(pin)):
         raise HTTPException(400, "a PIN of 4 to 12 digits, or empty to remove it")
     settings.update(write_pin=pin)
-    return {"pin_set": bool(pin)}
+    forgotten = devices.forget()
+    return {"pin_set": bool(pin), "forgotten": forgotten}
 
 
 @app.post("/api/pair")
-def pair():
-    """A write that does nothing: it only answers once the guard let it through."""
+def pair(request: Request, response: Response):
+    """Pair this device: once the guard accepted the PIN, a cookie remembers it for DAYS days."""
+    if _is_local(request) or devices.known(request.cookies.get(devices.COOKIE)):
+        return {"paired": True}
+    agent = request.headers.get("user-agent", "unknown browser")
+    label = f"{request.client.host if request.client else '?'} - {agent}"
+    _remember_device(response, devices.pair(label))
     return {"paired": True}
+
+
+@app.post("/api/devices/{device_id}/forget")
+def forget_device(request: Request, device_id: str):
+    """Forget one paired device. Only from this machine."""
+    if not _is_local(request):
+        raise HTTPException(403, "devices can only be forgotten on the M900 itself")
+    if not re.fullmatch(r"[0-9a-f]{12}", device_id) or not devices.forget(device_id):
+        raise HTTPException(404, "no such device")
+    return {"devices": devices.listing()}
 
 
 @app.post("/api/notify/test")

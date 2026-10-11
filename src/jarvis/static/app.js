@@ -208,10 +208,11 @@ function rememberPin(pin) {
   }
 }
 
-async function send(url, payload) {
+async function send(url, payload, extraHeaders = {}) {
   const headers = { "Content-Type": "application/json", "X-Jarvis-Request": "1" };
   const pin = storedPin();
   if (pin) headers["X-Jarvis-Pin"] = pin;
+  Object.assign(headers, extraHeaders);
   const response = await fetch(url, {
     method: "POST",
     headers,
@@ -629,11 +630,31 @@ function showPairing(values) {
   } else if (!values.pin_set) {
     state = "Changes from this device are refused until a PIN is set on the M900 itself.";
   } else {
-    state = storedPin()
-      ? "This device is paired. Enter the PIN again only if it changed."
-      : "Enter the PIN set on the M900 to pair this device.";
+    state = values.paired
+      ? "This device is paired for 30 days, renewed with every change made from it."
+      : "Enter the PIN set on the M900 once to pair this device.";
   }
   document.getElementById("pin-state").textContent = state;
+  const list = document.getElementById("device-list");
+  list.replaceChildren(...(values.devices || []).map((device) => {
+    const item = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = `${device.label} · last used ${device.last_used.replace("T", " ").slice(0, 16)}`;
+    const forget = document.createElement("button");
+    forget.type = "button";
+    forget.textContent = "Forget";
+    forget.addEventListener("click", async () => {
+      try {
+        await send(`/api/devices/${device.id}/forget`);
+        pinResult.textContent = "Device forgotten: it must be paired again.";
+      } catch (problem) {
+        pinResult.textContent = `Not done: ${problem.message}`;
+      }
+      loadSettings();
+    });
+    item.append(text, forget);
+    return item;
+  }));
   document.getElementById("pin-button").textContent = localDevice ? "Save PIN" : "Pair";
 }
 
@@ -645,15 +666,9 @@ pinForm.addEventListener("submit", async (submitted) => {
       const result = await send("/api/pin", { pin });
       pinResult.textContent = result.pin_set ? "PIN saved." : "PIN removed.";
     } else {
-      const previous = storedPin();
-      rememberPin(pin);
-      try {
-        await send("/api/pair");
-        pinResult.textContent = "This device is paired.";
-      } catch (problem) {
-        rememberPin(previous);
-        throw problem;
-      }
+      await send("/api/pair", {}, { "X-Jarvis-Pin": pin });
+      rememberPin("");
+      pinResult.textContent = "This device is paired for 30 days, renewed with use.";
     }
     loadSettings();
   } catch (problem) {

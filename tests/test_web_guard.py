@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from jarvis import dogs, faces, settings, web
+from jarvis import devices, dogs, faces, settings, web
 
 HEADER = {"X-Jarvis-Request": "1"}
 TOKEN = "123456789:AAFakeTokenForTheGuardTests_x"
@@ -17,6 +17,7 @@ def config(tmp_path, monkeypatch):
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"notify_token": TOKEN}), encoding="utf-8")
     monkeypatch.setattr(settings, "FILE", path)
+    monkeypatch.setattr(devices, "FILE", tmp_path / "devices.json")
     return path
 
 

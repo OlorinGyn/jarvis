@@ -499,6 +499,23 @@ h1 {
   min-height: 1.2em;
 }
 
+#device-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+#device-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

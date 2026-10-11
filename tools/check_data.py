@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from jarvis import dogs, faces, settings, web
+from jarvis import devices, dogs, faces, settings, web
 from jarvis.clips import CLIP_DIR
 
 EVENT_KEYS = ("camera", "started_at", "time", "seconds", "labels", "video", "thumbnail")
@@ -141,6 +141,18 @@ def check_dogs(problems):
     return len(gallery.people), sightings
 
 
+def check_devices(problems):
+    """devices.json, if present, read as the write guard reads it."""
+    if not devices.FILE.exists():
+        return "absent (no device paired)"
+    try:
+        json.loads(devices.FILE.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as problem:
+        problems.append(f"{devices.FILE}: unreadable ({problem})")
+        return "unreadable"
+    return f"{len(devices.listing())} paired device(s)"
+
+
 def main():
     problems = []
     events = check_events(CLIP_DIR, problems)
@@ -157,6 +169,7 @@ def main():
     named_dogs, dog_sightings = check_dogs(problems)
     print(f"dogs: {named_dogs} in the gallery; dog sightings: {dog_sightings}")
     print(f"config.json: {check_settings(problems)}")
+    print(f"devices.json: {check_devices(problems)}")
 
     if problems:
         print(f"\n{len(problems)} problem(s):")
