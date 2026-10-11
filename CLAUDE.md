@@ -111,7 +111,7 @@ other session, found by title in the session list — the architect's is
 never authorises anything the rules here do not. **Stop and wait for the user
 instead of handing over when:** CONTEXTO 14.4 is empty; something needs the
 user's decision (scope, a (proposto) item, deleting their data); a deploy
-failed or rolled back; the 5-hour window is above 85 %; or the weekly limit is
+failed or rolled back; the 5-hour window has less left than the next session costs (a developer session has cost 10–20 points; above 85 % always stop); or the weekly limit is
 above 90 %. Each stop ends with a short summary for the user.
 
 **Parallel sessions share one folder (the user's rule, 11/10/2026).** The user
