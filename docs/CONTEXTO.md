@@ -323,7 +323,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARQUITETURA 17.9) |
    | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
    | ✓ | Remove the OpenCV window (`ui.py`, `--window`) | done 10/10 (ARQUITETURA 17.10) |
-   | | Estágio 2 — reprodução do vídeo na página | depois |
+   | | Stage 2 — play the video on the page | **next — the user asked on 11/10** (item 5) |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
 
@@ -341,7 +341,7 @@ Funciona sem, mas incompleto.
 
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
-5. **Reprodução no Records** (proposto) — hoje clicar abre o Explorer
+5. **Play the recordings on the page** (decided 11/10/2026: the user cannot watch a recording from another device — the web never had video, only the old window opened Explorer on the M900). A route `GET /video/<camera>/<day>/<HH-MM-SS>.mp4` with the same name checks as the thumbnails and HTTP **Range** support (Starlette's `FileResponse` answers ranges, so the browser can seek without downloading the whole clip); the clips are the camera's H.264 assembled with `+faststart`, which every browser plays in a `<video>` element. Clicking a card on Recordings (and a day on a person's or dog's calendar) opens a player on the page, with the event's best view, side face and faces beside it. Reading stays open to the home network, as R4 decided for the live view. Acceptance: a clip plays and seeks from 192.168.0.18 and from a phone; a request outside `clips/` is refused.
 6. **Busca e filtro** (proposto) — com ~100 eventos/dia, só por data é
    inviável. Por pessoa, câmera, rótulo
 7. **Tracking** (proposto) — manter identidade entre frames; resolve a pessoa
@@ -1432,7 +1432,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next sessions
 
-**Developer 10:** R34 (pair a device once, 13.13) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
+**Developer 10:** R34 (pair a device once, 13.13) → item 5 (play the recordings on the page) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
