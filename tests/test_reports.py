@@ -160,3 +160,20 @@ def test_undo_refuses_an_entry_that_is_already_back(gallery, report_dir):
     gallery.put_back(entry)
     assert not reports.undo(path, {"face": gallery})
     assert path.is_file()
+
+
+def test_a_report_can_say_what_it_actually_was(tmp_path, report_dir, monkeypatch):
+    clips = tmp_path / "clips"
+    sidecar = event(clips / "Front" / "2026-10-10", ["dog"])
+    monkeypatch.setattr(web, "CLIP_DIR", clips)
+    reports.report_event(sidecar, "dog")
+    client = TestClient(web.app, client=("127.0.0.1", 50000))
+    [card] = client.get("/api/reports").json()
+    assert card["actually"] == "" and card["choices"] == ["person", "other animal", "nothing"]
+    assert client.post(card["describe"], json={"actually": "dog"}, headers=HEADER).status_code == 400
+    assert client.post(card["describe"], json={"actually": "person"}, headers=HEADER).status_code == 200
+    [card] = client.get("/api/reports").json()
+    assert card["actually"] == "person"
+    assert reports.listing()[0]["actually"] == "person"
+    assert client.post(card["describe"], json={"actually": ""}, headers=HEADER).status_code == 200
+    assert "actually" not in reports.listing()[0]

@@ -467,6 +467,9 @@ def _report_card(report):
         "reported_at": report.get("reported_at", ""),
         "photo": f"/report-photo/{kind}/{stem}.jpg" if report.get("crop") == f"{stem}.jpg" else None,
         "undo": f"/api/reports/{kind}/{stem}/undo",
+        "actually": report.get("actually", ""),
+        "choices": reports.choices(report),
+        "describe": f"/api/reports/{kind}/{stem}/actually",
     }
 
 
@@ -487,6 +490,18 @@ def undo_report(kind: str, name: str):
         raise HTTPException(409, "nothing to put back: the recording is no longer on this "
                                  "computer, or the entry or label is already there")
     return {"undone": name}
+
+
+@app.post("/api/reports/{kind}/{name}/actually")
+def describe_report(kind: str, name: str, payload: dict = Body(...)):
+    """Say what a reported detection actually showed: a person, a dog, another animal or nothing."""
+    path = reports.find(kind, name) if SAFE_NAME.match(kind) and SAFE_REPORT.match(name) else None
+    if path is None:
+        raise HTTPException(404, "no such report")
+    actually = payload.get("actually")
+    if not isinstance(actually, str) or not reports.set_actually(path, actually):
+        raise HTTPException(400, "one of: " + ", ".join(reports.ACTUALLY) + ", other than the reported label")
+    return {"actually": actually}
 
 
 @app.get("/report-photo/{kind}/{name}")

@@ -159,6 +159,8 @@ def check_reports(problems):
             problems.append(f"{path}: missing {missing}")
         if report.get("crop") and not path.with_name(report["crop"]).is_file():
             problems.append(f"{path}: its crop is missing")
+        if "actually" in report and report["actually"] not in reports.choices(report):
+            problems.append(f"{path}: actually is not one of {reports.choices(report)}")
     if count != len(reports.listing()):
         problems.append("reports: the listing does not read every report")
     return count

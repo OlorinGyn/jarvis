@@ -648,6 +648,15 @@ h1 {
   flex: 1;
 }
 
+#report-list select {
+  background: var(--background);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font: inherit;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

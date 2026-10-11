@@ -838,7 +838,21 @@ function reportItem(report) {
     }
     loadReports();
   });
-  item.append(text, undo);
+  const actually = document.createElement("select");
+  actually.title = "What it actually was";
+  actually.append(new Option("Actually…", ""), ...report.choices.map((choice) => new Option(choice, choice)));
+  actually.value = report.actually;
+  actually.addEventListener("change", async () => {
+    try {
+      await send(report.describe, { actually: actually.value });
+      report.actually = actually.value;
+      reportsResult.textContent = actually.value ? `Saved: actually ${actually.value}.` : "Cleared.";
+    } catch (problem) {
+      reportsResult.textContent = `Not saved: ${problem.message}`;
+      actually.value = report.actually;
+    }
+  });
+  item.append(text, actually, undo);
   return item;
 }
 

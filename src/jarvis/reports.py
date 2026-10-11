@@ -20,6 +20,7 @@ from jarvis import ROOT, faces
 REPORT_DIR = ROOT / "reports"
 GALLERY_KINDS = {"p": "face", "d": "dog"}
 REQUIRED_KEYS = ("kind", "verdict", "source", "reported_at", "label", "camera", "at")
+ACTUALLY = ("person", "dog", "other animal", "nothing")
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +213,25 @@ def undo(path, galleries):
         _discard(path)
         logger.info("Report undone: %s", path.name)
     return done
+
+
+def choices(report):
+    """What the user can say a report actually was: anything but what the detector said."""
+    return [choice for choice in ACTUALLY if choice != report.get("label")]
+
+
+def set_actually(path, actually):
+    """Record what a report actually showed, or clear it with "". False for a choice that does not fit."""
+    path = Path(path)
+    report = json.loads(path.read_text(encoding="utf-8-sig"))
+    if actually and actually not in choices(report):
+        return False
+    if actually:
+        report["actually"] = actually
+    else:
+        report.pop("actually", None)
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return True
 
 
 def find(kind, stem, folder=None):
