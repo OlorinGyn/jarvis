@@ -1288,7 +1288,7 @@ look like them (`_absorb`), but the developer turned it off for dogs.
 **R29 — Naming a dog gathers its clear look-alikes (medium).** Enable
 `_absorb` for dogs with the **sure** rule of `match` (distance and margin),
 never the probable one, and only within the same lighting. A wrong grouping is
-undone by Dismiss or a rename, as with people.
+undone by Dismiss or a rename, as with people. **Widened by the user's idea (11/10):** every naming or merge re-examines all the unnamed crops against the dog's updated views, repeating until nothing more joins — a new view can make other crops recognisable — exactly as `Gallery.rename` already does for people (`_absorb` loops until no change). And past recordings must follow: today a dog sighting stores its words at recording time, so an event recorded as "unidentified dog" would keep saying so after its crop joins Mirana. Show the current name from the sighting's `dog_id` (sightings are repointed on merge, as for faces), keeping the stored certainty only for "probably".
 
 **"Face detection seems much weaker."** The log shows no regression: scans run
 and find faces when there are frontal ones (21:05 on 10/10: 58 face views),
