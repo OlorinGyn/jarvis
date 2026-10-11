@@ -511,18 +511,27 @@ class Gallery:
         self._forget_view(removed)
         return True
 
-    def take_out(self, person_id):
-        """Remove one unnamed entry and delete its view photos. False for a named or unknown one."""
+    def take_out(self, person_id, forget=True):
+        """Remove one unnamed entry and return it as it left; None for a named or unknown one.
+
+        Its view photos are deleted, unless forget is False: then the caller
+        keeps what it needs first and calls forget_views.
+        """
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
             if person is None or person["name"]:
-                return False
+                return None
             self.people.remove(person)
             self.save()
+        if forget:
+            self.forget_views(person)
+        return person
+
+    def forget_views(self, person):
+        """Delete the view photos of an entry that left the gallery."""
         for view in views_of(person) + [w.get("view") for w in person.get("pending") or []]:
             self._forget_view(view)
-        return True
 
     def put_back(self, entry):
         """Return an entry taken out by mistake. False when its id is already in the gallery."""

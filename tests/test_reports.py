@@ -177,3 +177,24 @@ def test_a_report_can_say_what_it_actually_was(tmp_path, report_dir, monkeypatch
     assert reports.listing()[0]["actually"] == "person"
     assert client.post(card["describe"], json={"actually": ""}, headers=HEADER).status_code == 200
     assert "actually" not in reports.listing()[0]
+
+
+def test_a_view_added_while_reporting_is_never_lost_from_the_report(gallery, report_dir, monkeypatch):
+    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    sighting(gallery, person_id)
+    seen = {}
+    original = reports._sightings
+
+    def scan_meanwhile(scanned_gallery, entry_id):
+        faces.Gallery(gallery.path).reinforce(entry_id, [0.2] * 128, CROP)
+        seen["entry"] = faces.Gallery(gallery.path).get(entry_id)
+        return original(scanned_gallery, entry_id)
+
+    monkeypatch.setattr(reports, "_sightings", scan_meanwhile)
+    path = reports.report_entry(gallery, person_id)
+    report = json.loads(path.read_text(encoding="utf-8"))
+    if seen["entry"] is not None:
+        assert report["entry"]["embeddings"] == seen["entry"]["embeddings"]
+    assert reports.undo(path, {"face": gallery})
+    restored = faces.Gallery(gallery.path).get(person_id)
+    assert all(reports._stored(view).is_file() for view in faces.views_of(restored))

@@ -86,17 +86,10 @@ def _photo(entry):
     return next((path for path in map(_stored, candidates) if path and path.is_file()), None)
 
 
-def report_entry(gallery, entry_id):
-    """Report an unnamed face or dog as a bad detection; it leaves the gallery and its sightings go.
-
-    Returns the report's path, or None when the entry is named or gone.
-    """
-    gallery.load()
-    entry = gallery.get(entry_id)
-    if entry is None or entry["name"]:
-        return None
+def _report_taken(gallery, entry):
+    """Write the report of an entry already out of the gallery, with copies for Undo."""
     kind = GALLERY_KINDS[gallery.id_prefix]
-    sightings = _sightings(gallery, entry_id)
+    sightings = _sightings(gallery, entry["id"])
     first = sightings[0][1] if sightings else {}
     folder = gallery.path.parent
     details = {
@@ -114,9 +107,25 @@ def report_entry(gallery, entry_id):
     }
     path = _write(kind, details, _photo(entry))
     _keep_copies(path.with_suffix(""), entry, sightings)
-    if not gallery.take_out(entry_id):
-        _discard(path)
+    return path, sightings
+
+
+def report_entry(gallery, entry_id):
+    """Report an unnamed face or dog as a bad detection; it leaves the gallery and its sightings go.
+
+    The entry is taken out first, under the gallery lock, so the report holds
+    exactly what left: a view a scan adds meanwhile is never lost (R36).
+    Returns the report's path, or None when the entry is named or gone.
+    """
+    entry = gallery.take_out(entry_id, forget=False)
+    if entry is None:
         return None
+    try:
+        path, sightings = _report_taken(gallery, entry)
+    except Exception:
+        gallery.put_back(entry)
+        raise
+    gallery.forget_views(entry)
     for sighting_path, sighting in sightings:
         thumbnail = sighting.get("thumbnail")
         if isinstance(thumbnail, str) and thumbnail:
