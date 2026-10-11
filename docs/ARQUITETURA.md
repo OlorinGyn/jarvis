@@ -2905,3 +2905,5 @@ dog event); the Recordings card shows the event's best dog frame, so the two
 can differ. A sure match reinforces that dog with one more view; anything less
 becomes an unnamed crop (R27 caps them). `tools/dog_crops.py [--days N]` gives
 crops to events recorded before the feature (~21 s per event on the M900).
+
+**Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop has a **Dismiss**. `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's `dogs/gallery.json`.

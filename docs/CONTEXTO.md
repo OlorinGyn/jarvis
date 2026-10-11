@@ -746,8 +746,9 @@ decidir.
 | 7 | 10/10/2026 | `5eb8964..0707670`, developer session 5 — R25, R6 | no code fixed; 23 tests pass; the new `httpx2` dependency checked as legitimate; backlog 21 added; release `v2026.10.10.5` |
 | 8 | 10/10/2026 | `0707670..7bde4db`, developer session 6 — backlog 21, R26 | no code fixed; 29 tests pass; release `v2026.10.10.6` |
 | 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production: 69 events, 77 crops, 78 unnamed entries for the user to name |
+| 10 | 11/10/2026 | `v2026.10.10.7..8b019ea`, developer session 8 — R27, the dog tuning tool | no code fixed; 43 tests pass; the user's three reports investigated (13.11): R28, R29 opened; release `v2026.10.11` |
 
-**Last review covers up to the `v2026.10.10.7` release commit.** The next one
+**Last review covers up to the `v2026.10.11` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -799,7 +800,9 @@ subir de novo em 09/10.
 | ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
 | ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
 | ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
-| | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | open — dev session 8: keep the newest unnamed dog entries only (named ones never), plus a "dismiss" on each |
+| ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARQUITETURA 20) |
+| | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | open — dev session 9 (13.11) |
+| | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | open — dev session 9 (13.11) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1251,6 +1254,46 @@ face message whether or not the event's first message went out, with its own
 cooldown per person — the same person is not announced twice within
 `notify_cooldown`. The best-view follow-up keeps today's rule (only after a
 sent event), so the volume barely changes.
+### 13.11 Review 10 — the user's three reports (11/10/2026)
+
+**"The pages fail on the other computer."** Root cause found: the service
+sends no cache instruction for the page, `app.js` or `style.css`, so a browser
+may keep running a stale copy for hours after an update, by its own heuristic
+on `Last-Modified` — and on 10/10 the routes changed in seven releases, so an
+old `app.js` calls routes that no longer exist. A second, smaller cause: a
+change refused by the R24 guard (an unpaired browser) fails without a visible
+reason. Testing "another computer" needs no second machine: the M900's own
+browser at `http://192.168.0.18:8765` is not 127.0.0.1, so the guard treats it
+exactly as the other computer.
+
+**R28 — The page is always current, and every refusal says why (high).**
+`Cache-Control: no-cache` on `/` and `/static/*` (the browser revalidates by
+ETag every load, a cheap 304 on the LAN), and the version from backlog 18 in
+the asset URLs (`app.js?v=<version>`), so an update can never leave an old
+script running. Every failed write shows the server's reason on the page; a
+403 from the guard says "this device is not paired — enter the PIN in
+Settings". Acceptance: after a deploy, a browser at 192.168.0.18 loads the new
+script without a hard refresh; an unpaired write shows the message.
+
+**"The Dogs tab should behave like People: favourite photo, 40 views,
+grouping."** The first two exist — the Dogs tab is the same code as People
+(ARQUITETURA 20) — and the other computer's stale page (R28) can hide them.
+Grouping does not: naming a person gathers the unnamed faces that clearly
+look like them (`_absorb`), but the developer turned it off for dogs.
+
+**R29 — Naming a dog gathers its clear look-alikes (medium).** Enable
+`_absorb` for dogs with the **sure** rule of `match` (distance and margin),
+never the probable one, and only within the same lighting. A wrong grouping is
+undone by Dismiss or a rename, as with people.
+
+**"Face detection seems much weaker."** The log shows no regression: scans run
+and find faces when there are frontal ones (21:05 on 10/10: 58 face views),
+and most person events at night have none — infrared faces are small. What
+changed is visible, not measured: the gallery restarted empty on 10/10, so
+every face is "unknown" until named again. To tell a regression from the
+night, the user is asked for one or two events where their face was clearly
+visible and no face came; `tools/replay.py` and the face probe then show which
+filter dropped it.
 ---
 
 ## 14. Sessions and token budget
@@ -1301,14 +1344,16 @@ disk, which is exactly why the roles hand over through files.
 | D7 | developer | high | 10/10 evening | session 7: backlog 22 parts 1 and 2 | 10% → 23% (new window) | 56% → 57% | 564k → 635k, old conversation |
 | A12 | architect | ultracode | 10/10 21:00–21:20 | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → ~43% | 59% → 60% | 705k → 720k tokens |
 
-### 14.4 Next session: developer 8
+### 14.4 Next session: developer 9
 
 | | Item | Why here | Files |
 |---|---|---|---|
-| 1 | **R27** — cap the unnamed dog entries (newest N kept, named never touched, files removed with them) and a "dismiss" on each unnamed crop | the Dogs tab fills with every uncertain dog | `dogs.py`, `web.py`, `static/`, `tests/` |
-| 2 | **Tune the dog thresholds** with the user's names: measure sure/probable/none on the named crops (leave-one-out), adjust `SURE_*`/`PROBABLE_*` | backlog 22's acceptance | `dogs.py`, `tests/` |
+| 1 | **R28** — no stale page after updates; every refused write says why | the user's failures on the other computer | `web.py`, `static/` |
+| 2 | **R29** — naming a dog gathers its sure look-alikes | the user's parity request | `dogs.py`, `tests/` |
+| 3 | **The face check**, if the user gave events: replay them and report which filter dropped the face | the user's report | `tools/` |
+| 4 | **Dog thresholds**, if the user named dogs: run `dog_tuning.py` on production's gallery (read-only) and adjust | backlog 22's acceptance | `dogs.py` |
 
-Item 2 needs the user to have named a few crops of each dog first. **Start in a new conversation.**
+Test the other-computer path with the M900's own browser at 192.168.0.18. **Start in a new conversation.**
 
 ---
 
