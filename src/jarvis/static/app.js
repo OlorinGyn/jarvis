@@ -353,7 +353,10 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const viewsGrid = section.querySelector(".views-grid");
   const calendarBox = section.querySelector(".calendar");
   const cardTemplate = document.getElementById("person-card");
+  const analyse = section.querySelector(".analyse");
+  const spreadBox = section.querySelector(".spread");
   let named = [];
+  let proposal = null;
 
   function selected() {
     const parts = location.hash.slice(1).split("/");
@@ -518,7 +521,63 @@ function galleryTab(section, api, kind, unnamedLabel) {
     return tile;
   }
 
+  function spreadTile(photo, kept) {
+    const tile = document.createElement("figure");
+    tile.className = kept ? "view" : "view moved";
+    if (photo) {
+      const image = document.createElement("img");
+      image.src = photo;
+      image.alt = "";
+      image.loading = "lazy";
+      tile.append(image);
+    } else {
+      const missing = document.createElement("span");
+      missing.className = "no-photo";
+      missing.textContent = "no photo";
+      tile.append(missing);
+    }
+    return tile;
+  }
+
+  function showProposal() {
+    const kept = new Set(proposal.keep);
+    const moved = proposal.photos.length - kept.size;
+    const distance = (value) => (value === null ? "?" : value.toFixed(2));
+    spreadBox.querySelector(".spread-text").textContent =
+      `Proposal: keep the ${kept.size} most different views; ${plural(moved, "view", "views")} ` +
+      `(faded) wait in the queue. The two most alike views kept are ${distance(proposal.closest_now)} ` +
+      `apart now and ${distance(proposal.closest_after)} after: higher means more varied.`;
+    spreadBox.querySelector(".spread-grid").replaceChildren(
+      ...proposal.photos.map((photo, index) => spreadTile(photo, kept.has(index))));
+    spreadBox.hidden = false;
+  }
+
+  analyse.addEventListener("click", async () => {
+    try {
+      proposal = await getJSON(`${api}/${selected()}/spread`);
+      showProposal();
+    } catch (problem) {
+      pageResult.textContent = `Not analysed: ${problem.message}`;
+    }
+  });
+
+  spreadBox.querySelector(".spread-keep").addEventListener("click", async () => {
+    try {
+      showEntry(await send(`${api}/${selected()}/spread`,
+        { keep: proposal.keep, signature: proposal.signature }));
+      pageResult.textContent = "Kept the most different views; the others wait in the queue.";
+    } catch (problem) {
+      pageResult.textContent = `Not kept: ${problem.message}`;
+    }
+  });
+
+  spreadBox.querySelector(".spread-cancel").addEventListener("click", () => {
+    spreadBox.hidden = true;
+  });
+
   function showEntry(entry) {
+    analyse.hidden = entry.views + entry.pending <= 40;
+    spreadBox.hidden = true;
     section.querySelector(".page-name").textContent = entry.name || unnamedLabel;
     renameForm.querySelector("input").value = entry.name;
     renameForm.querySelector("button").textContent = entry.name ? "Rename" : "Save name";

@@ -102,6 +102,19 @@ class DogGallery(faces.Gallery):
             self._forget_view(view)
         return len(excess)
 
+    def distances(self, embeddings):
+        """Every pairwise distance between dog descriptors; day against infrared is infinitely far.
+
+        So the farthest-point selection always keeps both lightings when a dog has both.
+        """
+        size = len(embeddings)
+        matrix = np.zeros((size, size))
+        for a in range(size):
+            for b in range(a + 1, size):
+                found = distance(embeddings[a], embeddings[b])
+                matrix[a, b] = matrix[b, a] = np.inf if found is None else found
+        return matrix
+
     def label(self, dog_id):
         dog = self.get(dog_id)
         if dog is None:

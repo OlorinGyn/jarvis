@@ -9,6 +9,7 @@ Uses YuNet and SFace, both built into OpenCV, so no extra dependency. See
 docs/ARQUITETURA.md section 10.
 """
 
+import hashlib
 import json
 import logging
 import math
@@ -221,6 +222,45 @@ def views_of(person):
     return (views + [None] * count)[:count]
 
 
+def spread(matrix, count, first=0):
+    """Greedy farthest-point selection: count indices, each the farthest from those already chosen.
+
+    The result covers angles and lighting instead of near-copies (backlog 24).
+    An infinite distance (views that cannot be compared) is the farthest of all.
+    """
+    total = len(matrix)
+    if total <= count:
+        return list(range(total))
+    chosen = [first]
+    nearest = np.array(matrix[first], dtype=np.float64)
+    nearest[first] = -1.0
+    while len(chosen) < count:
+        pick = int(np.argmax(nearest))
+        chosen.append(pick)
+        nearest = np.minimum(nearest, matrix[pick])
+        nearest[chosen] = -1.0
+    return sorted(chosen)
+
+
+def closest_pair(matrix, indices):
+    """The smallest finite distance between two of the given views, or None."""
+    indices = list(indices)
+    found = [matrix[a][b] for i, a in enumerate(indices) for b in indices[i + 1:]
+             if np.isfinite(matrix[a][b])]
+    return round(float(min(found)), 3) if found else None
+
+
+def _pool(person):
+    """A person's stored views, then their queue: (embedding, view photo) pairs."""
+    return (list(zip(person["embeddings"], views_of(person)))
+            + [(w["embedding"], w.get("view")) for w in person.get("pending") or []])
+
+
+def _signature(pool):
+    """A fingerprint of the views and queue, so a proposal is applied only to what it was made from."""
+    return hashlib.sha1(json.dumps([e for e, _ in pool]).encode()).hexdigest()
+
+
 def _similarity(person, embedding):
     """How close an embedding is to the closest stored view of a person."""
     return max((cosine(known, embedding) for known in person["embeddings"]),
@@ -392,6 +432,60 @@ class Gallery:
             self.save()
         for view in views_of(person) + [w.get("view") for w in person.get("pending") or []]:
             self._forget_view(view)
+        return True
+
+    def distances(self, embeddings):
+        """Every pairwise distance between face embeddings: one minus the cosine similarity."""
+        x = np.asarray(embeddings, np.float64)
+        norms = np.linalg.norm(x, axis=1, keepdims=True)
+        x = x / np.where(norms > 0, norms, 1.0)
+        return 1.0 - x @ x.T
+
+    def spread_proposal(self, person_id):
+        """The MAX_EMBEDDINGS most different of a person's views and queue, or None when all fit.
+
+        The favourite photo, when there is one, is always kept.
+        """
+        self.load()
+        person = self.get(person_id)
+        if person is None:
+            return None
+        pool = _pool(person)
+        if len(pool) <= MAX_EMBEDDINGS:
+            return None
+        matrix = self.distances([embedding for embedding, _ in pool])
+        cover = cover_of(person)
+        keep = spread(matrix, MAX_EMBEDDINGS, views_of(person).index(cover) if cover else 0)
+        return {"keep": keep, "views": [view for _, view in pool], "signature": _signature(pool),
+                "closest_now": closest_pair(matrix, range(len(person["embeddings"]))),
+                "closest_after": closest_pair(matrix, keep)}
+
+    def keep_spread(self, person_id, keep, signature):
+        """Keep the chosen views and move every other one to the queue; nothing is lost.
+
+        False when the proposal no longer fits: the views changed since it was made.
+        """
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            if person is None:
+                return False
+            pool = _pool(person)
+            keep = sorted(set(keep))
+            if (_signature(pool) != signature or len(keep) != min(MAX_EMBEDDINGS, len(pool))
+                    or not all(0 <= i < len(pool) for i in keep)):
+                return False
+            rest = [i for i in range(len(pool)) if i not in set(keep)]
+            person["embeddings"] = [pool[i][0] for i in keep]
+            person["views"] = [pool[i][1] for i in keep]
+            person["pending"] = [{"embedding": pool[i][0], "view": pool[i][1]} for i in rest]
+            if person.get("cover") and person["cover"] not in person["views"]:
+                fallback = next((v for v in person["views"] if v), None)
+                if fallback:
+                    person["cover"] = fallback
+                else:
+                    person.pop("cover")
+            self.save()
         return True
 
     def set_cover(self, person_id, index):

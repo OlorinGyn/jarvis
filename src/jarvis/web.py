@@ -395,6 +395,26 @@ def _remove(gallery, entry_id, index):
     return _page(gallery, entry_id)
 
 
+def _proposal(gallery, entry_id):
+    _entry_or_404(gallery, entry_id)
+    proposal = gallery.spread_proposal(entry_id)
+    if proposal is None:
+        raise HTTPException(400, "all the views fit: there is nothing to choose")
+    proposal["photos"] = [_photo_url(view) for view in proposal.pop("views")]
+    return proposal
+
+
+def _keep_spread(gallery, entry_id, payload):
+    _entry_or_404(gallery, entry_id)
+    keep, signature = payload.get("keep"), payload.get("signature")
+    if (not isinstance(keep, list) or not all(isinstance(i, int) for i in keep)
+            or not isinstance(signature, str)):
+        raise HTTPException(400, "a list of views to keep and the proposal's signature")
+    if not gallery.keep_spread(entry_id, keep, signature):
+        raise HTTPException(409, "the views changed since the analysis: analyse again")
+    return _page(gallery, entry_id)
+
+
 def _report(gallery, entry_id):
     _entry_or_404(gallery, entry_id)
     if reports.report_entry(gallery, entry_id) is None:
@@ -441,6 +461,18 @@ def remove_view(person_id: str, index: int):
     return _remove(faces.Gallery(), person_id, index)
 
 
+@app.get("/api/persons/{person_id}/spread")
+def person_spread(person_id: str):
+    """Propose the 40 most different views of a person, out of their views and queue."""
+    return _proposal(faces.Gallery(), person_id)
+
+
+@app.post("/api/persons/{person_id}/spread")
+def keep_person_spread(person_id: str, payload: dict = Body(...)):
+    """Keep the proposed 40; every other view waits in the queue."""
+    return _keep_spread(faces.Gallery(), person_id, payload)
+
+
 @app.post("/api/persons/{person_id}/report")
 def report_person(person_id: str):
     """Say an unnamed face is not a face: it leaves the gallery and is kept as a report."""
@@ -485,6 +517,16 @@ def choose_dog_cover(dog_id: str, index: int):
 @app.post("/api/dogs/{dog_id}/views/{index}/remove")
 def remove_dog_view(dog_id: str, index: int):
     return _remove(dogs.DogGallery(), dog_id, index)
+
+
+@app.get("/api/dogs/{dog_id}/spread")
+def dog_spread(dog_id: str):
+    return _proposal(dogs.DogGallery(), dog_id)
+
+
+@app.post("/api/dogs/{dog_id}/spread")
+def keep_dog_spread(dog_id: str, payload: dict = Body(...)):
+    return _keep_spread(dogs.DogGallery(), dog_id, payload)
 
 
 @app.post("/api/dogs/{dog_id}/report")
