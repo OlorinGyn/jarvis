@@ -747,8 +747,9 @@ decidir.
 | 8 | 10/10/2026 | `0707670..7bde4db`, developer session 6 — backlog 21, R26 | no code fixed; 29 tests pass; release `v2026.10.10.6` |
 | 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production: 69 events, 77 crops, 78 unnamed entries for the user to name |
 | 10 | 11/10/2026 | `v2026.10.10.7..8b019ea`, developer session 8 — R27, the dog tuning tool | no code fixed; 43 tests pass; the user's three reports investigated (13.11): R28, R29 opened; release `v2026.10.11` |
+| 11 | 11/10/2026 | `8b019ea..db783cf`, developer session 9 — R28, R30 (a) | no code fixed; 48 tests pass; `a54f357` reached GitHub before this review by the architect's mistake (a push while the developer worked), no harm since production runs tags; release `v2026.10.11.2` |
 
-**Last review covers up to the `v2026.10.11` release commit.** The next one
+**Last review covers up to the `v2026.10.11.2` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -801,9 +802,9 @@ subir de novo em 09/10.
 | ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
 | ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
 | ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARQUITETURA 20) |
-| | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | open — dev session 9 (13.11) |
+| ✓ | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | done `a54f357` (ARQUITETURA 21) |
 | | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | open — dev session 9 (13.11) |
-| | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | open — dev session 9 (13.12) |
+| | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | part (a) done `9fb8862` (ARQUITETURA 21); part (b) waits for named views |
 | | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | open — dev session 10 (13.12) |
 | | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | open — dev session 10 (13.12) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
@@ -1402,10 +1403,12 @@ disk, which is exactly why the roles hand over through files.
 | A12 | architect | ultracode | 10/10 21:00–21:20 | review 9, R27, release and deploy `v2026.10.10.7`, dog crops in production, script 8 | 36% → ~43% | 59% → 60% | 705k → 720k tokens |
 | D8 | developer | high | 11/10 morning | session 8: R27, dog tuning tool | 11% → 15% | 61% → 61% | 638k → 655k, old conversation |
 | A13 | architect | ultracode | 11/10 morning | review 10: the three reports, R28, R29, release `v2026.10.11` | 29% → ~36% | 63% → 64% | 720k → 740k tokens |
+| D9 | developer | high | 11/10 08:00–10:30 | session 9: R28, R30 (a); a built-in browser call hung for an hour | 36% → 76% (shared with the architect) | 64% → 70% | 659k → ?, old conversation |
+| A14 | architect | ultracode | 11/10 09:30–10:50 | the side-view finding, general review, settings help, automatic handover, review 11, release `v2026.10.11.2` | shared window, ~81% → ~85% | 70% → 70% | 750k → 790k tokens |
 
 ### 14.4 Next sessions
 
-**Developer 9:** R28 (stale page, refusals say why) → R30 (the face photo, then the measured loosening) → R29 (dog grouping). **Developer 10:** R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
+**Developer 10:** R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
@@ -1437,4 +1440,4 @@ review and commits.
 | 6 | `v2026.10.10.5` | The Safety Net / A Rede de Proteção | written |
 | 7 | `v2026.10.10.6` | The Favourite / A Favorita | written |
 | 8 | `v2026.10.10.7` | Mirana and Aurora / Mirana e Aurora | written |
-| 9 | `v2026.10.11` (and the next) | — | **to write with the next release**: a small release shares an issue with the one after it, to spend fewer tokens on scripts |
+| 9 | `v2026.10.11` and `v2026.10.11.2` | — | **to write in the next review** (budget stop on 11/10) |

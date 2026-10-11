@@ -2803,6 +2803,7 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026** |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
+| `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (section 21) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10) |
 | `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
@@ -2907,3 +2908,11 @@ becomes an unnamed crop (R27 caps them). `tools/dog_crops.py [--days N]` gives
 crops to events recorded before the feature (~21 s per event on the M900).
 
 **Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop has a **Dismiss**. `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's `dogs/gallery.json`.
+
+---
+
+## 21. Fixes from the general review (11/10/2026)
+
+**The page is never stale (R28).** `/` is built from `index.html` with the running version in the asset URLs (`app.js?v=<git describe>`) and sent with `Cache-Control: no-cache`; a middleware, `never_stale`, adds the same header to `/static/*`. `no-cache` means *revalidate*, not *do not store*: the browser asks with the file's ETag every load and gets a cheap 304 when nothing changed — so an update can never leave an old script running on another computer. Every refused write now shows the server's reason, e.g. an unpaired device: "no PIN is set: on the M900 itself, open Settings and set one to pair other devices". The M900's own browser at 192.168.0.18 counts as another device, which is how this was tested.
+
+**The face seen from the side (R30, part a).** When a person event's scan keeps no recognisable face, `faces_in(frame, sides)` also collects the good non-frontal faces (score ≥ `IDENTITY_SCORE`, width ≥ 36 px) and the scan saves the best — smallest nose offset, then largest — as `HH-MM-SS.side.jpg` beside the clip, **never into the gallery**. The follow-up message after a sent event is, in order of preference: the recognised face, else "face, side view", else the best view. On the three daytime clips of 10/10 that had no face, each now gives a side view (40–59 px); they had failed on the eye spread, not the nose. Part (b), loosening the limits for recognition, waits for named views.
