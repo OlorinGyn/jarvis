@@ -685,3 +685,48 @@ names its own dogs (backlog 22) · **Three Words** — name, probably name,
 unidentified dog. Lurking: the pile of unnamed cards (R27); thresholds not yet
 tested on real names. Decrees: "No colour rule in the code." · "Notify when
 there is a dog; certainty only changes the words."
+---
+
+## Issue #9 — The Front Desk Learns Manners
+
+`v2026.10.11` → `v2026.10.11.3` · 11 Oct 2026
+
+**Panel 1.** The Owner's other computer shows an old, yellowed copy of the
+page; a calendar on its wall still reads "10 Oct".
+THE OWNER: The screens fail on my other computer.
+ARCHITECT: Your browser kept yesterday's script. Seven releases later, it was
+calling doors that no longer exist.
+
+**Panel 2.** Every page now carries a small stamp with the version; the
+browser checks it at the door each visit.
+DEV: No-cache means "ask first", not "don't keep". A quick 304, and never stale.
+
+**Panel 3.** A person walks past the camera, face turned to the door; the
+detector draws the face, then a stern filter stamps "NOT FRONTAL".
+THE OWNER: Plenty of person alerts, hardly any faces.
+ARCHITECT: The face was there in 61 frames — all from the side.
+
+**Panel 4.** A phone shows "Front: face, side view" with a clear side photo.
+DEV: The side view goes to your phone. It never teaches the gallery.
+
+**Panel 5.** A visitor badge (a cookie) hangs on the Owner's laptop, a
+calendar showing "30 days" beside it.
+THE OWNER: Stop asking me for the PIN on every device.
+DEV: Pair once. Thirty days, renewed every time you use it.
+
+**Panel 6.** A small cinema screen opens inside the Recordings card; the
+Owner watches a clip from the sofa on the phone.
+THE OWNER: And I can't watch the recordings from another device.
+DEV: There never was a video door. Now there is — and it can seek.
+
+**Panel 7.** The owl wakes at a set time and sends a paper plane to the
+beaver's workshop; later the beaver sends one back.
+CAPTION: 12:23. The first cycle that ran itself.
+
+**Closing card.** Abilities: **Always Fresh** (R28) · **Side View** (R30 a) ·
+**The Badge** — pair a device once (R34) · **The Cinema** — recordings play on
+the page (item 5) · **The Pack** — naming a dog gathers its look-alikes (R29) ·
+**Self-Starting** — the developer and the architect hand over by themselves.
+Lurking: Aurora curled on the mat still passes as a person now and then (R35).
+Decrees: "Look at every person alert without a face." · "Pair once, or 30
+days." · "Let me watch from any device." · "Start the next session yourselves."

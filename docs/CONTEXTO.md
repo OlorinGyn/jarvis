@@ -323,7 +323,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
    | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARQUITETURA 17.9) |
    | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
    | ✓ | Remove the OpenCV window (`ui.py`, `--window`) | done 10/10 (ARQUITETURA 17.10) |
-   | | Stage 2 — play the video on the page | **next — the user asked on 11/10** (item 5) |
+   | ✓ | Stage 2 — play the video on the page | done 11/10 (item 5) |
 
    Pendente de teste: abrir pelo celular (`http://192.168.0.18:8765` no M900).
 
@@ -341,7 +341,7 @@ Funciona sem, mas incompleto.
 
 4. **Medir o M900 rodando** (proposto) — CPU com as duas câmeras em movimento,
    e se `HWACCEL` ajuda (INSTALACAO seção 6)
-5. **Play the recordings on the page** (decided 11/10/2026: the user cannot watch a recording from another device — the web never had video, only the old window opened Explorer on the M900). A route `GET /video/<camera>/<day>/<HH-MM-SS>.mp4` with the same name checks as the thumbnails and HTTP **Range** support (Starlette's `FileResponse` answers ranges, so the browser can seek without downloading the whole clip); the clips are the camera's H.264 assembled with `+faststart`, which every browser plays in a `<video>` element. Clicking a card on Recordings (and a day on a person's or dog's calendar) opens a player on the page, with the event's best view, side face and faces beside it. Reading stays open to the home network, as R4 decided for the live view. Acceptance: a clip plays and seeks from 192.168.0.18 and from a phone; a request outside `clips/` is refused.
+5. **Done 11/10 (`v2026.10.11.3`).** **Play the recordings on the page** (decided 11/10/2026: the user cannot watch a recording from another device — the web never had video, only the old window opened Explorer on the M900). A route `GET /video/<camera>/<day>/<HH-MM-SS>.mp4` with the same name checks as the thumbnails and HTTP **Range** support (Starlette's `FileResponse` answers ranges, so the browser can seek without downloading the whole clip); the clips are the camera's H.264 assembled with `+faststart`, which every browser plays in a `<video>` element. Clicking a card on Recordings (and a day on a person's or dog's calendar) opens a player on the page, with the event's best view, side face and faces beside it. Reading stays open to the home network, as R4 decided for the live view. Acceptance: a clip plays and seeks from 192.168.0.18 and from a phone; a request outside `clips/` is refused.
 6. **Busca e filtro** (proposto) — com ~100 eventos/dia, só por data é
    inviável. Por pessoa, câmera, rótulo
 7. **Tracking** (proposto) — manter identidade entre frames; resolve a pessoa
@@ -748,8 +748,9 @@ decidir.
 | 9 | 10/10/2026 | `v2026.10.10.6..ce81eed`, developer session 7 — backlog 22, parts 1 and 2 | no code fixed; 40 tests pass; R27 opened (unnamed dog entries grow without bound); release `v2026.10.10.7`; `dog_crops.py --days 1` run in production: 69 events, 77 crops, 78 unnamed entries for the user to name |
 | 10 | 11/10/2026 | `v2026.10.10.7..8b019ea`, developer session 8 — R27, the dog tuning tool | no code fixed; 43 tests pass; the user's three reports investigated (13.11): R28, R29 opened; release `v2026.10.11` |
 | 11 | 11/10/2026 | `8b019ea..db783cf`, developer session 9 — R28, R30 (a) | no code fixed; 48 tests pass; `a54f357` reached GitHub before this review by the architect's mistake (a push while the developer worked), no harm since production runs tags; release `v2026.10.11.2` |
+| 12 | 11/10/2026 | `5675cfe..a4cc3a2`, developer session 10 — R34, backlog 5, R29 (the first automatic cycle) | no code fixed; 64 tests pass; R35 kept open on the developer's data; release `v2026.10.11.3` |
 
-**Last review covers up to the `v2026.10.11.2` release commit.** The next one
+**Last review covers up to the `v2026.10.11.3` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -803,13 +804,13 @@ subir de novo em 09/10.
 | ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
 | ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARQUITETURA 20) |
 | ✓ | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | done `a54f357` (ARQUITETURA 21) |
-| | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | open — dev session 9 (13.11) |
+| ✓ | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | done `49a17b8` (ARQUITETURA 21) |
 | | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | part (a) done `9fb8862` (ARQUITETURA 21); part (b) waits for named views |
 | | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | open — dev session 10 (13.12) |
 | | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | open — dev session 10 (13.12) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
-| | R34 | **high** | Devices have to type the PIN again and again | open — dev session 10, first item (13.13) |
-| | R35 | medium | Aurora curled on the mat still slips through R18 as `person` (box 1.99× wider than tall, under the 2.0 limit) | open — dev session 10: `WIDE_PERSON_RATIO` 2.0 → 1.5, re-validated by replaying every person event |
+| ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
+| | R35 | medium | Aurora curled on the mat still slips through R18 as `person` (box 1.99× wider than tall, under the 2.0 limit) | open — **1.5 is unsafe**: a partial replay drops 5 boxes 200–300 px tall (09/10 23:34:13, 23:53:02; 10/10 15:12:59, 15:14:15, 15:36:08), maybe a person with the dog. Next: look at them, then consider a frame-relative height condition (the dog's boxes are under a third of the frame's height) instead of a lower ratio |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1430,10 +1431,12 @@ disk, which is exactly why the roles hand over through files.
 | A13 | architect | ultracode | 11/10 morning | review 10: the three reports, R28, R29, release `v2026.10.11` | 29% → ~36% | 63% → 64% | 720k → 740k tokens |
 | D9 | developer | high | 11/10 08:00–10:30 | session 9: R28, R30 (a); a built-in browser call hung for an hour | 36% → 76% (shared with the architect) | 64% → 70% | 659k → ?, old conversation |
 | A14 | architect | ultracode | 11/10 09:30–10:50 | the side-view finding, general review, settings help, automatic handover, review 11, release `v2026.10.11.2` | shared window, ~81% → ~85% | 70% → 70% | 750k → 790k tokens |
+| D10 | developer | high | 11/10 12:23–12:55 | session 10, started by the architect: R34, backlog 5, R29 | 0% → ~43% | 72% → 77% | old conversation |
+| A15 | architect | ultracode | 11/10 12:55– | review 13, release `v2026.10.11.3`, script 9 | ~43% → (end) | 77% → | 820k → |
 
 ### 14.4 Next sessions
 
-**Developer 10:** R34 (pair a device once, 13.13) → item 5 (play the recordings on the page) → R35 (R18's ratio 2.0 → 1.5; on 11/10 07:17:50 Aurora on the mat was a `person` 0.40 at 333×167, ratio 1.99, touching the bottom edge; real persons measure 0.4–0.6, so 1.5 keeps a wide margin — accept only if replaying every person event drops no real person) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
+**Developer 11:** R35 (look at the 5 boxes first; 13.12's data), R30 (b) — the user's gallery now holds 31 views, enough to measure — then R31, R32. **Architect, in a new conversation:** R33, the documentation.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
@@ -1465,4 +1468,4 @@ review and commits.
 | 6 | `v2026.10.10.5` | The Safety Net / A Rede de Proteção | written |
 | 7 | `v2026.10.10.6` | The Favourite / A Favorita | written |
 | 8 | `v2026.10.10.7` | Mirana and Aurora / Mirana e Aurora | written |
-| 9 | `v2026.10.11` and `v2026.10.11.2` | — | **to write in the next review** (budget stop on 11/10) |
+| 9 | `v2026.10.11`, `.2` and `.3` | The Front Desk Learns Manners / A Recepção Aprende Modos | written |

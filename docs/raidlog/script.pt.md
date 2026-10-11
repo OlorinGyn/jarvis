@@ -713,3 +713,51 @@ os seus cachorros (backlog 22) · **Três Palavras** — nome, probably nome,
 unidentified dog. À espreita: a pilha de cartões sem nome (R27); limites ainda
 não testados com nomes reais. Decretos: "Nada de regra de cor no código." ·
 "Notifique quando tiver cachorro; a certeza só muda as palavras."
+---
+
+## Edição nº 9 — A Recepção Aprende Modos
+
+`v2026.10.11` → `v2026.10.11.3` · 11 out 2026
+
+**Quadro 1.** O outro computador do Dono mostra uma cópia velha e amarelada da
+página; um calendário na parede ainda marca "10 out".
+O DONO: As telas falham no meu outro computador.
+ARQUITETO: Seu navegador guardou o script de ontem. Sete releases depois, ele
+batia em portas que não existem mais.
+
+**Quadro 2.** Toda página agora leva um pequeno carimbo com a versão; o
+navegador confere na porta a cada visita.
+DEV: No-cache quer dizer "pergunte antes", não "não guarde". Um 304 rápido, e
+nunca velho.
+
+**Quadro 3.** Uma pessoa passa pela câmera, o rosto virado para a porta; o
+detector desenha o rosto, e um filtro sisudo carimba "NÃO FRONTAL".
+O DONO: Um monte de alerta de pessoa, quase nenhum rosto.
+ARQUITETO: O rosto estava lá em 61 quadros — todos de lado.
+
+**Quadro 4.** Um celular mostra "Front: face, side view" com uma foto de lado
+nítida.
+DEV: A foto de lado vai para o seu celular. Ela nunca ensina a galeria.
+
+**Quadro 5.** Um crachá de visitante (um cookie) pendurado no notebook do Dono,
+com um calendário marcando "30 dias" ao lado.
+O DONO: Parem de pedir o PIN em todo aparelho.
+DEV: Pareie uma vez. Trinta dias, renovados toda vez que você usa.
+
+**Quadro 6.** Uma pequena tela de cinema abre dentro do cartão de Recordings;
+o Dono assiste a um clipe do sofá, no celular.
+O DONO: E eu não consigo ver as gravações de outro aparelho.
+DEV: Nunca existiu uma porta de vídeo. Agora existe — e dá para avançar.
+
+**Quadro 7.** A coruja acorda numa hora marcada e manda um avião de papel para
+a oficina do castor; mais tarde o castor manda um de volta.
+LEGENDA: 12:23. O primeiro ciclo que rodou sozinho.
+
+**Ficha final.** Habilidades: **Sempre Fresca** (R28) · **De Lado** (R30 a) ·
+**O Crachá** — pareie o aparelho uma vez (R34) · **O Cinema** — as gravações
+tocam na página (item 5) · **A Matilha** — nomear um cachorro junta os
+parecidos (R29) · **Partida Própria** — o Dev e o Arquiteto se passam a vez
+sozinhos. À espreita: a Aurora enrolada no tapete ainda passa por pessoa de
+vez em quando (R35). Decretos: "Olhe todo alerta de pessoa sem rosto." ·
+"Pareie uma vez, ou 30 dias." · "Quero ver de qualquer aparelho." · "Comecem
+a próxima sessão sozinhos."
