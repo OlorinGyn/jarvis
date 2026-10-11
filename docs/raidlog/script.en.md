@@ -767,3 +767,59 @@ Forty** (backlog 24) · **Quick Eyes** — a cheaper face scan (R31) · **Quiet
 Log** (R32). Decided against: a lower dog-on-the-mat ratio (R35). Lurking: a
 report never says what the thing really was (R37). Decrees: "Report it, don't
 delete it — and remember which screen it came from."
+## Issue #11 — Second Chances
+
+`v2026.10.11.5` and `v2026.10.11.6` · 11 Oct 2026, evening
+
+**Panel 1.** Night, deep blue. At the door of the house, the old J.A.R.V.I.S.
+is still carrying out a box labelled CLIP while the new one waits on the step;
+Front and Back hover above both, each with a small sign: BUSY. A stopwatch in
+the corner reads 22 s.
+CAPTION: The first deploy of `v2026.10.11.4`. The old version was still
+assembling a clip when the new one asked for the cameras.
+ARCHITECT: It rolled itself back. From now on the update waits until nothing
+runs from C:\JARVIS — up to three minutes.
+
+**Panel 2.** A person's page: empty frames where the photos should be.
+Below it, a closed drawer, light leaking out of it, full of photos.
+BOSS (the drawer): SAME NAME, FIRST FOUND!
+ARCHITECT: Two grids with the same class, and the page filled the first one —
+the hidden one. The tests only looked at the server.
+
+**Panel 3.** The beaver builds two shelves, CHOSEN (40) above and WAITING
+below, with ↑ and ↓ arrows painted between them.
+THE OWNER: Waiting photos only make sense if I can compare them with the
+chosen ones.
+DEV: Side by side, then. Nothing moves between them on its own any more — you
+pick.
+
+**Panel 4.** The evidence box of the last issue, open. A dog card flies out of
+it back into the album, trailing its photos and its sightings like a kite's
+tail.
+CAPTION: Some of that afternoon's reports were mistakes.
+DEV: Undo. It goes back with its views, its favourite, its sightings. The box
+now keeps a copy of every photo, so there's something to put back.
+
+**Panel 5.** A report card showing the Owner's face, filed as "not a dog". A
+small menu opens beside it: "Actually…" — person.
+DEV: And a report can finally say what it really was.
+
+**Panel 6.** The beaver slams a drawer shut, an entry safe inside; a drone
+arrives a moment too late with one more photo and bumps into the closed
+drawer.
+DEV: Take it out first, under the lock, then write the report. A scan that
+arrives late finds the door closed — and loses nothing.
+
+**Panel 7.** Dark red. The stone gate of issue #1, the blue SAC shield again,
+now blocking a tiny figure labelled `pytest.exe`. The owl walks around the
+gate holding a scroll: `python -m pytest`.
+BOSS (the gate): UNSIGNED LAUNCHERS SHALL NOT PASS!
+ARCHITECT: Then the signed Python runs the tests itself. Ninety-two, green.
+
+**Closing card.** Abilities: **Second Chances** — Undo a report (R38) ·
+**Chosen and Waiting** (R40) · **"Actually…"** (R37) · **The Closed Door**
+(R36) · **The Patient Deploy**. Bosses defeated: **The Hidden Grid** (R39) ·
+**The Impatient Update** · **The Gate of Signatures**, again. Lurking: when
+Waiting is full, a click aimed at one photo can land on its neighbour (R41).
+Decrees: "Waiting photos only make sense if I can compare them with the chosen
+ones."

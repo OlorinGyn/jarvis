@@ -1029,3 +1029,66 @@ json.loads(FILE.read_text(encoding="utf-8-sig"))
 `utf-8-sig` skips the mark if it is there and reads normally if it is not.
 Writing stays plain `utf-8`, without a mark. Java's `InputStreamReader` with
 UTF-8 has the same trap; .NET's `StreamReader` detects the mark by default.
+
+## 26. Take it out under the lock, then work on it
+
+A bad-detection report (ARQUITETURA 21, R36) does three things to a gallery
+entry: copy it into a report, copy its photos, delete it. The first version
+did it in the order that reads naturally:
+
+```python
+entry = gallery.get(entry_id)       # a snapshot
+path = write_report(entry)          # slow: files copied
+gallery.take_out(entry_id)          # remove whatever is there *now*
+```
+
+Between the first line and the last, a face scan on another thread could add
+a view to the same entry. The report held the snapshot, the removal took the
+newer entry, and the new view vanished from both. The fix moves the removal
+first, inside the lock, and makes it **return what it removed**:
+
+```python
+def take_out(self, person_id, forget=True):
+    with _GALLERY_LOCK:
+        self.load()
+        person = self.get(person_id)
+        if person is None or person["name"]:
+            return None
+        self.people.remove(person)
+        self.save()
+    ...
+    return person
+```
+
+Whatever the report is then written from is exactly what left — nothing can
+change it, because it is no longer in the gallery. Java's
+`map.remove(key)` returns the removed value for the same reason, and
+`ConcurrentHashMap` offers no "get, then remove" pair that is safe together.
+`with _GALLERY_LOCK:` is Python's `synchronized (lock) { ... }` block: the
+lock is taken on entry and released on exit, even by an exception.
+
+If writing the report fails, the entry must not be lost:
+
+```python
+try:
+    path, sightings = _report_taken(gallery, entry)
+except Exception:
+    gallery.put_back(entry)
+    raise
+```
+
+A bare `raise` inside `except` re-throws **the same exception with its
+original stack** — C#'s `throw;` (not `throw e;`, which resets the stack) and
+Java's `throw e;` inside the `catch`. The caller still sees the failure; the
+gallery is as it was.
+
+Two `shutil` functions do the file work: `shutil.copyfile(source, target)`
+is `Files.copy` / `File.Copy`, and `shutil.rmtree(folder, ignore_errors=True)`
+deletes a folder and everything in it without raising when it is already
+gone — `Directory.Delete(path, true)` wrapped in a `try` that ignores
+`DirectoryNotFoundException`.
+
+On the page, the Settings list fills each report's "Actually…" choice with
+`new Option(text, value)`, the DOM's shortcut for creating an `<option>`
+element: `select.append(new Option("dog", "dog"))` is the one-line form of
+`createElement("option")` and setting its text and value.

@@ -798,3 +798,59 @@ Quarenta Melhores** (backlog 24) · **Olhos Rápidos** — varredura de rosto ma
 barata (R31) · **Log Silencioso** (R32). Decidido contra: baixar o limite do
 cachorro no tapete (R35). À espreita: um relato nunca diz o que a coisa era de
 verdade (R37). Decretos: "Reporte, não apague — e lembre de qual tela veio."
+## Edição nº 11 — Segunda Chance
+
+`v2026.10.11.5` e `v2026.10.11.6` · 11 out 2026, noite
+
+**Quadro 1.** Noite, azul profundo. Na porta da casa, o J.A.R.V.I.S. antigo
+ainda carrega para fora uma caixa marcada CLIP enquanto o novo espera no
+degrau; Front e Back pairam sobre os dois, cada um com uma plaquinha: BUSY. Um
+cronômetro no canto marca 22 s.
+LEGENDA: O primeiro deploy da `v2026.10.11.4`. A versão antiga ainda montava um
+clipe quando a nova pediu as câmeras.
+ARQUITETO: Ela mesma voltou atrás. De agora em diante a atualização espera até
+nada rodar de C:\JARVIS — até três minutos.
+
+**Quadro 2.** A página de uma pessoa: molduras vazias onde deviam estar as
+fotos. Embaixo, uma gaveta fechada, vazando luz, cheia de fotos.
+CHEFÃO (a gaveta): MESMO NOME, PRIMEIRO ACHADO!
+ARQUITETO: Duas grades com a mesma classe, e a página encheu a primeira — a
+escondida. Os testes só olhavam o servidor.
+
+**Quadro 3.** O castor monta duas prateleiras, CHOSEN (40) em cima e WAITING
+embaixo, com setas ↑ e ↓ pintadas entre elas.
+O DONO: Fotos esperando só fazem sentido se eu puder comparar com as
+escolhidas.
+DEV: Lado a lado, então. Nada passa de uma para a outra sozinho — quem escolhe
+é você.
+
+**Quadro 4.** A caixa de provas da edição passada, aberta. Um cartão de
+cachorro voa dela de volta para o álbum, arrastando suas fotos e seus
+avistamentos como rabo de pipa.
+LEGENDA: Alguns relatos daquela tarde foram engano.
+DEV: Undo. Ele volta com as vistas, a favorita, os avistamentos. A caixa agora
+guarda cópia de cada foto, então tem o que devolver.
+
+**Quadro 5.** Um cartão de relato com o rosto do Dono, arquivado como "not a
+dog". Um menu pequeno abre ao lado: "Actually…" — person.
+DEV: E um relato enfim pode dizer o que a coisa era de verdade.
+
+**Quadro 6.** O castor bate uma gaveta, uma entrada segura lá dentro; um drone
+chega um instante tarde com mais uma foto e esbarra na gaveta fechada.
+DEV: Primeiro tira, com a trava, depois escreve o relato. A varredura que chega
+atrasada encontra a porta fechada — e nada se perde.
+
+**Quadro 7.** Vermelho escuro. O portão de pedra da edição nº 1, o escudo azul
+SAC de novo, agora barrando uma figurinha marcada `pytest.exe`. A coruja
+contorna o portão segurando um pergaminho: `python -m pytest`.
+CHEFÃO (o portão): LANÇADORES SEM ASSINATURA NÃO PASSARÃO!
+ARQUITETO: Então o Python assinado roda os testes ele mesmo. Noventa e dois,
+verdes.
+
+**Ficha final.** Habilidades: **Segunda Chance** — desfazer um relato (R38) ·
+**Escolhidas e Esperando** (R40) · **"Actually…"** (R37) · **A Porta Fechada**
+(R36) · **O Deploy Paciente**. Chefões derrotados: **A Grade Escondida** (R39)
+· **A Atualização Apressada** · **O Portão das Assinaturas**, de novo. À
+espreita: com a fila cheia, um clique mirado numa foto pode cair na vizinha
+(R41). Decretos: "Fotos esperando só fazem sentido se eu puder comparar com as
+escolhidas."

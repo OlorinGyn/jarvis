@@ -38,11 +38,13 @@ write into the repository is in English.
      written to disk are additive. Run `uv run python tools/check_data.py`
      before committing them. If a change cannot be additive, stop and ask.
    - Prefer a well-regarded library to hand-written code (CONTEXTO 11).
-3. **Verify** against the acceptance, and keep the numbers.
+3. **Verify** against the acceptance, and keep the numbers. Run the tests
+   with `uv run python -m pytest`: `uv run pytest` starts an unsigned
+   launcher that Smart App Control blocks on the M900 (ARQUITETURA 19.5).
 4. **Commit**, one item per commit, with a message that explains why.
    Stage files by name — never `git add -A` — and never stage `.env`,
-   `config.json`, `models/`, `clips/`, `faces/`, `backups/`, `logs/` or
-   `HOLD`. Never print the Telegram token, in chat or in a log.
+   `config.json`, `models/`, `clips/`, `faces/`, `dogs/`, `reports/`,
+   `devices.json`, `backups/`, `logs/` or `HOLD`. Never print the Telegram token, in chat or in a log.
 5. Explain to the user what you changed in the code, briefly, with Java/C#
    comparisons where they help: they are learning Python and OpenCV.
 6. **Shell commands.** The working directory already is the project: never

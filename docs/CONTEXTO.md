@@ -35,7 +35,7 @@ page, with Live, Recordings, People and Settings, is the only interface.
 | Estado | Tudo funciona | Tudo funciona desde 29/09/2026 (seção 6) |
 
 **Production runs on the M900 since 09/10/2026 at 20:20**, from `C:\JARVIS`,
-release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. And to `v2026.10.10.4` at 15:37: 205 events read before and after; then, as the user decided, production was stopped, its `faces/` deleted and started again — the gallery is empty, waiting for the user to name the people again. And to `v2026.10.10.5` at 16:45 (R25, tests). The folder
+release `v2026.10.09`, started with Windows by a scheduled task. Updated to `v2026.10.10` on 10/10 at 00:56: every file read before and after, both cameras fresh, and no ffmpeg window on the desktop. Updated to `v2026.10.10.2` the same day at 13:31: 194 events and 28 sightings read before and after, and the page shows the version. And to `v2026.10.10.3` at 14:22: 197 events read before and after, People and Settings on the page, the token not exposed by `/api/settings`. And to `v2026.10.10.4` at 15:37: 205 events read before and after; then, as the user decided, production was stopped, its `faces/` deleted and started again — the gallery is empty, waiting for the user to name the people again. And to `v2026.10.10.5` at 16:45 (R25, tests). Every release since is deployed the same way; the current one is the last row of 13.2. The folder
 above is the test copy, on `stream2` and port 8766 (ARQUITETURA 18.7,
 INSTALACAO 9).
 
@@ -331,9 +331,9 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
-23. **Done 11/10 (`v2026.10.11.4`).** **Report a bad detection instead of deleting it** (decided 11/10/2026). Some unnamed crops are not even a dog, or not a face. Each unnamed face and dog crop (and a person or animal label on a Recordings event) gets **"Bad detection"**: the crop leaves the gallery and the tabs, and is kept as an example in a new folder `reports/<kind>/` — the crop plus a JSON with camera, time, clip, label, score, box and what the user said (`not a dog`, `not a face`, `not a person`). Nothing is learned from it automatically yet; it is the improvement process's evidence: `tools/replay.py` and the tuning tools can be pointed at it, and each review reads the new reports (a rule like R18 or R35 is then measured against what the user flagged). Replaces the plain Dismiss of R27, which deleted without a trace. Additive: new files only; `check_data` reads them.
+23. **Done 11/10 (`v2026.10.11.4`).** **Report a bad detection instead of deleting it** (decided 11/10/2026). Some unnamed crops are not even a dog, or not a face. Each unnamed face and dog crop (and a person or animal label on a Recordings event) gets **"Bad detection"**: the crop leaves the gallery and the tabs, and is kept as an example in a new folder `reports/<kind>/` — the crop plus a JSON with camera, time, clip, label, score, box and what the user said (`not a dog`, `not a face`, `not a person`). Nothing is learned from it automatically yet; it is the improvement process's evidence: `tools/replay.py` and the tuning tools can be pointed at it, and each review reads the new reports (a rule like R18 or R35 is then measured against what the user flagged). Replaces the plain Dismiss of R27, which deleted without a trace. Additive: new files only; `check_data` reads them. **Since `v2026.10.11.6` (R38, R37):** Settings lists the reports; each can be undone — the entry returns to its gallery with its photos and sightings, or the label to its recording — and can say what it actually was (person, dog, other animal, nothing).
 
-24. **Done 11/10 (`v2026.10.11.4`).** **"Choose the best 40" for a person or a dog** (decided 11/10/2026). When a person or dog holds more than 40 views (the 40 kept plus the queue), their page gets an **Analyse** button: the software picks the 40 **most different** views — greedy farthest-point selection over the embeddings (cosine for faces, the Bhattacharyya distance for dogs, keeping day and night both represented), which covers angles and lighting instead of 40 near-copies — shows the proposal, and on confirmation keeps those 40 and moves the rest to the queue. Manual removal stays as it is. Tests: the selection spreads (minimum pairwise distance grows), nothing is lost (views + queue unchanged as a set).
+24. **Done 11/10 (`v2026.10.11.4`).** **"Choose the best 40" for a person or a dog** (decided 11/10/2026). When a person or dog holds more than 40 views (the 40 kept plus the queue), their page gets an **Analyse** button: the software picks the 40 **most different** views — greedy farthest-point selection over the embeddings (cosine for faces, the Bhattacharyya distance for dogs, keeping day and night both represented), which covers angles and lighting instead of 40 near-copies — shows the proposal, and on confirmation keeps those 40 and moves the rest to the queue. Manual removal stays as it is. Tests: the selection spreads (minimum pairwise distance grows), nothing is lost (views + queue unchanged as a set). **Since `v2026.10.11.6` (R40):** the queue is shown as **Waiting** beside **Chosen**, views move between them by the user's hand only (removing a chosen view no longer pulls a waiting one), and the proposal can also discard the views it does not keep.
 
 22. **Done in code 10/10 (`v2026.10.10.7`, ARQUITETURA 20); the thresholds wait for the user's names.** **11/10, first names:** Aurora 5 views (3 day, 2 infrared), Mirana 3 (day only) — checked on a sheet, all correct. `dog_tuning.py` on them: day 2 right-sure, 1 right-probable, 1 wrong-probable, 2 no name; infrared not measurable (Mirana has no infrared view). Too few to tune: about 10 per dog **per lighting** are needed. **A Dogs tab: each household teaches the system its own dogs** (decided 10/10/2026). The user confirmed the two-dog measurement (item 15) — the dark group is Mirana, the light one Aurora — and set the rule: **nothing about their dogs goes into the code.** The software is not only for this house; anyone must be able to teach it their own animals. So it mirrors People: (a) every dog detection keeps a crop cut out of its box (GrabCut) and an **appearance descriptor** computed from the fur pixels only — a normalised tone histogram, plus hue and saturation when the frame is in colour; (b) a **Dogs** tab next to People: a grid of named dogs, the unnamed crops with a name field and "Belongs to…", and a dog page with its views, favourite photo and calendar — the same screens and rules as items 19 and 21; (c) a dog gallery in its own folder, `dogs/` (`gallery.json` + `views/`), new files only, read by `check_data`; (d) matching by nearest neighbour against each named dog's views, **day views compared with day views and infrared with infrared**, and a name given only when the nearest dog is clearly closer than the second and within a distance limit — otherwise just "dog"; (e) the event's `animals` list, the Recordings card and the Telegram text use the names. **Notification rule (the user, 10/10):** the alert is about *a dog being there*, not about knowing which — so whenever a dog is detected and `dog` is among the alert labels, notify, and word it by certainty, the same three levels as faces (12.8): a clear match → the dog's name; a weak one → "probably <name>"; none → "unidentified dog". The thresholds start conservative and are tuned as the named views grow; if the patterns never firm up, the feature still works as "a dog was there", which is what exists today. Dogs that look alike stay "dog", which is the honest answer. Acceptance on this house's data: after the user names a few crops of each, production's past dog events are named correctly in most clear cases and at night, with no colour rule anywhere in the code. Supersedes item 15's model research.
 
@@ -458,7 +458,7 @@ uv run python -m jarvis --headless                      service only, no browser
 uv run python -m jarvis --window                        removed 10/10: only logs the web page's address
 uv run python -m jarvis --stop                          stop the copy running from this folder, cleanly
 uv run python tools/check_data.py                       can the current code read every file on disk?
-uv run pytest                                           the automatic tests (ARQUITETURA 19.5)
+uv run python -m pytest                                 the automatic tests (ARQUITETURA 19.5; not `uv run pytest`)
 uv run python tools/replay.py <video> [--prime]         why each frame was kept or dropped (ARQUITETURA 12.10)
 uv run tools/diagnostico.py Front                       testar variantes de captura
 uv run tools/diagnostico.py --local                     testar ffmpeg sem câmera
@@ -754,8 +754,9 @@ decidir.
 | 11 | 11/10/2026 | `8b019ea..db783cf`, developer session 9 — R28, R30 (a) | no code fixed; 48 tests pass; `a54f357` reached GitHub before this review by the architect's mistake (a push while the developer worked), no harm since production runs tags; release `v2026.10.11.2` |
 | 12 | 11/10/2026 | `5675cfe..a4cc3a2`, developer session 10 — R34, backlog 5, R29 (the first automatic cycle) | no code fixed; 64 tests pass; R35 kept open on the developer's data; release `v2026.10.11.3` |
 | 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no release code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4`. **The first deploy failed and rolled back on its own**: `--stop` returned while the old version still assembled a clip (22 s), the new one found both cameras busy. Fixed in `production.ps1` (`3ae5faa`: wait up to 180 s until no process runs from `C:\JARVIS`); the second deploy passed |
+| 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6` |
 
-**Last review covers up to the `v2026.10.11.4` release commit.** The next one
+**Last review covers up to the `v2026.10.11.6` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -813,10 +814,12 @@ subir de novo em 09/10.
 | | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) measured `afefe20`, not loosened: needs a **second named person** to test that the right one still wins |
 | ✓ | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | done `d00b99f`: 137 → 45 ms per frame (ARQUITETURA 21) |
 | ✓ | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | done `ef464f8` |
-| | R36 | low | A report can race a scan that reinforces the same entry, losing that one new view | open |
-| | R37 | low | A report says what it is not, never what it is (the user's own face filed as a dog) | open — an optional "actually: person / other animal / nothing" |
-| | R38 | **high** | A report made by mistake cannot be undone | open — the user made wrong reports on 11/10; nothing is lost (`reports/` keeps the crop, embeddings and sightings): a Reports list in Settings with **Undo**, which puts the entry back in its gallery or the label back on its event |
-| ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `(this commit)`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
+| ✓ | R36 | low | A report can race a scan that reinforces the same entry, losing that one new view | done `0daa7ff`: taken out under the lock first (ARQUITETURA 21) |
+| ✓ | R37 | low | A report says what it is not, never what it is (the user's own face filed as a dog) | done `72924d7`: "Actually…" in the Settings list (ARQUITETURA 21) |
+| ✓ | R38 | **high** | A report made by mistake cannot be undone | done `2c2c943`: Settings → Bad-detection reports, with Undo; older reports undo too (ARQUITETURA 21) |
+| ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `76a5a9e`, release `v2026.10.11.5`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
+| ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARQUITETURA 21) |
+| | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | open (13.14) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
 | ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARQUITETURA 21); rare cases go to bad-detection reports |
@@ -1387,6 +1390,50 @@ the M900 lists the paired devices with "forget" (and changing the PIN forgets
 them all). Acceptance: pair once through 192.168.0.18, close and reopen the
 browser, write without typing anything; a forgotten device is refused; tests
 for expiry and renewal.
+
+### 13.14 Review 14 — developer session 12 (11/10/2026)
+
+The scheduled cycle of 17:23: the architect started the developer on R38 →
+R40 → R37 → R36 and reviewed `1cea950..e03a083` whole. No code fixed: the
+lock order of R36 holds (`take_out` returns the entry under
+`_GALLERY_LOCK`, the slow copies run outside it, `put_back` on failure), the
+new routes check `kind` and the report name against `SAFE_NAME` and
+`SAFE_REPORT` before touching a path, every new POST passes the write guard,
+and Undo copies a photo back only where none exists. 92 tests pass,
+`check_data` reads everything, no comments.
+
+**Found while checking: `uv run pytest` no longer runs on the M900.**
+Smart App Control blocks `.venv\Scripts\pytest.exe`, an unsigned launcher
+(os error 4551); `uv run python -m pytest` runs the same tests through the
+signed Python. The developer had already used the second form; the docs and
+the `dev` skill now say so (ARQUITETURA 19.5).
+
+**The developer's questions, decided.** (1) An old report undone with more
+than one view keeps its crop as the entry's thumbnail, a file that a later
+report does not delete: accepted, both production reports have one view. (2)
+The last chosen view cannot be deleted even with views waiting: right — it
+is the user's rule that they pick, and a person without a chosen view
+matches nobody. (3) ↓ refused while Waiting holds 100, instead of dropping
+the oldest as a scan does: right, the user did not ask to lose a photo. (4)
+A scan that matches an entry while it is being reported still writes its
+sighting: if the report is undone it counts again, otherwise the recording
+card reads "unknown" — honest, no change. Also accepted: if writing a report
+raises after its JSON exists, the entry goes back and the JSON stays; its
+Undo answers 409.
+
+**R41 — A view is moved by its position, which a full queue shifts (low).**
+The four moves and the favourite address a view by its index in Chosen or
+Waiting. A scan never reorders Chosen, but when Waiting holds 100 it drops
+the oldest waiting view, so every waiting index shifts by one: a × clicked on
+a page loaded before then deletes the neighbour, a photo the user did not
+pick. It needs a full queue and a scan finishing while the user is on the
+page. Fix: each move also sends the photo name it was shown ("" for a view
+without one), and the server refuses with 409 — "the views changed: the page
+was refreshed" — when the view at that index is no longer it, the check
+`keep_spread` already makes with its signature. Acceptance: a test fills
+Waiting, reads the page, lets a scan add a view, and a × on the old index is
+refused.
+
 ---
 
 ## 14. Sessions and token budget
@@ -1444,10 +1491,26 @@ disk, which is exactly why the roles hand over through files.
 | A15 | architect | ultracode | 11/10 12:55–13:10 | review 13, release and deploy `v2026.10.11.3`, script 9 | ~43% → 47% | 77% → 78% | 820k → 832k tokens. **The first automatic cycle cost ~47 points of the 5-hour window, ~43 of them the developer's old conversation** |
 | D11 | developer | high | 11/10 13:00–14:50 | session 11, **a new conversation**: backlog 23, 24, R31, R32, R35 and R30 (b) measured | 47% → ~72% for six items | 78% → 81% | started light |
 | A16 | architect | ultracode | 11/10 14:50–15:15 | review 14, release `v2026.10.11.4`, a rolled-back deploy diagnosed and fixed, script 10 | 72% → ~78% | 81% → 82% | 860k → 880k |
+| D12 | developer | high | 11/10 17:25–17:40 | session 12, the scheduled cycle, a new conversation: R38, R40, R37, R36 (92 tests) | 34% → 44%: R38 4, R40 4, R37 1, R36 1 | 87% → 88% | 74k → 193k tokens |
+| A17 | architect | ultracode | 11/10 17:38– | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 52% at the release commit | 88% → 89% | 78k → 170k tokens, a new conversation |
 
 ### 14.4 Next sessions
 
-**Cycle scheduled for 11/10 at 17:23 by the user — one cycle only, and the weekly stop of 90 % is waived for it by the user:** the architect starts the developer on the plan below, then, after the review, releases, deploys and **waits for the user** (no hand back). **Developer 12:** R38 (undo a report) → R40 (**the waiting views are shown, not hidden** — the user's rule, 11/10: waiting photos only make sense if they can be compared with the chosen ones. The person or dog page shows two grids, **Chosen (up to 40)** and **Waiting**, each with its photos. On a chosen view: × deletes it, ↓ moves it to Waiting. On a waiting view: ↑ moves it into Chosen (refused with a hint while Chosen is full — free a place first), × deletes it. Removing a chosen view no longer pulls the oldest waiting one by itself: the user picks. After Analyse, the proposal offers both "Keep these 40, the rest waits" and "Keep these 40, discard the rest". Every move keeps `embeddings`/`views` and `pending` aligned, with tests) → R37 → R36. R30 (b) waits for a second named person. **Architect:** R33. **Waiting for the user:** backlog 1–2.
+**The scheduled cycle of 11/10 17:23 is done** (review 14, `v2026.10.11.6`). As
+the user set it, the architect waits for the user: no hand back. Weekly usage
+is at 89 %, with the reset on 14/10 at 16:00.
+
+**Ready for the developer when the user starts a session:** R41 (low — moves
+carry the photo name, 409 when it no longer matches). Small; it can open a
+session together with whatever the user decides next. R30 (b) still waits for
+a second named person.
+
+**The architect:** R33, the documentation rewrite (13.12). It reads and
+rewrites the three big documents whole, so it costs more than a review; the
+user decides when, given the weekly limit.
+
+**Waiting for the user:** every other open backlog item is **(proposto)** —
+1 (zones), 2 (system health) and the rest of section 8.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
@@ -1481,3 +1544,4 @@ review and commits.
 | 8 | `v2026.10.10.7` | Mirana and Aurora / Mirana e Aurora | written |
 | 9 | `v2026.10.11`, `.2` and `.3` | The Front Desk Learns Manners / A Recepção Aprende Modos | written |
 | 10 | `v2026.10.11.4` | The Evidence Box / A Caixa de Provas | written |
+| 11 | `v2026.10.11.5` and `.6` | Second Chances / Segunda Chance | written |
