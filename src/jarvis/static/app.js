@@ -244,6 +244,7 @@ function showTab() {
     dogsTab.show();
   } else if (tab === "settings") {
     loadSettings();
+    loadReports();
   }
 }
 
@@ -791,6 +792,49 @@ pinForm.addEventListener("submit", async (submitted) => {
     pinResult.textContent = `Not done: ${problem.message}`;
   }
 });
+
+const reportsResult = document.getElementById("reports-result");
+
+function reportItem(report) {
+  const item = document.createElement("li");
+  if (report.photo) {
+    const image = document.createElement("img");
+    image.src = report.photo;
+    image.alt = "";
+    image.loading = "lazy";
+    item.append(image);
+  }
+  const text = document.createElement("span");
+  const where = report.source === "event" ? "recording" : `${report.kind} tab`;
+  text.textContent = `${report.verdict} · ${report.camera} · ${report.at.replace("T", " ").slice(0, 16)} · from the ${where}`;
+  const undo = document.createElement("button");
+  undo.type = "button";
+  undo.textContent = "Undo";
+  undo.addEventListener("click", async () => {
+    try {
+      await send(report.undo);
+      reportsResult.textContent = report.source === "event"
+        ? "Undone: the label is back on its recording."
+        : `Undone: the crop is back in the ${report.kind === "dog" ? "Dogs" : "People"} tab.`;
+    } catch (problem) {
+      reportsResult.textContent = `Not undone: ${problem.message}`;
+    }
+    loadReports();
+  });
+  item.append(text, undo);
+  return item;
+}
+
+async function loadReports() {
+  const list = document.getElementById("report-list");
+  try {
+    const found = await getJSON("/api/reports");
+    list.replaceChildren(...found.map(reportItem));
+    if (found.length === 0) showNotice(list, "No reports.");
+  } catch {
+    showNotice(list, "Could not read the reports.");
+  }
+}
 
 document.getElementById("find-chat").addEventListener("click", async () => {
   try {

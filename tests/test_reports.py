@@ -2,6 +2,7 @@
 
 import json
 
+import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
@@ -96,3 +97,66 @@ def test_events_written_before_reports_still_show_every_label(tmp_path):
     sidecar = event(tmp_path / "Front" / "2026-10-10", ["person"])
     entry = json.loads(sidecar.read_text(encoding="utf-8"))
     assert web._event({**entry, "thumbnail_path": sidecar.with_suffix(".jpg")})["labels"] == ["person"]
+
+
+def test_undo_puts_a_reported_face_back_with_its_photos_and_sightings(gallery, report_dir):
+    person_id = gallery.add([[0.1] * 128, [0.2] * 128], "t.jpg", [CROP, CROP])
+    before = faces.Gallery(gallery.path).get(person_id)
+    seen = sighting(gallery, person_id)
+    path = reports.report_entry(gallery, person_id)
+    assert list(gallery.view_dir.glob("*.jpg")) == []
+    assert reports.undo(path, {"face": gallery})
+    after = faces.Gallery(gallery.path).get(person_id)
+    assert after == before
+    assert all(reports._stored(view).is_file() for view in faces.views_of(after))
+    assert seen.is_file() and seen.with_suffix(".jpg").is_file()
+    assert reports.listing() == [] and not path.with_suffix("").exists()
+
+
+def test_undo_of_a_report_written_before_undo_existed(tmp_path, report_dir):
+    dog_gallery = faces.Gallery(tmp_path / "dogs" / "gallery.json")
+    folder = report_dir / "dog"
+    folder.mkdir(parents=True)
+    cv2.imwrite(str(folder / "2026-10-10_15-36-08_3d0bde.jpg"), CROP)
+    path = folder / "2026-10-10_15-36-08_3d0bde.json"
+    path.write_text(json.dumps({
+        "kind": "dog", "verdict": "not a dog", "reported_at": "2026-10-11T09:00:00",
+        "source": "gallery", "label": "dog", "camera": "Front", "at": "2026-10-10T15:36:08",
+        "time": "15:36:08", "clip": "clips/Front/2026-10-10/15-36-08.mp4", "score": None,
+        "box": [1, 2, 3, 4], "crop": "2026-10-10_15-36-08_3d0bde.jpg",
+        "entry": {"id": "d_68b6364f", "first_seen": "2026-10-10T20:14:54", "embeddings": [[0.3] * 8]},
+        "sightings": [{"dog_id": "d_68b6364f", "camera": "Front", "at": "2026-10-10T15:36:08",
+                       "thumbnail": "15-36-08_643ded.jpg"}]}), encoding="utf-8")
+    assert reports.undo(path, {"dog": dog_gallery})
+    dog = faces.Gallery(dog_gallery.path).get("d_68b6364f")
+    assert dog["name"] == "" and len(dog["embeddings"]) == 1
+    assert reports._stored(faces.views_of(dog)[0]).is_file()
+    restored = dog_gallery.path.parent / "2026-10-10" / "15-36-08_643ded.json"
+    assert json.loads(restored.read_text(encoding="utf-8"))["dog_id"] == "d_68b6364f"
+    assert restored.with_suffix(".jpg").is_file()
+    assert not path.exists()
+
+
+def test_undo_from_the_page_returns_a_label_to_its_recording(tmp_path, report_dir, monkeypatch):
+    clips = tmp_path / "clips"
+    sidecar = event(clips / "Front" / "2026-10-10", ["dog", "person"])
+    monkeypatch.setattr(web, "CLIP_DIR", clips)
+    reports.report_event(sidecar, "person")
+    client = TestClient(web.app, client=("127.0.0.1", 50000))
+    [card] = client.get("/api/reports").json()
+    assert card["verdict"] == "not a person" and card["source"] == "event"
+    assert client.get(card["photo"]).status_code == 200
+    assert client.post(card["undo"], headers=HEADER).status_code == 200
+    assert json.loads(sidecar.read_text(encoding="utf-8"))["reported_labels"] == []
+    assert client.get("/api/reports").json() == []
+    assert client.post(card["undo"], headers=HEADER).status_code == 404
+    assert client.post("/api/reports/person/..%2F..%2Fx/undo", headers=HEADER).status_code == 404
+
+
+def test_undo_refuses_an_entry_that_is_already_back(gallery, report_dir):
+    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    entry = faces.Gallery(gallery.path).get(person_id)
+    path = reports.report_entry(gallery, person_id)
+    gallery.put_back(entry)
+    assert not reports.undo(path, {"face": gallery})
+    assert path.is_file()

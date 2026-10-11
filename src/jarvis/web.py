@@ -54,6 +54,7 @@ SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
 SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
 SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
 SAFE_DOG = re.compile(r"^d_[0-9a-f]{8}$")
+SAFE_REPORT = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_[0-9a-f]{6}$")
 NAME_MAX = 60
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
@@ -437,6 +438,48 @@ def _report(gallery, entry_id):
     if reports.report_entry(gallery, entry_id) is None:
         raise HTTPException(400, "only an unnamed crop can be reported as a bad detection")
     return {"reported": entry_id}
+
+
+def _report_card(report):
+    """One report as the Settings list shows it."""
+    path = Path(report["path"])
+    kind, stem = path.parent.name, path.stem
+    return {
+        "kind": kind,
+        "verdict": report.get("verdict", ""),
+        "source": report.get("source", ""),
+        "camera": report.get("camera", ""),
+        "at": report.get("at", ""),
+        "reported_at": report.get("reported_at", ""),
+        "photo": f"/report-photo/{kind}/{stem}.jpg" if report.get("crop") == f"{stem}.jpg" else None,
+        "undo": f"/api/reports/{kind}/{stem}/undo",
+    }
+
+
+@app.get("/api/reports")
+def report_list():
+    """Every bad-detection report, newest detection first, each with its Undo."""
+    return [_report_card(r) for r in reports.listing()
+            if SAFE_NAME.match(Path(r["path"]).parent.name) and SAFE_REPORT.match(Path(r["path"]).stem)]
+
+
+@app.post("/api/reports/{kind}/{name}/undo")
+def undo_report(kind: str, name: str):
+    """Take back a report made by mistake: the crop returns to its tab, or the label to its card."""
+    path = reports.find(kind, name) if SAFE_NAME.match(kind) and SAFE_REPORT.match(name) else None
+    if path is None:
+        raise HTTPException(404, "no such report")
+    if not reports.undo(path, {"face": faces.Gallery(), "dog": dogs.DogGallery()}):
+        raise HTTPException(409, "nothing to put back: the recording is no longer on this "
+                                 "computer, or the entry or label is already there")
+    return {"undone": name}
+
+
+@app.get("/report-photo/{kind}/{name}")
+def report_photo(kind: str, name: str):
+    if not (SAFE_NAME.match(kind) and name.endswith(".jpg") and SAFE_REPORT.match(name[:-4])):
+        raise HTTPException(404)
+    return _crop_file(reports.REPORT_DIR, kind, name)
 
 
 def _crop_file(root, *parts):

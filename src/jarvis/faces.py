@@ -479,6 +479,16 @@ class Gallery:
             self._forget_view(view)
         return True
 
+    def put_back(self, entry):
+        """Return an entry taken out by mistake. False when its id is already in the gallery."""
+        with _GALLERY_LOCK:
+            self.load()
+            if self.get(entry["id"]) is not None:
+                return False
+            self.people.append(entry)
+            self.save()
+        return True
+
     def distances(self, embeddings):
         """Every pairwise distance between face embeddings: one minus the cosine similarity."""
         x = np.asarray(embeddings, np.float64)

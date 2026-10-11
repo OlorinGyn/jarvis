@@ -610,6 +610,35 @@ h1 {
   color: var(--muted);
 }
 
+#report-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+#report-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+#report-list img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+#report-list span {
+  flex: 1;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
