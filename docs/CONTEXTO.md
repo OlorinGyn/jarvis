@@ -1447,7 +1447,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next sessions
 
-**Developer 12:** R38 (undo a report) → R40 (after Analyse, the proposal offers both "Keep these 40, the rest waits" and "Keep these 40, discard the rest" — on 11/10 the user expected the 9 left over to disappear, and they went to the queue as designed) → R37 → R36. R30 (b) waits for a second named person. **Architect:** R33. **Waiting for the user:** backlog 1–2.
+**Developer 12:** R38 (undo a report) → R40 (**the waiting views are shown, not hidden** — the user's rule, 11/10: waiting photos only make sense if they can be compared with the chosen ones. The person or dog page shows two grids, **Chosen (up to 40)** and **Waiting**, each with its photos. On a chosen view: × deletes it, ↓ moves it to Waiting. On a waiting view: ↑ moves it into Chosen (refused with a hint while Chosen is full — free a place first), × deletes it. Removing a chosen view no longer pulls the oldest waiting one by itself: the user picks. After Analyse, the proposal offers both "Keep these 40, the rest waits" and "Keep these 40, discard the rest". Every move keeps `embeddings`/`views` and `pending` aligned, with tests) → R37 → R36. R30 (b) waits for a second named person. **Architect:** R33. **Waiting for the user:** backlog 1–2.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
