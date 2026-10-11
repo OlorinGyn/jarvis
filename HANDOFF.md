@@ -6,5 +6,6 @@ See `CLAUDE.md`, "Developer and architect" and "Automatic handover".
 
 Last integrated: review 12, 11/10/2026 (CONTEXTO 13.2).
 
-Next developer session: planned in CONTEXTO 14.4 — R29 (dog grouping; read the
+Next developer session: planned in CONTEXTO 14.4 — R34 (pair a device once,
+13.13), R29 (dog grouping; read the
 widened text in 13.11), then R30 (b) once views are named, R31, R32.

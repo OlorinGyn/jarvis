@@ -808,6 +808,7 @@ subir de novo em 09/10.
 | | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | open — dev session 10 (13.12) |
 | | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | open — dev session 10 (13.12) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
+| | R34 | **high** | Devices have to type the PIN again and again | open — dev session 10, first item (13.13) |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1352,6 +1353,29 @@ and usage log moved to a `docs/HISTORY.md` read on demand; ARQUITETURA
 reorganised by subject with the dated sections folded in; and R10's
 translation done along the way. To be done in a new conversation, where the
 documents can be read whole without this one's 750k of context.
+### 13.13 Pairing a device once (11/10/2026)
+
+The user has to type the PIN again "all the time" on their devices and asked
+for one validation, or at least 30 days per device. The page keeps the PIN in
+`localStorage`, with no expiry of its own — but browsers do clear it: Safari
+deletes script-written storage of a site unused for 7 days, private windows
+and "clear data on close" settings drop it, and a different address
+(`192.168.0.18` against the M900's name) is a different store. Re-typing the
+PIN is the symptom; storing the secret in the page is the cause.
+
+**R34 — Pair a device once, for 30 days that renew with use (high).** Pairing
+with the PIN makes the server set a cookie — `HttpOnly`, `SameSite=Strict`,
+`Max-Age` 30 days — holding a random device token; the server keeps only its
+SHA-256 hash, with a label and the last use, in a new file `devices.json`
+(additive). Every write from a paired device renews the 30 days, so a device
+in use never asks again; one unused for 30 days asks once. A cookie set by the
+server survives where `localStorage` does not (Safari's 7-day rule applies to
+storage written by scripts). The custom header of R24 stays, so cross-site
+forgery is still blocked; the PIN header keeps working as before. Settings on
+the M900 lists the paired devices with "forget" (and changing the PIN forgets
+them all). Acceptance: pair once through 192.168.0.18, close and reopen the
+browser, write without typing anything; a forgotten device is refused; tests
+for expiry and renewal.
 ---
 
 ## 14. Sessions and token budget
@@ -1408,7 +1432,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next sessions
 
-**Developer 10:** R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
+**Developer 10:** R34 (pair a device once, 13.13) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
