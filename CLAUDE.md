@@ -100,6 +100,16 @@ architect logs it in `docs/CONTEXTO.md` section 14.3; the developer writes its
 numbers in `HANDOFF.md`, and the architect moves them there. Start each session
 in a new conversation; the planned scope for the next one is in 14.4.
 
+**Parallel sessions share one folder (the user's rule, 11/10/2026).** The user
+often talks to the architect while a developer session works in another
+window, on the same working tree. So the architect, outside a review: commits
+only its own files by path (`git commit <paths> -m …`, never a bare
+`git commit` that would take whatever the developer staged); never pushes if
+`git log jarvis/master..HEAD` shows a commit that is not its own; never edits
+a file the developer may be changing, nor the plan the developer is following
+(CONTEXTO 14.4 and the recommendation texts) — a change to a running plan goes
+in the next review, or to the user to relay. Check `git status` first.
+
 ## When opening this folder
 
 **Before answering anything,** run the resume routine in `docs/CONTEXTO.md`
