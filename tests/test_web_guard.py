@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from jarvis import devices, dogs, faces, settings, web
+from jarvis import devices, dogs, faces, reports, settings, web
 
 HEADER = {"X-Jarvis-Request": "1"}
 TOKEN = "123456789:AAFakeTokenForTheGuardTests_x"
@@ -99,9 +99,11 @@ def test_choosing_a_favourite_goes_through_the_guard(local, remote, tmp_path, mo
     assert local.get("/api/persons").json()["unnamed"][0]["photo"].startswith("/view/")
 
 
-def test_dismissing_a_dog_goes_through_the_guard(local, remote, tmp_path, monkeypatch):
+def test_reporting_a_dog_goes_through_the_guard(local, remote, tmp_path, monkeypatch):
     monkeypatch.setattr(dogs, "GALLERY_FILE", tmp_path / "dogs" / "gallery.json")
+    monkeypatch.setattr(reports, "REPORT_DIR", tmp_path / "reports")
     dog_id = dogs.DogGallery().add([[1.0] + [0.0] * 40], "t.jpg", [np.zeros((40, 40, 3), np.uint8)])
-    assert remote.post(f"/api/dogs/{dog_id}/dismiss", headers=HEADER).status_code == 403
-    assert local.post(f"/api/dogs/{dog_id}/dismiss", headers=HEADER).status_code == 200
-    assert local.post(f"/api/dogs/{dog_id}/dismiss", headers=HEADER).status_code == 404
+    assert remote.post(f"/api/dogs/{dog_id}/report", headers=HEADER).status_code == 403
+    assert local.post(f"/api/dogs/{dog_id}/report", headers=HEADER).status_code == 200
+    assert local.post(f"/api/dogs/{dog_id}/report", headers=HEADER).status_code == 404
+    assert len(list((tmp_path / "reports" / "dog").glob("*.json"))) == 1

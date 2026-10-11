@@ -3,8 +3,9 @@
 Usage: uv run tools/check_data.py
 
 The user's rule: a new version must never break files written by an older
-one. This reads every event, face sighting, the face gallery and config.json
-the same way the program does, and fails if any of them can no longer be read.
+one. This reads every event, face and dog sighting, both galleries, the
+bad-detection reports and config.json the same way the program does, and
+fails if any of them can no longer be read.
 Run it before and after every production update. See docs/ARQUITETURA.md
 section 19.
 """
@@ -13,7 +14,7 @@ import json
 import sys
 from pathlib import Path
 
-from jarvis import devices, dogs, faces, settings, web
+from jarvis import devices, dogs, faces, reports, settings, web
 from jarvis.clips import CLIP_DIR
 
 EVENT_KEYS = ("camera", "started_at", "time", "seconds", "labels", "video", "thumbnail")
@@ -44,6 +45,8 @@ def check_events(root, problems):
             web._event(entry)
         except Exception as problem:
             problems.append(f"{sidecar}: the web cannot show it ({problem})")
+        if "reported_labels" in entry and not isinstance(entry["reported_labels"], list):
+            problems.append(f"{sidecar}: reported_labels is not a list")
         if not sidecar.with_suffix(".mp4").exists():
             problems.append(f"{sidecar}: video missing")
     return count
@@ -141,6 +144,26 @@ def check_dogs(problems):
     return len(gallery.people), sightings
 
 
+def check_reports(problems):
+    """Every bad-detection report, read as the review and the tools read them."""
+    count = 0
+    for path in sorted(reports.REPORT_DIR.glob("*/*.json")):
+        count += 1
+        try:
+            report = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError) as problem:
+            problems.append(f"{path}: unreadable ({problem})")
+            continue
+        missing = [k for k in reports.REQUIRED_KEYS if k not in report]
+        if missing:
+            problems.append(f"{path}: missing {missing}")
+        if report.get("crop") and not path.with_name(report["crop"]).is_file():
+            problems.append(f"{path}: its crop is missing")
+    if count != len(reports.listing()):
+        problems.append("reports: the listing does not read every report")
+    return count
+
+
 def check_devices(problems):
     """devices.json, if present, read as the write guard reads it."""
     if not devices.FILE.exists():
@@ -168,6 +191,7 @@ def main():
     print(f"gallery: {people} person(s); face sightings: {sightings}")
     named_dogs, dog_sightings = check_dogs(problems)
     print(f"dogs: {named_dogs} in the gallery; dog sightings: {dog_sightings}")
+    print(f"bad-detection reports: {check_reports(problems)}")
     print(f"config.json: {check_settings(problems)}")
     print(f"devices.json: {check_devices(problems)}")
 

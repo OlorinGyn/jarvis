@@ -27,7 +27,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, devices, dogs, faces, notify, settings
+from jarvis import ROOT, archive, devices, dogs, faces, notify, reports, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -47,6 +47,7 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 SAFE_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SAFE_THUMB = re.compile(r"^\d{2}-\d{2}-\d{2}(\.best|\.side)?\.jpg$")
 SAFE_VIDEO = re.compile(r"^\d{2}-\d{2}-\d{2}\.mp4$")
+SAFE_EVENT = re.compile(r"^\d{2}-\d{2}-\d{2}$")
 SAFE_FACE = re.compile(r"^\d{2}-\d{2}-\d{2}_[0-9a-f]{6}\.jpg$")
 SAFE_PERSON = re.compile(r"^p_[0-9a-f]{8}$")
 SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
@@ -165,6 +166,8 @@ def _event(entry, seen=None, dogs_seen=None):
     """
     thumb = entry["thumbnail_path"]
     camera, day = thumb.parent.parent.name, thumb.parent.name
+    reported = reports.reported_labels(entry)
+    labels = [label for label in entry.get("labels", []) if label not in reported]
     best = entry.get("best_thumbnail")
     if isinstance(best, str) and SAFE_THUMB.match(best) and (thumb.parent / best).is_file():
         thumb = thumb.parent / best
@@ -173,14 +176,15 @@ def _event(entry, seen=None, dogs_seen=None):
         "started_at": entry.get("started_at", ""),
         "time": entry.get("time", ""),
         "seconds": entry.get("seconds", 0),
-        "labels": entry.get("labels", []),
+        "labels": labels,
         "confidence": entry.get("best_confidence", 0),
         "reason": entry.get("reason", ""),
         "thumbnail": f"/thumbnail/{camera}/{day}/{thumb.name}" if thumb.exists() else None,
         "video": _event_file(entry, camera, day, ".mp4", "video"),
         "side": _event_file(entry, camera, day, ".side.jpg", "thumbnail"),
         "people": (seen or {}).get((camera, day, entry["thumbnail_path"].stem), []),
-        "animals": _animals(entry, camera, day, dogs_seen),
+        "animals": _animals({**entry, "labels": labels}, camera, day, dogs_seen),
+        "report": f"/api/events/{camera}/{day}/{entry['thumbnail_path'].stem}/report",
     }
 
 
@@ -257,6 +261,20 @@ def video(camera: str, day: str, name: str):
     if not path.is_relative_to(CLIP_DIR.resolve()) or not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type="video/mp4")
+
+
+@app.post("/api/events/{camera}/{day}/{name}/report")
+def report_event(camera: str, day: str, name: str, payload: dict = Body(...)):
+    """Say one label of a recording is wrong: it leaves the card and is kept as a report."""
+    if not (SAFE_NAME.match(camera) and SAFE_DAY.match(day) and SAFE_EVENT.match(name)):
+        raise HTTPException(404)
+    sidecar = (CLIP_DIR / camera / day / f"{name}.json").resolve()
+    if not sidecar.is_relative_to(CLIP_DIR.resolve()) or not sidecar.is_file():
+        raise HTTPException(404)
+    label = payload.get("label")
+    if not isinstance(label, str) or reports.report_event(sidecar, label) is None:
+        raise HTTPException(400, "that label is not one of this recording's, or was already reported")
+    return {"reported": label}
 
 
 @app.get("/thumbnail/{camera}/{day}/{name}")
@@ -377,6 +395,13 @@ def _remove(gallery, entry_id, index):
     return _page(gallery, entry_id)
 
 
+def _report(gallery, entry_id):
+    _entry_or_404(gallery, entry_id)
+    if reports.report_entry(gallery, entry_id) is None:
+        raise HTTPException(400, "only an unnamed crop can be reported as a bad detection")
+    return {"reported": entry_id}
+
+
 def _crop_file(root, *parts):
     """A crop inside root, or a 404: the checks keep requests inside the folder."""
     root = Path(root).resolve()
@@ -414,6 +439,12 @@ def choose_cover(person_id: str, index: int):
 def remove_view(person_id: str, index: int):
     """Remove one stored view; the oldest queued view takes its place."""
     return _remove(faces.Gallery(), person_id, index)
+
+
+@app.post("/api/persons/{person_id}/report")
+def report_person(person_id: str):
+    """Say an unnamed face is not a face: it leaves the gallery and is kept as a report."""
+    return _report(faces.Gallery(), person_id)
 
 
 @app.get("/face/{day}/{name}")
@@ -456,14 +487,9 @@ def remove_dog_view(dog_id: str, index: int):
     return _remove(dogs.DogGallery(), dog_id, index)
 
 
-@app.post("/api/dogs/{dog_id}/dismiss")
-def dismiss_dog(dog_id: str):
-    """Forget an unnamed dog crop the user does not want to name."""
-    gallery = dogs.DogGallery()
-    _entry_or_404(gallery, dog_id)
-    if not gallery.dismiss(dog_id):
-        raise HTTPException(400, "only an unnamed dog can be dismissed")
-    return {"dismissed": dog_id}
+@app.post("/api/dogs/{dog_id}/report")
+def report_dog(dog_id: str):
+    return _report(dogs.DogGallery(), dog_id)
 
 
 @app.get("/dog-photo/{day}/{name}")

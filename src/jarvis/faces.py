@@ -197,12 +197,13 @@ def _group(observations):
                 group["crops"].append(seen["crop"])
                 if weight > group["weight"]:
                     group.update(embedding=seen["embedding"], crop=seen["crop"],
-                                 weight=weight, score=seen["score"], width=width)
+                                 weight=weight, score=seen["score"], width=width,
+                                 box=seen["box"])
                 break
         else:
             groups.append({"embedding": seen["embedding"], "crop": seen["crop"],
                            "weight": weight, "score": seen["score"],
-                           "width": width, "count": 1,
+                           "width": width, "box": seen["box"], "count": 1,
                            "views": [seen["embedding"]], "crops": [seen["crop"]]})
     return groups
 
@@ -378,6 +379,19 @@ class Gallery:
                     person.pop("cover")
             self.save()
         self._forget_view(removed)
+        return True
+
+    def take_out(self, person_id):
+        """Remove one unnamed entry and delete its view photos. False for a named or unknown one."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            if person is None or person["name"]:
+                return False
+            self.people.remove(person)
+            self.save()
+        for view in views_of(person) + [w.get("view") for w in person.get("pending") or []]:
+            self._forget_view(view)
         return True
 
     def set_cover(self, person_id, index):
@@ -671,6 +685,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
             "score": round(score, 3),
             "frames": group["count"],
             "face_width": group["width"],
+            "box": [int(v) for v in group["box"]],
             "reliable": reliable,
             "clip": _portable(clip),
             "thumbnail": thumbnail.name,

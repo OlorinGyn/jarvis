@@ -325,7 +325,7 @@ h1 {
   font-size: 0.85rem;
 }
 
-.dismiss {
+.report {
   width: 100%;
   margin-top: 6px;
   background: transparent;
@@ -338,7 +338,18 @@ h1 {
   cursor: pointer;
 }
 
-.dismiss:hover {
+.player-reports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.player-reports .report {
+  width: auto;
+  margin-top: 0;
+}
+
+.report:hover {
   background: var(--alarm);
   color: #fff;
 }

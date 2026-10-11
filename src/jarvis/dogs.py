@@ -102,19 +102,6 @@ class DogGallery(faces.Gallery):
             self._forget_view(view)
         return len(excess)
 
-    def dismiss(self, dog_id):
-        """Forget one unnamed dog the user does not want to name. False for a named one."""
-        with faces._GALLERY_LOCK:
-            self.load()
-            dog = self.get(dog_id)
-            if dog is None or dog["name"]:
-                return False
-            views = self._drop([dog])
-            self.save()
-        for view in views:
-            self._forget_view(view)
-        return True
-
     def label(self, dog_id):
         dog = self.get(dog_id)
         if dog is None:
@@ -305,6 +292,7 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
             "at": started_at.isoformat(timespec="seconds"),
             "time": started_at.strftime("%H:%M:%S"),
             "infrared": bool(descriptor[0]),
+            "box": [int(v) for v in box[:4]],
             "certainty": result["certainty"] or "",
             "match": result["name"],
             "words": wording(result, gallery),

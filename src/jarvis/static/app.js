@@ -70,6 +70,26 @@ function card(event) {
 const player = document.getElementById("player");
 const playerVideo = document.getElementById("player-video");
 const playerSide = document.getElementById("player-side");
+const playerReports = document.getElementById("player-reports");
+
+function reportButton(event, label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "report";
+  button.textContent = `Not a ${label}`;
+  button.title = `The detector was wrong: remove "${label}" from this recording and keep it as a report`;
+  button.addEventListener("click", async () => {
+    if (!confirm(`${button.title}?`)) return;
+    try {
+      await send(event.report, { label });
+      button.replaceWith(`Reported: not a ${label}.`);
+    } catch (problem) {
+      button.replaceWith(`Not reported: ${problem.message}`);
+    }
+    loadEvents();
+  });
+  return button;
+}
 
 function openPlayer(event) {
   playerVideo.src = event.video;
@@ -79,6 +99,7 @@ function openPlayer(event) {
   document.getElementById("player-text").textContent = parts.join(" · ");
   playerSide.hidden = !event.side;
   if (event.side) playerSide.src = event.side;
+  playerReports.replaceChildren(...event.labels.map((label) => reportButton(event, label)));
   player.hidden = false;
   playerVideo.play().catch(() => {});
 }
@@ -389,23 +410,22 @@ function galleryTab(section, api, kind, unnamedLabel) {
     }
     const input = form.querySelector("input");
     input.placeholder = section.querySelector(".rename-form input").placeholder;
-    if (kind === "dog") {
-      const dismiss = document.createElement("button");
-      dismiss.type = "button";
-      dismiss.className = "dismiss";
-      dismiss.textContent = "Dismiss";
-      dismiss.title = "Not a dog worth naming: forget this crop";
-      dismiss.addEventListener("click", async () => {
-        try {
-          await send(`${api}/${entry.id}/dismiss`);
-          listResult.textContent = "Crop dismissed.";
-        } catch (problem) {
-          listResult.textContent = `Not dismissed: ${problem.message}`;
-        }
-        loadList();
-      });
-      form.after(dismiss);
-    }
+    const report = document.createElement("button");
+    report.type = "button";
+    report.className = "report";
+    report.textContent = "Bad detection";
+    report.title = `Not a ${kind === "dog" ? "dog" : "face"}: remove it and keep it as a report`;
+    report.addEventListener("click", async () => {
+      if (!confirm(`${report.title}?`)) return;
+      try {
+        await send(`${api}/${entry.id}/report`);
+        listResult.textContent = "Reported: it is kept as an example of a bad detection.";
+      } catch (problem) {
+        listResult.textContent = `Not reported: ${problem.message}`;
+      }
+      loadList();
+    });
+    form.after(report);
     form.addEventListener("submit", (submitted) => {
       submitted.preventDefault();
       applyName(entry.id, input.value, false);

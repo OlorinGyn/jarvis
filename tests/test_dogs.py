@@ -126,6 +126,7 @@ def test_a_sure_match_teaches_that_dog_instead_of_adding_a_crop(two_dogs, tmp_pa
     assert added == [light]
     assert len(reloaded.people) == 2 and len(reloaded.get(light)["embeddings"]) == 2
     sighting = json.loads(next((tmp_path / "2026-10-10").glob("*.json")).read_text(encoding="utf-8"))
+    assert sighting["box"] == [110, 60, 100, 140]
     assert sighting["certainty"] == "sure" and sighting["words"] == "Light one"
 
 
@@ -141,13 +142,13 @@ def test_only_the_newest_unnamed_dogs_are_kept(gallery, tmp_path, monkeypatch):
     assert len(list((tmp_path / "views").glob("*.jpg"))) == 3
 
 
-def test_dismiss_forgets_an_unnamed_dog_and_its_photo(gallery, tmp_path):
+def test_take_out_forgets_an_unnamed_dog_and_its_photo(gallery, tmp_path):
     first = dogs.record(scene(False), [(110, 60, 100, 140)], "Front", START, tmp_path / "c.mp4", gallery)[0]
     second = dogs.record(scene(True), [(110, 60, 100, 140)], "Front", START, tmp_path / "c.mp4", gallery)[0]
     gallery.rename(second, "Named")
-    assert gallery.dismiss(first)
-    assert not gallery.dismiss(second)
-    assert not gallery.dismiss("d_00000000")
+    assert gallery.take_out(first)
+    assert not gallery.take_out(second)
+    assert not gallery.take_out("d_00000000")
     reloaded = dogs.DogGallery(gallery.path)
     assert reloaded.get(first) is None and reloaded.get(second) is not None
     assert len(list((tmp_path / "views").glob("*.jpg"))) == 1
