@@ -163,6 +163,16 @@ def faces_seen(camera, started_at, sightings, settings=None):
     return sent
 
 
+def side_face(camera, started_at, image, settings=None):
+    """Follow up an event whose scan saw a face only from the side: a picture, not a name (R30)."""
+    settings = settings or load()
+    if not settings.get("notify_token") or not settings.get("notify_chat"):
+        return False
+    when = started_at.strftime("%H:%M:%S")
+    return _send_logged(f"{camera} side view", f"{camera} {when}: face, side view",
+                        str(image), settings)
+
+
 def best_view(camera, started_at, image, settings=None):
     """Follow up an event whose clip showed no face with its best view of the person.
 

@@ -97,6 +97,15 @@ def cosine(a, b):
     return float(np.dot(a, b) / denominator) if denominator else 0.0
 
 
+def nose_offset(face):
+    """How far the nose sits from between the eyes, in eye spreads: 0 frontal, about 1 profile."""
+    right_eye, left_eye, nose = face[4:6], face[6:8], face[8:10]
+    spread = float(np.linalg.norm(left_eye - right_eye))
+    if spread < 1:
+        return float("inf")
+    return abs(float(nose[0] - (right_eye[0] + left_eye[0]) / 2)) / spread
+
+
 def is_frontal(face):
     """Whether a YuNet detection is a face seen from the front.
 
@@ -132,8 +141,13 @@ def context_crop(frame, box):
     return cv2.resize(crop, (THUMB_SIZE, THUMB_SIZE), interpolation=interpolation)
 
 
-def faces_in(frame):
-    """Return one dict per frontal face: box, embedding, score and a display crop."""
+def faces_in(frame, sides=None):
+    """Return one dict per frontal face: box, embedding, score and a display crop.
+
+    When sides is a list, good faces that are not frontal (seen from the side)
+    are added to it with their box, nose offset and crop: they cannot be
+    recognised, but they are still a picture of the face (R30).
+    """
     detector = _detector()
     height, width = frame.shape[:2]
     detector.setInputSize((width, height))
@@ -145,7 +159,12 @@ def faces_in(frame):
     results = []
     for face in found:
         x, y, w, h = (int(v) for v in face[:4])
-        if w < MIN_FACE_WIDTH or not is_frontal(face):
+        if w < MIN_FACE_WIDTH:
+            continue
+        if not is_frontal(face):
+            if sides is not None and float(face[-1]) >= IDENTITY_SCORE:
+                sides.append({"box": (x, y, w, h), "offset": nose_offset(face),
+                              "crop": context_crop(frame, (x, y, w, h))})
             continue
         aligned = recogniser.alignCrop(frame, face)
         results.append({
@@ -569,10 +588,29 @@ def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None):
     cannot run concurrently.
     """
     with _SCAN_LOCK:
-        return _scan_clip(clip, camera, started_at, gallery, moments, busy)
+        sides = []
+        found = _scan_clip(clip, camera, started_at, gallery, moments, busy, sides)
+        if not found and sides:
+            _save_side_view(Path(clip), sides)
+        return found
 
 
-def _scan_clip(clip, camera, started_at, gallery, moments, busy=None):
+def side_view_path(clip):
+    """Where a clip's side-view face photo goes: HH-MM-SS.side.jpg, moved with the event."""
+    clip = Path(clip)
+    return clip.with_name(f"{clip.stem}.side.jpg")
+
+
+def _save_side_view(clip, sides):
+    """Keep the face closest to frontal, then the largest, as the event's side-view photo."""
+    best = min(sides, key=lambda s: (s["offset"], -s["box"][2]))
+    path = side_view_path(clip)
+    cv2.imwrite(str(path), best["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])
+    logger.info("  face scan %s: no recognisable face; side view kept (%d px, offset %.2f)",
+                clip.name, best["box"][2], best["offset"])
+
+
+def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None):
     clip = Path(clip)
     if not clip.exists():
         return []
@@ -584,10 +622,13 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None):
     for frame in _sampled_frames(clip, moments):
         paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
         frames += 1
-        found = faces_in(frame)
-        if found:
+        side_here = [] if sides is not None else None
+        found = faces_in(frame, side_here)
+        if found or side_here:
             bodies = people.person_boxes(frame)
             observations.extend(f for f in found if _on_a_person(f["box"], bodies))
+            if side_here:
+                sides.extend(s for s in side_here if _on_a_person(s["box"], bodies))
     dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
     logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s)",
                 clip.name, dense, frames, time.monotonic() - began, paused, len(observations))

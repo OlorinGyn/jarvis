@@ -108,6 +108,8 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if found:
         notify.faces_seen(camera.label, start, found)
+    elif notified and faces.side_view_path(destination).exists():
+        notify.side_face(camera.label, start, faces.side_view_path(destination))
     elif notified and best_view:
         notify.best_view(camera.label, start, best_view)
     if dog_view:
