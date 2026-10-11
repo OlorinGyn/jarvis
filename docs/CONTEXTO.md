@@ -1432,7 +1432,7 @@ disk, which is exactly why the roles hand over through files.
 | D9 | developer | high | 11/10 08:00–10:30 | session 9: R28, R30 (a); a built-in browser call hung for an hour | 36% → 76% (shared with the architect) | 64% → 70% | 659k → ?, old conversation |
 | A14 | architect | ultracode | 11/10 09:30–10:50 | the side-view finding, general review, settings help, automatic handover, review 11, release `v2026.10.11.2` | shared window, ~81% → ~85% | 70% → 70% | 750k → 790k tokens |
 | D10 | developer | high | 11/10 12:23–12:55 | session 10, started by the architect: R34, backlog 5, R29 | 0% → ~43% | 72% → 77% | old conversation |
-| A15 | architect | ultracode | 11/10 12:55– | review 13, release `v2026.10.11.3`, script 9 | ~43% → (end) | 77% → | 820k → |
+| A15 | architect | ultracode | 11/10 12:55–13:10 | review 13, release and deploy `v2026.10.11.3`, script 9 | ~43% → 47% | 77% → 78% | 820k → 832k tokens. **The first automatic cycle cost ~47 points of the 5-hour window, ~43 of them the developer's old conversation** |
 
 ### 14.4 Next sessions
 
