@@ -761,3 +761,40 @@ sozinhos. À espreita: a Aurora enrolada no tapete ainda passa por pessoa de
 vez em quando (R35). Decretos: "Olhe todo alerta de pessoa sem rosto." ·
 "Pareie uma vez, ou 30 dias." · "Quero ver de qualquer aparelho." · "Comecem
 a próxima sessão sozinhos."
+---
+
+## Edição nº 10 — A Caixa de Provas
+
+`v2026.10.11.4` · 11 out 2026, à tarde
+
+**Quadro 1.** A aba Dogs; entre os recortes, um é claramente o Dono. A mão do
+Dono aperta um botão vermelho: "Bad detection".
+O DONO: Alguns aqui nem são cachorro. Um sou eu.
+DEV: Não apague — reporte. Vai para a caixa de provas, com de onde veio e o que
+você disse.
+
+**Quadro 2.** A coruja joga cinco fotos na mesa: pessoas agachadas, curvadas,
+sentadas perto da câmera.
+ARQUITETO: Um limite mais baixo teria chamado essas cinco de "o cachorro no
+tapete". São pessoas. A regra fica.
+
+**Quadro 3.** O castor espalha cem fotos de rosto e escolhe quarenta, cada uma
+o mais diferente possível das outras.
+DEV: Analyse: as quarenta vistas mais diferentes. Ângulos e luz, não quarenta
+cópias.
+
+**Quadro 4.** Um cronômetro: 137 ms vira 45 ms. Os drones seguem vigiando lá
+fora, tranquilos.
+DEV: Ache o rosto numa cópia pequena, refine na grande. Três vezes mais
+rápido.
+
+**Quadro 5.** A coruja segura dois cartões de rosto — "Gustavo" e um vazio com
+um ponto de interrogação.
+ARQUITETO: Rostos de lado batem com você na maioria das vezes. Para saber que
+não bateriam com um estranho, preciso de um segundo nome.
+
+**Ficha final.** Habilidades: **A Caixa de Provas** (backlog 23) · **As
+Quarenta Melhores** (backlog 24) · **Olhos Rápidos** — varredura de rosto mais
+barata (R31) · **Log Silencioso** (R32). Decidido contra: baixar o limite do
+cachorro no tapete (R35). À espreita: um relato nunca diz o que a coisa era de
+verdade (R37). Decretos: "Reporte, não apague — e lembre de qual tela veio."

@@ -730,3 +730,40 @@ the page (item 5) · **The Pack** — naming a dog gathers its look-alikes (R29)
 Lurking: Aurora curled on the mat still passes as a person now and then (R35).
 Decrees: "Look at every person alert without a face." · "Pair once, or 30
 days." · "Let me watch from any device." · "Start the next session yourselves."
+---
+
+## Issue #10 — The Evidence Box
+
+`v2026.10.11.4` · 11 Oct 2026, afternoon
+
+**Panel 1.** The Dogs tab; among the crops, one is clearly the Owner. The
+Owner's hand presses a red button: "Bad detection".
+THE OWNER: Some of these aren't even dogs. One is me.
+DEV: Don't delete it — report it. It goes into the evidence box, with where it
+came from and what you said.
+
+**Panel 2.** The owl drops five photos on the table: people crouching,
+bending, sitting by the camera.
+ARCHITECT: A lower ratio would have called all five of these "the dog on the
+mat". They're people. The rule stays.
+
+**Panel 3.** The beaver lays out a hundred face photos and picks forty, each
+as different from the others as it can.
+DEV: Analyse: the forty most different views. Angles and light, not forty
+copies.
+
+**Panel 4.** A stopwatch: 137 ms becomes 45 ms. The drones keep watching
+outside, undisturbed.
+DEV: Find the face on a small copy, refine it on the big one. Three times
+faster.
+
+**Panel 5.** The owl holds two face cards — "Gustavo" and an empty one with a
+question mark.
+ARCHITECT: Side faces match you most of the time. To know they wouldn't match a
+stranger, I need a second name.
+
+**Closing card.** Abilities: **The Evidence Box** (backlog 23) · **The Best
+Forty** (backlog 24) · **Quick Eyes** — a cheaper face scan (R31) · **Quiet
+Log** (R32). Decided against: a lower dog-on-the-mat ratio (R35). Lurking: a
+report never says what the thing really was (R37). Decrees: "Report it, don't
+delete it — and remember which screen it came from."
