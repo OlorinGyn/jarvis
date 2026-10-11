@@ -43,8 +43,9 @@ logger = logging.getLogger(__name__)
 class DogGallery(faces.Gallery):
     """People's gallery for dogs: same views, queue and favourite, in dogs/.
 
-    Unlike faces, naming one dog never gathers other unnamed crops on its
-    own: fur histograms of two dogs can look alike, so only the user merges.
+    Naming a dog gathers only the unnamed crops that match it for sure, in
+    the same lighting: fur histograms of two dogs can look alike, so the
+    probable ones stay for the user to decide.
     """
 
     id_prefix = "d"
@@ -54,7 +55,25 @@ class DogGallery(faces.Gallery):
         super().__init__(path or GALLERY_FILE)
 
     def _absorb(self, person):
-        return 0
+        """Gather the unnamed crops that are this dog for sure; repeat until none joins.
+
+        Only the "sure" rule of match, and only within the same lighting (the
+        distance of a day view to a night view is undefined): a view that
+        joins can make another crop recognisable, as for faces (R29).
+        """
+        merged = 0
+        changed = True
+        while changed:
+            changed = False
+            for other in list(self.people):
+                if other is person or other["name"]:
+                    continue
+                results = [match(view, self) for view in other["embeddings"]]
+                if any(r["certainty"] == "sure" and r["dog_id"] == person["id"] for r in results):
+                    self._merge(other, person)
+                    merged += 1
+                    changed = True
+        return merged
 
     def add(self, embeddings, thumbnail, crops=None):
         """Add an unnamed dog, then keep only the newest MAX_UNNAMED unnamed ones."""
@@ -227,6 +246,20 @@ def wording(result, gallery):
         return result["name"]
     if result["certainty"] == "probable":
         return f"probably {result['name']}"
+    return "unidentified dog" if any(d["name"] for d in gallery.people) else "dog"
+
+
+def current_words(sighting, gallery):
+    """What a past sighting says now: its dog's current name, so a crop named later updates it.
+
+    The stored certainty only matters while the crop is still unnamed: then
+    a "probable" match keeps saying "probably <name>".
+    """
+    dog = gallery.get(sighting.get("dog_id"))
+    if dog and dog["name"]:
+        return dog["name"]
+    if sighting.get("certainty") == "probable" and sighting.get("match"):
+        return f"probably {sighting['match']}"
     return "unidentified dog" if any(d["name"] for d in gallery.people) else "dog"
 
 

@@ -131,11 +131,11 @@ def _who_was_seen(day):
 
 
 def _dogs_seen(day):
-    """For each recording of a day, the words its dog crops were given: names by certainty."""
-    seen = {}
+    """For each recording of a day, its dogs as they are named now (R29)."""
+    seen, gallery = {}, dogs.DogGallery()
     for sighting in dogs.sightings_of(day):
         key = _clip_key(sighting.get("clip", ""))
-        words = sighting.get("words") or "dog"
+        words = dogs.current_words(sighting, gallery)
         if key is not None and words not in seen.setdefault(key, []):
             seen[key].append(words)
     return seen

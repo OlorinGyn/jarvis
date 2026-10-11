@@ -51,12 +51,12 @@ def test_record_adds_one_unnamed_dog_per_box_with_a_sighting(gallery, tmp_path):
     assert len(list((tmp_path / "views").glob("*.jpg"))) == 2
 
 
-def test_naming_a_dog_never_gathers_other_crops_on_its_own(gallery, tmp_path):
+def test_naming_a_dog_gathers_its_sure_look_alikes(gallery, tmp_path):
     first, second = dogs.record(scene(True), [(110, 60, 100, 140)] * 2, "Front", START,
                                 tmp_path / "clip.mp4", gallery)
-    gallery.rename(first, "Alpha")
+    assert gallery.rename(first, "Alpha") == 1
     reloaded = dogs.DogGallery(gallery.path)
-    assert reloaded.get(second) is not None and reloaded.get(second)["name"] == ""
+    assert reloaded.get(second) is None and len(reloaded.by_name("Alpha")["embeddings"]) == 2
 
 
 def test_a_merge_repoints_the_dog_sightings(gallery, tmp_path):
@@ -142,8 +142,8 @@ def test_only_the_newest_unnamed_dogs_are_kept(gallery, tmp_path, monkeypatch):
 
 
 def test_dismiss_forgets_an_unnamed_dog_and_its_photo(gallery, tmp_path):
-    first, second = dogs.record(scene(False), [(110, 60, 100, 140)] * 2, "Front", START,
-                                tmp_path / "c.mp4", gallery)
+    first = dogs.record(scene(False), [(110, 60, 100, 140)], "Front", START, tmp_path / "c.mp4", gallery)[0]
+    second = dogs.record(scene(True), [(110, 60, 100, 140)], "Front", START, tmp_path / "c.mp4", gallery)[0]
     gallery.rename(second, "Named")
     assert gallery.dismiss(first)
     assert not gallery.dismiss(second)
@@ -151,3 +151,35 @@ def test_dismiss_forgets_an_unnamed_dog_and_its_photo(gallery, tmp_path):
     reloaded = dogs.DogGallery(gallery.path)
     assert reloaded.get(first) is None and reloaded.get(second) is not None
     assert len(list((tmp_path / "views").glob("*.jpg"))) == 1
+
+
+def test_gathering_repeats_until_nothing_more_joins(gallery, monkeypatch):
+    monkeypatch.setattr(dogs, "SURE_DISTANCE", 0.2)
+    chain = [gallery.add([descriptor(13, True, spread)], "x.jpg") for spread in (0.0, 0.03, 0.12, 0.25)]
+    far = gallery.add([descriptor(3, True)], "y.jpg")
+    other_light = gallery.add([descriptor(13, False)], "z.jpg")
+    assert dogs.distance(descriptor(13, True), descriptor(13, True, 0.25)) > 0.2
+    gallery.rename(chain[0], "Light one")
+    reloaded = dogs.DogGallery(gallery.path)
+    assert len(reloaded.by_name("Light one")["embeddings"]) == 4
+    assert reloaded.get(far) is not None and reloaded.get(other_light) is not None
+
+
+def test_a_probable_crop_is_not_gathered(two_dogs, monkeypatch):
+    monkeypatch.setattr(dogs, "SURE_DISTANCE", 0.1)
+    crop = two_dogs.add([descriptor(13, True, 0.3)], "p.jpg")
+    assert dogs.match(descriptor(13, True, 0.3), two_dogs)["certainty"] == "probable"
+    light = two_dogs.by_name("Light one")["id"]
+    two_dogs.rename(light, "Light one")
+    assert dogs.DogGallery(two_dogs.path).get(crop) is not None
+
+
+def test_past_sightings_follow_the_current_name(two_dogs):
+    unnamed = two_dogs.add([descriptor(7, True)], "u.jpg")
+    sighting = {"dog_id": unnamed, "certainty": "", "match": "", "words": "unidentified dog"}
+    assert dogs.current_words(sighting, two_dogs) == "unidentified dog"
+    two_dogs.rename(unnamed, "Light one")
+    renamed = dict(sighting, dog_id=two_dogs.by_name("Light one")["id"])
+    assert dogs.current_words(renamed, dogs.DogGallery(two_dogs.path)) == "Light one"
+    probable = {"dog_id": "d_00000000", "certainty": "probable", "match": "Dark one"}
+    assert dogs.current_words(probable, two_dogs) == "probably Dark one"
