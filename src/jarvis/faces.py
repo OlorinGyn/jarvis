@@ -46,6 +46,9 @@ MAX_NOSE_OFFSET = 0.35
 MIN_EYE_SPREAD = 0.38
 MIN_VIEWS_FOR_NEW = 2
 MIN_FACE_WIDTH = 36
+DETECT_WIDTH = 960
+REFINE_MARGIN = 1.0
+LANDMARK_VALUES = 14
 GOOD_FACE_WIDTH = 80
 MATCH_THRESHOLD = 0.363
 LEARN_THRESHOLD = 0.45
@@ -142,6 +145,51 @@ def context_crop(frame, box):
     return cv2.resize(crop, (THUMB_SIZE, THUMB_SIZE), interpolation=interpolation)
 
 
+def _detect(frame):
+    """YuNet's faces in full-frame coordinates, found on a copy at most DETECT_WIDTH wide (R31).
+
+    Detection over the whole frame is the costly step and does not need
+    1080p. Each face found is then detected again in a small full-size
+    region around it, so its landmarks, and the alignment and embedding
+    that follow, are as precise as before.
+    """
+    height, width = frame.shape[:2]
+    scale = min(1.0, DETECT_WIDTH / width)
+    if scale == 1.0:
+        return _detect_in(frame)
+    small = cv2.resize(frame, (round(width * scale), round(height * scale)),
+                       interpolation=cv2.INTER_AREA)
+    found = _detect_in(small)
+    if found is None:
+        return None
+    refined = [_refine(frame, face[:4] / scale) for face in found]
+    refined = [face for face in refined if face is not None]
+    return np.array(refined) if refined else None
+
+
+def _detect_in(image):
+    detector = _detector()
+    detector.setInputSize((image.shape[1], image.shape[0]))
+    return detector.detect(image)[1]
+
+
+def _refine(frame, box):
+    """The face inside box, detected again on the full-size frame around it; None if it vanishes."""
+    x, y, w, h = box
+    height, width = frame.shape[:2]
+    margin = REFINE_MARGIN * max(w, h)
+    left, top = int(max(x - margin, 0)), int(max(y - margin, 0))
+    right, bottom = int(min(x + w + margin, width)), int(min(y + h + margin, height))
+    found = _detect_in(np.ascontiguousarray(frame[top:bottom, left:right]))
+    if found is None:
+        return None
+    centre = np.array([x + w / 2 - left, y + h / 2 - top])
+    best = min(found, key=lambda f: float(np.linalg.norm(f[:2] + f[2:4] / 2 - centre))).copy()
+    best[[0, *range(4, LANDMARK_VALUES, 2)]] += left
+    best[[1, *range(5, LANDMARK_VALUES, 2)]] += top
+    return best
+
+
 def faces_in(frame, sides=None):
     """Return one dict per frontal face: box, embedding, score and a display crop.
 
@@ -149,10 +197,7 @@ def faces_in(frame, sides=None):
     are added to it with their box, nose offset and crop: they cannot be
     recognised, but they are still a picture of the face (R30).
     """
-    detector = _detector()
-    height, width = frame.shape[:2]
-    detector.setInputSize((width, height))
-    found = detector.detect(frame)[1]
+    found = _detect(frame)
     if found is None:
         return []
 
