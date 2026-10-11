@@ -88,6 +88,19 @@ function StopService {
         Push-Location $ProdDir
         try { Python -m jarvis --stop | Out-Host } finally { Pop-Location }
     }
+    WaitForExit 180
+}
+
+function ProdProcesses {
+    $root = (Resolve-Path $ProdDir).Path
+    Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) }
+}
+
+function WaitForExit([int]$Seconds) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((ProdProcesses) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
+    $left = @(ProdProcesses)
+    if ($left.Count) { throw "The old version is still running after $Seconds s ($($left.Count) process(es)); not starting another next to it." }
 }
 
 function StartService {
