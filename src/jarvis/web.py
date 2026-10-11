@@ -15,6 +15,7 @@ import socket
 import subprocess
 import threading
 import time
+from urllib.parse import quote
 from datetime import date, datetime
 from pathlib import Path
 
@@ -23,7 +24,7 @@ import requests
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from jarvis import ROOT, archive, dogs, faces, notify, settings
@@ -173,9 +174,28 @@ def _event(entry, seen=None, dogs_seen=None):
     }
 
 
+@app.middleware("http")
+async def never_stale(request: Request, call_next):
+    """The browser must revalidate the page's own files on every load.
+
+    Without an instruction it may keep an old app.js for hours after an
+    update and call routes that no longer exist (R28). A revalidation is a
+    cheap 304 on the home network.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/")
 def index():
-    return FileResponse(STATIC_DIR / "index.html")
+    """The page, with the running version in its script and style URLs, never cached."""
+    version = quote(_version, safe="")
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for asset in ("/static/app.js", "/static/style.css"):
+        html = html.replace(f'"{asset}"', f'"{asset}?v={version}"')
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/icon.png")
