@@ -84,4 +84,7 @@ Portuguese, and end with: *"Arquiteto, precisamos da sua análise."* — and,
 unless a stop condition of `CLAUDE.md` ("Automatic handover") holds, **send
 that same sentence to the architect's session** ("J.A.R.V.I.S development
 M900", from the session list) with the `SendMessage`/`send_message` tool, so
-the review starts without the user.
+the review starts without the user. **Then clear your own conversation**
+(`clear_session` with `"self"`, the `/clear` command): everything the next
+session needs is on disk, and a conversation that starts empty costs about a
+third of one that carries the last session (decided by the user, 11/10/2026).
