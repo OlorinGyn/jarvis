@@ -753,7 +753,7 @@ decidir.
 | 10 | 11/10/2026 | `v2026.10.10.7..8b019ea`, developer session 8 — R27, the dog tuning tool | no code fixed; 43 tests pass; the user's three reports investigated (13.11): R28, R29 opened; release `v2026.10.11` |
 | 11 | 11/10/2026 | `8b019ea..db783cf`, developer session 9 — R28, R30 (a) | no code fixed; 48 tests pass; `a54f357` reached GitHub before this review by the architect's mistake (a push while the developer worked), no harm since production runs tags; release `v2026.10.11.2` |
 | 12 | 11/10/2026 | `5675cfe..a4cc3a2`, developer session 10 — R34, backlog 5, R29 (the first automatic cycle) | no code fixed; 64 tests pass; R35 kept open on the developer's data; release `v2026.10.11.3` |
-| 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4` |
+| 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no release code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4`. **The first deploy failed and rolled back on its own**: `--stop` returned while the old version still assembled a clip (22 s), the new one found both cameras busy. Fixed in `production.ps1` (`3ae5faa`: wait up to 180 s until no process runs from `C:\JARVIS`); the second deploy passed |
 
 **Last review covers up to the `v2026.10.11.4` release commit.** The next one
 starts from the commit after it.
@@ -1441,7 +1441,7 @@ disk, which is exactly why the roles hand over through files.
 | D10 | developer | high | 11/10 12:23–12:55 | session 10, started by the architect: R34, backlog 5, R29 | 0% → ~43% | 72% → 77% | old conversation |
 | A15 | architect | ultracode | 11/10 12:55–13:10 | review 13, release and deploy `v2026.10.11.3`, script 9 | ~43% → 47% | 77% → 78% | 820k → 832k tokens. **The first automatic cycle cost ~47 points of the 5-hour window, ~43 of them the developer's old conversation** |
 | D11 | developer | high | 11/10 13:00–14:50 | session 11, **a new conversation**: backlog 23, 24, R31, R32, R35 and R30 (b) measured | 47% → ~72% for six items | 78% → 81% | started light |
-| A16 | architect | ultracode | 11/10 14:50– | review 14, release `v2026.10.11.4`, script 10 | 72% → ~76% | 81% → 81% | 860k → 870k |
+| A16 | architect | ultracode | 11/10 14:50–15:15 | review 14, release `v2026.10.11.4`, a rolled-back deploy diagnosed and fixed, script 10 | 72% → ~78% | 81% → 82% | 860k → 880k |
 
 ### 14.4 Next sessions
 
