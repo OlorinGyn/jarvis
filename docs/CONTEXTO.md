@@ -809,6 +809,7 @@ subir de novo em 09/10.
 | | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | open — dev session 10 (13.12) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
 | | R34 | **high** | Devices have to type the PIN again and again | open — dev session 10, first item (13.13) |
+| | R35 | medium | Aurora curled on the mat still slips through R18 as `person` (box 1.99× wider than tall, under the 2.0 limit) | open — dev session 10: `WIDE_PERSON_RATIO` 2.0 → 1.5, re-validated by replaying every person event |
 
 **R1 — Aviso de pessoa que aparece no meio de um evento (alta).**
 `EventRecorder._start()` tenta o aviso **só no primeiro frame** do evento, com
@@ -1432,7 +1433,7 @@ disk, which is exactly why the roles hand over through files.
 
 ### 14.4 Next sessions
 
-**Developer 10:** R34 (pair a device once, 13.13) → item 5 (play the recordings on the page) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
+**Developer 10:** R34 (pair a device once, 13.13) → item 5 (play the recordings on the page) → R35 (R18's ratio 2.0 → 1.5; on 11/10 07:17:50 Aurora on the mat was a `person` 0.40 at 333×167, ratio 1.99, touching the bottom edge; real persons measure 0.4–0.6, so 1.5 keeps a wide margin — accept only if replaying every person event drops no real person) → R29 (dog grouping, with the widened text in 13.11) → R30 (b) once the user has named views → then R31 (cheaper face scan) → R32 (log noise) → the dog thresholds once dogs are named. **Architect, in a new conversation:** R33, the documentation.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
