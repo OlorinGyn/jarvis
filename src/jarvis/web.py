@@ -415,6 +415,16 @@ def remove_dog_view(dog_id: str, index: int):
     return _remove(dogs.DogGallery(), dog_id, index)
 
 
+@app.post("/api/dogs/{dog_id}/dismiss")
+def dismiss_dog(dog_id: str):
+    """Forget an unnamed dog crop the user does not want to name."""
+    gallery = dogs.DogGallery()
+    _entry_or_404(gallery, dog_id)
+    if not gallery.dismiss(dog_id):
+        raise HTTPException(400, "only an unnamed dog can be dismissed")
+    return {"dismissed": dog_id}
+
+
 @app.get("/dog-photo/{day}/{name}")
 def dog_photo(day: str, name: str):
     if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):

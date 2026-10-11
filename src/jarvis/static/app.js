@@ -351,6 +351,23 @@ function galleryTab(section, api, kind, unnamedLabel) {
     }
     const input = form.querySelector("input");
     input.placeholder = section.querySelector(".rename-form input").placeholder;
+    if (kind === "dog") {
+      const dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.className = "dismiss";
+      dismiss.textContent = "Dismiss";
+      dismiss.title = "Not a dog worth naming: forget this crop";
+      dismiss.addEventListener("click", async () => {
+        try {
+          await send(`${api}/${entry.id}/dismiss`);
+          listResult.textContent = "Crop dismissed.";
+        } catch (problem) {
+          listResult.textContent = `Not dismissed: ${problem.message}`;
+        }
+        loadList();
+      });
+      form.after(dismiss);
+    }
     form.addEventListener("submit", (submitted) => {
       submitted.preventDefault();
       applyName(entry.id, input.value, false);

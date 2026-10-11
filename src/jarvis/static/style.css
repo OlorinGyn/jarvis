@@ -256,6 +256,24 @@ h1 {
   font-size: 0.85rem;
 }
 
+.dismiss {
+  width: 100%;
+  margin-top: 6px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: var(--alarm);
+  color: #fff;
+}
+
 .belongs {
   width: 100%;
   margin-top: 6px;

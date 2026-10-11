@@ -31,6 +31,7 @@ GRABCUT_ITERATIONS = 3
 MIN_FUR_PIXELS = 50
 GREY_DIFFERENCE = 8.0
 CROP_SIDE = 320
+MAX_UNNAMED = 60
 SURE_DISTANCE = 0.35
 SURE_RATIO = 0.6
 PROBABLE_DISTANCE = 0.5
@@ -54,6 +55,46 @@ class DogGallery(faces.Gallery):
 
     def _absorb(self, person):
         return 0
+
+    def add(self, embeddings, thumbnail, crops=None):
+        """Add an unnamed dog, then keep only the newest MAX_UNNAMED unnamed ones."""
+        dog_id = super().add(embeddings, thumbnail, crops)
+        self.trim()
+        return dog_id
+
+    def _drop(self, dogs_to_drop):
+        """Take dogs out of the gallery and delete their view photos. Call under the lock."""
+        for dog in dogs_to_drop:
+            self.people.remove(dog)
+        return [view for dog in dogs_to_drop
+                for view in faces.views_of(dog) + [w.get("view") for w in dog.get("pending") or []]]
+
+    def trim(self):
+        """Forget the oldest unnamed dogs beyond MAX_UNNAMED; named dogs are never touched."""
+        with faces._GALLERY_LOCK:
+            self.load()
+            unnamed = [dog for dog in self.people if not dog["name"]]
+            excess = unnamed[:-MAX_UNNAMED] if len(unnamed) > MAX_UNNAMED else []
+            if not excess:
+                return 0
+            views = self._drop(excess)
+            self.save()
+        for view in views:
+            self._forget_view(view)
+        return len(excess)
+
+    def dismiss(self, dog_id):
+        """Forget one unnamed dog the user does not want to name. False for a named one."""
+        with faces._GALLERY_LOCK:
+            self.load()
+            dog = self.get(dog_id)
+            if dog is None or dog["name"]:
+                return False
+            views = self._drop([dog])
+            self.save()
+        for view in views:
+            self._forget_view(view)
+        return True
 
     def label(self, dog_id):
         dog = self.get(dog_id)
