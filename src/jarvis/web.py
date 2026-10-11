@@ -7,6 +7,7 @@ Core.live_view(), which only reads. The Core does not know the web exists.
 See docs/ARQUITETURA.md sections 17 and 18.
 """
 
+import asyncio
 import hmac
 import json
 import logging
@@ -15,6 +16,7 @@ import socket
 import subprocess
 import threading
 import time
+from contextlib import asynccontextmanager
 from urllib.parse import quote
 from datetime import date, datetime
 from pathlib import Path
@@ -66,7 +68,22 @@ EDITABLE = {
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="J.A.R.V.I.S.", docs_url=None, redoc_url=None)
+
+def quiet_disconnects(loop, context):
+    """Drop Windows' report of a browser that closed its connection (R32); pass on everything else."""
+    if isinstance(context.get("exception"), ConnectionResetError):
+        return
+    loop.default_exception_handler(context)
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    """Runs inside uvicorn's own event loop, the one whose handler must change."""
+    asyncio.get_running_loop().set_exception_handler(quiet_disconnects)
+    yield
+
+
+app = FastAPI(title="J.A.R.V.I.S.", docs_url=None, redoc_url=None, lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 _core = None
