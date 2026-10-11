@@ -80,4 +80,8 @@ Write `HANDOFF.md` at the repository root, replacing its "Empty" text, with:
    context size at the end.
 
 Commit `HANDOFF.md` locally. Then tell the user what was delivered, in
-Portuguese, and end with: *"Arquiteto, precisamos da sua análise."*
+Portuguese, and end with: *"Arquiteto, precisamos da sua análise."* — and,
+unless a stop condition of `CLAUDE.md` ("Automatic handover") holds, **send
+that same sentence to the architect's session** ("J.A.R.V.I.S development
+M900", from the session list) with the `SendMessage`/`send_message` tool, so
+the review starts without the user.
