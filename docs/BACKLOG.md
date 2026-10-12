@@ -1,0 +1,189 @@
+# J.A.R.V.I.S. — the work
+
+The decided work, the single list: the backlog, the review's open
+recommendations, and the plan of the next sessions. Both machines see it
+through git. The developer reads it; the architect manages it and, while a
+developer session runs, does not edit it (`CLAUDE.md`, "Parallel sessions").
+What is not work yet — what waits for the user, open discussions — is
+`PENDING.md`; how the work is done is `PROCESS.md`. Split out of
+`CONTEXTO.md` on 12/10/2026; CONTEXTO's sections 8, 13.4 and 14.4 point here.
+
+---
+
+## 1. Backlog
+
+**The project's single list.** Both machines see it through git. Each item
+says where it came from:
+
+- **(decided)** — the user asked for it or approved it
+- **(proposto)** — Claude's suggestion, no decision from the user yet
+
+Proposed items **are not a plan**. Never start one without asking. The
+architecture review's recommendations are separate (section 2) and the
+**high**-priority ones come before items here. The full text of every
+finished item is in `HISTORY.md` 8.
+
+### Done
+
+| | Item | Where |
+|---|---|---|
+| ✓ | Tiered storage (decided) — to an external drive after 30 days | ARQUITETURA 11 |
+| ✓ | Phone notifications through Telegram, with a face and a name (decided) | ARQUITETURA 12 |
+| ✓ | Core without a window (decided) | ARQUITETURA 15 |
+| ✓ | **3.** The web interface, the only way in (decided 09/10) | ARQUITETURA 17 |
+| ✓ | **5.** Play recordings on the page (decided 11/10, `v2026.10.11.3`) | ARQUITETURA 17.13 |
+| ✓ | **9.** Undo a merge — closed by the user: a warning before every merge instead | — |
+| ✓ | **15.** Animal re-ID — superseded by 22 | HISTORY 8 |
+| ✓ | **17.** Production and test environments (decided 09/10) | ARQUITETURA 18.7 |
+| ✓ | **18.** The running version on the page (decided 10/10) | ARQUITETURA 12.10 |
+| ✓ | **19.** People by person; attach a face to a name; the waiting queue; rename (decided 10/10, `v2026.10.10.4`) | ARQUITETURA 17.10 |
+| ✓ | **20.** Who appears in each recording (decided 10/10) | ARQUITETURA 17.10 |
+| ✓ | **21.** A favourite photo per person (decided 10/10, `v2026.10.10.6`) | ARQUITETURA 17.10 |
+| ✓ | **22.** A Dogs tab: each household teaches its own dogs (decided 10/10, `v2026.10.10.7`); thresholds wait for ~10 named views per dog per lighting | ARQUITETURA 20 |
+| ✓ | **23.** Report a bad detection instead of deleting it, with Undo (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 21 |
+| ✓ | **24.** "Choose the best 40" views; Chosen and Waiting (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 17.14 |
+| ✓ | **25.** Residents, notification cases and the Home/Away/Silent modes, the Notifications tab, commands from the phone (decided 12/10, `v2026.10.12`) | ARQUITETURA 22 |
+| ✓ | **26.** Select many unnamed photos, name or report them at once (decided 12/10, `v2026.10.12.2`) | ARQUITETURA 17.16 |
+| ✓ | **27.** Notifications as the first part of Settings (decided 12/10, `v2026.10.12.2`) | ARQUITETURA 22.4 |
+
+**Waiting for the user's check on the M900:** items 25 and 3, in `PENDING.md`.
+
+### Critical
+
+Without these the system does not do its job well.
+
+1. **Zones of interest per camera** (proposto) — today there is only a fixed
+   mask over the camera's clock, in the code. Every competitor has drawable
+   zones, and it is the biggest control over false positives there is.
+   Mosquitoes, wall objects and sunlight have already cost time; a zone saying
+   "only the garage matters" would have avoided almost all of it. Worth
+   separating a **mask** (ignore the area) from a **required zone** (detect
+   everything, but notify only when something enters it).
+2. **System health** (proposto) — if a camera dies at 3 a.m., nothing warns.
+   There is an automatic restart, but no record of how long it was down. A
+   daily summary, or a "camera down" case among backlog 25's switches, would
+   close it.
+
+### Important
+
+It works without them, but is incomplete.
+
+4. **Measure the M900 running** (proposto) — CPU with both cameras in motion,
+   and whether `HWACCEL` helps (INSTALACAO 6).
+6. **Search and filter** (proposto) — with ~100 events a day, by date only is
+   not enough. By person, camera, label.
+7. **Tracking** (proposto) — keep identity across frames; it solves the person
+   standing still and makes one clip match one person.
+8. **Animal labels** (proposto) — accept a species only when it repeats within
+   the event, instead of accumulating every YOLO hesitation.
+10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
+    shouting, breaking glass.
+
+### Improvement
+
+11. **A timeline** (proposto) — a grid of cards does not answer "what happened
+    between 2 and 4 a.m.".
+12. **Persist the static spots** (proposto) — the list starts empty on every
+    run, so the night's first false clip is still recorded.
+13. **An event database** (proposto) — SQLite instead of JSON files, once
+    there is search.
+14. **OpenVINO on the M900** (proposto) — `cv2.dnn` accepts that backend; it
+    was the plan to win back the speed lost when leaving PyTorch.
+
+### Outside software
+
+16. **A motion-triggered light at the Front** (proposto) — not code, but the
+    biggest possible gain for faces at night (ARQUITETURA 10.5).
+
+### Deliberately out of scope
+
+Competitors have these and they make **no** sense here: multiple users with
+permissions, cloud or subscription, support for dozens of camera brands, PTZ,
+two-way audio, number-plate reading, Home Assistant integration. They are
+product features; this system is for one house with two cameras. If someone
+proposes one, the answer is already here.
+
+---
+
+## 2. Recommendations, open
+
+The closed ones, with their commits and texts: `HISTORY.md` 13.4.
+
+| # | Priority | Recommendation | State |
+|---|---|---|---|
+| R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
+| R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a **second named person** to test that the right one still wins (HISTORY 13.12) |
+| R45 | low | A merge finds its sightings by reading every one, once per entry merged | open (HISTORY 13.17) |
+| R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
+| R7 | low | `instalar.bat` does not check that the Python is signed | partly: `production.ps1` checks it (HISTORY 13.4) |
+| R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
+| R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+| R10 | **high** | Everything except the conversation in English | every document's text in English since 12/10 (R33); left, a developer item: the Portuguese **file names** and the text of `instalar.bat` and `tools/diagnostico.py` |
+
+**R42 — In Home, a resident's face hides a second person with no face
+(medium, the user's decision).** The faceless message goes only when the scan
+found no face at all. If the user walks out with someone whose face is never
+seen, the scan finds the user's face (silenced in Home) and nothing is sent —
+against the user's own rule that a stranger in the dark must reach the phone.
+The scan cannot tell one person from two by faces; YOLO can, by counting
+person boxes in the same frame. Options: (a) accept the corner; (b) when the
+person was held, every face found was silenced, and YOLO saw more people at
+once than distinct faces were found, send the best view as
+`faceless_person`. (b) costs a counter in `EventRecorder` and, when YOLO
+counts a dog as a second person (R18), one extra message. The architect
+recommends (b).
+
+**R45 — A merge finds its sightings by reading every one (low).**
+`_repoint_sightings` reads every sighting file of the gallery's folder, once
+per entry merged, under the gallery lock while the clip thread waits.
+Sightings are never pruned (about 50 dog sightings a day on the M900), so a
+batch of 60 photos in a year's time would read about a million files. Fix: one
+pass per batch with an `{old: new}` map — not a bound by `first_seen`, since
+`tools/dog_crops.py` gives today's entries sightings of older days.
+Acceptance: a test where a batch of several entries reads each sighting file
+once.
+
+**R10, what is left — the file names, and two tools' text.** Every document
+is in English since 12/10. Still Portuguese: the text `instalar.bat` and
+`tools/diagnostico.py` print, and the documents' own names (`ARQUITETURA.md`,
+`INSTALACAO.md`, `CONTEXTO.md` → `ARCHITECTURE.md`, `INSTALL.md`,
+`CONTEXT.md`), the tools (`diagnostico.py`, `refazer_rostos.py`,
+`verificar_clipes.py`, `gerar_icone.py`, `gerar_epub.py`, `criar_atalho.ps1`)
+and the launchers (`instalar.bat`, `jarvis_vigilancia.bat` — the second may be
+what the startup task or the desktop shortcut calls, so a rename keeps the old
+name working for one release). A developer item, because the names are referenced from code: every
+reference — `CLAUDE.md`, the `dev` skill, the docstrings of 26 files in
+`src/` and `tools/` ("See docs/ARQUITETURA.md section 11"), `gerar_epub.py`'s
+`ORDEM`, the shortcut and the scheduled task — changes in the same commit, and
+a script checks that every `<DOC> <section>` reference still lands on a
+heading (the architect's check of 12/10 can be reused).
+
+---
+
+## 3. Next sessions
+
+**Review 16's cycle is done** (`v2026.10.12.2`, deployed at 20:33: 477
+events, 55 face and 205 dog sightings, 6 reports, every file read before and
+after; cameras ok 3 s after the start). The same evening the context
+documents were split by subject, as the user asked: `CONTEXTO.md` (the
+project), `PROCESS.md`, this file, `PENDING.md`.
+
+**Developer 15 (planned 12/10, evening):** in this order —
+
+1. **R10's file names and the two tools' text** (high, section 2): the
+   documents (`ARQUITETURA.md` → `ARCHITECTURE.md`, `INSTALACAO.md` →
+   `INSTALL.md`, `CONTEXTO.md` → `CONTEXT.md`), the tools and the launchers
+   R10 lists, with `git mv` so their history follows. **The one item where the
+   developer edits `docs/`, `README.md`, `CLAUDE.md` and
+   `.claude/skills/dev/SKILL.md` — only the references to the renamed files,
+   nothing else;** documentation worth changing beyond that goes to
+   `HANDOFF.md` as usual. References in the code to CONTEXTO's moved sections
+   (2, 8, 11–15) land on pointers today; point them at `PROCESS` or
+   `BACKLOG` while renaming. A script checks that every `<DOC> <section>`
+   reference lands on a heading. `tools/gerar_epub.py` follows the new names;
+   which documents the EPUB carries still waits for the user (`PENDING.md`).
+2. **R45** (low), if there is room.
+
+**Not planned:** R42 waits for the user's choice and R30 (b) for a second
+named person. Every other open backlog item is **(proposto)** — 1 (zones),
+2 (system health) and the rest of section 1.

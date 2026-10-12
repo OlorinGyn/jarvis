@@ -493,7 +493,7 @@ clean shutdown, and a clip being assembled at that moment is lost. Within
 ### 9.3 Updating
 
 Updates are run by Claude, on request, after an architect review has tagged a
-release (CONTEXTO 13). Never automatic: a failed update at night is a night
+release (PROCESS 3). Never automatic: a failed update at night is a night
 without surveillance.
 
 ```bat

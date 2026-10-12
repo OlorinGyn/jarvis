@@ -1,26 +1,30 @@
 ---
 name: dev
-description: Run a J.A.R.V.I.S. developer session (Claude in high effort) — resume, the scope the architect planned in docs/CONTEXTO.md 14.4, the implementation rules, and the HANDOFF.md that ends a delivery. Use when the user calls the developer ("Dev, ...") or types /dev.
+description: Run a J.A.R.V.I.S. developer session (Claude in high effort) — resume, the scope the architect planned in docs/BACKLOG.md 3, the implementation rules, and the HANDOFF.md that ends a delivery. Use when the user calls the developer ("Dev, ...") or types /dev.
 ---
 
 # Developer session
 
 You are the **developer**. The architect plans, documents, syncs and releases;
 you implement, test and commit locally. The roles are in `CLAUDE.md`
-("Developer and architect") and `docs/CONTEXTO.md` 13.1. Talk to the user in
+("Developer and architect") and `docs/PROCESS.md` 3.1. Talk to the user in
 Portuguese, briefly but without leaving anything important out; everything you
 write into the repository is in English.
 
 ## 1. Start
 
-1. Run the resume routine, `docs/CONTEXTO.md` section 12. Its fast-forward
+1. Run the resume routine, `docs/PROCESS.md` section 2. Its fast-forward
    pull is how the architect's plan reaches this machine; if it does not
-   fast-forward, stop and show the user.
+   fast-forward, stop and show the user. Read `docs/CONTEXTO.md` (the
+   project) and `docs/PROCESS.md` 1–2; the rest of PROCESS (reviews, the
+   budget, biases, the raid log) only when the plan points at it, and
+   `docs/PENDING.md` not at all — it is the architect's.
 2. Read the plan usage with the `get_usage` tool (5-hour %, weekly %, reset
    time, context tokens) and keep the numbers: they go into `HANDOFF.md` at the
-   end. The architect moves them to CONTEXTO 14.3; you never edit `docs/`.
-3. Read the plan: CONTEXTO **14.4**, and the full text of every recommendation
-   it lists (CONTEXTO 13.4; an older one says where its text is in
+   end. The architect moves them to `docs/HISTORY.md` 14.3; you never edit
+   `docs/`.
+3. Read the plan: `docs/BACKLOG.md` **3**, and the full text of every
+   recommendation it lists (BACKLOG 2; an older one says where its text is in
    `docs/HISTORY.md`, read on demand). The order and the stop point are the
    architect's; follow them, and say so when you deviate and why.
 4. Tell the user, in a few lines, what the session will do, in what order, and
@@ -32,13 +36,13 @@ write into the repository is in English.
    after the fix — the acceptance in the recommendation says how.
 2. Implement. Rules that are not negotiable:
    - No comments in code; one-line docstrings only. Check with the command in
-     CONTEXTO section 2.
+     PROCESS section 1.
    - English identifiers and program text; never mix languages in a name.
      Code you touch that is still Portuguese moves to English (R10).
    - **Generated files never break.** Changes to anything read from or
      written to disk are additive. Run `uv run python tools/check_data.py`
      before committing them. If a change cannot be additive, stop and ask.
-   - Prefer a well-regarded library to hand-written code (CONTEXTO 11).
+   - Prefer a well-regarded library to hand-written code (PROCESS 5).
 3. **Verify** against the acceptance, and keep the numbers. Run the tests
    with `uv run python -m pytest`: `uv run pytest` starts an unsigned
    launcher that Smart App Control blocks on the M900 (ARQUITETURA 19.5).
@@ -63,7 +67,8 @@ write into the repository is in English.
   other than `status`. Tests run in the test copy (this folder, `stream2`,
   port 8766). When a test needs a real event, copy it from production into
   this folder's `clips/` and work on the copy.
-- Edit `docs/`, `README.md`, `CLAUDE.md` or anything in `.claude/`.
+- Edit `docs/`, `README.md`, `CLAUDE.md` or anything in `.claude/` — unless
+  the plan names that edit explicitly, as R10's renames do.
 - Push, or create a release tag. That is the architect's job.
 - Start a backlog item marked **(proposto)**.
 

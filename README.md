@@ -54,5 +54,8 @@ docs/         all the documentation
 | [INSTALACAO.md](docs/INSTALACAO.md) | Install, configure, run in production, troubleshoot |
 | [ARQUITETURA.md](docs/ARQUITETURA.md) | How it works and why, layer by layer |
 | [PYTHON.md](docs/PYTHON.md) | Python and the libraries, for someone coming from Java or C# |
-| [CONTEXTO.md](docs/CONTEXTO.md) | The rules, decisions, backlog and plan — read first |
-| [HISTORY.md](docs/HISTORY.md) | Bugs fixed, every review, closed recommendations |
+| [CONTEXTO.md](docs/CONTEXTO.md) | The project's decisions, limitations and map — read first |
+| [PROCESS.md](docs/PROCESS.md) | How the work is done: the user's rules, the developer and the architect |
+| [BACKLOG.md](docs/BACKLOG.md) | The backlog, the open recommendations and the next sessions |
+| [PENDING.md](docs/PENDING.md) | What waits for the user's decision |
+| [HISTORY.md](docs/HISTORY.md) | Bugs fixed, every review, closed recommendations, the usage log |

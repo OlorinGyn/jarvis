@@ -106,7 +106,7 @@ a timeout telling you to check the network and the camera's IP.
 ## 8. Backlog items as they were decided
 
 The full text of finished items, as each was decided and delivered. The
-backlog itself is `CONTEXTO.md` section 8.
+backlog itself is `BACKLOG.md` 1.
 
 26. **Done 12/10 (`v2026.10.12.2`, ARQUITETURA 17.16).** **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
     - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
@@ -229,7 +229,7 @@ showed when trying to start it again on 09/10.
 
 ### 13.4 Recommendations, closed
 
-The open ones are in `CONTEXTO.md` 13.4. Each closed one, with its commit;
+The open ones are in `BACKLOG.md` 2. Each closed one, with its commit;
 the text of R11 onwards is in the review section that opened it, below.
 
 | | # | Priority | Recommendation | State |
@@ -323,7 +323,7 @@ faces, ARQUITETURA 10.4 already admits 0.37 can be chance — that is why
 `LEARN_THRESHOLD` is 0.45. The message should reflect the difference: below
 0.45, "probably <name>".
 
-**R6 — Automatic tests (medium).** CONTEXTO 11 records the absence of tests as
+**R6 — Automatic tests (medium).** PROCESS 5 records the absence of tests as
 a bias never discussed. This review added two cheap, valuable targets: the
 thumbnail route's checks (the only barrier between the network and the files
 on disk) and `notify`'s locks (`_allowed`, R1). FastAPI has `TestClient`; it
@@ -944,7 +944,7 @@ alone — 644 dog boxes in all. The true-dog clips with a person:
   boxes in events with a person (14 of 309 at ≥ 0.3). The bending user keeps
   almost the same box (IoU 0.90–0.99) while YOLO changes the class.
 
-That became R44 (CONTEXTO 13.4). It leaves 3 reports: the two dark-object ones
+That became R44 (13.4, closed in review 16). It leaves 3 reports: the two dark-object ones
 (IoU 0.12 with any person) and one bend at 12:40:23 with no person seen in the
 2 s before. The dark object is a candidate for using the reports themselves —
 a reported box marks a place that is not a dog on that camera — but two
@@ -1019,9 +1019,10 @@ crops to old events, so an entry made today can have sightings dated days
 before. Acceptance: a test where a batch of several entries reads each
 sighting file once.
 
-## 14.3 Usage log, up to 12/10/2026 morning
+## 14.3 Usage log
 
-The current rows are in `CONTEXTO.md` 14.3.
+Every session's row: what it covered and what it cost. How to measure is
+`PROCESS.md` 4; until 12/10/2026 the newest rows lived in `CONTEXTO.md` 14.3.
 
 | # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
 |---|---|---|---|---|---|---|---|
@@ -1054,3 +1055,8 @@ The current rows are in `CONTEXTO.md` 14.3.
 | D12 | developer | high | 11/10 17:25–17:40 | session 12, the scheduled cycle, a new conversation: R38, R40, R37, R36 (92 tests) | 34% → 44%: R38 4, R40 4, R37 1, R36 1 | 87% → 88% | 74k → 193k tokens |
 | A17 | architect | ultracode | 11/10 17:38–17:50 | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 53% | 88% → 89% | 78k → 180k tokens, a new conversation. **The whole scheduled cycle cost ~19 points of the 5-hour window (dev 10, architect 8) and ~2 of the week** |
 | A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
+| D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
+| A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
+| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
+| A21 | architect | ultracode | 12/10 afternoon–evening | the user's three requests: the 6 dog reports read and measured (two YOLO replays, 644 boxes; HISTORY 13.16), R44, backlog 26 and 27 designed, developer 14 planned and started | 54% → window reset → 4% | 97% → 0% (the weekly read 0 % at the end, its reset still shown for 14/10) | 443k → 490k tokens, the same conversation |
+| D14 | developer | high | 12/10 evening | session 14: R44, backlog 26 and 27, R43 (174 tests) | 6% → 22%: R44 + 26 12, 27 2, R43 and HANDOFF 2 | 1% → 3% | 68k → 212k tokens, a new conversation |

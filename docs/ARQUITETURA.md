@@ -881,7 +881,7 @@ on the same blob, `cv2.dnn` takes 37.8 ms and `onnxruntime` 34.6 ms, with
 identical output. Another ONNX runtime would buy nothing; the M900 has no GPU
 to win back. `cv2.dnn` accepts an OpenVINO backend, the remaining path to
 speed (backlog 14). The dependency count above is a consequence, not a goal
-(CONTEXTO 11).
+(PROCESS 5).
 
 **What had to be written by hand.** `ultralytics` did the pre- and
 post-processing under the hood; now they are explicit (PYTHON 17):
@@ -1102,7 +1102,7 @@ widgets** — no button, list, scroll, text field or layout manager — so every
 rectangle and letter was drawn by hand, clicks arrived as raw coordinates, and
 the keyboard came through `waitKey`. It grew to 616 lines and 60 drawing calls
 and was replaced by the web page (section 17); why that was a bias and not a
-decision is in CONTEXTO 11.3. The full text of this section is in git, up to
+decision is in PROCESS 5.3. The full text of this section is in git, up to
 tag `v2026.10.10.3`.
 
 What it taught, and still applies:
@@ -1432,7 +1432,7 @@ three daytime clips of 10/10 that had no face, each now gives a side view
 Part (b), loosening the frontal limits for recognition, was measured and not
 done: side faces of the one named person match 55–100 % of the time, but with
 a single named person nothing shows that a stranger's side face would not
-match too. It waits for a second named person (CONTEXTO 13.4, R30).
+match too. It waits for a second named person (BACKLOG 2, R30).
 
 ### 10.13 A cheaper face scan (R31, 11/10/2026)
 
@@ -1545,7 +1545,7 @@ someone there now?"* — it is a recorder, not surveillance.
 The API is plain HTTP and sending uses `requests`. The first version used the
 standard library's `urllib` and built the photo's `multipart/form-data` by
 hand, in twenty lines, so as not to bring in a new dependency. That was a
-mistake — see 12.5 and CONTEXTO 11. Receiving commands uses the same API in
+mistake — see 12.5 and PROCESS 5. Receiving commands uses the same API in
 the other direction, by long polling (22.5).
 
 ### 12.2 Notify at the start of the event, not at the end
@@ -1883,7 +1883,7 @@ does it in ~20 lines.
 
 Pillow would do it in two lines. It is kept by hand because it is a
 single-use tool, off the critical path and already tested — not to save a
-dependency (CONTEXTO 11). If Pillow comes in for another reason, switch.
+dependency (PROCESS 5). If Pillow comes in for another reason, switch.
 
 To change the drawing, edit the colours and radii in `gerar_icone.py`, run
 `uv run python tools/gerar_icone.py` and then `criar_atalho.ps1` again
@@ -2048,7 +2048,7 @@ phone — everything HighGUI lacks.
 | Dragging the video's bar | `<video>` needs HTTP Range. `FileResponse` does it; by hand it is easy to get wrong |
 
 The first idea in that session was `http.server` "with no new dependency" —
-the bias of CONTEXTO 11 coming back through the back door, and it was dropped.
+the bias of PROCESS 5 coming back through the back door, and it was dropped.
 
 **A risk checked:** FastAPI brings `pydantic`, whose core is compiled Rust —
 the same kind of binary Smart App Control blocked in PyTorch (7.11). It loads
@@ -2466,7 +2466,7 @@ recognition cannot be tested live. For that, test against recorded HD clips
 (see 18.6).
 
 **Releases.** Production only ever runs a tagged commit, and a commit only gets
-a tag after the architect review (CONTEXTO 13) has covered it. That ties the
+a tag after the architect review (PROCESS 3) has covered it. That ties the
 two workflows together: nothing unreviewed reaches the machine that guards the
 house.
 

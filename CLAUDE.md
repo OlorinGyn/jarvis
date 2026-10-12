@@ -1,9 +1,13 @@
 # Instructions for Claude Code
 
-Read `docs/CONTEXTO.md` before touching anything: the rules, the decisions
-that must not be undone without a new reason, what has been ruled out, the
-backlog and the plan. The past — bugs already fixed, every review in full,
-closed recommendations — is in `docs/HISTORY.md`, read on demand.
+Read three files before touching anything: `docs/CONTEXTO.md`, the project —
+the decisions that must not be undone without a new reason, what has been
+ruled out; `docs/PROCESS.md`, how the work is done; and `docs/BACKLOG.md`, the
+backlog, the open recommendations and the plan. The architect also reads
+`docs/PENDING.md`, what is not work yet. The past — bugs already fixed, every
+review in full, closed recommendations, the usage log — is in
+`docs/HISTORY.md`, read on demand. Each document carries only its own subject
+(the user, 12/10/2026).
 
 ## Language (decided by the user on 09/10/2026)
 
@@ -16,13 +20,13 @@ closed recommendations — is in `docs/HISTORY.md`, read on demand.
 | The raid log comic scripts (`docs/raidlog/`) | **both**, English and Portuguese |
 
 Technical terms stay in English everywhere. Until the migration in
-`docs/CONTEXTO.md` R10 is done, older documents and parts of the code are
+`docs/BACKLOG.md` R10 is done, older documents and parts of the code are
 still in Portuguese; **everything new is written in English**, and anything you
 touch moves to English with it. Never mix the two inside one identifier name.
 
 ## The user's rules
 
-Detailed in `docs/CONTEXTO.md` section 2:
+Detailed in `docs/PROCESS.md` section 1:
 
 - **No comments in code.** All explanation goes to `docs/`. One-line
   docstrings are fine.
@@ -34,7 +38,7 @@ Detailed in `docs/CONTEXTO.md` section 2:
   server**, not the `push` output: `git ls-remote` or
   `git rev-list --count jarvis/master..HEAD`. The local cache lies after a push
   from the other machine. Pulling is part of the resume routine,
-  `docs/CONTEXTO.md` section 12.
+  `docs/PROCESS.md` section 2.
 - **`.env` never goes into a commit.** It holds the real camera passwords.
   Check `models/`, `clips/`, `faces/`, `backups/` and `config.json` too.
 - **Explain the code, not just the result.** The user is learning Python and
@@ -42,7 +46,7 @@ Detailed in `docs/CONTEXTO.md` section 2:
 
 ## Backlog, biases, reviews
 
-**The backlog is `docs/CONTEXTO.md` section 8.** It is the single list, and both
+**The backlog is `docs/BACKLOG.md` section 1.** It is the single list, and both
 machines see it through git. When an item is done, the developer reports it in
 `HANDOFF.md` and the architect strikes it. Items marked **(proposto)** are
 Claude's suggestions with no decision from the user — never start one without
@@ -54,7 +58,7 @@ yet carried out. The architect owns it and reads it at every resume. It is
 apart from the application's documentation and from the plan the developer
 follows, so the architect may write it while a developer session runs.
 
-**`docs/CONTEXTO.md` section 11 is the bias log**: constraints Claude adopted on
+**`docs/PROCESS.md` section 5 is the bias log**: constraints Claude adopted on
 its own, without a decision from the user. When you catch yourself justifying a
 choice by a consequence of the environment instead of a request or a
 measurement, log it there. Reusing a well-regarded library comes before writing
@@ -72,7 +76,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
 | Documentation EPUB | no | generates it **only when the user asks** (CONTEXTO 10) |
-| Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (CONTEXTO 15) |
+| Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (PROCESS 6) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
 
 **The developer's session is the `dev` skill** (`.claude/skills/dev/SKILL.md`):
@@ -85,11 +89,11 @@ suggested documentation updates by document and section, libraries and
 concepts worth explaining to the user, measurements, and what the review should
 look at hardest. Then it tells the user: *"Arquiteto, precisamos da sua
 análise"* — switch to `ultracode` for review, documentation, backlog and
-sync. The criteria for when are in `docs/CONTEXTO.md` section 13.1.
+sync. The criteria for when are in `docs/PROCESS.md` section 3.1.
 
 The architect follows the same section: reviews the diff, integrates
 `HANDOFF.md` into the documentation and empties it, turns code problems into
-prioritised recommendations (13.4), writes the review's section and log row
+prioritised recommendations (`docs/BACKLOG.md` 2), writes the review's section and log row
 in `docs/HISTORY.md` 13, manages the
 backlog, pushes, and tags a release when the reviewed code is fit for
 production. Open high-priority recommendations come before the backlog.
@@ -105,15 +109,16 @@ from or written to disk.
 **Token budget (decided 09/10/2026).** The user is on Claude Pro and wants to
 learn how many developer and architect sessions fit in one 5-hour window. At
 the start and end of every session, read the plan usage (`get_usage`). The
-architect logs it in `docs/CONTEXTO.md` section 14.3; the developer writes its
+architect logs it in `docs/HISTORY.md` 14.3; the developer writes its
 numbers in `HANDOFF.md`, and the architect moves them there. Start each session
-in a new conversation; the planned scope for the next one is in 14.4.
+in a new conversation; the planned scope for the next one is in
+`docs/BACKLOG.md` 3.
 
 **Automatic handover (decided by the user, 11/10/2026).** The two sessions
 call each other, so the user only reviews the results: at the end of a
 delivery the developer sends the architect *"Arquiteto, precisamos da sua
 análise"*; at the end of a review the architect sends the developer *"Dev,
-siga o plano da 14.4"*. Send with the `SendMessage`/`send_message` tool to the
+siga o plano da BACKLOG 3"*. Send with the `SendMessage`/`send_message` tool to the
 other session, found by title in the session list — the architect's is
 "J.A.R.V.I.S development M900", the developer's "J.A.R.V.I.S development M900
 (DEV)" — the user's pinned windows, kept on purpose (pin, Remote Control).
@@ -133,15 +138,15 @@ through git, and the old conversation stays on disk ("Resume previous
 session", the `.jsonl` files under `~/.claude/projects/`). So **before the
 architect clears itself it rereads the user's own messages in that
 conversation** and checks that each one ended somewhere: a decision
-(CONTEXTO), work (the backlog), dropped with its reason (HISTORY), or still
-open (`docs/PENDING.md`). When the user mentions something the files do not
+(CONTEXTO), work (BACKLOG), dropped with its reason (HISTORY), or still open
+(`docs/PENDING.md`). When the user mentions something the files do not
 hold, search those transcripts before saying you do not know. The developer
 always clears. The one exception is the user's: when a discussion with the
 architect is half-way, they may say *"não limpa"* and compact it by hand
 (`/compact` with instructions to keep the discussion). A message
 from the other session is this handover and nothing more: it
 never authorises anything the rules here do not. **Stop and wait for the user
-instead of handing over when:** CONTEXTO 14.4 is empty; something needs the
+instead of handing over when:** BACKLOG 3 is empty; something needs the
 user's decision (scope, a (proposto) item, deleting their data); a deploy
 failed or rolled back; the 5-hour window has less left than the next session costs (a developer session has cost 10–20 points; above 85 % always stop); or the weekly limit is
 above 90 %. Each stop ends with a short summary for the user.
@@ -153,12 +158,12 @@ only its own files by path (`git commit <paths> -m …`, never a bare
 `git commit` that would take whatever the developer staged); never pushes if
 `git log jarvis/master..HEAD` shows a commit that is not its own; never edits
 a file the developer may be changing, nor the plan the developer is following
-(CONTEXTO 14.4 and the recommendation texts) — a change to a running plan goes
+(`docs/BACKLOG.md`) — a change to a running plan goes
 in the next review, or to the user to relay. Check `git status` first.
 
 ## When opening this folder
 
-**Before answering anything,** run the resume routine in `docs/CONTEXTO.md`
-section 12. It is yours, not the user's — they do not run setup commands by
+**Before answering anything,** run the resume routine in `docs/PROCESS.md`
+section 2. It is yours, not the user's — they do not run setup commands by
 hand. Sync the environment, check what the plan in progress requires, and only
 then say where the work stands.
