@@ -1,87 +1,91 @@
-# J.A.R.V.I.S. — instalação e operação
+# J.A.R.V.I.S. — installing and running it
 
-Como colocar o sistema para rodar numa máquina nova. Para entender **como** ele
-funciona, veja [ARQUITETURA.md](ARQUITETURA.md).
+How to get the system running on a new machine, and how production runs.
+For **how** it works, see [ARQUITETURA.md](ARQUITETURA.md).
 
 ---
 
-## 1. O que precisa estar instalado
+## 1. What must be installed
 
-Quatro coisas:
+Four things:
 
-| Programa | Para quê |
+| Program | For |
 |---|---|
-| **git** | Baixar e atualizar o código |
-| **uv** | Instalar as dependências e rodar o programa |
-| **Python 3.14 oficial** (python.org) | O interpretador. Tem que ser o **assinado**, ver 1.2 |
-| **Visual C++ Redistributable** | O OpenCV depende dele |
+| **git** | Downloading and updating the code |
+| **uv** | Installing the dependencies and running the program |
+| **The official Python 3.14** (python.org) | The interpreter. It must be the **signed** one, see 1.2 |
+| **Visual C++ Redistributable** | OpenCV depends on it |
 
-**Não é preciso instalar ffmpeg, CUDA, PyTorch nem codecs.** O ffmpeg vem
-empacotado na dependência `imageio-ffmpeg`; as demais estão no `pyproject.toml`
-e o `uv` as instala.
+**There is no need to install ffmpeg, CUDA, PyTorch or codecs.** ffmpeg comes
+packaged in the `imageio-ffmpeg` dependency; the rest are in `pyproject.toml`
+and `uv` installs them.
 
-O `instalar.bat` cuida do `uv`, do Python e do Redistributable sozinho.
+`instalar.bat` takes care of `uv`, Python and the Redistributable on its own.
 
-### 1.1 Por que o Visual C++ Redistributable
+### 1.1 Why the Visual C++ Redistributable
 
-Bibliotecas nativas trazem DLLs próprias mas **não empacotam o runtime C++ da
-Microsoft** de que elas dependem. Numa instalação limpa do Windows esse runtime
-não existe, e o erro é parecido com este — que apareceu no M900 quando o
-projeto ainda usava PyTorch; hoje a DLL citada seria a do OpenCV:
+Native libraries bring their own DLLs but **do not package Microsoft's C++
+runtime** they depend on. On a clean Windows install that runtime is missing,
+and the error looks like this — it appeared on the M900 when the project still
+used PyTorch; today the DLL named would be OpenCV's:
 
 ```
 OSError: [WinError 1114] A dynamic link library (DLL) initialization
 routine failed. Error loading "...\torch\lib\c10.dll"
 ```
 
-A mensagem não diz o que falta. A correção:
+The message does not say what is missing. The fix:
 
 ```bat
 winget install --id Microsoft.VCRedist.2015+.x64 -e
 ```
 
-Ou baixe <https://aka.ms/vs/17/release/vc_redist.x64.exe>. Reinicie depois de
-instalar.
+Or download <https://aka.ms/vs/17/release/vc_redist.x64.exe>. Restart after
+installing.
 
-Na máquina de desenvolvimento isso já estava presente por causa de outros
-programas, e por isso o problema só apareceu na máquina de destino.
+On the development PC it was already there because of other programs, which
+is why the problem only showed on the target machine.
 
-### 1.2 Por que o Python oficial, e não o que o uv baixa
+### 1.2 Why the official Python, and not the one uv downloads
 
-O `uv` sabe baixar Python sozinho, e o projeto usava isso. Esses binários
-(do projeto *python-build-standalone*) **não são assinados**. O Smart App
-Control do Windows 11 deixa passar binário sem assinatura só se a nuvem da
-Microsoft disser que ele tem boa reputação — e esse veredito muda com o tempo.
+`uv` can download Python by itself, and the project used to rely on that.
+Those binaries (from the *python-build-standalone* project) **are not
+signed**. Windows 11's Smart App Control lets an unsigned binary through only
+if Microsoft's cloud says it has a good reputation — and that verdict changes
+over time.
 
-Aconteceu no M900 em 09/10/2026, e o detalhe é o que torna o problema
-traiçoeiro: o Python bloqueado era o **mesmo arquivo** que rodou normalmente em
-29 e 30/09 — o `cpython-3.14.7` que o `uv` baixou em 29/09. Nada mudou no
-disco; mudou o veredito do Windows sobre ele. O próprio interpretador passou a
-ser recusado (`WinError 4551`), nem `python -c "print(1)"` rodava, e o
-programa não tinha como voltar a subir. O registro `CodeIntegrity` do Windows
-não mostra quando o veredito virou: o M900 não tinha rodado o J.A.R.V.I.S. entre
-30/09 e 09/10, e o primeiro bloqueio registrado do `python.exe` é o da tentativa
-de 09/10. (Os bloqueios de 29/09 no mesmo registro são outra coisa: DLLs do
-PyTorch carregadas pelo Python, o caso da ARQUITETURA 7.11.)
+It happened on the M900 on 09/10/2026, and the detail is what makes the
+problem treacherous: the blocked Python was the **same file** that had run
+normally on 29 and 30/09 — the `cpython-3.14.7` that `uv` downloaded on 29/09.
+Nothing changed on disk; Windows' verdict about it did. The interpreter itself
+was refused (`WinError 4551`), not even `python -c "print(1)"` ran, and the
+program had no way to start again. Windows' `CodeIntegrity` log does not show
+when the verdict turned: the M900 had not run J.A.R.V.I.S. between 30/09 and
+09/10, and the first recorded block of `python.exe` is the attempt of 09/10.
+(The blocks of 29/09 in the same log are something else: PyTorch DLLs loaded
+by Python, the case in ARQUITETURA 7.11.)
 
-O Python do python.org é **assinado pela Python Software Foundation**, e
-assinatura válida passa sem depender de reputação. O `pyproject.toml` declara
-`python-preference = "system"`: o `uv` usa o Python instalado no Windows quando
-existe, e só cai para o dele se não houver nenhum. Para instalar à mão:
+The python.org Python is **signed by the Python Software Foundation**, and a
+valid signature passes without depending on reputation. `pyproject.toml`
+declares `python-preference = "system"`: `uv` uses the Python installed in
+Windows when there is one, and only falls back to its own if there is none.
+To install it by hand:
 
 ```bat
 winget install --id Python.Python.3.14 -e --scope user
 ```
 
-Para conferir que o ambiente está no Python assinado:
+To check that the environment is on the signed Python:
 
 ```powershell
 Get-AuthenticodeSignature .venv\Scripts\python.exe
 ```
 
-Tem que dizer `Valid` e `CN=Python Software Foundation`.
+It must say `Valid` and `CN=Python Software Foundation`. The same rule is why
+the tests run as `uv run python -m pytest`: `uv run pytest` starts an unsigned
+launcher that Smart App Control blocks (ARQUITETURA 19.5).
 
-## 2. Passo a passo
+## 2. Step by step
 
 ```bat
 git clone https://github.com/OlorinGyn/jarvis.git
@@ -89,115 +93,112 @@ cd jarvis
 instalar.bat
 ```
 
-O `instalar.bat` faz sete coisas:
+`instalar.bat` does seven things:
 
-1. Instala o `uv` se faltar (se instalar, **feche a janela e rode de novo** — o
-   PATH só atualiza numa janela nova)
-2. Garante o Visual C++ Redistributable (ver 1.1)
-3. Instala o Python 3.14 oficial, só para o usuário atual (ver 1.2)
-4. `uv sync` — instala as dependências a partir do `uv.lock`, nas versões
-   exatas que foram testadas, e o próprio `jarvis` como pacote (ARQUITETURA 3.1)
-5. Baixa os modelos de visão (~73 MB no total, ver seção 3)
-6. Cria o atalho **J.A.R.V.I.S.** na Área de Trabalho, com o ícone do olho
-   (um `.bat` não pode ter ícone próprio; ver ARQUITETURA 14)
-7. Cria o `.env` a partir do `.env.example` e abre no Bloco de Notas
+1. Installs `uv` if missing (if it does, **close the window and run it
+   again** — the PATH only updates in a new window)
+2. Makes sure the Visual C++ Redistributable is there (see 1.1)
+3. Installs the official Python 3.14, for the current user only (see 1.2)
+4. `uv sync` — installs the dependencies from `uv.lock`, at the exact versions
+   that were tested, and `jarvis` itself as a package (ARQUITETURA 3.1)
+5. Downloads the vision models (~73 MB in all, see section 3)
+6. Creates the **J.A.R.V.I.S.** shortcut on the Desktop, with the eye icon (a
+   `.bat` cannot have its own icon; see ARQUITETURA 14)
+7. Creates `.env` from `.env.example` and opens it in Notepad
 
-Cada passo tem sua própria mensagem de erro. A primeira versão juntava o
-download dos modelos com a carga do PyTorch e, quando o PyTorch falhava,
-culpava a conexão de internet — que estava perfeita.
+Each step has its own error message. The first version lumped the model
+download together with loading PyTorch and, when PyTorch failed, blamed the
+internet connection — which was perfect.
 
-Preencha o `.env` e inicie pelo atalho da Área de Trabalho, ou:
+Fill in `.env` and start from the Desktop shortcut, or:
 
 ```bat
 jarvis.bat
 ```
 
-Para recriar só o atalho:
+To recreate only the shortcut:
 
 ```bat
 powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
 ```
 
-Isso liga o serviço — câmeras, detecção, gravação, rostos, notificação — e abre
-o navegador em `http://127.0.0.1:8765`, com as abas **Ao vivo** e
-**Gravações**. Clicar no atalho com o serviço já rodando só abre o navegador;
-não sobe um segundo, que brigaria pela câmera. O console que fica aberto é o
-serviço: encerre com `Ctrl+C` nele, não no X (ARQUITETURA 17.7).
+That starts the service — cameras, detection, recording, faces, dogs,
+notifications — and opens the browser at `http://127.0.0.1:8765`, with the
+tabs **Live**, **Recordings**, **People**, **Dogs**, **Notifications** and
+**Settings**. Clicking the shortcut with the service already running only
+opens the browser; it does not start a second one, which would fight over the
+camera. The console that stays open is the service: stop it with `Ctrl+C` in
+it, not with the X (ARQUITETURA 17.7).
 
-O `.bat` só confere se o `.env` existe e chama `uv run python -m jarvis`, que
-vai direto ao Python assinado em vez do `jarvis.exe` sem assinatura que o `uv`
-gera (seção 1.2).
+The `.bat` only checks that `.env` exists and calls
+`uv run python -m jarvis`, which goes straight to the signed Python instead of
+the unsigned `jarvis.exe` that `uv` generates (section 1.2).
 
-Para ligar **só o serviço**, sem abrir o navegador — é o que se usa para subir
-com o Windows (seção 5):
+To start **only the service**, without opening the browser — what starting
+with Windows uses (section 5):
 
 ```bat
 jarvis_vigilancia.bat
 ```
 
-**Pelo celular**, na mesma rede Wi-Fi: o console mostra o endereço, algo como
-`http://192.168.0.18:8765`. Na primeira vez o Windows pergunta se o Python pode
-receber conexões da rede; é preciso permitir. Sem isso, só o próprio computador
-abre a página.
+**From a phone or another computer** on the same Wi-Fi: the console shows the
+address, something like `http://192.168.0.18:8765`. The first time, Windows
+asks whether Python may receive connections from the network; allow it.
+Without that, only the computer itself opens the page. Reading is open to the
+home network; changing anything from another device needs pairing it once
+with the PIN set in Settings (ARQUITETURA 21).
 
-Para parar de qualquer terminal, sem procurar o console do serviço:
+To stop it from any terminal, without looking for the service's console:
 
 ```bat
 uv run python -m jarvis --stop
 ```
 
-O que aconteceu fica em `logs\jarvis.log`.
-
-A janela antiga do OpenCV ainda existe, **provisoriamente**, para nomear rostos
-e mexer nos ajustes até a web fazer isso (backlog, item 3):
-
-```bat
-uv run python -m jarvis --headless
-```
+What happened is in `logs\jarvis.log`.
 
 **Since 09/10/2026 the copy that stays on is production, in `C:\JARVIS`**, and
 this folder becomes the test copy. Running the commands above here starts the
 test copy. See section 9.
 
-## 3. O que é baixado automaticamente
+## 3. What is downloaded automatically
 
-Nada disso está no repositório, porque são arquivos grandes que não devem ser
-versionados:
+None of this is in the repository, because they are large files that should
+not be versioned:
 
-| Arquivo | Tamanho | Origem |
+| File | Size | Source |
 |---|---|---|
-| `models/yolo11s.onnx` | 36 MB | ultralytics/assets (release oficial) |
+| `models/yolo11s.onnx` | 36 MB | ultralytics/assets (official release) |
 | `models/face_detection_yunet_2023mar.onnx` | 227 KB | opencv/opencv_zoo |
 | `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo |
 
-Os modelos são baixados por `people.ensure_model()` e `faces.ensure_models()`
-na primeira vez que cada camada roda. O `instalar.bat` antecipa isso para o primeiro
-evento não esperar o download.
+The models are downloaded by `people.ensure_model()` and
+`faces.ensure_models()` the first time each layer runs. `instalar.bat` does it
+ahead of time so the first event does not wait for the download.
 
-## 4. Configurar as câmeras
+## 4. Configuring the cameras
 
-O `.env` guarda uma câmera por trio de linhas. O rótulo vira o nome na tela e o
-nome da pasta das gravações.
+`.env` holds one camera per three lines. The label becomes the name on the
+page and the name of the recordings' folder.
 
 ```
 CAM_FRONT_IP=192.168.0.116
-CAM_FRONT_USER=usuario
-CAM_FRONT_PASSWORD=senha
+CAM_FRONT_USER=user
+CAM_FRONT_PASSWORD=password
 ```
 
-Três armadilhas, todas já custaram tempo neste projeto:
+Three traps, all of which have already cost time in this project:
 
-**As credenciais não são as da conta TP-Link.** Crie uma "Conta da Câmera" no
-app Tapo: câmera → engrenagem → Configurações Avançadas → Conta da Câmera.
+**The credentials are not the TP-Link account's.** Create a "Camera Account"
+in the Tapo app: camera → gear → Advanced Settings → Camera Account.
 
-**A câmera só faz duas de três funções ao mesmo tempo:** Tapo Care, gravação em
-cartão SD e RTSP. Com as duas primeiras ativas, o RTSP é desligado em silêncio —
-o sintoma é `DESCRIBE` responder `200 OK` e o `SETUP` fechar a conexão.
-**Desativar a gravação no app não basta: o cartão precisa ser removido
-fisicamente.** Ou desligue o Tapo Care. Detalhes em ARQUITETURA seção 11.
+**The camera does only two of three things at once:** Tapo Care, recording to
+the SD card, and RTSP. With the first two on, RTSP is switched off silently —
+the symptom is `DESCRIBE` answering `200 OK` and `SETUP` closing the
+connection. **Turning recording off in the app is not enough: the card has to
+be removed physically.** Or turn Tapo Care off. Details in ARQUITETURA 13.
 
-**Reserve o IP por MAC no roteador.** Sem isso o endereço muda numa renovação de
-DHCP e o sistema para de conectar.
+**Reserve the IP by MAC on the router.** Without it the address changes on a
+DHCP renewal and the system stops connecting.
 
 ## 5. Starting with Windows
 
@@ -214,81 +215,84 @@ to get wrong by hand:
 The task runs production from `C:\JARVIS` without a console, whether or not
 anyone is logged on.
 
-## 6. Ajustes para o M900
+## 6. Tuning for the M900
 
-O M900 tem 4 núcleos Skylake, bem menos que a máquina de desenvolvimento. As
-constantes que mais importam, em ordem de impacto:
+The M900 has 4 Skylake cores, far fewer than the development PC. The constants
+that matter most, in order of impact:
 
-| Constante | Arquivo | Efeito |
+| Constant | File | Effect |
 |---|---|---|
-| `HWACCEL` | `capture.py` | Decode por hardware. Vazio por padrão. No M900 teste `"dxva2"` ou `"qsv"` — o Quick Sync do Skylake decodifica H.264 em silício e libera CPU |
-| `ANALYSIS_FPS` | `capture.py` | 10 hoje. Baixar para 6 corta quase 40% do trabalho de análise |
-| `MIN_INTERVAL` | `people.py` | 0.25 s entre execuções do YOLO. Subir para 0.5 reduz pela metade |
-| `MODEL_FILE` e `MODEL_URL` | `people.py` | `yolo11s.onnx`. Trocar os dois para `yolo11n.onnx` é bem mais rápido e um pouco menos preciso |
+| `HWACCEL` | `capture.py` | Hardware decoding. Empty by default. On the M900 try `"dxva2"` or `"qsv"` — Skylake's Quick Sync decodes H.264 in silicon and frees CPU |
+| `ANALYSIS_FPS` | `capture.py` | 10 today. Lowering it to 6 cuts almost 40 % of the analysis work |
+| `MIN_INTERVAL` | `people.py` | 0.25 s between YOLO runs. Raising it to 0.5 halves it |
+| `MODEL_FILE` and `MODEL_URL` | `people.py` | `yolo11s.onnx`. Switching both to `yolo11n.onnx` is much faster and a little less accurate |
 
-**Meça antes de mexer.** A gravação em si não custa quase nada, porque os
-pacotes da câmera são copiados sem recodificar (ARQUITETURA 5.1). O custo está
-no decode para análise e no YOLO.
+**Measure before changing anything.** Recording itself costs almost nothing,
+because the camera's packets are copied without re-encoding (ARQUITETURA 5.1).
+The cost is in decoding for analysis and in YOLO. `HWACCEL` only affects the
+analysis output; recording never decodes. Measuring the M900 is backlog 4.
 
-O `HWACCEL` só afeta a saída de análise; a gravação nunca decodifica.
+## 7. Updating
 
-## 7. Atualizar
+Production updates itself to a release tag with `production.ps1 -Action
+update` (section 9.3). The test copy, from this folder:
 
 ```bat
 git pull
 uv sync
 ```
 
-O `uv sync` é necessário só quando as dependências mudam, mas rodar sempre não
-faz mal. O `uv run` também sincroniza sozinho antes de executar.
+`uv sync` is only needed when the dependencies change, but running it always
+does no harm. `uv run` also syncs on its own before running.
 
-**Ao atualizar uma cópia anterior a 29/09/2026:** o código saiu da raiz para
-`src/jarvis/` e `tools/`. O `git pull` move os arquivos; se sobrar uma pasta
-`__pycache__/` na raiz, pode apagar. O `.env`, `models/`, `clips/` e `faces/`
-continuam onde estão.
+**Updating a copy from before 29/09/2026:** the code moved from the root to
+`src/jarvis/` and `tools/`. `git pull` moves the files; if a `__pycache__/`
+folder is left at the root, it can be deleted. `.env`, `models/`, `clips/` and
+`faces/` stay where they are.
 
-## 8. Quando algo não funciona
+## 8. When something does not work
 
-**`406 Not Acceptable` ou `DESCRIBE failed`**
+**`406 Not Acceptable` or `DESCRIBE failed`**
 
-A câmera aceita **uma única sessão RTSP**. Verifique se não há outra instância
-do J.A.R.V.I.S. aberta, ou um ffmpeg órfão:
+The camera accepts **a single RTSP session** on `stream1`. Check that no other
+J.A.R.V.I.S. is running — production and the test copy use different streams
+on purpose (ARQUITETURA 18.2) — or an orphaned ffmpeg:
 
 ```bat
 tasklist | findstr ffmpeg
 ```
 
-Se o programa foi encerrado à força, o ffmpeg pode ter sobrevivido e estar
-segurando a câmera.
+If the program was killed, ffmpeg may have survived and be holding the camera.
 
-**"Tempo esgotado. Confira a rede e o IP da camera"**
+**"Timed out. Check the network and the camera's IP."**
 
-Nada responde no IP do `.env`. Ou o IP nunca foi preenchido, ou o roteador deu
-outro endereço à câmera. Confirme:
+Nothing answers at the IP in `.env`. Either the IP was never filled in, or the
+router gave the camera another address. Confirm:
 
 ```powershell
 Test-NetConnection 192.168.0.116 -Port 554
 ```
 
-Se falhar, descubra o IP atual no app Tapo (câmera → engrenagem → Informações
-do dispositivo) ou na lista de clientes do roteador, atualize o `.env` e
-reserve o IP (seção 4). As Tapo têm MAC começando com `14-EB-B6`. As
-credenciais identificam qual é qual: cada câmera só aceita a própria Conta da
-Câmera e responde `401` às outras.
+If it fails, find the current IP in the Tapo app (camera → gear → Device
+Info) or in the router's client list, update `.env` and reserve the IP
+(section 4). Tapo cameras have a MAC starting with `14-EB-B6`. The credentials
+tell them apart: each camera accepts only its own Camera Account and answers
+`401` to the others.
 
-**Conecta mas nunca aparece imagem ("nenhum frame recebido")**
+**It connects but no picture ever arrives ("no frame received")**
 
-Antes de tudo, faça o teste de IP acima: versões antigas do `capture.py`, sem
-`-timeout`, mostravam esta mensagem também para IP errado (ARQUITETURA 5.7).
+First of all, do the IP test above: old versions of `capture.py`, without
+`-timeout`, showed this message for a wrong IP too (ARQUITETURA 5.7; the
+story is in HISTORY 6).
 
-O RTSP está bom mas o ffmpeg não entrega frames para análise. Rode:
+RTSP is fine but ffmpeg does not deliver frames for analysis. Run:
 
 ```bat
-uv run tools/diagnostico.py Front
+uv run python tools/diagnostico.py Front
 ```
 
-Ele testa cinco variantes do comando de captura, 14 segundos cada, e informa
-quantos frames cada uma entregou nesta máquina:
+It tests five variants of the capture command, 14 seconds each, and reports
+how many frames each delivered on this machine:
 
 ```
   OK atual (como o programa roda)        126.0 frames  1o em    2.6s  segmentos 3
@@ -297,22 +301,23 @@ quantos frames cada uma entregou nesta máquina:
 O comando atual funciona nesta maquina.
 ```
 
-Se a atual falhar e outra variante entregar frames, ele diz qual — é ela que
-deve ir para o `capture.py`. Se nenhuma entregar, as linhas de erro do ffmpeg
-aparecem junto, e ele lembra de testar o IP primeiro. Os segmentos de teste vão
-para uma pasta temporária do sistema, apagada no fim.
+(The tool's own text is still Portuguese: R10.) If the current command fails
+and another variant delivers frames, it says which — that one should go into
+`capture.py`. If none does, ffmpeg's error lines are shown with it, and it
+reminds you to test the IP first. The test segments go to a temporary system
+folder, deleted at the end.
 
-A coluna `segmentos` separa os dois casos: segmentos sendo gravados com zero
-frames significa que a câmera e a rede estão bem, e o problema está só na saída
-de análise.
+The `segmentos` column separates the two cases: segments being recorded with
+zero frames means the camera and the network are fine, and the problem is only
+in the analysis output.
 
-**Diagnóstico completo de uma câmera**
+**A full diagnosis of one camera**
 
 ```bat
-uv run tools/probe_rtsp.py 192.168.0.116 usuario senha stream1
+uv run python tools/probe_rtsp.py 192.168.0.116 user password stream1
 ```
 
-Mostra cada etapa do handshake. O esperado é `200 OK` nas três:
+It shows each step of the handshake. Expected: `200 OK` on all three:
 
 ```
 DESCRIBE  -> RTSP/1.0 200 OK
@@ -320,31 +325,23 @@ SETUP     -> RTSP/1.0 200 OK
 PLAY      -> RTSP/1.0 200 OK
 ```
 
-Se `DESCRIBE` passa e `SETUP` fecha a conexão, é a regra das duas funções da
-seção 4.
+If `DESCRIBE` passes and `SETUP` closes the connection, it is the two-of-three
+rule of section 4.
 
-**A janela abre cinza e diz "Não Responde"**
+**Lines `[h264 @ ...] error while decoding MB ...`**
 
-Isto **não deve mais acontecer**. Era causado pela leitura do pipe bloquear o
-laço da interface enquanto o ffmpeg negociava o RTSP, o que leva ~2,5 s. Hoje a
-leitura roda em thread separada (ARQUITETURA 5.4).
+Not a program error. It means the **camera** sent a damaged piece of picture:
+a 16×16 px block (the "MB", macroblock) smeared for a fraction of a second,
+until the next complete frame. Recording copies the camera's bytes without
+re-encoding, so the damage came that way. Since the connection is TCP, the
+network loses nothing on the way; the camera itself drops data when its Wi-Fi
+chokes.
 
-Se voltar a acontecer, é sinal de que algo novo passou a bloquear o laço
-principal — desconfie de operação de disco ou rede feita dentro dele.
-
-**Linhas `[h264 @ ...] error while decoding MB ...` no terminal**
-
-Não é erro do programa. Quer dizer que a **câmera** mandou um pedaço de imagem
-danificado: um bloco de 16x16 px (o "MB", macrobloco) borrado por uma fração de
-segundo, até o próximo quadro completo. A gravação copia os bytes da câmera sem
-recodificar, então o dano já veio assim. Como a conexão é TCP, a rede não perde
-dados no caminho; quem descarta é a própria câmera, quando o Wi-Fi dela engasga.
-
-Desde 30/09/2026 essas linhas não aparecem mais no terminal (ARQUITETURA 10.11).
-Para ver se uma câmera está com o sinal ruim:
+Since 30/09/2026 these lines no longer reach the terminal (ARQUITETURA 10.11).
+To see whether a camera has a bad signal:
 
 ```bat
-uv run tools/verificar_clipes.py 2026-09-30
+uv run python tools/verificar_clipes.py 2026-09-30
 ```
 
 ```
@@ -355,102 +352,109 @@ uv run tools/verificar_clipes.py 2026-09-30
   Front  0 de 34 clipes com dano
 ```
 
-Se uma câmera tem dano frequente e a outra não, confira o sinal dela no app
-Tapo (câmera → engrenagem → Informações do dispositivo). O que costuma resolver:
-aproximar o roteador ou pôr um repetidor, e preferir a rede de 2,4 GHz, que
-alcança mais longe que a de 5 GHz.
+If one camera has frequent damage and the other does not, check its signal in
+the Tapo app (camera → gear → Device Info). What usually solves it: moving the
+router closer or adding a repeater, and preferring the 2.4 GHz network, which
+reaches farther than 5 GHz.
 
-**Rostos errados ou repetidos na tela People**
+**The Live tab shows "no signal"**
 
-Com o programa **fechado**:
+The picture is marked after 5 s without a frame (ARQUITETURA 17.8). The camera's
+reason is in the log (`logs\jarvis.log`; production's in
+`C:\JARVIS\logs\jarvis.log`). The common ones:
 
-```bat
-uv run tools/refazer_rostos.py
-```
-
-Move o `faces/` atual para `backups/faces_<data-hora>/` e reconstrói tudo a
-partir dos clipes gravados. Os nomes precisam ser dados de novo, mas basta um
-cartão por pessoa: os outros dela recebem o nome junto (ARQUITETURA 10.4).
-Depois de conferir que está tudo certo, a cópia em `backups/` pode ser apagada.
-
-**Painel mostra `sem sinal`**
-
-O motivo aparece **em amarelo no próprio painel**. Os mais comuns:
-
-| Texto | O que fazer |
+| Text | What to do |
 |---|---|
-| Camera ocupada | Outra coisa está usando a câmera. Ver abaixo. |
-| Credenciais incorretas | Confira a Conta da Câmera no app Tapo |
-| Confira o IP / Tempo esgotado | A câmera mudou de endereço ou está desligada. Ver "Tempo esgotado" acima |
+| Camera busy | Something else is using the camera. See below |
+| Wrong credentials | Check the Camera Account in the Tapo app |
+| Timed out. Check the network and the camera's IP | The camera changed address or is off. See "Timed out" above |
 
-**"Camera ocupada" é o caso mais frequente numa instalação nova.** A Tapo aceita
-**uma conexão RTSP por vez**. Se o J.A.R.V.I.S. estiver rodando noutra máquina —
-a de desenvolvimento, por exemplo — a segunda não conecta. Feche a outra
-instância, o app Tapo, ou um ffmpeg órfão:
+**"Camera busy" is the most frequent case on a new install.** The Tapo accepts
+**one RTSP connection at a time** on `stream1`. If J.A.R.V.I.S. is running on
+another machine — the development PC, say — on the same stream, the second one
+does not connect. Close the other instance, the Tapo app, or an orphaned
+ffmpeg (`tasklist | findstr ffmpeg`).
+
+**Wrong or repeated faces on People**
+
+First use the page: rename, "Belongs to…" to merge, and "Bad detection" for a
+crop that is not a face (ARQUITETURA 17.10, 21). As a last resort, with the
+program **stopped**:
 
 ```bat
-tasklist | findstr ffmpeg
+uv run python tools/refazer_rostos.py
 ```
 
-**Nenhum rosto aparece na aba People**
+It moves the current `faces/` to `backups/faces_<date-time>/` and rebuilds
+everything from the recorded clips. The names must be given again, but one
+card per person is enough: their other faces get the name with it (ARQUITETURA
+10.4). Once everything is right, the copy in `backups/` can be deleted.
 
-É o comportamento esperado em muitos eventos. Um rosto só entra se cumprir
-tudo isto:
+**No face appears on People**
 
-- o evento teve `person` entre os rótulos;
-- o rosto está **de frente** — perfil, nuca e cabeça baixa são ignorados;
-- está em cima de uma pessoa que o YOLO vê no mesmo frame;
-- se for alguém novo, apareceu em pelo menos 2 frames do clipe.
+The expected behaviour in many events. A face goes in only when all of this
+holds:
 
-E aparece alguns segundos depois do evento: a varredura roda depois que o
-clipe é montado, uma de cada vez. Detalhes em ARQUITETURA 10.9. À noite, no
-infravermelho, o rosto costuma ter ~44 px contra os ~112 px ideais, e o
-reconhecimento é instável (ARQUITETURA 10.5).
+- the event had `person` among its labels;
+- the face is **frontal** — profile, the back of the head and a lowered head
+  are ignored (a side face can still reach the phone as a picture, never the
+  gallery: ARQUITETURA 21);
+- it is on a person YOLO sees in the same frame;
+- if it is someone new, it appeared in at least 2 frames of the clip.
 
-**`WinError 1114` ou `Error loading ... .dll`**
+And it shows a few seconds after the event: the scan runs after the clip is
+assembled, one at a time. Details in ARQUITETURA 10.9. At night, in infrared,
+the face is usually ~44 px against the ideal ~112 px, and recognition is
+unreliable (ARQUITETURA 10.5).
 
-Falta o Visual C++ Redistributable. Ver seção 1.1.
+**`WinError 1114` or `Error loading ... .dll`**
+
+The Visual C++ Redistributable is missing. See section 1.1.
 
 **`WinError 4551: An Application Control policy has blocked this file`**
 
-O Smart App Control do Windows 11 bloqueou um binário sem assinatura
-reconhecida. Já aconteceu duas vezes:
+Windows 11's Smart App Control blocked a binary without a recognised
+signature. It has happened three times:
 
-| Quando | O que foi bloqueado | Saída |
+| When | What was blocked | Way out |
 |---|---|---|
-| 29/09/2026 | DLLs do PyTorch | PyTorch removido, YOLO pelo `cv2.dnn` (ARQUITETURA 7.11) |
-| 09/10/2026 | o **próprio Python** que o `uv` baixa | Python oficial assinado (seção 1.2) |
+| 29/09/2026 | PyTorch's DLLs | PyTorch removed, YOLO through `cv2.dnn` (ARQUITETURA 7.11) |
+| 09/10/2026 | **Python itself**, the one `uv` downloads | the official signed Python (section 1.2) |
+| 11/10/2026 | `.venv\Scripts\pytest.exe`, `uv`'s unsigned launcher | `uv run python -m pytest` (ARQUITETURA 19.5) |
 
-Se a mensagem cita `python.exe` ou o `uv` diz `Failed to spawn: python`, é o
-segundo caso: confira a assinatura com `Get-AuthenticodeSignature
-.venv\Scripts\python.exe`, e se não for da Python Software Foundation, instale
-o Python oficial e recrie o ambiente (`Remove-Item .venv -Recurse` e `uv sync`).
+If the message names `python.exe` or `uv` says `Failed to spawn: python`, it is
+the second case: check the signature with `Get-AuthenticodeSignature
+.venv\Scripts\python.exe`, and if it is not the Python Software Foundation's,
+install the official Python and recreate the environment
+(`Remove-Item .venv -Recurse` and `uv sync`). For any tool installed into
+`.venv`, run it as `python -m <tool>`.
 
-Se aparecer em outra biblioteca, **não desligue o Smart App Control** sem
-pensar — ele é irreversível, só volta reinstalando o Windows. Procure primeiro
-uma alternativa assinada. Para ver o que foi bloqueado, o Windows registra cada
-bloqueio no log `Microsoft-Windows-CodeIntegrity/Operational`.
+If it appears in another library, **do not turn Smart App Control off**
+lightly — it is irreversible, it only comes back by reinstalling Windows. Look
+for a signed alternative first. To see what was blocked, Windows records each
+block in the `Microsoft-Windows-CodeIntegrity/Operational` log.
 
-Para conferir o estado dele:
+To check its state:
 
 ```bat
 reg query "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v VerifiedAndReputablePolicyState
 ```
 
-`0x1` significa ligado e bloqueando.
+`0x1` means on and blocking.
 
-**O disco está enchendo**
+**The disk is filling up**
 
-Não há retenção automática ainda, e o ritmo real é de **~300 MB por dia**
-(medido em 30/09/2026, ARQUITETURA 8.6). As gravações ficam em
-`clips/<camera>/<data>/`, uma pasta por dia, e podem ser apagadas à vontade —
-o mais simples é apagar as pastas de dias antigos. O buffer em `clips/_buffer/`
-se limpa sozinho, e `backups/` só tem o que as ferramentas guardaram.
+The real rate is **~300 MB a day** (measured 30/09/2026, ARQUITETURA 8.6).
+Set an archive folder in **Settings → Archive** — an external drive — and
+events older than 30 days move there; it deletes only there, when that drive
+fills (ARQUITETURA 11). Without one, nothing is deleted: the
+recordings are in `clips/<camera>/<date>/`, one folder per day, and old days
+can be deleted by hand. The buffer in `clips/_buffer/` cleans itself, and
+`backups/` holds only what the tools saved.
 
 ## 9. Production and test (since 09/10/2026)
 
-Written in English (CLAUDE.md, language). How it works and why: ARQUITETURA
-18.
+How it works and why: ARQUITETURA 18.
 
 ### 9.1 The two copies
 
