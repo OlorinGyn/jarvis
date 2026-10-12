@@ -1878,7 +1878,7 @@ message. The test copy uses `[TEST]` (18.7).
 ### 12.9 The picture, the face that passes fast, and a trace of every message (10/10/2026)
 
 Developer session 1 answered what the first night of production showed
-(CONTEXTO 13.6): the user went out and came back, was recorded, and still
+(HISTORY 13.6): the user went out and came back, was recorded, and still
 believed they were not, because the event's picture was the dog and no face
 message came.
 
@@ -1942,7 +1942,7 @@ scan (584 → 575–583 frames a minute), but **YOLO runs 1.6× slower during on
 (280 → 454 ms), because every `cv2.dnn` network in the process shares one pool
 of worker threads. Giving the scan fewer threads does not help:
 `cv2.setNumThreads` is process-wide and slowed YOLO itself (472 ms at 2
-threads, 772 ms at 1). The decision is in CONTEXTO 13.8 (R23).
+threads, 772 ms at 1). The decision is in HISTORY 13.8 (R23).
 
 **Where each scan looked (R22).** One INFO line per scan:
 `face scan 22-29-22.mp4: dense 7.3-15.7 s, 36.3-42.1 s, 162 frames, 23.1 s, 3 face view(s)`.
@@ -2490,7 +2490,7 @@ The page gained the two tabs that only the OpenCV window had.
 only `notify_token_set` — because anyone on the Wi-Fi can open the page (R4).
 **"Archive now" was left out on purpose:** it would move files from the web
 thread while the `Housekeeper` may be moving the same files in the main loop.
-Writes from the network are guarded by R24 (CONTEXTO 13.9).
+Writes from the network are guarded by R24 (HISTORY 13.9).
 ### 17.10 The lock, People by person, who appears, and the window gone (10/10/2026)
 
 **Every write is guarded (R24).** A FastAPI middleware — code that wraps every

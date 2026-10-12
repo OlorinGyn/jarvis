@@ -764,7 +764,7 @@ def _selection(total, fps, moments):
 
     A sparse pass over the whole clip, plus every DENSE_EVERY-th frame where
     persons were seen: a face is frontal and large enough for only a few
-    frames, and one frame in fourteen misses them (CONTEXTO 13.6, R20).
+    frames, and one frame in fourteen misses them (HISTORY 13.6, R20).
     """
     step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
     expression = f"not(mod(n\\,{step}))"

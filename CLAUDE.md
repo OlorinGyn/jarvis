@@ -1,7 +1,9 @@
 # Instructions for Claude Code
 
-Read `docs/CONTEXTO.md` before touching anything: history, decisions that must
-not be undone without a new reason, and what has already been ruled out.
+Read `docs/CONTEXTO.md` before touching anything: the rules, the decisions
+that must not be undone without a new reason, what has been ruled out, the
+backlog and the plan. The past — bugs already fixed, every review in full,
+closed recommendations — is in `docs/HISTORY.md`, read on demand.
 
 ## Language (decided by the user on 09/10/2026)
 
@@ -81,7 +83,8 @@ sync. The criteria for when are in `docs/CONTEXTO.md` section 13.1.
 
 The architect follows the same section: reviews the diff, integrates
 `HANDOFF.md` into the documentation and empties it, turns code problems into
-prioritised recommendations (13.4), updates the log (13.2), manages the
+prioritised recommendations (13.4), writes the review's section and log row
+in `docs/HISTORY.md` 13, manages the
 backlog, pushes, and tags a release when the reviewed code is fit for
 production. Open high-priority recommendations come before the backlog.
 
