@@ -608,8 +608,7 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 | R7 | low | `instalar.bat` does not check that the Python is signed | partly: `production.ps1` checks it (HISTORY 13.4) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
-| R10 | **high** | Everything except the conversation in English | in progress 12/10 with R33: CONTEXTO and HISTORY in English; README, INSTALACAO, PYTHON and ARQUITETURA next; then the Portuguese **file names** |
-| R33 | medium | The documentation grew by appending | in progress 12/10: CONTEXTO cut to this brief, the past in `HISTORY.md` |
+| R10 | **high** | Everything except the conversation in English | every document's text in English since 12/10 (R33); left, a developer item: the Portuguese **file names** and the text of `instalar.bat` and `tools/diagnostico.py` |
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -636,16 +635,20 @@ a temporary file then `os.replace` it — on Windows `os.replace` fails while
 another thread has the file open, so it needs a short retry. Acceptance: a
 test where two threads update different keys many times and both survive.
 
-**R10, what is left — the file names.** The documents and the program's text
-are in English. Still Portuguese: the documents' own names (`ARQUITETURA.md`,
+**R10, what is left — the file names, and two tools' text.** Every document
+is in English since 12/10. Still Portuguese: the text `instalar.bat` and
+`tools/diagnostico.py` print, and the documents' own names (`ARQUITETURA.md`,
 `INSTALACAO.md`, `CONTEXTO.md` → `ARCHITECTURE.md`, `INSTALL.md`,
 `CONTEXT.md`), the tools (`diagnostico.py`, `refazer_rostos.py`,
 `verificar_clipes.py`, `gerar_icone.py`, `gerar_epub.py`, `criar_atalho.ps1`)
 and the launchers (`instalar.bat`, `jarvis_vigilancia.bat` — the second may be
 what the startup task or the desktop shortcut calls, so a rename keeps the old
-name working for one release). A developer item: every reference — `CLAUDE.md`,
-the `dev` skill, docstrings, `gerar_epub.py`'s order, the shortcut and the
-scheduled task — changes in the same commit, checked by script.
+name working for one release). A developer item, because the names are referenced from code: every
+reference — `CLAUDE.md`, the `dev` skill, the docstrings of 26 files in
+`src/` and `tools/` ("See docs/ARQUITETURA.md section 11"), `gerar_epub.py`'s
+`ORDEM`, the shortcut and the scheduled task — changes in the same commit, and
+a script checks that every `<DOC> <section>` reference still lands on a
+heading (the architect's check of 12/10 can be reused).
 
 ---
 
@@ -683,6 +686,7 @@ Rows before 12/10 11:00: `HISTORY.md` 14.3.
 | A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
 | D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
 | A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
+| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → ~55% | 94% → 96% | 215k → 440k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
 
 ### 14.4 Next sessions
 
@@ -699,8 +703,12 @@ reset on 14/10 at 16:00; above 90 % the cycle stops anyway.
 - **R42**: accept the corner, or count people with YOLO (recommended).
 
 **Next developer session, when the weekly allows:** R43 (low); R42 if the
-user picks (b); R10's file names. R30 (b) still waits for a second named
-person.
+user picks (b); R10's file names and the two tools' text (13.4). R30 (b)
+still waits for a second named person.
+
+**R33 is done** (12/10, A20): the documentation rewrite the architect owed.
+The documents are in English, CONTEXTO is a brief, and the past is in
+`HISTORY.md`.
 
 **Waiting for the user, not planned:** every other open backlog item is
 **(proposto)** — 1 (zones), 2 (system health) and the rest of section 8.

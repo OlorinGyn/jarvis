@@ -20,7 +20,8 @@ write into the repository is in English.
    time, context tokens) and keep the numbers: they go into `HANDOFF.md` at the
    end. The architect moves them to CONTEXTO 14.3; you never edit `docs/`.
 3. Read the plan: CONTEXTO **14.4**, and the full text of every recommendation
-   it lists (13.4, 13.5, 13.6). The order and the stop point are the
+   it lists (CONTEXTO 13.4; an older one says where its text is in
+   `docs/HISTORY.md`, read on demand). The order and the stop point are the
    architect's; follow them, and say so when you deviate and why.
 4. Tell the user, in a few lines, what the session will do, in what order, and
    what comes first.
