@@ -338,6 +338,7 @@ def _card(entry):
         "views": len(entry["embeddings"]),
         "pending": len(entry.get("pending") or []),
         "first_seen": entry.get("first_seen", ""),
+        "resident": bool(entry.get("resident")),
     }
 
 
@@ -398,6 +399,16 @@ def _name(gallery, entry_id, payload, kind):
     merged = gallery.rename(entry_id, name)
     result = type(gallery)(gallery.path).by_name(name)
     return {"id": result["id"] if result else entry_id, "name": name.strip(), "merged": merged}
+
+
+def _resident(gallery, entry_id, payload):
+    _entry_or_404(gallery, entry_id)
+    resident = payload.get("resident")
+    if not isinstance(resident, bool):
+        raise HTTPException(400, "resident must be true or false")
+    if not gallery.set_resident(entry_id, resident):
+        raise HTTPException(400, "only a named entry can be a resident")
+    return _page(gallery, entry_id)
 
 
 def _cover(gallery, entry_id, index):
@@ -538,6 +549,12 @@ def name_person(person_id: str, payload: dict = Body(...)):
     return _name(faces.Gallery(), person_id, payload, "person")
 
 
+@app.post("/api/persons/{person_id}/resident")
+def mark_resident(person_id: str, payload: dict = Body(...)):
+    """Mark a named person as living here: the notification modes can then leave them out."""
+    return _resident(faces.Gallery(), person_id, payload)
+
+
 @app.post("/api/persons/{person_id}/views/{index}/cover")
 def choose_cover(person_id: str, index: int):
     """Make one view, which must have a photo, the person's picture on the People grid."""
@@ -614,6 +631,11 @@ def dog_page(dog_id: str):
 @app.post("/api/dogs/{dog_id}/name")
 def name_dog(dog_id: str, payload: dict = Body(...)):
     return _name(dogs.DogGallery(), dog_id, payload, "dog")
+
+
+@app.post("/api/dogs/{dog_id}/resident")
+def mark_resident_dog(dog_id: str, payload: dict = Body(...)):
+    return _resident(dogs.DogGallery(), dog_id, payload)
 
 
 @app.post("/api/dogs/{dog_id}/views/{index}/cover")

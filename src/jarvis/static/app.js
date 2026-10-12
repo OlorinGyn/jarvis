@@ -357,6 +357,8 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const cardTemplate = document.getElementById("person-card");
   const analyse = section.querySelector(".analyse");
   const spreadBox = section.querySelector(".spread");
+  const residentToggle = section.querySelector(".resident-toggle");
+  const residentBox = residentToggle.querySelector("input");
   let named = [];
   let proposal = null;
 
@@ -406,6 +408,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
     name.classList.toggle("person", Boolean(entry.name));
     node.querySelector(".count").textContent =
       plural(entry.views, "view", "views") + (entry.pending ? ` +${entry.pending}` : "");
+    node.querySelector(".badge").hidden = !entry.resident;
     const form = node.querySelector("form");
     const select = node.querySelector("select");
     if (entry.name) {
@@ -597,6 +600,8 @@ function galleryTab(section, api, kind, unnamedLabel) {
     section.querySelector(".page-name").textContent = entry.name || unnamedLabel;
     renameForm.querySelector("input").value = entry.name;
     renameForm.querySelector("button").textContent = entry.name ? "Rename" : "Save name";
+    residentToggle.hidden = !entry.name;
+    residentBox.checked = entry.resident;
     section.querySelector(".views-count").textContent = `(${entry.views} of 40)`;
     section.querySelector(".waiting-count").textContent = entry.pending ? `(${entry.pending})` : "";
     viewsGrid.replaceChildren(...entry.view_photos.map((photo, index) => viewTile(photo, index, entry)));
@@ -628,6 +633,17 @@ function galleryTab(section, api, kind, unnamedLabel) {
       loadList();
     }
   }
+
+  residentBox.addEventListener("change", async () => {
+    const wanted = residentBox.checked;
+    try {
+      showEntry(await send(`${api}/${selected()}/resident`, { resident: wanted }));
+      pageResult.textContent = wanted ? "Marked as a resident." : "No longer a resident.";
+    } catch (problem) {
+      residentBox.checked = !wanted;
+      pageResult.textContent = `Not saved: ${problem.message}`;
+    }
+  });
 
   renameForm.addEventListener("submit", async (submitted) => {
     submitted.preventDefault();

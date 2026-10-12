@@ -55,6 +55,10 @@
         <input name="entry" maxlength="60" autocomplete="off" placeholder="Full name">
         <button type="submit">Rename</button>
       </form>
+      <label class="toggle resident-toggle" hidden>
+        <input type="checkbox" role="switch" class="resident">
+        <span>Resident: lives here; the notification modes can leave them out</span>
+      </label>
       <p class="result heading-hint page-result"></p>
       <h3 class="heading">Chosen <span class="views-count"></span></h3>
       <p class="hint heading-hint">The views that recognise them, up to 40. ↓ moves one to Waiting, × deletes it, ★ shows it on the grid.
@@ -95,6 +99,10 @@
         <input name="entry" maxlength="60" autocomplete="off" placeholder="Name">
         <button type="submit">Rename</button>
       </form>
+      <label class="toggle resident-toggle" hidden>
+        <input type="checkbox" role="switch" class="resident">
+        <span>Resident: lives here; the notification modes can leave them out</span>
+      </label>
       <p class="result heading-hint page-result"></p>
       <h3 class="heading">Chosen <span class="views-count"></span></h3>
       <p class="hint heading-hint">The views that recognise them, up to 40. ↓ moves one to Waiting, × deletes it, ★ shows it on the grid.
@@ -181,6 +189,7 @@
           <a class="name"></a>
           <span class="count"></span>
         </div>
+        <span class="badge" hidden>Resident</span>
         <form class="naming">
           <input name="person" maxlength="60" autocomplete="off" placeholder="Full name">
           <button type="submit">Save</button>

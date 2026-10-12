@@ -610,6 +610,20 @@ class Gallery:
             self.save()
         return True
 
+    def set_resident(self, person_id, resident):
+        """Mark a named entry as living here, or not. False for an unnamed or unknown one."""
+        with _GALLERY_LOCK:
+            self.load()
+            person = self.get(person_id)
+            if person is None or not person["name"]:
+                return False
+            if resident:
+                person["resident"] = True
+            else:
+                person.pop("resident", None)
+            self.save()
+        return True
+
     def rename(self, person_id, full_name):
         """Name a person, then gather every unnamed face that is them.
 
@@ -649,7 +663,12 @@ class Gallery:
         return merged
 
     def _merge(self, source, target):
-        """Move every view and sighting of source into target; overflow waits in its queue."""
+        """Move every view and sighting of source into target; overflow waits in its queue.
+
+        The target stays a resident, and becomes one when the source was.
+        """
+        if source.get("resident"):
+            target["resident"] = True
         for embedding, view in zip(source["embeddings"], views_of(source)):
             self._take(target, embedding, view)
         for waiting in source.get("pending") or []:
@@ -896,7 +915,8 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
                                              encoding="utf-8")
         person = gallery.get(person_id) or {}
         recorded.append({**sighting, "thumbnail_path": thumbnail,
-                         "name": person.get("name", "")})
+                         "name": person.get("name", ""),
+                         "resident": bool(person.get("resident"))})
 
     return recorded
 

@@ -211,3 +211,41 @@ def test_a_merge_keeps_the_target_favourite(gallery):
 def test_a_favourite_that_is_no_longer_a_view_is_ignored():
     assert faces.cover_of({"embeddings": [embedding(0)], "views": ["a.jpg"], "cover": "b.jpg"}) is None
     assert faces.cover_of({"embeddings": [embedding(0)]}) is None
+
+
+def one_hot(position):
+    vector = [0.0] * 128
+    vector[position] = 1.0
+    return vector
+
+
+def test_only_a_named_entry_can_be_a_resident(gallery):
+    person_id = gallery.add([one_hot(0)], "t.jpg", [CROP])
+    assert not gallery.set_resident(person_id, True)
+    gallery.rename(person_id, "Alpha")
+    assert gallery.set_resident(person_id, True)
+    assert reloaded(gallery, person_id)["resident"] is True
+    assert gallery.set_resident(person_id, False)
+    assert "resident" not in reloaded(gallery, person_id)
+
+
+def test_renaming_keeps_the_resident_flag(gallery):
+    person_id = gallery.add([one_hot(0)], "t.jpg", [CROP])
+    gallery.rename(person_id, "Alpha")
+    gallery.set_resident(person_id, True)
+    gallery.rename(person_id, "Beta")
+    assert reloaded(gallery, person_id)["resident"] is True
+
+
+@pytest.mark.parametrize("source_resident, target_resident", [(True, False), (False, True), (False, False)])
+def test_a_merge_is_a_resident_when_either_was(gallery, source_resident, target_resident):
+    target = gallery.add([one_hot(0)], "t.jpg", [CROP])
+    source = gallery.add([one_hot(1)], "s.jpg", [CROP])
+    gallery.rename(target, "Alpha")
+    gallery.rename(source, "Beta")
+    gallery.set_resident(target, target_resident)
+    gallery.set_resident(source, source_resident)
+    gallery.rename(source, "Alpha")
+    merged = faces.Gallery(gallery.path).by_name("Alpha")
+    assert merged["id"] == target
+    assert bool(merged.get("resident")) == (source_resident or target_resident)
