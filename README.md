@@ -2,14 +2,27 @@
 
 # J.A.R.V.I.S.
 
-Vigilância doméstica com câmeras TP-Link Tapo via RTSP. Detecta movimento,
-decide se é pessoa ou animal, grava o evento sem recodificar o vídeo da câmera,
-reconhece rostos e permite cadastrar nomes.
+Home surveillance with TP-Link Tapo cameras over RTSP. It detects motion,
+decides whether it is a person or an animal, records the event without
+re-encoding the camera's video, recognises faces and the household's dogs,
+and sends what matters to the phone through Telegram — with Home, Away and
+Silent modes that leave out the people and dogs who live there.
 
-Interface com três abas: **Live**, **Records** (gravações por dia) e
-**People** (rostos, com cadastro de nome).
+Everything runs as one service with a web page, from the same computer or any
+device on the home network:
 
-## Começar
+| Tab | What it does |
+|---|---|
+| **Live** | both cameras, live |
+| **Recordings** | the events by day, with who appeared; plays and seeks each clip |
+| **People** | the named people and the unnamed faces; name, merge, choose the views that recognise them |
+| **Dogs** | the same for the household's dogs |
+| **Notifications** | what reaches the phone in each mode, and the Telegram setup |
+| **Settings** | pairing other devices, the archive, bad-detection reports |
+
+From the phone, `/home`, `/away` and `/silent` sent to the bot switch the mode.
+
+## Getting started
 
 ```bat
 git clone https://github.com/OlorinGyn/jarvis.git
@@ -18,26 +31,29 @@ instalar.bat
 jarvis.bat
 ```
 
-O `instalar.bat` instala o que falta, baixa os modelos e cria o `.env`, onde
-vão o IP e as credenciais de cada câmera. Detalhes em
-[docs/INSTALACAO.md](docs/INSTALACAO.md).
+`instalar.bat` installs what is missing (including the signed official
+Python, which Windows' Smart App Control requires), downloads the models and
+creates `.env`, where each camera's IP and credentials go. `jarvis.bat` starts
+the service and opens the page; `jarvis_vigilancia.bat` starts only the
+service. Details, and running it as an always-on production copy that starts
+with Windows, in [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
-Para gravar e avisar sem abrir janela, `jarvis_vigilancia.bat`.
-
-## Estrutura
+## Structure
 
 ```
-src/jarvis/   o programa
-tools/        diagnóstico, ícone e manutenção dos rostos
-assets/       ícone
-docs/         toda a documentação
+src/jarvis/   the program
+tests/        automatic tests: uv run python -m pytest
+tools/        production, data checks, diagnosis, tuning, the EPUB
+assets/       the icon
+docs/         all the documentation
 ```
 
-## Documentação
+## Documentation
 
-| Documento | Conteúdo |
+| Document | Contents |
 |---|---|
-| [INSTALACAO.md](docs/INSTALACAO.md) | Instalar, configurar, resolver problemas |
-| [ARQUITETURA.md](docs/ARQUITETURA.md) | Como funciona e por quê, camada por camada |
-| [PYTHON.md](docs/PYTHON.md) | Python e bibliotecas para quem vem de Java/C# |
-| [CONTEXTO.md](docs/CONTEXTO.md) | Histórico, decisões e caminhos já descartados |
+| [INSTALACAO.md](docs/INSTALACAO.md) | Install, configure, run in production, troubleshoot |
+| [ARQUITETURA.md](docs/ARQUITETURA.md) | How it works and why, layer by layer |
+| [PYTHON.md](docs/PYTHON.md) | Python and the libraries, for someone coming from Java or C# |
+| [CONTEXTO.md](docs/CONTEXTO.md) | The rules, decisions, backlog and plan — read first |
+| [HISTORY.md](docs/HISTORY.md) | Bugs fixed, every review, closed recommendations |
