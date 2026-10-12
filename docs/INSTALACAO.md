@@ -146,7 +146,7 @@ address, something like `http://192.168.0.18:8765`. The first time, Windows
 asks whether Python may receive connections from the network; allow it.
 Without that, only the computer itself opens the page. Reading is open to the
 home network; changing anything from another device needs pairing it once
-with the PIN set in Settings (ARQUITETURA 21).
+with the PIN set in Settings (ARQUITETURA 17.12).
 
 To stop it from any terminal, without looking for the service's console:
 
@@ -398,7 +398,7 @@ holds:
 - the event had `person` among its labels;
 - the face is **frontal** — profile, the back of the head and a lowered head
   are ignored (a side face can still reach the phone as a picture, never the
-  gallery: ARQUITETURA 21);
+  gallery: ARQUITETURA 10.12);
 - it is on a person YOLO sees in the same frame;
 - if it is someone new, it appeared in at least 2 frames of the clip.
 

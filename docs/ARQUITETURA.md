@@ -1,299 +1,341 @@
-# J.A.R.V.I.S. — Arquitetura
+# J.A.R.V.I.S. — Architecture
 
-Documentação de como o sistema funciona e, principalmente, **por que** cada
-decisão foi tomada. O código não tem comentários; todo o raciocínio está aqui.
+How the system works and, above all, **why** each decision was taken. The
+code has no comments; all the reasoning is here. For the language and the
+libraries, see [PYTHON.md](PYTHON.md).
 
-Para aspectos de linguagem e bibliotecas, veja [PYTHON.md](PYTHON.md).
+**Where each subject is.** The sections follow the pipeline, then the
+interface, production and data:
+
+| Subject | Sections |
+|---|---|
+| Capture, motion, YOLO, recording | 5, 6, 7, 8 |
+| Faces: scan, gallery, recognition, side view | 10 |
+| Dogs: crops, descriptor, matching | 20 |
+| Archive to an external drive | 11 |
+| Telegram notifications | 12 |
+| Residents, the Home/Away/Silent modes, commands from the phone | 22 |
+| The core without a window | 15 |
+| The web page: routes, tabs, pairing, video, the gallery pages | 17 |
+| Bad-detection reports | 21 |
+| Production and test copies on the M900 | 18 |
+| Files on disk, `check_data`, the tests | 19 |
 
 ---
 
-## 1. O que o sistema faz
+## 1. What the system does
 
-Monitora câmeras Tapo pela rede local, identifica quando há **movimento**,
-decide se esse movimento é uma **pessoa ou um animal**, grava um **vídeo** do
-evento e, quando há pessoa, procura **rostos** e diz de quem são.
+It watches Tapo cameras on the local network, notices **motion**, decides
+whether that motion is a **person or an animal**, records a **video** of the
+event and, when there is a person, looks for **faces** and says whose they
+are; dogs are named the same way. What reaches the phone depends on the active
+mode (section 22).
 
-A detecção de pessoa é deliberadamente independente do rosto: alguém de
-máscara, capacete ou de costas continua sendo detectado como humano e
-gravado. O rosto é uma camada a mais, que roda depois, sobre o clipe (seção 10).
+Person detection is deliberately independent of the face: someone in a mask,
+a helmet or with their back turned is still detected as a human and recorded.
+The face is one more layer, run afterwards, on the clip (section 10).
 
 ## 2. Pipeline
 
 ```
-     RTSP (rede)
+     RTSP (network)
          │
          ▼
    ┌────────────┐
-   │ capture.py │  um ffmpeg por câmera, duas saídas
+   │ capture.py │  one ffmpeg per camera, two outputs
    └──┬──────┬──┘
-      │      └── -c copy ──► segmentos de 4 s (pacotes originais)
+      │      └── -c copy ──► 4 s segments (the original packets)
       │                                    │
-      │ frames 960x540 (bgr24 via pipe)    │
+      │ 960x540 frames (bgr24 over a pipe) │
       ▼                                    │
    ┌───────────┐                           │
-   │ motion.py │  MOG2 + confirmação       │
+   │ motion.py │  MOG2 + confirmation      │
    └─────┬─────┘                           │
-         │ caixas de movimento             │
+         │ motion boxes                    │
          ▼                                 │
    ┌───────────┐                           │
-   │ people.py │  YOLO11: pessoa/animal    │
+   │ people.py │  YOLO11: person/animal    │
    └─────┬─────┘                           │
          │ Detection(x,y,w,h,conf,label)   │
          ▼                                 ▼
    ┌───────────────────────────────────────────────┐
-   │ clips.py   concat -c copy + miniatura + JSON  │
+   │ clips.py   concat -c copy + thumbnail + JSON  │──► notify.py (first message)
    └────────────┬──────────────────┬───────────────┘
-                │ clipe 1080p      │ metadados
+                │ 1080p clip       │ metadata
                 ▼                  │
          ┌───────────┐             │
-         │ faces.py  │  YuNet +    │
-         │           │  SFace      │
-         └─────┬─────┘             │
-               │ galeria           │
+         │ faces.py  │  YuNet +    │──► notify.py (faces, side or best view)
+         │ dogs.py   │  SFace;     │
+         └─────┬─────┘  GrabCut    │
+               │ galleries         │
                ▼                   ▼
          ┌─────────────────────────────────┐
-         │  ui.py   Live | Records | People│
+         │  web.py   the page, six tabs    │
          └─────────────────────────────────┘
 ```
 
-O vídeo salvo **nunca passa pelo Python**: ele vai dos pacotes da câmera direto
-para o disco. O Python só vê frames pequenos, para decidir quando gravar.
+The saved video **never passes through Python**: it goes from the camera's
+packets straight to disk. Python only sees small frames, to decide when to
+record.
 
-A lógica central é **funil de custo**: cada camada é mais cara que a anterior
-e só roda se a anterior encontrou algo.
+The central logic is a **cost funnel**: each layer is more expensive than the
+one before and runs only if the one before found something.
 
-| Camada | Custo | Frequência |
+| Layer | Cost | Frequency |
 |---|---|---|
-| Captura + decode | baixo | todo frame |
-| MOG2 + filtro de luz | ~3 ms | todo frame |
-| YOLO11 | 50–62 ms (dev) | só com movimento, no máximo 4×/s por câmera |
-| Gravação | ~2 ms | só com pessoa ou animal |
-| Rostos | 9–17 s por clipe (M900) | só em clipe com pessoa, fora do laço ao vivo |
+| Capture + decode | low | every frame |
+| MOG2 + lighting filter | ~3 ms | every frame |
+| YOLO11 | 50–62 ms (dev) | only with motion, at most 4×/s per camera |
+| Recording | ~2 ms | only with a person or an animal |
+| Faces | 9–17 s per clip (M900) | only on clips with a person, off the live loop |
 
-## 3. Estrutura de arquivos
+## 3. File layout
 
 ```
 jarvis/
-├── src/jarvis/           o programa, como pacote Python
-│   ├── __init__.py       ROOT: a raiz do projeto, base de todo caminho
-│   ├── __main__.py       permite `python -m jarvis`
-│   ├── cameras.py        Core (vigilância) + run_window / run_headless (seção 15)
-│   ├── capture.py        ffmpeg por câmera: segmentos originais + frames
-│   ├── motion.py         camada 1: detecção de movimento
-│   ├── people.py         camada 2: detecção de pessoas e animais
-│   ├── clips.py          camada 3: eventos, montagem sem perda, metadados
-│   ├── faces.py          camada 4: detecção de rosto, embedding, galeria
-│   ├── archive.py        camada 5: move para o HD externo (seção 11)
-│   ├── notify.py         aviso no celular pelo Telegram (seção 12)
-│   ├── settings.py       config.json, ajustes que mudam com o programa rodando
-│   ├── ui.py             janela OpenCV: Live, Records, People e Ajustes
-│   ├── web.py            interface web: servidor FastAPI (seção 17)
-│   ├── static/           a página da interface web: HTML, CSS e JavaScript
+├── src/jarvis/           the program, as a Python package
+│   ├── __init__.py       ROOT: the project root, the base of every path
+│   ├── __main__.py       allows `python -m jarvis`
+│   ├── cameras.py        the Core (surveillance) + run_headless (section 15)
+│   ├── capture.py        one ffmpeg per camera: original segments + frames
+│   ├── motion.py         layer 1: motion detection
+│   ├── people.py         layer 2: people and animals
+│   ├── clips.py          layer 3: events, lossless assembly, metadata
+│   ├── faces.py          layer 4: face detection, embedding, gallery
+│   ├── dogs.py           the dog gallery and matching (section 20)
+│   ├── archive.py        layer 5: moves to the external drive (section 11)
+│   ├── notify.py         Telegram messages (section 12)
+│   ├── modes.py          the notification cases and modes (section 22)
+│   ├── bot.py            commands from the phone (22.5)
+│   ├── reports.py        bad-detection reports (section 21)
+│   ├── devices.py        paired devices for the write guard (17.12)
+│   ├── settings.py       config.json, settings that change while running
+│   ├── web.py            the web interface: a FastAPI server (section 17)
+│   ├── static/           the page: HTML, CSS and JavaScript
 │   ├── log.py            logging to the console and logs/jarvis.log (18.7)
-│   └── geometry.py       tipo Detection e utilitários de caixas (IoU)
-├── tools/                ferramentas, fora do programa
+│   └── geometry.py       the Detection type and box utilities (IoU)
+├── tests/                pytest (19.5)
+├── tools/                tools, outside the program
 │   ├── production.ps1    install, update, status, stop, start production (18.7)
 │   ├── check_data.py     reads every file on disk with the current code (19.4)
-│   ├── diagnostico.py    variantes do comando de captura; --local sem câmera
-│   ├── probe_rtsp.py     RTSP puro (DESCRIBE → SETUP → PLAY)
-│   ├── refazer_rostos.py reconstrói faces/ a partir dos clipes
-│   ├── verificar_clipes.py dano de imagem vindo das câmeras
-│   ├── gerar_epub.py     junta os .md num EPUB para e-reader
-│   ├── gerar_icone.py    desenha o ícone (seção 14)
-│   └── criar_atalho.ps1  atalho na Área de Trabalho com o ícone
-├── assets/               jarvis.ico e uma prévia em PNG (gerados, versionados)
+│   ├── replay.py         why each frame of a video was kept or dropped (12.10)
+│   ├── face_tuning.py, dog_tuning.py   measure the matching thresholds
+│   ├── dog_crops.py      crops past dog events into the dog gallery (20)
+│   ├── diagnostico.py    variants of the capture command; --local without a camera
+│   ├── probe_rtsp.py     raw RTSP (DESCRIBE → SETUP → PLAY)
+│   ├── refazer_rostos.py rebuilds faces/ from the clips
+│   ├── verificar_clipes.py image damage coming from the cameras
+│   ├── gerar_epub.py     joins the .md files into an EPUB for an e-reader
+│   ├── gerar_icone.py    draws the icon (section 14)
+│   └── criar_atalho.ps1  the Desktop shortcut with the icon
+├── assets/               jarvis.ico and a PNG preview (generated, versioned)
 ├── docs/
-│   ├── ARQUITETURA.md    como funciona e por quê
-│   ├── INSTALACAO.md     como instalar e operar numa máquina nova
-│   ├── PYTHON.md         Python e bibliotecas, para quem vem de Java/C#
-│   └── CONTEXTO.md       histórico, decisões, caminhos descartados
-├── instalar.bat          instalação em máquina nova (roda uma vez)
-├── jarvis.bat            inicia com janela (o atalho da Área de Trabalho aponta para ele)
-├── jarvis_vigilancia.bat inicia sem janela: só grava, avisa e serve a página web
-├── CLAUDE.md             regras de trabalho, lidas por toda sessão do Claude Code
+│   ├── ARQUITETURA.md    how it works and why
+│   ├── INSTALACAO.md     installing and running on a new machine
+│   ├── PYTHON.md         Python and the libraries, for Java/C# developers
+│   ├── CONTEXTO.md       rules, decisions, backlog, plan
+│   ├── HISTORY.md        bugs fixed, every review, closed recommendations
+│   └── raidlog/          the comic script of each release
+├── instalar.bat          install on a new machine (run once)
+├── jarvis.bat            the service and the browser (the Desktop shortcut points here)
+├── jarvis_vigilancia.bat the service only: records, notifies and serves the page
+├── CLAUDE.md             working rules, read by every Claude Code session
 ├── HANDOFF.md            developer to architect, emptied after each review
-├── README.md             apresentação e links para docs/
-├── .env.example          modelo de configuração, versionado
+├── README.md             introduction and links to docs/
+├── .env.example          configuration template, versioned
 │
-│   ── daqui para baixo, nada é versionado ──
-├── .env                  IP e credenciais das câmeras
-├── config.json           ajustes e token do Telegram (cada máquina tem o seu)
-├── models/               ONNX do YOLO, YuNet e SFace (~73 MB, baixados)
-├── clips/                gravações
-│   ├── _buffer/          segmentos rotativos por câmera, apagados sozinhos
+│   ── from here down, nothing is versioned ──
+├── .env                  the cameras' IPs and credentials
+├── config.json           settings, the Telegram token, the PIN (each machine its own)
+├── devices.json          paired devices (17.12)
+├── models/               ONNX of YOLO, YuNet and SFace (~73 MB, downloaded)
+├── clips/                recordings
+│   ├── _buffer/          rolling segments per camera, deleted on their own
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
-├── faces/                rostos e galeria
-│   ├── gallery.json      pessoas conhecidas e desconhecidas
+├── faces/                faces and the gallery
+│   ├── gallery.json      known and unknown people
+│   ├── views/            one crop per stored view
 │   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
-├── backups/              cópias que as ferramentas fazem antes de mexer em dados
+├── dogs/                 the same for dogs (section 20)
+├── reports/              bad-detection reports (section 21)
+├── backups/              copies the tools make before touching data
 ├── logs/                 jarvis.log and its rotations (19.2)
 └── HOLD                  only while production is held (18.7)
 ```
 
 Production is a second clone, `C:\JARVIS`, with this same layout (18.7).
 
-Na raiz ficam só o que o usuário abre ou edita (os `.bat`, o `.env`), a porta
-de entrada da documentação (`README.md`, `CLAUDE.md`) e o que as ferramentas
-exigem ali (`pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`).
+The root holds only what the user opens or edits (the `.bat` files, `.env`),
+the entrance to the documentation (`README.md`, `CLAUDE.md`) and what the
+tools require there (`pyproject.toml`, `uv.lock`, `.python-version`,
+`.gitignore`).
 
-Dados gerados pelo programa ficam em pastas próprias, nunca soltos na raiz.
-Por isso `tools/refazer_rostos.py` guarda o `faces/` antigo em
-`backups/faces_<data-hora>/`, e `tools/diagnostico.py` grava seus segmentos de
-teste numa pasta temporária do sistema, que some quando ele termina.
+Data generated by the program lives in its own folders, never loose at the
+root. That is why `tools/refazer_rostos.py` keeps the old `faces/` in
+`backups/faces_<date-time>/`, and `tools/diagnostico.py` writes its test
+segments to a temporary system folder that disappears when it finishes.
 
-### 3.1 O projeto é um pacote instalável
+### 3.1 The project is an installable package
 
-`pyproject.toml` declara um `[build-system]` com o `uv_build` e um comando:
+`pyproject.toml` declares a `[build-system]` with `uv_build` and a command:
 
 ```toml
 [project.scripts]
 jarvis = "jarvis.cameras:main"
 ```
 
-O `uv sync` instala o pacote em **modo editável**: o `.venv` aponta para
-`src/jarvis/` em vez de copiar os arquivos, então editar o código vale na hora,
-sem reinstalar. `uv run jarvis` executa `main()` de `cameras.py`.
+`uv sync` installs the package in **editable mode**: `.venv` points at
+`src/jarvis/` instead of copying the files, so editing the code takes effect
+at once, without reinstalling. The program is started as
+`uv run python -m jarvis`, which runs the same `main()` through the signed
+Python; the `jarvis.exe` that `uv` generates for the command above is
+unsigned and blocked on the M900 (INSTALACAO 1.2).
 
-Os módulos se importam pelo nome do pacote (`from jarvis.capture import
-FFmpegCamera`), igual a um `namespace` em C# ou um `package` em Java. Ver
+The modules import each other by the package name (`from jarvis.capture
+import FFmpegCamera`), like a `namespace` in C# or a `package` in Java. See
 PYTHON.md.
 
-**Isso reverte uma decisão antiga, com motivo.** Até setembro de 2026 havia
-`package = false`, porque o backend que o `uv init` escolheu **reconstruía e
-reinstalava o `jarvis` a cada `uv run`**. Com o `uv_build` isso não acontece
-mais: medido no M900, o segundo `uv run` diz `Requirement already installed` e
-não constrói nada. Com os módulos soltos na raiz, cada script dependia de ser
-executado a partir da pasta certa, e a raiz acumulava arquivos de naturezas
-diferentes — código, ferramentas, histórico.
+**This reversed an old decision, for a reason.** Until September 2026 there
+was `package = false`, because the backend `uv init` picked **rebuilt and
+reinstalled `jarvis` on every `uv run`**. With `uv_build` that no longer
+happens: measured on the M900, the second `uv run` says `Requirement already
+installed` and builds nothing. With the modules loose at the root, each script
+depended on being run from the right folder, and the root piled up files of
+different kinds — code, tools, history.
 
-`link-mode = "copy"` resolve o outro sintoma antigo: na máquina de
-desenvolvimento o cache do `uv` fica no C: e o projeto no D:, e hardlink não
-atravessa volumes.
+`link-mode = "copy"` solves the other old symptom: on the development PC the
+`uv` cache is on C: and the project on D:, and a hardlink does not cross
+volumes.
 
-### 3.2 Caminhos partem da raiz, não da pasta atual
+### 3.2 Paths start from the root, not the current folder
 
-`jarvis/__init__.py` define `ROOT = Path(__file__).resolve().parents[2]`: o
-arquivo está em `src/jarvis/`, dois níveis abaixo da raiz. `models/`,
-`clips/`, `faces/` e `.env` são sempre `ROOT / ...`.
+`jarvis/__init__.py` defines `ROOT = Path(__file__).resolve().parents[2]`: the
+file is in `src/jarvis/`, two levels below the root. `models/`, `clips/`,
+`faces/` and `.env` are always `ROOT / ...`.
 
-Antes eram relativos (`Path("clips")`), o que significa "relativo à pasta de
-onde o comando foi executado". Rodar de outra pasta criava um `clips/` novo no
-lugar errado ou não achava o `.env`.
+They used to be relative (`Path("clips")`), which means "relative to the
+folder the command was run from". Running from another folder created a new
+`clips/` in the wrong place or did not find `.env`.
 
-Os caminhos **gravados** nos JSON de rostos continuam relativos à raiz
-(`faces\2026-09-28\...`), para a pasta do projeto poder mudar de lugar.
+The paths **stored** in the face JSON files stay relative to the root
+(`faces\2026-09-28\...`), so the project folder can move.
 
-## 4. Configuração — `.env`
+## 4. Configuration — `.env`
 
-Uma câmera = três linhas. O nome do rótulo vira o nome exibido e a pasta dos
-clipes.
+One camera = three lines. The label becomes the displayed name and the clips'
+folder.
 
 ```
 CAM_FRONT_IP=192.168.0.116
-CAM_FRONT_USER=<usuario-da-conta-da-camera>
-CAM_FRONT_PASSWORD=<senha-da-conta-da-camera>
+CAM_FRONT_USER=<camera-account-user>
+CAM_FRONT_PASSWORD=<camera-account-password>
 ```
 
-`build_camera_list()` varre as chaves procurando o padrão `CAM_<X>_IP` e monta
-a URL RTSP. Adicionar uma terceira câmera não exige mudança de código.
+`build_camera_list()` scans the keys for the pattern `CAM_<X>_IP` and builds
+the RTSP URL. Adding a third camera needs no code change. `CAM_STREAM` and
+`WEB_PORT` are optional (18.7): the test copy uses `stream2` and port 8766.
 
-O `.env.example` traz `ip-da-camera` no lugar do IP, e `build_camera_list()`
-encerra o programa com uma instrução se encontrar esse texto. Antes o modelo
-trazia IPs de aparência real (`.10`, `.11`); no M900 eles ficaram no `.env`
-sem ninguém perceber, e o sintoma foi um "nenhum frame recebido" sem erro
-(5.7). Sem a checagem, o texto de exemplo daria só `I/O error`.
+`.env.example` holds `ip-da-camera` instead of an IP, and
+`build_camera_list()` stops the program with an instruction if it finds that
+text. The template used to hold real-looking IPs (`.10`, `.11`); on the M900
+they stayed in `.env` without anyone noticing, and the symptom was a "no frame
+received" with no error (5.7). Without the check, the sample text would only
+give `I/O error`.
 
-A senha passa por `urllib.parse.quote()` porque caracteres como `@ : / #` são
-estruturais numa URL e quebrariam o parsing.
+The password goes through `urllib.parse.quote()` because characters such as
+`@ : / #` are structural in a URL and would break the parsing.
 
 ---
 
-## 5. Camada de captura — `capture.py`
+## 5. The capture layer — `capture.py`
 
-### 5.1 Por que o ffmpeg e não o OpenCV
+### 5.1 Why ffmpeg and not OpenCV
 
-Esta camada foi reescrita em 26/09/2026. A versão anterior usava
-`cv2.VideoCapture`, o que obrigava a recodificar o vídeo para salvá-lo — o
-OpenCV entrega frames decodificados, nunca os pacotes originais.
+This layer was rewritten on 26/09/2026. The previous version used
+`cv2.VideoCapture`, which forced re-encoding the video to save it — OpenCV
+hands out decoded frames, never the original packets.
 
-Medição que motivou a troca, 10 s da câmera Back:
+The measurement behind the switch, 10 s of the Back camera:
 
-| O que era gravado | Tamanho | Qualidade |
+| What was recorded | Size | Quality |
 |---|---|---|
-| **Stream original da câmera** | **579 KB** | **perfeita** |
-| Pipeline antigo (mp4v → H.264 CRF 26) | 725 KB | 3 gerações de perda |
-| Recodificado em alta qualidade (CRF 18) | 1919 KB | quase perfeita |
-| H.264 sem perda (lossless) | 5089 KB | perfeita |
+| **The camera's original stream** | **579 KB** | **perfect** |
+| Old pipeline (mp4v → H.264 CRF 26) | 725 KB | 3 generations of loss |
+| Re-encoded at high quality (CRF 18) | 1919 KB | nearly perfect |
+| Lossless H.264 | 5089 KB | perfect |
 
-O arquivo antigo era **25% maior que o original e com pior qualidade**. Gastava
-CPU para piorar as duas coisas: a câmera já entrega H.264 a 463 kbps com
-encoder de hardware, e material já comprimido resiste a comprimir de novo.
+The old file was **25 % larger than the original, at worse quality**. It spent
+CPU to make both worse: the camera already delivers H.264 at 463 kbps from a
+hardware encoder, and already-compressed material resists compressing again.
 
-**Sobre compactar tipo zip:** não compensa. No stream original, que é o que se
-grava hoje, o ganho medido é de 0,2% — e dois dos três métodos deixam o
-arquivo maior. Ver 8.7, inclusive por que uma medição antiga dizia 5–11%.
+**About zip-style compression:** not worth it. On the original stream, which
+is what is recorded today, the measured gain is 0.2 % — and two of the three
+methods make the file bigger. See 8.7, including why an old measurement said
+5–11 %.
 
-### 5.2 Uma conexão, duas saídas
+### 5.2 One connection, two outputs
 
-A câmera aceita **apenas uma sessão RTSP**. Testado: com o OpenCV conectado, um
-segundo cliente recebe `406 Not Acceptable` e não abre nada.
+The camera accepts **a single RTSP session** (on `stream1`; 18.2). Tested:
+with OpenCV connected, a second client gets `406 Not Acceptable` and opens
+nothing.
 
-Isso força a arquitetura: um único processo ffmpeg por câmera tem que servir
-aos dois propósitos ao mesmo tempo.
+That forces the architecture: one ffmpeg process per camera has to serve both
+purposes at once.
 
 ```
-                    ┌─ -c copy ──────────► segmentos de 4 s em disco
-RTSP ──► ffmpeg ────┤                       (pacotes originais, sem tocar)
-                    └─ rawvideo 960x540 ──► pipe:1 ──► Python (análise)
+                    ┌─ -c copy ──────────► 4 s segments on disk
+RTSP ──► ffmpeg ────┤                       (original packets, untouched)
+                    └─ rawvideo 960x540 ──► pipe:1 ──► Python (analysis)
 ```
 
-É a arquitetura que NVRs reais usam; o Frigate faz exactamente isso.
+It is the architecture real NVRs use; Frigate does exactly this.
 
-Vantagens sobre a versão anterior:
+Gains over the previous version:
 
-| | Antes | Agora |
+| | Before | Now |
 |---|---|---|
-| Qualidade em disco | 3 gerações de perda | idêntica à câmera |
-| Tamanho | 72 KB/s | **48 KB/s** |
-| Decodificação 1080p | em Python | só no ffmpeg, uma vez |
-| RAM por câmera | ~180 MB (buffer de frames) | ~0 |
-| Pré-gravação | frames em memória | segmentos já em disco |
+| Quality on disk | 3 generations of loss | identical to the camera |
+| Size | 72 KB/s | **48 KB/s** |
+| 1080p decoding | in Python | only in ffmpeg, once |
+| RAM per camera | ~180 MB (frame buffer) | ~0 |
+| Pre-recording | frames in memory | segments already on disk |
 
-Os ganhos de CPU e RAM são justamente o que o M900 precisa.
+The CPU and RAM gains are exactly what the M900 needs.
 
-### 5.3 Frames de análise
+### 5.3 Analysis frames
 
-`ANALYSIS_WIDTH/HEIGHT = 960x540` e `ANALYSIS_FPS = 10`. O ffmpeg redimensiona
-e entrega em `bgr24`, que é exatamente o layout que o numpy e o OpenCV esperam:
+`ANALYSIS_WIDTH/HEIGHT = 960x540` and `ANALYSIS_FPS = 10`. ffmpeg resizes and
+delivers `bgr24`, which is exactly the layout numpy and OpenCV expect:
 
 ```python
 frame = np.frombuffer(data, np.uint8).reshape(ANALYSIS_HEIGHT, ANALYSIS_WIDTH, 3)
 ```
 
-Cada frame tem `960 * 540 * 3 = 1.555.200` bytes, e o leitor pede exatamente
-essa quantidade. Medido na prática: ~8 fps, porque o laço gasta tempo entre
-leituras.
+Each frame is `960 * 540 * 3 = 1,555,200` bytes, and the reader asks for
+exactly that amount. Measured in practice: ~8 fps, because the loop spends
+time between reads.
 
-`np.frombuffer` devolve um array **somente leitura** (aponta para os bytes do
-pipe), por isso há um `.copy()` — sem ele, qualquer desenho no frame falharia.
+`np.frombuffer` returns a **read-only** array (it points at the pipe's
+bytes), which is why there is a `.copy()` — without it, any drawing on the
+frame would fail (PYTHON 20).
 
-**Implicação para a camada de rosto:** 960x540 é suficiente para movimento e
-para o YOLO, mas um rosto que tem 60 px em 1080p fica com 30 px aqui, pouco
-para o reconhecedor. Por isso os rostos são procurados no **clipe gravado**, em
-1080p, e não nos frames de análise (10.1).
+**What it means for the face layer:** 960×540 is enough for motion and for
+YOLO, but a face that is 60 px in 1080p is 30 px here, too little for the
+recogniser. That is why faces are looked for in the **recorded clip**, in
+1080p, and not in the analysis frames (10.1).
 
-### 5.4 Leitura em thread: a interface nunca espera
+### 5.4 Reading in a thread: the loop never waits
 
-A primeira versão lia o pipe dentro do laço da interface. O `read()` de um pipe
-**bloqueia** até o frame inteiro chegar, e no arranque o ffmpeg leva alguns
-segundos para negociar o RTSP e encher o buffer.
+The first version read the pipe inside the interface loop (then the OpenCV
+window's). A pipe's `read()` **blocks** until the whole frame arrives, and at
+start-up ffmpeg takes a few seconds to negotiate RTSP and fill its buffer.
 
-Medido: **o primeiro frame demora 2,45 s**. Durante esse tempo o `waitKey` não
-era chamado, e o Windows marcava a janela como **"Não Responde"**, mostrando um
-retângulo cinza que nunca era desenhado.
+Measured: **the first frame takes 2.45 s**. During that time `waitKey` was
+not called, and Windows marked the window **"Not Responding"**, showing a grey
+rectangle that was never drawn.
 
-Agora cada câmera tem uma **thread leitora** que consome o pipe sem parar e
-guarda o frame mais recente. O laço da interface pega o que estiver pronto:
+Now each camera has a **reader thread** that drains the pipe without stopping
+and keeps the newest frame. The loop takes whatever is ready:
 
 ```python
 def read(self):
@@ -303,245 +345,250 @@ def read(self):
     return frame
 ```
 
-O detalhe importante é o `_pending` virar `None` na leitura. Sem isso o mesmo
-frame seria analisado várias vezes, inflando o aquecimento do MOG2 e a contagem
-de confirmação temporal com frames repetidos. `_latest` guarda o último frame
-separadamente, para desenho.
+The important detail is `_pending` becoming `None` on reading. Without it the
+same frame would be analysed several times, inflating the MOG2 warm-up and the
+temporal confirmation count with repeated frames. `_latest` keeps the last
+frame separately, for drawing.
 
-Como o GIL é liberado durante a leitura do pipe, essa thread realmente roda em
-paralelo — é o caso descrito em PYTHON.md 14.1.
+Since the GIL is released while reading the pipe, that thread really does run
+in parallel — the case described in PYTHON.md 14.1.
 
-Resultado medido depois da mudança, incluindo o arranque:
+Measured after the change, start-up included (with the window, then):
 
 | | |
 |---|---|
-| Intervalo mediano do laço | 19,9 ms |
-| Pior intervalo | 88,8 ms |
-| Limite do "Não Responde" | ~5000 ms |
+| Median loop interval | 19.9 ms |
+| Worst interval | 88.8 ms |
+| The "Not Responding" limit | ~5000 ms |
 
-### 5.5 Buffer rotativo de segmentos
+### 5.5 The rolling segment buffer
 
-Os segmentos têm nome de horário (`-strftime 1`), o que torna a seleção
-trivial. `covering(start, end)` devolve os segmentos **inteiros** que
-intersectam a janela pedida:
+Segments are named by time (`-strftime 1`), which makes choosing them
+trivial. `covering(start, end)` returns the **whole** segments that intersect
+the requested window:
 
 ```python
 following = found[index + 1][0] if index + 1 < len(found) else datetime.max
 if following > start and stamp < end:
 ```
 
-Como se guardam segmentos inteiros, a pré-gravação sai de graça: o segmento
-anterior ao evento já contém a aproximação da pessoa. Em troca, o clipe tem até
-4 s extras em cada ponta, o que é justamente o que se quer.
+Since whole segments are kept, the pre-recording comes free: the segment
+before the event already holds the person approaching. In exchange the clip
+has up to 4 s extra at each end, which is exactly what is wanted.
 
-`prune()` apaga segmentos com mais de `BUFFER_SECONDS = 240`, **nunca o mais
-recente** — o ffmpeg ainda está escrevendo nele. Enquanto um evento está aberto,
-`protect_from` impede que os segmentos dele sejam apagados. Medido em
-30/09/2026 no M900: 6 a 8 MB por câmera, cerca de 60 segmentos.
+`prune()` deletes segments older than `BUFFER_SECONDS = 240`, **never the
+newest** — ffmpeg is still writing it. While an event is open, `protect_from`
+stops its segments from being deleted. Measured on 30/09/2026 on the M900: 6
+to 8 MB per camera, about 60 segments.
 
-### 5.6 Decode por hardware
+### 5.6 Hardware decoding
 
-`HWACCEL` insere `-hwaccel <valor>` no comando do ffmpeg. Vem vazio, porque o
-valor certo depende da máquina.
+`HWACCEL` adds `-hwaccel <value>` to the ffmpeg command. It is empty, because
+the right value depends on the machine.
 
-Importa só para a **saída de análise**: a gravação copia pacotes e nunca
-decodifica. No M900, com Quick Sync do Skylake, `"dxva2"` ou `"qsv"` tira o
-decode de 1080p da CPU. Ver INSTALACAO.md seção 6.
+It matters only for the **analysis output**: recording copies packets and
+never decodes. On the M900, with Skylake's Quick Sync, `"dxva2"` or `"qsv"`
+takes the 1080p decode off the CPU. See INSTALACAO.md section 6.
 
-### 5.7 Erros do ffmpeg viram texto na tela
+### 5.7 ffmpeg's errors become readable text
 
-A primeira versão mandava o `stderr` do ffmpeg para `DEVNULL`. Consequência: uma
-câmera que **nunca conectava** ficava idêntica a uma câmera apenas quieta — o
-painel dizia "sem sinal" e o motivo era descartado.
+The first version sent ffmpeg's `stderr` to `DEVNULL`. The consequence: a
+camera that **never connected** looked identical to one that was merely quiet
+— the panel said "no signal" and the reason was thrown away.
 
-Isso apareceu na implantação: no M900 as duas câmeras diziam `ok` no arranque e
-depois ficavam em "no signal" para sempre, sem nenhuma pista. A causa era a
-máquina de desenvolvimento estar rodando ao mesmo tempo e ocupando as sessões.
+It showed at deployment: on the M900 both cameras said `ok` at start-up and
+then stayed at "no signal" forever, with no clue. The cause was the
+development PC running at the same time and holding the sessions.
 
-Três mudanças:
+Three changes:
 
-**O `stderr` é capturado** por uma thread que guarda as últimas linhas. É
-preciso drenar continuamente: um pipe de erro cheio bloquearia o ffmpeg.
+**`stderr` is captured** by a thread that keeps the last lines. It must be
+drained continuously: a full error pipe would block ffmpeg.
 
-**O `ok` do arranque virou honesto.** Antes ele checava `process.poll()` logo
-depois do `Popen`, o que é sempre verdadeiro — o processo ainda não teve tempo
-de falhar. Agora `wait_ready()` espera o **primeiro frame** de verdade, até
-`STARTUP_SECONDS`, e devolve o motivo quando não vem.
+**The start-up `ok` became honest.** It used to check `process.poll()` right
+after `Popen`, which is always true — the process has not had time to fail.
+Now `wait_ready()` waits for a real **first frame**, up to `STARTUP_SECONDS`,
+and returns the reason when none comes.
 
-**As mensagens são traduzidas.** O ffmpeg diz `Server returned 4XX Client Error,
-but not one of 40{0,1,3,4}`, que é o 406 e não ajuda ninguém. `TRANSLATIONS`
-mapeia os casos conhecidos para instruções:
+**The messages are translated.** ffmpeg says `Server returned 4XX Client
+Error, but not one of 40{0,1,3,4}`, which is the 406 and helps nobody.
+`TRANSLATIONS` maps the known cases to instructions:
 
-| ffmpeg | Texto exibido |
+| ffmpeg | Text shown |
 |---|---|
-| `401` | Credenciais incorretas, confira a Conta da Camera |
-| `not one of 40` / `406` | Camera ocupada, aceita uma conexao RTSP por vez |
-| `Connection refused` | Confira o IP e se a camera esta ligada |
-| `timed out` | Confira a rede e o IP |
-| `Error number -138` | Confira a rede e o IP, o roteador pode ter trocado o IP |
+| `401` | Wrong credentials. Check the Camera Account in the Tapo app. |
+| `not one of 40` / `406` | Camera busy. It accepts one RTSP connection at a time. |
+| `Connection refused` | Connection refused. Check the IP and that the camera is on. |
+| `timed out` | Timed out. Check the network and the camera's IP. |
+| `Error number -138` | The same, adding that the router may have given it a new IP |
+| `No route to host` | Camera unreachable on the network. Check the IP. |
+| `404` | Invalid stream path. Expected /stream1 or /stream2. |
 
-Erro desconhecido passa cru, em vez de virar uma mensagem genérica que esconde
-informação.
+An unknown error passes through raw, instead of becoming a generic message
+that hides information.
 
-**Toda conexão tem prazo: `-timeout`.** Sem ele, um IP onde não existe nada
-deixa o ffmpeg esperando a conexão TCP para sempre, **sem escrever nenhum
-erro**. Foi o que aconteceu no M900: as câmeras estão em `.116` e `.42`, e o
-`.env` de lá apontava para `.10` e `.11` — os valores de exemplo do
-`.env.example`, de onde o `instalar.bat` cria o `.env`. O painel dizia só
-"nenhum frame recebido", e a investigação foi atrás de decode, pipe e antivírus
-antes de alguém rodar `Test-NetConnection`. A única linha do log, mesmo em
-`-loglevel verbose`, era `Starting connection attempt`.
+**Every connection has a deadline: `-timeout`.** Without it, an IP where
+nothing exists leaves ffmpeg waiting for the TCP connection forever, **writing
+no error**. That is what happened on the M900: the cameras are at `.116` and
+`.42`, and `.env` there pointed at `.10` and `.11` — the sample values of
+`.env.example`, from which `instalar.bat` creates `.env`. The panel only said
+"no frame received", and the investigation chased decoding, the pipe and the
+antivirus before anyone ran `Test-NetConnection`. The only log line, even at
+`-loglevel verbose`, was `Starting connection attempt` (HISTORY 6).
 
-Com `-timeout` (em microssegundos, `SOCKET_TIMEOUT_SECONDS` no `capture.py`) o
-ffmpeg desiste em ~6 s. No Windows o erro sai como `Error number -138`, que é o
-`ETIMEDOUT` da biblioteca C, sem as palavras "timed out" — por isso a linha
-própria na tabela. O mesmo prazo vale para leituras: câmera que para de mandar
-dados por 5 s derruba o processo, e o reinício automático (5.8) reconecta.
+With `-timeout` (in microseconds, `SOCKET_TIMEOUT_SECONDS` in `capture.py`)
+ffmpeg gives up in ~6 s. On Windows the error comes out as `Error number
+-138`, the C library's `ETIMEDOUT`, without the words "timed out" — hence its
+own row in the table. The same deadline applies to reads: a camera that stops
+sending data for 5 s brings the process down, and the automatic restart (5.8)
+reconnects.
 
-O painel "sem sinal" mostra esse texto quebrado em linhas, então o motivo fica
-visível sem abrir o terminal.
+The old window showed that text on the "no signal" panel; today it goes to the
+log, and the page's Live view marks a camera "no signal" after 5 s without a
+frame (17.8).
 
-### 5.8 Reinício automático
+### 5.8 Automatic restart
 
-Se o ffmpeg morrer (queda de rede, câmera reiniciando), `read()` devolve `None`
-e o processo é recriado após `RESTART_SECONDS`. O painel continua mostrando o
-último frame nesse intervalo, e a aplicação não cai. "Sem sinal" só aparece se
-a câmera nunca entregou frame nenhum.
+If ffmpeg dies (network drop, camera rebooting), `read()` returns `None` and
+the process is recreated after `RESTART_SECONDS`. The last frame stays in
+place meanwhile, and the application does not fall over.
 
-Como o OpenCV não faz mais captura, a variável de ambiente
-`OPENCV_FFMPEG_CAPTURE_OPTIONS` desapareceu, junto com a fragilidade de ter uma
-atribuição obrigatória antes do `import cv2` (PYTHON.md 2.2). O transporte TCP
-agora é um argumento explícito do ffmpeg (`-rtsp_transport tcp`). A única
-variável que resta é `OPENCV_LOG_LEVEL`, e ela só silencia um aviso (10.11).
+Since OpenCV no longer captures, the environment variable
+`OPENCV_FFMPEG_CAPTURE_OPTIONS` disappeared, along with the fragility of an
+assignment that had to come before `import cv2` (PYTHON.md 2.2). TCP transport
+is now an explicit ffmpeg argument (`-rtsp_transport tcp`). The only variable
+left is `OPENCV_LOG_LEVEL`, and it only silences a warning (10.11).
 
 ---
 
-## 6. Camada de movimento — `motion.py`
+## 6. The motion layer — `motion.py`
 
-### 6.1 Por que MOG2
+### 6.1 Why MOG2
 
-| Algoritmo | Avaliação |
+| Algorithm | Assessment |
 |---|---|
-| Diferença de frames | Simples, mas pega só as **bordas** do que se move e dispara com qualquer variação de luz. |
-| **MOG2** | **Escolhido.** Aprende o fundo e se adapta. Marca sombras separadamente, o que importa muito em ambiente externo. Rápido e já vem no OpenCV. |
-| KNN | Equivalente, segundo lugar. Troca de uma linha se o MOG2 falhar. |
-| GSOC | Melhor com fundos agitados, porém muito mais lento e exige `opencv-contrib-python`. |
+| Frame differencing | Simple, but catches only the **edges** of what moves and fires on any change of light. |
+| **MOG2** | **Chosen.** Learns the background and adapts. Marks shadows separately, which matters a lot outdoors. Fast and built into OpenCV. |
+| KNN | Equivalent, second place. A one-line switch if MOG2 fails. |
+| GSOC | Better with busy backgrounds, but much slower and needs `opencv-contrib-python`. |
 
-**Como o MOG2 funciona:** ele não guarda uma imagem de fundo. Para cada pixel
-guarda várias distribuições estatísticas ("misturas de gaussianas"), então um
-pixel pode ter mais de uma aparência normal — uma folha que balança, por
-exemplo. Pixel que não combina com nenhuma delas é movimento.
+**How MOG2 works:** it does not store a background image. For each pixel it
+keeps several statistical distributions ("mixtures of Gaussians"), so a pixel
+can have more than one normal look — a swaying leaf, for instance. A pixel
+that matches none of them is motion.
 
-### 6.2 Os passos de `detect()`
+### 6.2 The steps of `detect()`
 
-1. **Reduz para 640 px de largura.** Movimento não precisa de resolução total;
-   a imagem menor é ~9× mais barata.
-2. **Desfoque gaussiano.** Sem ele, ruído de sensor e artefatos de compressão
-   viram milhares de pixels "em movimento".
-3. **`subtractor.apply()`** compara com o modelo **e atualiza o modelo**. Por
-   isso precisa rodar em todo frame, inclusive durante o aquecimento — senão o
-   modelo nunca aprende.
-4. **Limiar em 200.** A máscara usa 255 para movimento, 127 para sombra, 0 para
-   fundo. O corte em 200 descarta as sombras.
-5. **Apaga o relógio da câmera.** A Tapo escreve data e hora no canto superior
-   esquerdo, e os dígitos mudam a cada segundo. `OVERLAY_BOX` (frações da
-   imagem) zera essa faixa da máscara.
-6. **Descarta o frame se mais de 50% "mudou".** Isso não é um objeto se
-   movendo: é nuvem, sol ou a câmera entrando em modo noturno.
-7. **Abertura e dilatação.** A abertura apaga pontos isolados; a dilatação
-   cresce o que sobrou, unindo os fragmentos de uma mesma pessoa num só blob.
-   É também por isso que a caixa fica um pouco maior que o objeto.
-8. **Contornos + `boundingRect`.** Blobs com área menor que `MIN_AREA` são
-   ignorados. As coordenadas voltam para a escala do frame original.
-9. **Filtro de luz.** Blob cujo conteúdo ainda se parece com o fundo é luz
-   mudando, não objeto. Ver 6.7.
-10. **Confirmação temporal.** Ver 6.3 — nada é reportado antes de persistir.
+1. **Shrink to 640 px wide.** Motion does not need full resolution; the
+   smaller image is ~9× cheaper.
+2. **Gaussian blur.** Without it, sensor noise and compression artefacts
+   become thousands of "moving" pixels.
+3. **`subtractor.apply()`** compares with the model **and updates the
+   model**. That is why it must run on every frame, warm-up included —
+   otherwise the model never learns.
+4. **Threshold at 200.** The mask uses 255 for motion, 127 for shadow, 0 for
+   background. Cutting at 200 drops the shadows.
+5. **Blank the camera's clock.** The Tapo writes the date and time in the
+   top-left corner, and the digits change every second. `OVERLAY_BOX`
+   (fractions of the image) zeroes that strip of the mask.
+6. **Drop the frame if more than 50 % "changed".** That is not an object
+   moving: it is a cloud, the sun or the camera switching to night mode.
+7. **Opening and dilation.** Opening erases isolated dots; dilation grows
+   what is left, joining one person's fragments into a single blob. It is also
+   why the box is a little larger than the object.
+8. **Contours + `boundingRect`.** Blobs with an area under `MIN_AREA` are
+   ignored. The coordinates go back to the original frame's scale.
+9. **Lighting filter.** A blob whose content still looks like the background
+   is light changing, not an object. See 6.7.
+10. **Temporal confirmation.** See 6.3 — nothing is reported before it
+    persists.
 
-### 6.3 Confirmação temporal (o filtro contra insetos)
+### 6.3 Temporal confirmation (the filter against insects)
 
-O problema real medido em campo: à noite o infravermelho ilumina insetos
-próximos à lente, que viram blobs **grandes e brilhantes**. Medição de 30 s na
-câmera Front mostrou 12 blobs com área acima de 3200 — maiores que uma pessoa
-distante. Ou seja, **aumentar `MIN_AREA` nunca resolveria**: tamanho não separa
-inseto de pessoa.
+The real problem measured in the field: at night the infrared lights up
+insects near the lens, which become **large, bright** blobs. A 30 s
+measurement on the Front camera showed 12 blobs with an area above 3200 —
+larger than a distant person. So **raising `MIN_AREA` would never solve it**:
+size does not separate an insect from a person.
 
-O que separa é **persistência**. Uma pessoa continua aproximadamente no mesmo
-lugar por vários frames; um inseto aparece, salta e some.
+What separates them is **persistence**. A person stays roughly in the same
+place for several frames; an insect appears, jumps and is gone.
 
-`_confirm()` implementa um mini-rastreador:
+`_confirm()` implements a mini tracker:
 
-- Cada blob vira um `_Candidate` com contador de acertos (`hits`) e falhas
-  (`misses`).
-- A cada frame, os blobs novos são casados com os candidatos existentes por
-  **maior sobreposição**. Quem casa ganha `hits += 1`.
-- Candidato que não casa ganha `misses += 1` e é descartado após
+- Each blob becomes a `_Candidate` with a hit counter (`hits`) and a miss
+  counter (`misses`).
+- On each frame, the new blobs are matched to the existing candidates by
+  **largest overlap**. A match gets `hits += 1`.
+- A candidate with no match gets `misses += 1` and is dropped after
   `FORGET_FRAMES`.
-- Só é reportado quem atingiu `CONFIRM_FRAMES` acertos.
+- Only a candidate that reached `CONFIRM_FRAMES` hits is reported.
 
-Custo: uma pessoa é reportada 3 frames (~0,3 s) depois de aparecer. Como o
-clipe começa `PRE_SECONDS` (6 s) antes do evento (8.2), nada de útil se perde
-no vídeo.
+Cost: a person is reported 3 frames (~0.3 s) after appearing. Since the clip
+starts `PRE_SECONDS` (6 s) before the event (8.2), nothing useful is lost in
+the video.
 
-**Limitação conhecida:** um inseto que fique pairando exatamente no mesmo ponto
-por vários frames acaba confirmado. O YOLO rejeita esse caso.
+**Known limitation:** an insect hovering at exactly the same spot for several
+frames ends up confirmed. YOLO rejects that case.
 
-Este também é o embrião do *tracking* que virá depois.
+It is also the seed of the *tracking* that may come later (backlog 7).
 
-### 6.4 Aquecimento
+### 6.4 Warm-up
 
-`WARMUP_FRAMES = 60` (~6 s a 10 fps). Antes disso tudo é "novidade" e o detector
-reportaria a cena inteira. O painel mostra `learning background`.
+`WARMUP_FRAMES = 60` (~6 s at 10 fps). Before that everything is "new" and the
+detector would report the whole scene.
 
-### 6.5 Ajustes
+### 6.5 Tuning
 
-| Constante | Efeito |
+| Constant | Effect |
 |---|---|
-| `MIN_AREA` | Aumentar ignora objetos pequenos/distantes. |
-| `CONFIRM_FRAMES` | Aumentar exige mais persistência: menos ruído, mais atraso. |
-| `FORGET_FRAMES` | Quanto tempo um candidato sobrevive sumindo (oclusão). |
-| `OPEN_ITERATIONS` | Aumentar apaga mais pontos isolados. |
-| `varThreshold` | Aumentar deixa menos sensível a variação. |
-| `DETECT_WIDTH` | Aumentar melhora objetos distantes, custa CPU. |
-| `MAX_MOTION_FRACTION` | Tolerância a mudanças globais de iluminação. |
-| `LIGHTING_CORRELATION` | Baixar descarta mais mudanças de luz, mas começa a perder pessoa (6.7). |
-| `OVERLAY_BOX` | Região do relógio da câmera, ignorada. |
+| `MIN_AREA` | Raising it ignores small or distant objects. |
+| `CONFIRM_FRAMES` | Raising it demands more persistence: less noise, more delay. |
+| `FORGET_FRAMES` | How long a candidate survives while missing (occlusion). |
+| `OPEN_ITERATIONS` | Raising it erases more isolated dots. |
+| `varThreshold` | Raising it makes it less sensitive to variation. |
+| `DETECT_WIDTH` | Raising it helps distant objects, costs CPU. |
+| `MAX_MOTION_FRACTION` | Tolerance to global changes of lighting. |
+| `LIGHTING_CORRELATION` | Lowering it drops more lighting changes, but starts to lose people (6.7). |
+| `OVERLAY_BOX` | The camera clock's region, ignored. |
 
-**Para ficar ainda menos sensível:** suba `CONFIRM_FRAMES` para 5. Para
-recuperar pessoas distantes, baixe `MIN_AREA` de volta para 400 — a confirmação
-temporal já segura o ruído sozinha.
+**To be even less sensitive:** raise `CONFIRM_FRAMES` to 5. To recover distant
+people, lower `MIN_AREA` back to 400 — temporal confirmation already holds the
+noise back by itself.
 
-### 6.6 Resultados medidos
+### 6.6 Measured results
 
-Teste A/B sobre **exatamente os mesmos frames ao vivo**, 404 frames por câmera,
-à noite:
+An A/B test on **exactly the same live frames**, 404 frames per camera, at
+night:
 
-| Câmera | Frames com movimento (antes) | Depois | Redução |
+| Camera | Frames with motion (before) | After | Reduction |
 |---|---|---|---|
-| Back | 2,5% | 1,2% | 50% |
-| Front | 8,7% | 1,5% | **83%** |
+| Back | 2.5 % | 1.2 % | 50 % |
+| Front | 8.7 % | 1.5 % | **83 %** |
 
-Caixas totais na Front: **54 → 6**.
+Total boxes on Front: **54 → 6**.
 
-Como o YOLO só roda quando há movimento, isso significa cerca de **6× menos
-inferências** na Front. Reduzir a sensibilidade aqui não custa desempenho: ela
-o melhora.
+Since YOLO only runs with motion, that means about **6× fewer inferences** on
+Front. Lowering the sensitivity here costs no performance: it improves it.
 
-### 6.7 Luz do sol não é movimento
+### 6.7 Sunlight is not motion
 
-**O problema, medido de dia no M900.** A Front mostrava caixas amarelas sem
-ninguém na cena. Em 4 minutos de buffer, 99 de 2671 frames tinham movimento,
-quase todos numa rajada de 12 s com até 15 caixas espalhadas por parede, portão
-e chão. O brilho médio da imagem mal mudou (89 → 92): não era a cena inteira
-escurecendo, e sim **manchas de sol** aparecendo e se intensificando em partes
-da parede, mais a sombra das folhas balançando no chão. O passo 6 não pega isso,
-porque a área total mudada fica bem abaixo de 50%.
+**The problem, measured by day on the M900.** Front showed yellow boxes with
+nobody in the scene. In 4 minutes of buffer, 99 of 2671 frames had motion,
+almost all in one 12 s burst with up to 15 boxes spread over the wall, the
+gate and the ground. The image's mean brightness barely changed (89 → 92): it
+was not the whole scene darkening but **patches of sun** appearing and
+brightening on parts of the wall, plus the shadow of the leaves swaying on the
+ground. Step 6 does not catch that, because the total changed area stays well
+below 50 %.
 
-O MOG2 marca como movimento qualquer pixel que ficou diferente do fundo. Ele não
-sabe distinguir "outra coisa apareceu aqui" de "a mesma coisa ficou mais clara".
+MOG2 marks as motion any pixel that became different from the background. It
+cannot tell "something else appeared here" from "the same thing got
+brighter".
 
-**A ideia.** Luz muda o brilho, mas não o conteúdo: as bordas, a textura do
-reboco, o desenho do portão continuam no mesmo lugar. Uma pessoa troca o
-conteúdo. A **correlação cruzada normalizada** mede exatamente isso:
+**The idea.** Light changes brightness, not content: the edges, the plaster's
+texture, the gate's pattern stay in the same place. A person changes the
+content. **Normalised cross-correlation** measures exactly that:
 
 ```python
 a = a - a.mean()
@@ -549,51 +596,50 @@ b = b - b.mean()
 correlation = (a * b).sum() / sqrt((a * a).sum() * (b * b).sum())
 ```
 
-Subtrair a média remove o "mais claro ou mais escuro"; dividir pelas normas
-remove o "mais contraste ou menos". O que sobra é 1,0 para o mesmo desenho e
-perto de 0 para desenhos sem relação. Em Java seria um laço sobre dois arrays;
-com NumPy cada linha opera sobre o patch inteiro de uma vez (PYTHON.md).
+Subtracting the mean removes "brighter or darker"; dividing by the norms
+removes "more or less contrast". What is left is 1.0 for the same pattern and
+close to 0 for unrelated ones. In Java it would be a loop over two arrays;
+with NumPy each line works on the whole patch at once (PYTHON.md 15.4).
 
-Para cada blob, `_raw_boxes()` compara o frame atual com
-`subtractor.getBackgroundImage()` — a imagem de fundo que o próprio MOG2
-aprendeu — e descarta o blob se a correlação passar de `LIGHTING_CORRELATION`.
+For each blob, `_raw_boxes()` compares the current frame with
+`subtractor.getBackgroundImage()` — the background MOG2 itself learned — and
+drops the blob if the correlation is above `LIGHTING_CORRELATION`.
 
-**Só os pixels que mudaram.** A primeira versão comparava o retângulo inteiro.
-Mas o retângulo de uma pessoa é em boa parte fundo intacto, que puxa a
-correlação para cima, e a pessoa era descartada junto com a luz. A versão atual
-compara só os pixels que a máscara marcou como mudados, antes da dilatação
-(`changed`).
+**Only the pixels that changed.** The first version compared the whole
+rectangle. But a person's rectangle is largely untouched background, which
+pulls the correlation up, and the person was dropped together with the light.
+The current version compares only the pixels the mask marked as changed,
+before dilation (`changed`).
 
-**Medição** sobre os mesmos frames: 4 minutos da Front sem ninguém, e os 10
-clipes gravados com pessoa (273 frames em que o YOLO vê a pessoa):
+**Measured** on the same frames: 4 minutes of Front with nobody, and the 10
+recorded clips with a person (273 frames where YOLO sees the person):
 
-| Versão | Frames com movimento sem ninguém | Pessoa coberta por movimento |
+| Version | Frames with motion and nobody | Person covered by motion |
 |---|---|---|
-| Sem filtro | 99 | 262 |
-| Retângulo inteiro, 0,75 | 1 | 216 |
-| Só pixels mudados, 0,85 | 39 | 261 |
-| Só pixels mudados, 0,75 | 22 | 259 |
-| **Só pixels mudados, 0,65** | **15** | **258** |
-| Só pixels mudados, 0,55 | 14 | 245 |
+| No filter | 99 | 262 |
+| Whole rectangle, 0.75 | 1 | 216 |
+| Changed pixels only, 0.85 | 39 | 261 |
+| Changed pixels only, 0.75 | 22 | 259 |
+| **Changed pixels only, 0.65** | **15** | **258** |
+| Changed pixels only, 0.55 | 14 | 245 |
 
-0,65 corta 85% do falso movimento e perde 4 de 273 frames de pessoa. Abaixo
-disso o ganho acaba e a perda cresce. Todos os clipes continuam disparando
-gravação.
+0.65 cuts 85 % of the false motion and loses 4 of 273 person frames. Below
+that the gain ends and the loss grows. Every clip still triggers a recording.
 
-O fundo só é calculado quando existe algum blob, então frame parado não paga
-nada a mais.
+The background is only computed when there is some blob, so a still frame pays
+nothing extra.
 
 ---
 
-## 7. Camada de sujeitos — `people.py`
+## 7. The subject layer — `people.py`
 
-### 7.1 O que o YOLO faz aqui
+### 7.1 What YOLO does here
 
-YOLO11 foi treinado com corpos inteiros: forma, postura, membros, proporções.
-**Ele não tem noção de rosto.** Por isso máscara, capacete, capuz ou pessoa de
-costas continuam sendo detectados.
+YOLO11 was trained on whole bodies: shape, posture, limbs, proportions. **It
+has no notion of a face.** That is why a mask, a helmet, a hood or a person
+with their back turned are still detected.
 
-O COCO tem 80 classes. Vigiamos estas:
+COCO has 80 classes. These are watched:
 
 ```python
 PERSON_CLASS = 0
@@ -601,303 +647,320 @@ CLASS_NAMES = {0: "person", 14: "bird", 15: "cat", 16: "dog",
                17: "horse", 18: "sheep", 19: "cow"}
 ```
 
-Ou seja: `person`, `bird`, `cat`, `dog`, `horse`, `sheep`, `cow`. Bear, elephant
-e zebra existem no COCO e foram deixados de fora por serem implausíveis aqui —
-incluí-los só criaria falsos positivos exóticos.
+That is: `person`, `bird`, `cat`, `dog`, `horse`, `sheep`, `cow`. Bear,
+elephant and zebra exist in COCO and were left out as implausible here —
+including them would only create exotic false positives.
 
-Animais usam um limiar de confiança mais alto (`ANIMAL_CONFIDENCE = 0.45` contra
-`CONFIDENCE = 0.35`), porque objetos de cena são confundidos com animais com
-mais facilidade que com pessoas.
+Animals use a higher confidence threshold (`ANIMAL_CONFIDENCE = 0.45` against
+`CONFIDENCE = 0.35`), because scene objects are mistaken for animals more
+easily than for people.
 
-**Observado em 30/09/2026, ainda não tratado:** eventos rotulados `cat`, `cow`,
-`sheep` e `bird` numa casa onde há cachorro e gente. Provavelmente é o YOLO
-hesitando entre espécies para o mesmo cachorro, de frame em frame. Como
-`labels` acumula tudo que apareceu no evento (8.4), uma única hesitação já
-entra no rótulo. Não muda o que é gravado, só o texto do cartão.
+**Observed on 30/09/2026, still not handled:** events labelled `cat`, `cow`,
+`sheep` and `bird` in a house with a dog and people. Most likely YOLO
+hesitating between species for the same dog, frame to frame. Since `labels`
+accumulates everything that appeared in the event (8.4), one hesitation is
+enough to enter the label. It does not change what is recorded, only the
+card's text (backlog 8).
 
-### 7.2 O tipo `Detection`
+### 7.2 The `Detection` type
 
-Detecções deixaram de ser tuplas anônimas e viraram um `NamedTuple` em
+Detections stopped being anonymous tuples and became a `NamedTuple` in
 `geometry.py`:
 
 ```python
 Detection(x, y, w, h, confidence, label)
 ```
 
-Continua sendo uma tupla (indexável, desempacotável), então `d[:4]` ainda é a
-caixa, mas agora carrega o rótulo e expõe `d.is_person`. Foi o que permitiu o
-mesmo pipeline tratar pessoas e animais sem duplicar código.
+It is still a tuple (indexable, unpackable), so `d[:4]` is still the box, but
+it now carries the label and exposes `d.is_person`. That let the same pipeline
+handle people and animals without duplicating code (PYTHON 5.4).
 
-`drop_duplicates` só funde caixas **do mesmo rótulo** — um cachorro ao lado de
-uma pessoa se sobrepõe muito, e antes um dos dois seria descartado.
+`drop_duplicates` merges only boxes **of the same label** — a dog beside a
+person overlaps a lot, and before, one of the two would have been dropped.
 
-### 7.3 Saber que é um cachorro, não qual cachorro
+### 7.3 Knowing it is a dog, and which
 
-| Objetivo | Situação |
+| Goal | State |
 |---|---|
-| Detectar que existe um cachorro | Funciona (COCO classe 16) |
-| Saber *qual* cachorro | Não feito; a camada de rosto não serve (10.8) |
-| Saber *qual* pessoa | Camada de rosto, YuNet + SFace (seção 10) |
+| Detect that there is a dog | Works (COCO class 16) |
+| Know *which* dog | The household's dogs, by the look of their fur, once the user names some views (section 20); the face layer cannot do it (10.8) |
+| Know *which* person | The face layer, YuNet + SFace (section 10) |
 
-### 7.4 Decisão de projeto: frame inteiro, não recorte
+### 7.4 A design decision: the whole frame, not a crop
 
-A primeira versão recortava o frame na região do movimento e rodava o YOLO só
-nesse recorte. Teste revelou a falha:
+The first version cropped the frame to the motion region and ran YOLO only on
+that crop. A test showed the flaw:
 
-- Recorte de 192×192, pessoa ocupando quase a imagem toda.
-- O YOLO acertou "pessoa", mas **a caixa retornada ficou limitada ao recorte**:
-  153×115 em vez do corpo inteiro.
+- A 192×192 crop, the person filling almost all of it.
+- YOLO got "person" right, but **the returned box was limited to the crop**:
+  153×115 instead of the whole body.
 
-Isso é um teto estrutural, não questão de ajuste. Pior: se o movimento pegar só
-as pernas, a caixa recortada **nunca** conterá a cabeça — e a camada de rosto
-usa justamente a caixa do corpo para confirmar que um rosto é de uma pessoa
+That is a structural ceiling, not a tuning matter. Worse: if the motion caught
+only the legs, the cropped box would **never** contain the head — and the face
+layer uses precisely the body's box to confirm a face belongs to a person
 (10.9).
 
-**Solução:** YOLO roda no frame inteiro. O movimento serve como (a) gatilho e
-(b) filtro de relevância. Reteste com o mesmo blob minúsculo: caixa completa
-`120,202 → 1109,712`, confiança 0.92, batendo com o *ground truth*.
+**The solution:** YOLO runs on the whole frame. Motion serves as (a) a trigger
+and (b) a relevance filter. Retested with the same tiny blob: the full box
+`120,202 → 1109,712`, confidence 0.92, matching the ground truth.
 
 ### 7.5 Throttle
 
-O YOLO custa 50 a 62 ms por inferência na máquina de desenvolvimento (7.11).
-Rodar em todo frame comeria o orçamento e travaria o vídeo. `MIN_INTERVAL =
-0.25` limita a 4 execuções por segundo por câmera, **reaproveitando a resposta
-anterior** no intervalo.
+YOLO costs 50 to 62 ms per inference on the development PC (7.11). Running it
+on every frame would eat the budget and stall the video. `MIN_INTERVAL = 0.25`
+limits it to 4 runs per second per camera, **reusing the previous answer** in
+between.
 
-Evidência de que funciona, medida ainda com o PyTorch: a taxa de frames ficou
-em 12,7 fps antes e depois de adicionar o YOLO. No M900 o número a acompanhar é
-o uso de CPU com as duas câmeras em movimento ao mesmo tempo.
+Evidence it works, measured still with PyTorch: the frame rate stayed at
+12.7 fps before and after adding YOLO. On the M900 the number to watch is CPU
+use with both cameras in motion at once (backlog 4).
 
-### 7.6 Filtro de sobreposição
+### 7.6 The overlap filter
 
-`REQUIRE_MOTION_OVERLAP = True` descarta pessoas detectadas que não encostam em
-nenhuma caixa de movimento. Isso amarra a resposta ao evento que a disparou.
+`REQUIRE_MOTION_OVERLAP = True` drops detected people that touch no motion
+box. That ties the answer to the event that triggered it.
 
-**Limitação conhecida:** quem parar de se mover é absorvido pelo modelo de
-fundo e deixa de ser reportado. A solução é *tracking*, próxima camada.
+**Known limitation:** someone who stops moving is absorbed into the
+background model and is no longer reported. The solution is *tracking*
+(backlog 7).
 
-### 7.7 `drop_duplicates` e IoU
+### 7.7 `drop_duplicates` and IoU
 
-Duas caixas podem descrever a mesma pessoa. "Mesma" é medido por **IoU**
-(*Intersection over Union*): área compartilhada dividida pela área combinada.
-0 = sem sobreposição, 1 = idênticas. Acima de 0.5, tratamos como uma só e
-mantemos a de maior confiança.
+Two boxes can describe the same person. "The same" is measured by **IoU**
+(*Intersection over Union*): the shared area divided by the combined area. 0 =
+no overlap, 1 = identical. Above 0.5 they are treated as one, keeping the more
+confident.
 
-A função `iou()` vive em `geometry.py`, compartilhada com o rastreador de
-movimento, que usa `overlap_area()` do mesmo módulo para casar candidatos entre
-frames.
+`iou()` lives in `geometry.py`, shared with the motion tracker, which uses
+`overlap_area()` from the same module to match candidates across frames.
 
-### 7.8 Supressão de cenário estático
+### 7.8 Static-scenery suppression
 
-**O problema observado em campo (2026-09-26):** a câmera Front gravou dois
-clipes marcados como `person left`. Reanalisando os vídeos, o YOLO apontava
-pessoa em 100% dos frames, com confiança 0,80 — e **exatamente a mesma caixa**
-nos dois clipes, gravados com 90 s de diferença: 68×82 px em (1391, 311).
+**The problem seen in the field (26/09/2026):** the Front camera recorded two
+clips marked `person left`. Re-analysing the videos, YOLO pointed at a person
+in 100 % of the frames, at 0.80 confidence — and **exactly the same box** in
+both clips, recorded 90 s apart: 68×82 px at (1391, 311).
 
-Era um objeto fixo na parede. Um segundo ponto em (364, 285) fazia o mesmo.
+It was a fixed object on the wall. A second spot at (364, 285) did the same.
 
-O detalhe revelador: **nos clipes diurnos do mesmo enquadramento o YOLO não
-detecta pessoa alguma.** O falso positivo é específico do infravermelho, que
-transforma o objeto numa silhueta escura contra a parede clara.
+The telling detail: **in the daytime clips of the same framing YOLO detects no
+person at all.** The false positive is specific to infrared, which turns the
+object into a dark silhouette against the light wall.
 
-**A solução:** um objeto de cenário não se move; uma pessoa sim. `_reject_scenery`
-mantém uma lista de pontos onde detecções continuam surgindo:
+**The solution:** a scenery object does not move; a person does.
+`_reject_scenery` keeps a list of spots where detections keep appearing:
 
-- Duas caixas são "o mesmo lugar" quando os centros estão a até
-  `STATIC_CENTRE_TOLERANCE` px e os tamanhos diferem menos de
-  `STATIC_SIZE_TOLERANCE`. Casar por centro (e não por IoU) foi necessário
-  porque a caixa do segundo objeto **oscilava de tamanho** — 73×65, 68×68,
-  71×74 — e nunca atingia IoU alto, embora o centro ficasse parado.
-- A contagem é **consecutiva**: qualquer ciclo em que o ponto não reaparece
-  zera `hits`. Sem isso, alguém que fica parado, anda e volta acabaria somando
-  acertos ao longo do tempo.
-- Ao atingir `STATIC_HITS` ciclos seguidos, o ponto vira cenário e é ignorado.
-- Pontos somem da lista após `STATIC_TTL` sem aparecer.
+- Two boxes are "the same place" when their centres are within
+  `STATIC_CENTRE_TOLERANCE` px and their sizes differ by less than
+  `STATIC_SIZE_TOLERANCE`. Matching by centre (not IoU) was needed because the
+  second object's box **wobbled in size** — 73×65, 68×68, 71×74 — and never
+  reached a high IoU, although the centre stayed put.
+- The count is **consecutive**: any cycle where the spot does not reappear
+  resets `hits`. Without that, someone who stands still, walks and comes back
+  would keep adding hits over time.
+- On reaching `STATIC_HITS` cycles in a row, the spot becomes scenery and is
+  ignored.
+- Spots leave the list after `STATIC_TTL` without appearing.
 
-**Resultado no clipe real:** os dois objetos foram aprendidos como dois pontos
-e silenciados a partir do ciclo 49. Uma pessoa que se mexe a cada 10 ciclos
-continua detectada.
+**Result on the real clip:** both objects were learned as two spots and
+silenced from cycle 49 on. A person who moves every 10 cycles is still
+detected.
 
-**Custo consciente:** alguém absolutamente imóvel por ~12 s (50 ciclos a 4/s) é
-suprimido. É aceitável porque o clipe já capturou a chegada dessa pessoa, e
-qualquer movimento a libera no mesmo instante. Para ser mais conservador, suba
+**A conscious cost:** someone absolutely still for ~12 s (50 cycles at 4/s) is
+suppressed. Acceptable because the clip already captured that person
+arriving, and any movement frees them at once. To be more conservative, raise
 `STATIC_HITS`.
 
-**Custo no arranque:** a lista nasce vazia a cada execução, então o programa
-grava um clipe do objeto estático antes de aprendê-lo. Persistir a lista em
-disco resolveria isso e é um próximo passo natural.
+**A start-up cost:** the list starts empty on every run, so the program
+records one clip of the static object before learning it. Persisting the list
+on disk would solve it (backlog 12).
 
-### 7.9 Altura mínima para pessoa
+### 7.9 A minimum height for a person
 
-Na noite de 26/09/2026 a câmera Front gravou **19 eventos**, dos quais só 3 eram
-pessoas de verdade. Os outros 16 eram caixinhas na parede acima do carro, com
-confiança entre 0,36 e 0,79 — alta o bastante para passar pelo limiar.
+On the night of 26/09/2026 the Front camera recorded **19 events**, of which
+only 3 were real people. The other 16 were little boxes on the wall above the
+car, at confidences between 0.36 and 0.79 — high enough to pass the threshold.
 
-A supressão de cenário estático (7.8) **não pega esse caso**: os falsos
-positivos aparecem separados por minutos, então a contagem consecutiva zera
-entre um evento e outro e nunca chega aos 50 ciclos.
+Static-scenery suppression (7.8) **does not catch that case**: the false
+positives come minutes apart, so the consecutive count resets between events
+and never reaches 50 cycles.
 
-A medição das caixas de todas as 18 miniaturas resolveu:
+Measuring the boxes of all 18 thumbnails settled it:
 
-| | Altura da caixa | Razão alt/larg |
+| | Box height | Height/width ratio |
 |---|---|---|
-| **Pessoas reais** (3) | 294–306 px | 1,55–2,32 |
-| **Falsos positivos** (15) | **36–86 px** | 0,91–1,59 |
+| **Real people** (3) | 294–306 px | 1.55–2.32 |
+| **False positives** (15) | **36–86 px** | 0.91–1.59 |
 
-A altura separa os dois grupos com folga de **3,4×** (86 contra 294). A razão
-largura/altura se sobrepõe (1,59 contra 1,55) e por isso foi descartada como
-critério.
+Height separates the two groups with a **3.4×** margin (86 against 294). The
+ratio overlaps (1.59 against 1.55) and was dropped as a criterion.
 
 ```python
 MIN_PERSON_HEIGHT_FRACTION = 0.20
 ```
 
-Fração da altura do frame, não pixels absolutos, para sobreviver a mudanças de
-`ANALYSIS_HEIGHT`. A 540 px isso dá 108 px: 26% acima do maior falso positivo e
-2,7× abaixo da menor pessoa real.
+A fraction of the frame's height, not absolute pixels, so it survives changes
+to `ANALYSIS_HEIGHT`. At 540 px that is 108 px: 26 % above the largest false
+positive and 2.7× below the smallest real person.
 
-**Verificado contra as 18 gravações reais: 18 acertos, 0 erros.**
+**Checked against the 18 real recordings: 18 right, 0 wrong.**
 
-Duas ressalvas honestas:
+Two honest caveats:
 
-- **É específico da cena.** Numa cena onde pessoas apareçam pequenas ao longe,
-  108 px descartaria gente de verdade. Aqui a garagem é estreita e mesmo no
-  fundo uma pessoa passa dos 150 px.
-- **Só vale para `person`.** Animais são naturalmente mais baixos que largos, e
-  aplicar o mesmo piso rejeitaria um cachorro legítimo. Ainda não há dados de
-  detecção real de animais para calibrar um limiar próprio.
+- **It is specific to the scene.** In a scene where people appear small in the
+  distance, 108 px would drop real people. Here the garage is narrow, and even
+  at the back a person is over 150 px.
+- **It applies only to `person`.** Animals are naturally lower than they are
+  wide, and the same floor would reject a legitimate dog.
 
-### 7.10 Um modelo, várias câmeras
+**The dog lying on the mat (R18, 10/10/2026)** needed a second rule for
+`person`, a width-to-height ratio of 2.0, measured with the replay tool
+(12.10). **R35 (11/10/2026)** checked whether 1.5 would also catch Aurora
+curled up on the mat: the five boxes it would drop were all people —
+crouching at the door, bending, sitting below the camera — so the ratio stays
+at 2.0, and the rare curled-up dog goes to the bad-detection reports
+(section 21).
 
-`@lru_cache(maxsize=1)` em `load_model()` garante uma única instância do YOLO
-para o laço ao vivo, compartilhada pelas câmeras. É o oposto do
-`MotionDetector`:
+### 7.10 One model, several cameras
 
-| Componente | Estado | Instâncias |
+`@lru_cache(maxsize=1)` on `load_model()` guarantees a single YOLO instance for
+the live loop, shared by the cameras. It is the opposite of `MotionDetector`:
+
+| Component | State | Instances |
 |---|---|---|
-| `MotionDetector` | modelo de fundo daquela câmera | **uma por câmera** |
-| `SubjectDetector` | throttle, último resultado e cenário estático | uma por câmera |
-| Rede YOLO do laço ao vivo (`load_model`) | buffers internos | **uma, só na thread principal** |
-| Rede YOLO de fundo (`load_background_model`) | buffers internos | uma, só na varredura de rostos |
+| `MotionDetector` | that camera's background model | **one per camera** |
+| `SubjectDetector` | throttle, last result and static scenery | one per camera |
+| The live loop's YOLO network (`load_model`) | internal buffers | **one, main thread only** |
+| The background YOLO network (`load_background_model`) | internal buffers | one, the face scan only |
 
-Compartilhar entre câmeras funciona porque todas rodam na mesma thread, uma
-depois da outra. Compartilhar entre **threads** derrubou o programa: ver 10.9.
+Sharing between cameras works because they all run on the same thread, one
+after the other. Sharing between **threads** brought the program down: see
+10.9 and PYTHON 14.2.
 
-### 7.11 Por que OpenCV e não PyTorch
+### 7.11 Why OpenCV and not PyTorch
 
-O YOLO roda pelo `cv2.dnn` sobre o export ONNX, não pelo `ultralytics`. A troca
-foi forçada por um problema de implantação, em 29/09/2026.
+YOLO runs through `cv2.dnn` on the ONNX export, not through `ultralytics`. The
+switch was forced by a deployment problem on 29/09/2026.
 
-**O sintoma:** na máquina de destino, e horas depois também na de
-desenvolvimento, o PyTorch parou de carregar:
+**The symptom:** on the target machine, and hours later on the development PC
+too, PyTorch stopped loading:
 
 ```
 OSError: [WinError 4551] An Application Control policy has blocked this
 file. Error loading "...\torch\lib\shm.dll"
 ```
 
-**A causa:** o **Smart App Control** do Windows 11, que bloqueia binários sem
-assinatura reconhecida pela Microsoft. As DLLs do PyTorch não são assinadas.
-Confirmado pelo registro:
+**The cause:** Windows 11's **Smart App Control**, which blocks binaries
+without a signature Microsoft recognises. PyTorch's DLLs are not signed.
+Confirmed in the registry:
 
 ```
 HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy
-    VerifiedAndReputablePolicyState = 1    (ligado, bloqueando)
+    VerifiedAndReputablePolicyState = 1    (on, blocking)
 ```
 
-**Por que não desligar o Smart App Control:** ele é **irreversível**. Uma vez
-desligado, só volta reinstalando o Windows. Trocar a segurança do sistema por
-uma dependência é um preço alto e permanente.
+**Why not turn Smart App Control off:** it is **irreversible**. Once off, it
+only comes back by reinstalling Windows. Trading the system's security for a
+dependency is a high and permanent price.
 
-**A saída:** o Ultralytics publica o `yolo11s.onnx` oficial no mesmo release de
-onde já vinha o `.pt`, e o OpenCV — cujas DLLs são assinadas e passam — executa
-esse ONNX sem PyTorch nenhum.
+**The way out:** Ultralytics publishes the official `yolo11s.onnx` in the
+same release the `.pt` came from, and OpenCV — whose DLLs are signed and pass
+— runs that ONNX without any PyTorch.
 
-Ganhos além de destravar:
+Gains besides unblocking:
 
-| | Antes | Depois |
+| | Before | After |
 |---|---|---|
-| Dependências | opencv, ultralytics, torch, torchvision + 38 | **opencv, imageio-ffmpeg** |
-| Peso | ~2,5 GB | ~90 MB |
-| Inferência (dev) | 24 ms | **50-62 ms** |
+| Dependencies | opencv, ultralytics, torch, torchvision + 38 | **opencv, imageio-ffmpeg** |
+| Weight | ~2.5 GB | ~90 MB |
+| Inference (dev) | 24 ms | **50–62 ms** |
 
-O custo é real: cerca de 2x mais lento. Com o portão de movimento e o
-`MIN_INTERVAL` de 0,25 s isso não apareceu nos testes, mas é o número a
-acompanhar no M900. O `cv2.dnn` aceita backend OpenVINO, que já era o plano
-para aquela máquina, então há caminho de volta para a velocidade.
+The cost looked real: about 2× slower. **Measured on 09/10/2026, it was the
+hardware, not the library:** PyTorch's 24 ms were on the GPU; CPU against CPU,
+on the same blob, `cv2.dnn` takes 37.8 ms and `onnxruntime` 34.6 ms, with
+identical output. Another ONNX runtime would buy nothing; the M900 has no GPU
+to win back. `cv2.dnn` accepts an OpenVINO backend, the remaining path to
+speed (backlog 14). The dependency count above is a consequence, not a goal
+(CONTEXTO 11).
 
-**O que foi preciso escrever à mão.** O `ultralytics` fazia pré e
-pós-processamento por baixo dos panos; agora são explícitos:
+**What had to be written by hand.** `ultralytics` did the pre- and
+post-processing under the hood; now they are explicit (PYTHON 17):
 
-- `_letterbox()` encaixa o frame num quadrado de 640 sem distorcer, guardando a
-  escala para desfazer depois
-- A saída é `(1, 84, 8400)`: 8400 caixas candidatas, cada uma com 4 números de
-  geometria e 80 de pontuação por classe. Transpor e percorrer dá as detecções
-- `cv2.dnn.NMSBoxes` elimina as caixas sobrepostas da mesma detecção
+- `_letterbox()` fits the frame into a 640 square without distorting it,
+  keeping the scale to undo it later
+- The output is `(1, 84, 8400)`: 8400 candidate boxes, each with 4 geometry
+  numbers and 80 per-class scores. Transposing and walking it gives the
+  detections
+- `cv2.dnn.NMSBoxes` removes the overlapping boxes of one detection
 
-Foi exatamente o trabalho apontado, no começo do projeto, como o custo de usar
-C++ em vez de Python. Ele apareceu de qualquer forma — só que por um motivo que
-ninguém previu.
+It was exactly the work pointed to, at the start of the project, as the cost
+of using C++ instead of Python. It showed up anyway — for a reason nobody
+foresaw.
 
-**Os nomes das classes** vinham de `model.names`. Sem o ultralytics, o
-`CLASS_NAMES` lista apenas as sete que interessam, e a filtragem por classe usa
-esse mesmo dicionário.
+**The class names** came from `model.names`. Without ultralytics,
+`CLASS_NAMES` lists only the seven that matter, and filtering by class uses
+that same dictionary.
 
 ---
 
-## 8. Camada de gravação — `clips.py`
+## 8. The recording layer — `clips.py`
 
-### 8.1 Nada é recodificado
+### 8.1 Nothing is re-encoded
 
-O clipe é montado concatenando **segmentos inteiros** do buffer com o
-`concat` do ffmpeg em modo `-c copy`:
-
-```
-ffmpeg -f concat -safe 0 -i lista.txt -c copy -movflags +faststart saida.mp4
-```
-
-`-c copy` significa "copie os pacotes, não decodifique nem recodifique". O
-resultado é bit a bit o que a câmera produziu — não existe qualidade melhor
-possível, porque a câmera já é a fonte.
-
-**Verificado:** o clipe montado sai em **1920x1080, h264, 270 frames em 18 s**,
-enquanto a análise roda em 960x540. Se houvesse recodificação a partir dos
-frames de análise, o vídeo sairia em 960x540.
-
-### 8.2 Quando o evento começa e termina
-
-- Começa no primeiro frame com sujeito detectado. Nesse instante a **miniatura**
-  é salva e o horário é registrado.
-- `POST_SECONDS = 5.0` — o evento fecha após 5 s sem ninguém. A detecção oscila,
-  e parar na hora fragmentaria um evento em dezenas de arquivos.
-- `MAX_SECONDS = 60.0` — teto rígido.
-- `PRE_SECONDS = 6.0` — quanto se pede para trás ao selecionar segmentos.
-
-### 8.3 Atraso de montagem
-
-O ffmpeg só finaliza um segmento quando começa o próximo. Montar o clipe
-imediatamente pegaria o último segmento incompleto, então a montagem roda numa
-**thread** que espera `ASSEMBLY_DELAY = SEGMENT_SECONDS + 2` segundos antes de
-concatenar.
-
-Os metadados, porém, são escritos **na hora**, para a gravação aparecer na tela
-Records imediatamente. O vídeo materializa poucos segundos depois; por isso
-`reveal()` cai para a pasta do dia se o `.mp4` ainda não existir.
-
-`wait_for_jobs()` é chamado na saída para nenhuma montagem ficar pela metade.
-
-### 8.4 Três arquivos por evento
+The clip is assembled by concatenating **whole segments** from the buffer with
+ffmpeg's `concat` in `-c copy` mode:
 
 ```
-19-17-30.mp4     vídeo, montado dos segmentos originais
-19-17-30.jpg     o primeiro frame em que o sujeito apareceu
-19-17-30.json    metadados
+ffmpeg -f concat -safe 0 -i list.txt -c copy -movflags +faststart out.mp4
 ```
 
-A miniatura vem do frame de análise (960x540) reduzido para `THUMB_WIDTH = 480`
-— nenhuma perda prática, já que ela é sempre exibida pequena.
+`-c copy` means "copy the packets, do not decode or re-encode". The result is
+bit for bit what the camera produced — no better quality is possible, since
+the camera is the source. `+faststart` puts the index at the start of the file,
+so a browser can play and seek it while it downloads (17.13).
 
-O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
+**Checked:** the assembled clip comes out at **1920×1080, h264, 270 frames in
+18 s**, while analysis runs at 960×540. Had it been re-encoded from the
+analysis frames, the video would come out at 960×540.
+
+### 8.2 When the event starts and ends
+
+- It starts on the first frame with a detected subject. At that moment the
+  **thumbnail** is saved and the time is recorded.
+- `POST_SECONDS = 5.0` — the event closes after 5 s with nobody. Detection
+  flickers, and stopping at once would split one event into dozens of files.
+- `MAX_SECONDS = 60.0` — a hard ceiling.
+- `PRE_SECONDS = 6.0` — how far back to ask for when choosing segments.
+
+### 8.3 The assembly delay
+
+ffmpeg only finishes a segment when the next one starts. Assembling the clip
+at once would take the incomplete last segment, so assembly runs in a
+**thread** that waits `ASSEMBLY_DELAY = SEGMENT_SECONDS + 2` seconds before
+concatenating. The same thread then runs the face scan and the post-scan
+messages (10.1, 22.3).
+
+The metadata, though, is written **at once**, so the recording appears on the
+Recordings tab immediately; the video materialises a few seconds later.
+
+`wait_for_jobs()` is called on exit so no assembly is left half done.
+
+### 8.4 The files of an event
+
+```
+19-17-30.mp4     the video, assembled from the original segments
+19-17-30.jpg     the first frame in which the subject appeared
+19-17-30.json    metadata
+```
+
+Optional companions, all sharing the base name so the archive moves them
+together: `.best.jpg` (the best view of a person), `.alert.jpg` (the photo of
+a late notification), `.side.jpg` (a side face) — the full table is 19.2.
+
+The thumbnail comes from the analysis frame (960×540) reduced to
+`THUMB_WIDTH = 480` — no practical loss, since it is always shown small.
+
+The `.json` exists so the Recordings tab **never has to open a video**:
 
 ```json
 {
@@ -913,882 +976,599 @@ O `.json` existe para que a tela Records **nunca precise abrir um vídeo**:
 }
 ```
 
-`labels` acumula tudo que apareceu durante o evento, não só no primeiro frame.
+`labels` accumulates everything that appeared during the event, not only on
+the first frame.
 
-Um JSON por clipe é deliberadamente simples e inspecionável — o passo seguinte
-é SQLite, quando houver busca por pessoa e por período.
+One JSON per clip is deliberately simple and inspectable — the next step is
+SQLite, once there is search by person and period (backlog 13).
 
-### 8.5 A miniatura é a única que leva caixas desenhadas
+### 8.5 The thumbnail is the only one with boxes drawn
 
-O **vídeo** nunca é tocado, então não há como sujá-lo. A **miniatura** recebe as
-caixas de propósito, porque a função dela é ser folheada por um humano.
+The **video** is never touched, so there is no way to soil it. The
+**thumbnail** gets the boxes on purpose, because its job is to be leafed
+through by a human.
 
-Esse era um cuidado explícito na versão antiga (o gravador recebia o frame
-limpo); agora é consequência da arquitetura, o que é melhor: não depende de
-ninguém lembrar.
+That was an explicit precaution in the old version (the recorder received the
+clean frame); now it is a consequence of the architecture, which is better: it
+does not depend on anyone remembering.
 
-### 8.6 Armazenamento
+### 8.6 Storage
 
-A taxa depende do que a câmera está vendo: cena parada comprime muito, cena com
-gente e luz do dia comprime pouco. Duas medições:
+The rate depends on what the camera sees: a still scene compresses a lot, a
+scene with people in daylight compresses little. Two measurements:
 
-| Medição | Taxa |
+| Measurement | Rate |
 |---|---|
-| Clipe noturno de 18 s, dev, 26/09 | ~48 KB/s |
-| **Todos os clipes de 30/09 no M900** (dia e noite) | **~120 KB/s** |
+| An 18 s night clip, dev, 26/09 | ~48 KB/s |
+| **Every clip of 30/09 on the M900** (day and night) | **~120 KB/s** |
 
-O dia 30/09 é a referência realista: **102 eventos, 41 minutos de clipe,
-303 MB**. Nesse ritmo:
+30/09 is the realistic reference: **102 events, 41 minutes of clips, 303 MB**.
+At that pace:
 
-| Período | Espaço |
+| Period | Space |
 |---|---|
-| Por dia | ~300 MB |
-| Por mês | ~9 GB |
-| Por ano | **~110 GB** |
+| Per day | ~300 MB |
+| Per month | ~9 GB |
+| Per year | **~110 GB** |
 
-Uma estimativa anterior desta seção dizia ~5 GB/ano. Ela usava a taxa noturna e
-supunha 5 minutos de atividade por dia; a casa real tem 8 vezes mais. Com esse
-volume, **retenção automática** (8.7) deixou de ser opcional.
+An earlier estimate in this section said ~5 GB a year. It used the night rate
+and assumed 5 minutes of activity a day; the real house has 8 times more. At
+that volume an archive stopped being optional: section 11.
 
-O buffer rotativo custa à parte e não cresce: 6 a 8 MB por câmera (5.5).
+The rolling buffer costs extra and does not grow: 6 to 8 MB per camera (5.5).
 
-### 8.7 Arquivamento em zip: implementado, medido e removido
+### 8.7 Zip archiving: built, measured and removed
 
-Os clipes ficam em disco como `.mp4` soltos. **Não há compactação**, e isso é
-uma decisão medida, não um esquecimento.
+Clips stay on disk as loose `.mp4` files. **There is no compression**, and
+that is a measured decision, not an oversight.
 
-Em 26/09/2026 o arquivamento em zip foi implementado por completo — empacotar o
-clipe, apagar o `.mp4`, descompactar no acesso, selo `ZIP` no cartão — e então
-removido, porque a medição no arquivo real mostrou que não serve para nada:
+On 26/09/2026 zip archiving was built in full — packing the clip, deleting the
+`.mp4`, unpacking on access, a `ZIP` badge on the card — and then removed,
+because measuring the real file showed it does nothing:
 
-| Método | 1302 KB de mp4 vira | Ganho |
+| Method | 1302 KB of mp4 becomes | Gain |
 |---|---|---|
-| deflate | 1299 KB | **0,2%** |
-| bzip2 | 1304 KB | **−0,2%** (maior) |
-| lzma | 1313 KB | **−0,9%** (maior) |
+| deflate | 1299 KB | **0.2 %** |
+| bzip2 | 1304 KB | **−0.2 %** (bigger) |
+| lzma | 1313 KB | **−0.9 %** (bigger) |
 
-**Por que:** H.264 já é codificado por entropia. A redundância que um
-compactador de uso geral procura foi removida pelo codec. Dois dos três métodos
-produzem arquivo **maior**, porque o overhead do container supera a economia.
+**Why:** H.264 is already entropy-coded. The redundancy a general-purpose
+compressor looks for was removed by the codec. Two of the three methods make a
+**bigger** file, because the container's overhead beats the saving.
 
-O custo era real: perder o duplo clique para assistir, e `.mp4` extraídos se
-acumulando ao lado dos `.zip`. Em troca de 2,6 KB por gravação.
+The cost was real: losing the double-click to watch, and extracted `.mp4`
+files piling up beside the `.zip` files. In exchange for 2.6 KB per recording.
 
-**Cuidado com números antigos.** Uma medição anterior indicava 5–11%, e estava
-correta **para o formato antigo**: aquele arquivo era recodificado em CRF 26 e
-ainda tinha folga. Os arquivos atuais vêm do encoder de hardware da câmera e
-estão muito mais apertados. A conclusão mudou junto com o formato — se o
-formato mudar de novo, remeça antes de concluir.
+**Beware of old numbers.** An earlier measurement said 5–11 %, and it was right
+**for the old format**: that file was re-encoded at CRF 26 and still had slack.
+Today's files come from the camera's hardware encoder and are much tighter.
+The conclusion changed with the format — if the format changes again, measure
+again before concluding.
 
-**O que realmente reduz disco** neste projeto, em ordem de impacto:
+**What really reduces disk use** in this project, in order of impact:
 
-1. Não gravar o que não é evento — feito (movimento, filtro de luz,
-   confirmação temporal, supressão de cenário estático).
-2. Não recodificar — feito (seção 5.1). O arquivo antigo era 25% maior que o
-   original e pior.
-3. **Retenção automática** — não feito, e é o único lever grande que resta.
-   Com ~300 MB/dia (8.6), os 394 GB livres do M900 (30/09/2026) acabam em
-   cerca de 3 anos e meio — antes, se houver mais câmeras ou mais movimento.
-4. Compactar — 0,2%, descartado.
+1. Not recording what is not an event — done (motion, the lighting filter,
+   temporal confirmation, static-scenery suppression).
+2. Not re-encoding — done (5.1). The old file was 25 % larger than the
+   original, and worse.
+3. **Moving old recordings off the disk** — the archive (section 11) moves them
+   to an external drive after 30 days; production has none configured yet.
+   With ~300 MB a day, the M900's 394 GB free (30/09/2026) last about three and
+   a half years — less with more cameras or more motion.
+4. Compressing — 0.2 %, dropped.
 
 ---
 
-## 9. Interface — `ui.py`
-
-A janela inteira é uma única imagem numpy, montada assim:
-
-```
-┌──────────┬──────────────────────────┬──────────┐
-│ J.A.R.V. │                          │ 09/2026  │
-│          │   Live (letterbox)       │ D S T Q  │
-│ ▸ Live   │   ou grade de gravações  │  1 2 3 4 │
-│   Records│   ou grade de rostos     │  5 6 7 8 │
-│   People │                          │          │
-└──────────┴──────────────────────────┴──────────┘
-  190 px                                 250 px
-                                (só em Records e People)
-```
-
-O HighGUI do OpenCV **não tem widgets**: não existe botão, lista, scroll nem
-gerenciador de layout. Tudo é retângulo e texto desenhados à mão.
-
-### 9.1 Proporção ao redimensionar a janela
-
-**Problema:** esticar a janela esticava o vídeo, deformando a imagem.
-
-A causa é que o backend do HighGUI escala a imagem recebida para preencher a
-janela, sem respeitar proporção. A flag que deveria resolver não serve:
-
-```python
-cv2.WINDOW_KEEPRATIO   # vale 0 — idêntico a WINDOW_NORMAL
-cv2.WINDOW_FREERATIO   # vale 256
-```
-
-`WINDOW_KEEPRATIO` ser `0` significa que combiná-la com `WINDOW_NORMAL` não
-muda nada; ela só tem efeito no backend Qt, e aqui o backend é o Win32.
-
-**Solução:** perguntar o tamanho da janela e devolver uma imagem **exatamente
-daquele tamanho**. Se a imagem já tem a dimensão da janela, não há nada para o
-backend escalar:
-
-```python
-_, _, width, height = cv2.getWindowImageRect(WINDOW)
-```
-
-Dentro dessa tela, `letterbox()` desenha o vídeo na maior escala que couber
-preservando a proporção, centralizado, com barras escuras nas sobras:
-
-```python
-scale = min(area_w / w, area_h / h)
-```
-
-Medido: numa janela 1000×900, o vídeo de proporção 3,554 é desenhado como
-810×227 — proporção 3,568, a diferença vindo só do arredondamento a pixel
-inteiro.
-
-**Benefício colateral importante:** como a imagem tem o tamanho exato da
-janela, as coordenadas do mouse passam a mapear 1:1 com o que é desenhado. Sem
-isso, os cliques sairiam deslocados sempre que a janela fosse redimensionada.
-
-`getWindowImageRect` devolve valores inválidos antes da janela existir, então
-`window_size()` cai para o tamanho natural do layout nesse caso.
-
-### 9.2 Só redesenha quando vale a pena
-
-As câmeras entregam ~10 frames por segundo, mas o laço gira a cada ~20 ms. A
-maioria das voltas não tem frame novo, e redesenhar a tela inteira nelas seria
-desperdício puro — num M900 de quatro núcleos, desperdício caro.
-
-O redesenho acontece quando **alguma câmera trouxe frame novo**, ou quando
-passaram `REDRAW_SECONDS = 0.15` sem nada. O segundo caso existe para a
-interface continuar viva: o cursor do campo de nome pisca, e a tela Records
-precisa reler a pasta de tempos em tempos.
-
-O `cv2.waitKey(15)` continua sendo chamado em **toda** volta, com frame novo ou
-sem. É ele que mantém a janela respondendo (PYTHON.md 16), e os 15 ms também
-evitam que o laço gire a mil por segundo sem fazer nada.
-
-Os painéis ficam guardados por câmera num dicionário. Câmera sem frame novo
-reaproveita o painel anterior, em vez de virar "sem sinal" a cada volta.
-
-### 9.3 Modo imediato: nada persiste
-
-Vindo de Swing, WinForms ou WPF, o instinto é criar controles uma vez e deixar
-o framework mantê-los. Aqui é o oposto — é o modelo que jogos usam:
-
-**A cada volta do laço a janela é redesenhada do zero.** Não existe objeto
-"botão" guardado em lugar algum; existe apenas um array numpy que nasce, recebe
-pixels e é jogado na tela. No frame seguinte, outro array.
-
-`render()` cria a tela como um array do tamanho exato da janela, preenchido com
-a cor de fundo, e pinta cada parte por cima:
-
-```python
-canvas = np.full((height, width, 3), BACKGROUND, dtype=np.uint8)
-self._draw_sidebar(canvas, height)
-```
-
-O conteúdo à direita do menu é a tela Live, a Records ou a People. As
-primitivas são todas chamadas do `cv2` sobre o array: `rectangle` (com espessura
-`-1` para preenchido), `putText`, `line`, `circle`. Na Live, os painéis das
-câmeras são colados lado a lado com `np.hstack` antes de irem para a tela.
-
-Consequência prática: **não há estado de interface para dessincronizar**. O que
-aparece é função direta dos dados daquele instante. Em troca, tudo é
-recalculado várias vezes por segundo — daí os cuidados de cache da seção 9.6.
-
-### 9.4 Cliques: coordenadas cruas e uma pegadinha
-
-`cv2.setMouseCallback(WINDOW, interface.on_mouse)` entrega `(event, x, y,
-flags, param)`. Nenhum elemento "sabe" que foi clicado: chega o pixel e você
-mesmo descobre o que há ali.
-
-Passar um **método ligado** (`interface.on_mouse`, não uma função solta) é o
-truque que evita variável global: o `self` já carrega todo o estado da tela.
-
-Com menu, calendário e cartões, o teste de clique por aritmética não escala.
-A `Interface` usa então **regiões de clique registradas no desenho** — o padrão
-clássico de interface em modo imediato:
-
-```python
-self._region((x, y, x + card_w, bottom), "open", entry["video_path"])
-```
-
-Cada elemento, ao ser desenhado, grava seu retângulo e a ação correspondente.
-A lista é zerada a cada frame, no início do `render()`, e o clique percorre as
-regiões procurando a primeira que o contém. Medido: a tela Records registra
-**41 regiões** (2 do menu, 2 setas de mês, 30 dias, 7 cartões).
-
-As ações são pares `(tipo, payload)`:
-
-| Ação | Efeito |
-|---|---|
-| `view` | Troca entre Live, Records e People |
-| `day` | Seleciona o dia exibido |
-| `month` | Avança ou volta um mês no calendário |
-| `open` | Abre o arquivo no Explorer |
-| `name` | Abre o campo de nome para aquele rosto (10.7) |
-
-A vantagem é que layout e interação nunca saem de sincronia: quem move um
-cartão move automaticamente sua área clicável, porque é a mesma linha de código
-que faz as duas coisas.
-
-### 9.5 Tela Live
-
-`make_panel()` redimensiona cada frame para 480 px de altura e desenha por
-cima. As caixas chegam em pixels do frame original, então são multiplicadas
-por `scale` para caber no painel.
-
-| Elemento | Significado |
-|---|---|
-| Retângulo amarelo fino | Algo se moveu |
-| Retângulo verde grosso | Pessoa, com confiança |
-| Retângulo ciano grosso | Animal, com espécie e confiança |
-| Ponto vermelho + `REC` | Gravando |
-
-`np.hstack` cola os painéis lado a lado e **exige altura idêntica** — é a única
-razão de `make_panel` redimensionar.
-
-### 9.6 Tela Records
-
-Abre nas gravações **de hoje**, lendo apenas os `.json` e os `.jpg`. Nenhum
-vídeo é aberto ou decodificado, o que era o requisito.
-
-Cada cartão mostra:
-
-| Campo | Onde |
-|---|---|
-| **Hora de início** (`HH:MM:SS`) | em destaque, fonte maior |
-| Câmera | à direita, na mesma linha |
-| Rótulos (`person`, `dog`) | verde para pessoa, ciano para animal |
-| Duração em segundos | ao lado dos rótulos |
-
-**Clicar num cartão abre o arquivo no Explorer**, já selecionado na pasta:
-
-```python
-subprocess.Popen(f'explorer /select,"{target}"')
-```
-
-O `/select` faz o Explorer abrir a pasta **com o arquivo destacado**, em vez de
-apenas abrir o diretório. É preciso caminho absoluto, daí o `resolve()`. O
-Explorer retorna código de saída 1 mesmo quando funciona, então usamos `Popen`
-e ignoramos o retorno em vez de `run(check=True)`.
-
-**A string aqui é obrigatória, e a lista não funciona.** A primeira versão
-usava a forma de lista, que é a recomendada em geral, e o clique abria a pasta
-Documentos em vez do arquivo. A razão:
-
-```python
-subprocess.list2cmdline(["explorer", f"/select,{alvo}"])
-# explorer "/select,D:\Personal Projects\...\19-17-30.mp4"
-```
-
-No Windows o `subprocess` monta a linha de comando com `list2cmdline`, que
-envolve em aspas qualquer argumento contendo espaço. Como o caminho tem
-espaço ("Personal Projects"), **o `/select,` foi para dentro das aspas**. O
-Explorer não reconhece a opção assim, desiste e abre a pasta padrão.
-
-O Explorer precisa de `explorer /select,"<caminho>"` — só o caminho entre
-aspas. Passar uma string ao `Popen` no Windows a entrega ao `CreateProcess`
-sem reformatação, que é o que resolve. Ver PYTHON.md seção 19.
-
-Se o `.mp4` ainda não existir — a montagem roda em thread e leva alguns
-segundos depois do fim do evento (8.3) —, `reveal()` abre a pasta do dia.
-
-### 9.7 Calendário e grade de cartões
-
-À direita, 250 px fixos, para alcançar dias anteriores:
-
-- Setas `<` e `>` navegam meses. `shift_month()` faz a conta em meses absolutos
-  para atravessar a virada de ano corretamente — testado: 01/2026 menos 1 dá
-  12/2025, e 12/2026 mais 1 dá 01/2027.
-- Semana começa no **domingo** (`calendar.Calendar(firstweekday=6)`), seguindo
-  a convenção brasileira. `monthdayscalendar()` devolve as semanas já com zeros
-  no lugar dos dias de fora do mês.
-- **Dia selecionado:** preenchido em verde.
-- **Hoje:** contorno azul.
-- **Dias com gravação:** número em branco, negrito, com um ponto verde abaixo.
-  Os demais ficam apagados.
-
-`available_days()` conta **os arquivos `.json`**, não as pastas. Isso é
-deliberado: clipes gravados antes do formato de metadados existir deixariam a
-pasta do dia no disco, o calendário marcaria o dia como tendo gravação, e ao
-clicar a tela apareceria vazia.
-
-**Colar uma imagem dentro de outra é atribuição de slice**, não uma API de
-blit:
-
-```python
-canvas[y:y + thumb_h, x:x + card_w] = self._thumbnail(entry, card_w, thumb_h)
-```
-
-O numpy exige que as formas coincidam exatamente, e é justamente por isso que
-`_thumbnail` redimensiona para `(card_w, thumb_h)` antes de devolver. Lembre
-que a indexação é `[linha, coluna]`, ou seja `y` antes de `x`.
-
-**O grid sai de aritmética simples.** Primeiro, quantas colunas cabem com o
-cartão na largura mínima; depois a largura real, dividindo o espaço pelas
-colunas e descontando os vãos — para 5 colunas há 6 vãos (um em cada borda
-mais os internos):
-
-```python
-columns = max((width - CARD_GAP) // (MIN_CARD_WIDTH + CARD_GAP), 1)
-card_w = (width - CARD_GAP * (columns + 1)) // columns
-thumb_h = int(card_w * 9 / 16)
-```
-
-Assim os cartões esticam para ocupar a largura toda, e uma coluna a mais
-aparece quando a janela cresce o bastante.
-
-A posição de cada cartão vem de `divmod`, que devolve quociente e resto numa
-só chamada — o 8º cartão (índice 7) com 5 colunas cai em linha 1, coluna 2:
-
-```python
-row, column = divmod(index, columns)
-x = x0 + CARD_GAP + column * (card_w + CARD_GAP)
-y = top + row * (card_h + CARD_GAP)
-```
-
-A tela People usa a mesma grade, com cartões quadrados de largura fixa
-(`FACE_CARD = 150`).
-
-O número de linhas sai da altura disponível, então o grid se adapta se a janela
-mudar de tamanho.
-
-**Rolagem.** Uma noite movimentada produz mais gravações do que cabem — 19 num
-único dia, contra 10 visíveis. A tela rola com a **roda do mouse**.
-
-O OpenCV expõe o evento `EVENT_MOUSEWHEEL`, mas **não** expõe o
-`getMouseWheelDelta` ao Python. O delta vem empacotado nos 16 bits altos de
-`flags` e precisa ser desempacotado à mão, com correção de sinal:
-
-```python
-delta = flags >> 16
-if delta > 32767:
-    delta -= 65536
-```
-
-O estado é uma variável só, `self.scroll`, medida **em linhas** e não em pixels,
-o que dispensa qualquer conta de posição parcial:
-
-```python
-total_rows = -(-len(self.entries) // columns)
-self.max_scroll = max(0, total_rows - rows)
-first = self.scroll * columns
-```
-
-`-(-a // b)` é divisão com arredondamento **para cima** usando só inteiros:
-como `//` arredonda para baixo (PYTHON.md 22.1), negar duas vezes inverte o
-sentido do arredondamento.
-
-Os cartões também encolheram (`MIN_CARD_WIDTH` de 210 para 168), então mais
-gravações cabem antes de precisar rolar.
-
-A barra à direita **não é clicável**: indica apenas posição e proporção, e seu
-tamanho reflete quanto do total está visível.
-
-**A ordem de desenho importa:** os cartões são desenhados **antes** do
-cabeçalho, porque é `_draw_cards` que calcula `max_scroll`, e o cabeçalho
-precisa desse valor para decidir se mostra a dica "roda do mouse para rolar".
-
-**Dois cuidados de desempenho**, porque isso é redesenhado várias vezes por
-segundo (9.2):
-
-- **Cache de miniaturas.** Decodificar JPEG a cada frame seria absurdo; as
-  imagens já redimensionadas ficam num dicionário indexado por caminho **e
-  tamanho** — o tamanho entra na chave porque redimensionar a janela muda
-  `card_w` e invalidaria as imagens antigas.
-- **Rescan periódico.** A pasta só é relida a cada `RESCAN_SECONDS = 2.0`, não
-  a cada frame.
-
-**As câmeras continuam sendo processadas enquanto a tela Records está aberta.**
-Detecção e gravação não param por causa da navegação; só a imagem exibida muda.
-
-### 9.8 Limitação: `cv2.putText` é só ASCII
-
-As fontes Hershey do OpenCV não têm acentuação. Escrever `"gravação"` renderiza
-caracteres quebrados, e por isso todo texto da interface está **sem acento** de
-propósito ("gravacao", "Nenhuma gravacao neste dia").
-
-Acentos exigiriam desenhar texto com o Pillow e converter para numpy, e eu
-descartei isso por ser "dependência nova". **Foi viés** (CONTEXTO seção 11): o
-Pillow é padrão da indústria e você nunca pediu aplicação pequena. O resultado
-foi uma interface inteira escrita errado em português.
-
-Não vale mais corrigir aqui, porque a interface web (backlog, item 3) resolve
-de graça — o navegador desenha acento sem ninguém pedir. Fica registrado como
-exemplo do custo: o viés não cobrou uma dependência, cobrou a grafia de tudo
-que o usuário lê.
-
-### 9.9 Fechar a janela no X
-
-O HighGUI do OpenCV não tem evento de fechamento. Ao clicar no X a janela é
-destruída, mas o `imshow` seguinte **cria outra**. Por isso perguntamos a cada
-frame se ela ainda existe:
-
-```python
-if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
-    break
-```
-
-A verificação precisa vir **depois** de `cv2.waitKey(15)`, porque é o `waitKey`
-que processa a fila de eventos da interface — inclusive o clique no X.
-
----
-
-## 10. Camada de rostos — `faces.py`
-
-### 10.1 Roda no clipe, não no ao vivo
-
-Um rosto que tem 60 px no 1080p original fica com 30 px nos frames de análise de
-960x540. O reconhecedor quer ~112 px. Reconhecer rosto nos frames de análise
-simplesmente não funciona.
-
-Por isso `scan_clip()` roda **no clipe já montado**, dentro da mesma thread que
-faz a montagem (seção 8.3). Ganhos:
-
-- Resolução original, a melhor disponível
-- Fora do caminho crítico: não rouba CPU do ao vivo
-- Só roda quando o evento teve `person` entre os rótulos
-
-O custo é o rosto aparecer na tela People alguns segundos após o evento.
-
-### 10.2 YuNet e SFace
-
-São bons modelos para CPU, e o OpenCV já traz os dois embutidos — conveniência
-real, não mérito de contagem de dependências:
-
-| Papel | Modelo | Tamanho |
+## 9. The old OpenCV window — `ui.py` (removed 10/10/2026)
+
+Until `v2026.10.10.4` the interface was an OpenCV HighGUI window: one numpy
+image per frame, with a side menu (Live, Records, People, Settings), a
+letterboxed live view or a grid of cards, and a calendar. HighGUI has **no
+widgets** — no button, list, scroll, text field or layout manager — so every
+rectangle and letter was drawn by hand, clicks arrived as raw coordinates, and
+the keyboard came through `waitKey`. It grew to 616 lines and 60 drawing calls
+and was replaced by the web page (section 17); why that was a bias and not a
+decision is in CONTEXTO 11.3. The full text of this section is in git, up to
+tag `v2026.10.10.3`.
+
+What it taught, and still applies:
+
+- **The loop must not ride on a window** (section 15): `waitKey` set the pace
+  and closing the window stopped recording.
+- **A window has no close event** in HighGUI; checking
+  `getWindowProperty` *after* `waitKey` was the only way to notice the X
+  (HISTORY 4).
+- **`WINDOW_KEEPRATIO` is 0 on Win32**, so the picture stretched until the
+  image was built at the window's exact size and letterboxed (HISTORY 4).
+- **`cv2.putText` only draws ASCII** (Hershey fonts have no accents) — one of
+  the reasons for the web, where accents, pasting and video come free.
+- **Redraw only when something changed**: an immediate-mode interface keeps no
+  state, so the old one rebuilt the screen only on a new frame or an input.
+
+## 10. The face layer — `faces.py`
+
+### 10.1 It runs on the clip, not live
+
+A face that is 60 px in the original 1080p is 30 px in the 960×540 analysis
+frames. The recogniser wants ~112 px. Recognising faces in the analysis frames
+simply does not work.
+
+That is why `scan_clip()` runs **on the assembled clip**, in the same thread
+that assembles it (8.3). Gains:
+
+- The original resolution, the best available
+- Off the critical path: it steals no CPU from live analysis (and since R23 it
+  pauses while any camera is recording: 12.10)
+- It runs only when the event had `person` among its labels
+
+The cost is that the face appears on People, and a person's name reaches the
+phone, some seconds after the event (22.3).
+
+### 10.2 YuNet and SFace
+
+They are good CPU models, and OpenCV already has both built in — a real
+convenience, not a merit of dependency counting:
+
+| Role | Model | Size |
 |---|---|---|
-| Detectar rosto | `cv2.FaceDetectorYN` (YuNet) | 227 KB |
-| Gerar embedding | `cv2.FaceRecognizerSF` (SFace) | 37 MB |
+| Detect the face | `cv2.FaceDetectorYN` (YuNet) | 227 KB |
+| Make the embedding | `cv2.FaceRecognizerSF` (SFace) | 37 MB |
 
-Os `.onnx` são baixados do repositório oficial `opencv/opencv_zoo` para
-`models/`, que não é versionado. `alignCrop()` já devolve o recorte alinhado em
-112x112 — exatamente o que o SFace espera — usando os 5 pontos faciais que o
-YuNet retorna junto com a caixa.
+The `.onnx` files are downloaded from the official `opencv/opencv_zoo`
+repository into `models/`, which is not versioned. `alignCrop()` returns the
+aligned 112×112 crop — exactly what SFace expects — using the 5 facial points
+YuNet returns with the box.
 
-O embedding tem **128 dimensões**. A comparação é por cosseno.
+The embedding has **128 dimensions**. Comparison is by cosine.
 
-Medido com rostos nítidos:
+Measured on sharp faces:
 
-| Comparação | Similaridade |
+| Comparison | Similarity |
 |---|---|
-| Mesmo rosto | **1.000** |
-| Rostos diferentes | **0.045** |
+| The same face | **1.000** |
+| Different faces | **0.045** |
 
-`MATCH_THRESHOLD = 0.363` é o valor recomendado pela documentação do OpenCV
-para o SFace com cosseno.
+`MATCH_THRESHOLD = 0.363` is the value OpenCV's documentation recommends for
+SFace with cosine.
 
-### 10.3 Um rosto por pessoa por evento
+### 10.3 One face per person per event
 
-Um clipe tem dezenas de frames da mesma pessoa. `_group()` junta as observações
-pela própria similaridade dos embeddings (`SAME_FACE_THRESHOLD = 0.40`) e
-guarda, de cada grupo, a **melhor** visão — a de maior `largura x score`, já que
-rosto maior e mais confiante gera embedding melhor.
+A clip has dozens of frames of the same person. `_group()` joins the
+observations by the embeddings' own similarity (`SAME_FACE_THRESHOLD = 0.40`)
+and keeps, of each group, the **best** view — the one with the largest
+`width × score`, since a larger, more confident face gives a better
+embedding.
 
-Se dois grupos do mesmo clipe casarem com a mesma pessoa da galeria, só o de
-maior peso vira aparição (`seen_here`). E `list_sightings()` mostra um cartão
-por pessoa por clipe, porque depois de uma junção (10.4) dois cartões antigos
-podem passar a apontar para a mesma pessoa.
+If two groups of the same clip match the same person in the gallery, only the
+heavier becomes a sighting (`seen_here`). And `list_sightings()` shows one card
+per person per clip, because after a merge (10.4) two old cards can point at
+the same person.
 
-Resultado: um evento com uma pessoa gera uma aparição, não trinta.
+The result: an event with one person gives one sighting, not thirty.
 
-### 10.4 O nome é uma referência, não um rótulo
+### 10.4 The name is a reference, not a label
 
-O objetivo da tela People: **nomear uma pessoa uma vez e ela ser reconhecida
-sozinha dali em diante.**
+The goal of People: **name a person once and have them recognised on their
+own from then on.**
 
-`faces/gallery.json` guarda as pessoas, cada uma com uma lista de embeddings
-(as "visões" de referência). Cada aparição vira um par `.jpg` + `.json` em
-`faces/<data>/` que aponta para a pessoa pelo `person_id`. O nome é resolvido
-na hora de exibir, então nomear uma pessoa renomeia **todas** as aparições
-dela, passadas e futuras.
+`faces/gallery.json` keeps the people, each with a list of embeddings (the
+reference "views"). Each sighting becomes a `.jpg` + `.json` pair in
+`faces/<date>/` that points at the person by `person_id`. The name is resolved
+when shown, so naming a person renames **all** their sightings, past and
+future.
 
-**Como era, e por que não funcionava.** Medido no M900 em 15 minutos de uso:
-**14 "pessoas"**, cada uma com **uma** visão, para 3 pessoas reais. Três causas:
+**How it was, and why it did not work.** Measured on the M900 over 15 minutes
+of use: **14 "people"**, each with **one** view, for 3 real people. Three
+causes:
 
-1. Todo rosto que não casava com ninguém virava uma pessoa nova — inclusive
-   perfis, nucas e um braço (10.9).
-2. Dar o mesmo nome a dois cartões criava **duas** pessoas com o mesmo nome;
-   cada uma continuava só com a sua visão.
-3. A pessoa só aprendia visões novas com rostos de 80 px ou mais, e as
-   câmeras entregam 40 a 60 px. Na prática ninguém aprendia nada.
+1. Every face that matched nobody became a new person — profiles, the backs of
+   heads and an arm included (10.9).
+2. Giving the same name to two cards created **two** people with that name;
+   each kept only its own view.
+3. A person only learned new views from faces of 80 px or more, and the
+   cameras deliver 40 to 60 px. In practice nobody learned anything.
 
-**Como é hoje.**
+**How it is today.**
 
-| Momento | O que acontece |
+| Moment | What happens |
 |---|---|
-| Rosto novo que não casa com ninguém | Vira desconhecido **só se apareceu em 2+ frames** do clipe (`MIN_VIEWS_FOR_NEW`), já com até 4 visões |
-| Rosto que casa (≥ `MATCH_THRESHOLD` 0.363) | A aparição recebe aquela pessoa. Se a semelhança passa de `LEARN_THRESHOLD` (0.45), a visão é **aprendida** |
-| Casa com um nomeado e um desconhecido | O **nomeado** vence: o nome é o que o usuário pediu para o sistema aprender |
-| Usuário nomeia um cartão | `rename()` dá o nome e **absorve** todo desconhecido parecido (≥ 0.45) |
-| Usuário dá um nome que já existe | As duas pessoas **viram uma**, somando as visões |
+| A new face that matches nobody | Becomes an unknown **only if it appeared in 2+ frames** of the clip (`MIN_VIEWS_FOR_NEW`), already with up to 4 views |
+| A face that matches (≥ `MATCH_THRESHOLD` 0.363) | The sighting gets that person. Above `LEARN_THRESHOLD` (0.45) the view is **learned** |
+| It matches a named person and an unknown one | The **named** one wins: the name is what the user asked the system to learn |
+| The user names a card | `rename()` gives the name and **absorbs** every similar unknown (≥ 0.45) |
+| The user gives a name that already exists | The two people **become one**, adding up their views — the page warns first |
 
-Absorver e juntar (`_merge`) move as visões para a pessoa nomeada e reescreve
-o `person_id` das aparições antigas. Até `MAX_EMBEDDINGS = 40` visões por
-pessoa.
+Absorbing and merging (`_merge`) move the views to the named person and
+rewrite the `person_id` of the old sightings. Up to `MAX_EMBEDDINGS = 40`
+views per person; more wait in a queue the user manages (17.14).
 
-Medido no mesmo conjunto de clipes, com o pipeline novo: **3 pessoas**. Nomear
-um cartão da senhora absorveu a outra identidade dela e pôs o nome em 3
-cartões; nomear um cartão do Gustavo nomeou também o da outra câmera.
+Measured on the same set of clips with the new pipeline: **3 people**. Naming
+one card of the older lady absorbed her other identity and put the name on 3
+cards; naming one card of the user named the other camera's too.
 
-`LEARN_THRESHOLD` é mais alto que o de casamento de propósito: o limiar de
-0.363 do OpenCV vale para rostos de 112 px nítidos. Com rostos de 40 px, uma
-semelhança de 0.37 pode ser acaso, e **aprender** com acaso contaminaria a
-referência de todo mundo dali para frente. Exibir um nome errado é corrigível;
-aprender errado se propaga.
+`LEARN_THRESHOLD` is higher than the matching one on purpose: OpenCV's 0.363
+holds for sharp 112 px faces. With 40 px faces, a similarity of 0.37 can be
+chance, and **learning** from chance would contaminate everyone's reference
+from then on. Showing a wrong name can be corrected; learning wrong spreads.
+For the same reason a match below 0.45 is announced as "probably <name>"
+(R5), and only a sure match counts as a resident (22.2).
 
-**Duas instâncias da galeria.** A interface e a thread que varre clipes têm
-cada uma o seu `Gallery`. Se uma salvasse a cópia que carregou antes, apagaria
-o que a outra fez — um nome recém-dado sumiria. Toda escrita agora recarrega o
-arquivo sob `_GALLERY_LOCK` antes de mudar.
+**Two instances of the gallery.** The web and the clip-scanning thread each
+have their own `Gallery`. If one saved the copy it loaded earlier, it would
+erase what the other did — a name just given would vanish. Every write
+reloads the file under `_GALLERY_LOCK` before changing it.
 
-**Limitação:** não há como desfazer uma junção pela tela. Um nome dado ao cartão
-errado junta duas pessoas; hoje a saída é rodar `tools/refazer_rostos.py`, que
-guarda o `faces/` atual de lado e reconstrói tudo a partir dos clipes — os nomes
-precisam ser dados de novo, um cartão por pessoa.
+**No undo of a merge**, by the user's decision (backlog 9): the page warns
+before every merge, and a yes goes ahead. A real mess is rebuilt with
+`tools/refazer_rostos.py`, which sets the current `faces/` aside and rebuilds
+everything from the clips — the names must be given again, one card per
+person.
 
-### 10.5 A realidade do infravermelho noturno
+### 10.5 The reality of night infrared
 
-Testado no clipe noturno real, onde o YOLO detecta a pessoa com 0,92:
+Tested on the real night clip, where YOLO detects the person at 0.92:
 
-| Medida | Valor |
+| Measure | Value |
 |---|---|
-| Rosto encontrado pelo YuNet | **44 px de largura** |
-| Largura desejável para o SFace | ~112 px |
+| The face YuNet finds | **44 px wide** |
+| The width SFace wants | ~112 px |
 
-O rosto é detectado, mas um embedding tirado de 44 px é pouco confiável. A
-solução foi não descartar e sim **marcar**:
+The face is detected, but an embedding taken from 44 px is unreliable. The
+solution was not to drop it but to **mark** it:
 
 ```python
-MIN_FACE_WIDTH = 36     # abaixo disso nem entra
-GOOD_FACE_WIDTH = 80    # abaixo disso aparece com a largura em vermelho
+MIN_FACE_WIDTH = 36
+GOOD_FACE_WIDTH = 80
 ```
 
-Rostos pequenos aparecem na tela People com a largura em vermelho e podem ser
-nomeados. Até setembro de 2026 eles **nunca** entravam nas referências, para não
-contaminar a galeria. Na prática isso impedia qualquer aprendizado, porque de
-dia as câmeras também entregam 40 a 60 px (10.4). Hoje o que protege a galeria
-é o filtro de qualidade (10.9) e o `LEARN_THRESHOLD`, não a largura.
+Below 36 px a face does not enter at all; below 80 it is marked small (the old
+window showed its width in red). Until September 2026 small faces **never**
+entered the references, so as not to contaminate the gallery. In practice that
+prevented any learning, because by day the cameras deliver 40 to 60 px too
+(10.4). Today what protects the gallery is the quality filter (10.9) and
+`LEARN_THRESHOLD`, not the width.
 
-Expectativa honesta: identificação boa de dia e a curta distância; à noite o
-sistema detecta que *há* um rosto, mas dizer de quem é será instável.
+The honest expectation: good identification by day and at short distance; at
+night the system detects that there *is* a face, but saying whose will be
+unreliable. The biggest gain is a motion-triggered light (backlog 16).
 
-### 10.6 Dois bugs que o teste revelou
+### 10.6 Two bugs the test revealed
 
-**Amostragem no lugar errado.** A primeira versão lia os primeiros frames do
-clipe. Como existe pré-gravação (seção 8.2), o começo do clipe é justamente
-**antes** da pessoa chegar — e o resultado era zero rostos num clipe que
-claramente tinha uma pessoa. Agora o passo é calculado a partir do total de
-frames, espalhando as amostras pelo clipe inteiro:
+**Sampling in the wrong place.** The first version read the clip's first
+frames. Since there is pre-recording (8.2), the start of the clip is precisely
+**before** the person arrives — and the result was zero faces in a clip that
+clearly had a person. Now the step is computed from the total frame count,
+spreading the samples over the whole clip:
 
 ```python
 step = max(total // MAX_SAMPLES, SAMPLE_EVERY)
 ```
 
-**Piso alto demais.** `MIN_FACE_WIDTH` estava em 55 e descartava silenciosamente
-o rosto de 44 px. O detector estava certo; o filtro é que estava errado.
+(Since R20 the scan also looks densely at the moments a person was seen:
+12.9.)
 
-### 10.7 Cadastro de nome sem widget
+**A floor too high.** `MIN_FACE_WIDTH` was 55 and silently dropped the 44 px
+face. The detector was right; the filter was wrong.
 
-O HighGUI não tem campo de texto. O prompt é desenhado à mão e as teclas chegam
-pelo `waitKey` do laço principal, que as encaminha para a interface enquanto
-`interface.capturing` for verdadeiro:
+### 10.7 Naming
 
-```python
-key = cv2.waitKey(15) & 0xFF
-if interface.capturing:
-    interface.on_key(key)
-elif key == ord("q"):
-    break
-```
+The old window had no text field: a prompt was drawn by hand and the keys came
+through `waitKey`, with `q` no longer quitting while typing. The web page has
+real forms: a name field on each unnamed card, "Belongs to…" to attach a face
+to an existing name, and rename on the person's page (17.9, 17.10).
 
-Repare que o `q` deixa de encerrar o programa durante a digitação — senão seria
-impossível escrever um nome com a letra q. Enter salva, Esc cancela, Backspace
-apaga, e só caracteres imprimíveis (32 a 126) entram no texto.
+### 10.8 Animals: why this layer cannot do it
 
-### 10.8 Animais: por que não dá com esta camada
+SFace is trained only on human faces. A dog has no face YuNet can detect, and
+even if it had, the embedding would mean nothing.
 
-O SFace é treinado exclusivamente em faces humanas. Um cachorro não tem rosto
-detectável pelo YuNet, e mesmo que tivesse, o embedding não teria significado.
+Telling *which* dog needs another layer, on the **whole body** and not the
+face. Two paths were weighed:
 
-Identificar *qual* cachorro exigiria outra camada, de *animal re-ID*, sobre o
-**corpo inteiro** e não sobre o rosto. Dois caminhos:
-
-| Caminho | Precisão | Custo |
+| Path | Accuracy | Cost |
 |---|---|---|
-| Classificador treinado com fotos dos próprios cães | Boa para poucos cães conhecidos | ~50-100 recortes por cão |
-| Embedding genérico de re-ID animal (MegaDescriptor) | Menor | Só baixar o modelo |
+| A classifier trained on photos of the household's own dogs | Good for a few known dogs | ~50–100 crops per dog |
+| A generic animal re-ID embedding (MegaDescriptor) | Lower | Only downloading the model |
 
-O padrão da tela People — cartões com recorte, nome dado uma vez, junção de
-identidades — serviria igual para cães, trocando o recorte do rosto pelo do
-corpo inteiro que o YOLO já entrega.
+What was built is a third, simpler one — the dog cut out of its box and
+described by the tone and colour of its fur, matched against the views the
+user named — in section 20. The People pattern (cards with a crop, a name
+given once, merging identities) serves the dogs unchanged. At night a dark dog
+becomes a silhouette in infrared; accuracy will always be well below human
+faces.
 
-Ressalva: à noite, um cachorro escuro vira silhueta no infravermelho. A precisão
-será sempre bem menor que a de rostos humanos.
+### 10.9 Only frontal faces, and only on a person
 
-### 10.9 Só rosto de frente, e só em cima de uma pessoa
+A sheet with the 19 sightings of the first 15 minutes on the M900 showed that
+several **were not even faces**: an arm (106 px, marked reliable), profiles,
+the backs of heads. A profile's embedding describes nobody — and each one
+became a new "person".
 
-Uma folha com as 19 aparições dos primeiros 15 minutos no M900 mostrou que
-várias **nem eram rosto**: um braço (106 px, marcado como confiável), perfis,
-nucas. Um embedding de perfil não descreve ninguém — e cada um virava uma
-"pessoa" nova.
+72 detected faces in the 10 recorded clips were measured, with three numbers
+taken from YuNet's own detection, which returns 5 points: the eyes, the tip of
+the nose and the corners of the mouth.
 
-Foram medidos 72 rostos detectados nos 10 clipes gravados, com três números
-tirados da própria detecção do YuNet, que devolve 5 pontos: olhos, ponta do
-nariz e cantos da boca.
-
-| Medida | Rosto de frente | Perfil, nuca, espelho do carro, mancha de sol |
+| Measure | A frontal face | Profile, back of the head, car mirror, patch of sun |
 |---|---|---|
-| Confiança do YuNet | 0,81 a 0,92 | muitas vezes 0,6 a 0,7 |
-| Nariz fora do centro dos olhos (÷ distância entre olhos) | até 0,3 | 0,5 a 2,3 |
-| Distância entre olhos ÷ largura da caixa | 0,38 a 0,50 | 0,1 a 0,33 |
+| YuNet's confidence | 0.81 to 0.92 | often 0.6 to 0.7 |
+| Nose off the eyes' centre (÷ the distance between the eyes) | up to 0.3 | 0.5 to 2.3 |
+| Distance between the eyes ÷ box width | 0.38 to 0.50 | 0.1 to 0.33 |
 
-`is_frontal()` exige os três: confiança ≥ `IDENTITY_SCORE` (0,75), nariz a no
-máximo `MAX_NOSE_OFFSET` (0,35) e olhos abertos pelo menos `MIN_EYE_SPREAD`
-(0,38). Num perfil o nariz sai para o lado e os olhos quase se sobrepõem.
+`is_frontal()` demands all three: confidence ≥ `IDENTITY_SCORE` (0.75), the
+nose at most `MAX_NOSE_OFFSET` (0.35) off, and the eyes at least
+`MIN_EYE_SPREAD` (0.38) apart. In a profile the nose goes to the side and the
+eyes almost overlap. A face that fails only these limits can still reach the
+phone as a picture, never the gallery (10.12).
 
-Sobraram quatro falsos na Front, pequenos (36 a 42 px), que passavam nos três
-critérios — um deles era uma mancha de sol no chão. Por isso, nos frames em que
-aparece um rosto de frente, `scan_clip()` roda também o YOLO
-(`people.person_boxes()`) e só aceita o rosto se o centro dele estiver **na
-metade de cima do corpo de uma pessoa**. O YOLO só roda nesses poucos frames,
-então o custo é pequeno: cada clipe leva 9 a 17 s no M900, fora do caminho
-crítico.
+Four false ones were left on Front, small (36 to 42 px), passing all three —
+one was a patch of sun on the ground. So, on the frames where a frontal face
+appears, `scan_clip()` also runs YOLO (`people.person_boxes()`) and accepts the
+face only if its centre lies **in the upper half of a person's body**. YOLO
+runs only on those few frames, so the cost is small: each clip takes 9 to 17 s
+on the M900, off the critical path.
 
-**Uma rede por thread, uma varredura por vez.** Na primeira versão
-`person_boxes()` usava `load_model()`, a mesma rede do laço ao vivo. A
-varredura roda na thread que monta o clipe (8.3), então as duas threads
-chamavam `net.forward()` no mesmo objeto ao mesmo tempo. Um `cv2.dnn.Net`
-guarda buffers internos entre chamadas e não pode fazer isso: o programa caiu
-com `buf.shape() == m.shape()` no meio do ao vivo, logo depois de um evento.
+**One network per thread, one scan at a time.** In the first version
+`person_boxes()` used `load_model()`, the same network as the live loop. The
+scan runs on the thread that assembles the clip (8.3), so the two threads
+called `net.forward()` on the same object at the same time. A `cv2.dnn.Net`
+keeps internal buffers between calls and cannot do that: the program crashed
+with `buf.shape() == m.shape()` in the middle of live analysis, right after an
+event.
 
-Correção: `load_background_model()` carrega uma **segunda cópia** da rede
-(~40 MB a mais de memória), usada só fora do laço principal. E `scan_clip()`
-roda sob `_SCAN_LOCK`: cada evento monta o clipe na própria thread, e dois
-eventos seguidos disputariam também o YuNet e o SFace, que são compartilhados.
-As varreduras ficam em fila, o que também evita duas varreduras pesadas ao
-mesmo tempo na CPU do M900.
+The fix: `load_background_model()` loads a **second copy** of the network
+(~40 MB more memory), used only off the main loop. And `scan_clip()` runs
+under `_SCAN_LOCK`: each event assembles its clip in its own thread, and two
+events in a row would also fight over YuNet and SFace, which are shared. The
+scans queue up, which also avoids two heavy scans at once on the M900's CPU.
 
-Testado com o laço principal fazendo inferências enquanto 4 varreduras rodam
-em paralelo: o código antigo reproduz o erro exato; o novo passa sem erros.
+Tested with the main loop running inferences while 4 scans ran in parallel:
+the old code reproduces the exact error; the new one passes with no error.
 
-Em C# a situação seria a mesma de um objeto que não é *thread-safe*
-compartilhado sem `lock`. Python tem o GIL, mas ele só protege o interpretador:
-o OpenCV solta o GIL dentro do código C++, e duas chamadas rodam de verdade em
-paralelo.
+In C# the situation is the same as a non-thread-safe object shared without a
+`lock`. Python has the GIL, but it only protects the interpreter: OpenCV
+releases the GIL inside its C++ code, and two calls really do run in parallel
+(PYTHON 14.2).
 
-`MAX_SAMPLES` subiu de 30 para 60 frames por clipe: com o filtro, sobram menos
-rostos por frame, e mais amostras dão mais chance de uma visão boa e de chegar
-às 2 que um desconhecido exige.
+`MAX_SAMPLES` went from 30 to 60 frames per clip: with the filter, fewer faces
+are left per frame, and more samples give more chance of a good view and of
+reaching the 2 an unknown needs.
 
-### 10.10 A foto do cartão
+### 10.10 The card's photo
 
-A miniatura era o recorte alinhado de 112 px que o SFace usa, ampliado para 160.
-Esse recorte serve para o reconhecedor, não para uma pessoa olhar: é cortado
-rente (sem cabelo nem queixo) e, de um rosto de 45 px, já vem ampliado uma vez —
-a ampliação para o cartão borrava pela segunda vez.
+The thumbnail used to be SFace's aligned 112 px crop, enlarged to 160. That
+crop is for the recogniser, not for a person to look at: it is cut tight (no
+hair, no chin) and, from a 45 px face, it is already enlarged once — enlarging
+it for the card blurred it a second time.
 
-Hoje `context_crop()` recorta direto do frame original um quadrado de
-`THUMB_CONTEXT` (2,2) vezes o tamanho do rosto, com cabelo e ombros, e grava a
-300 px com interpolação cúbica. A tela reduz para 150 px com `INTER_AREA`, a
-interpolação certa para diminuir. O embedding continua saindo do recorte
-alinhado; só a foto mudou.
+Today `context_crop()` cuts straight from the original frame a square
+`THUMB_CONTEXT` (2.2) times the face's size, with hair and shoulders, and saves
+it at 300 px with cubic interpolation. The page shows it smaller. The embedding
+still comes from the aligned crop; only the photo changed.
 
-### 10.11 O clipe é lido pelo ffmpeg, não pelo OpenCV
+### 10.11 The clip is read by ffmpeg, not by OpenCV
 
-`scan_clip()` lia o clipe com `cv2.VideoCapture`. O OpenCV traz um ffmpeg
-próprio dentro dele, e esse decodificador imprime direto no terminal cada bloco
-danificado que encontra (`[h264 @ ...] error while decoding MB 52 20`). Num dia
-com o Wi-Fi da Back ruim, o terminal se encheu dessas linhas, que parecem erro
-do programa mas são só o vídeo da câmera com defeito (INSTALACAO seção 8).
+`scan_clip()` used to read the clip with `cv2.VideoCapture`. OpenCV carries an
+ffmpeg of its own, and that decoder prints straight to the terminal each
+damaged block it finds (`[h264 @ ...] error while decoding MB 52 20`). On a day
+when Back's Wi-Fi was bad, the terminal filled with those lines, which look
+like a program error but are only the camera's faulty video (INSTALACAO 8).
 
-A variável `OPENCV_FFMPEG_LOGLEVEL`, que deveria silenciar isso, **não tem
-efeito** no OpenCV 5.0 — testado. Então a leitura passou para o **nosso**
-ffmpeg, o mesmo de `capture.py`, com `-loglevel quiet`:
+`OPENCV_FFMPEG_LOGLEVEL`, which should silence that, **has no effect** in
+OpenCV 5.0 — tested. So reading moved to **our** ffmpeg, the same as
+`capture.py`, with `-loglevel quiet`:
 
 ```
-ffmpeg -i clipe.mp4 -vf "select=not(mod(n\,STEP))" -fps_mode passthrough
+ffmpeg -i clip.mp4 -vf "select=not(mod(n\,STEP))" -fps_mode passthrough
        -frames:v 60 -pix_fmt bgr24 -f rawvideo pipe:1
 ```
 
-O filtro `select` deixa passar só um a cada `STEP` frames (`n` é o número do
-frame, `mod` o resto da divisão). O `-fps_mode passthrough` impede o ffmpeg de
-duplicar frames para "preencher" os que foram descartados. A barra em `\,`
-existe porque a vírgula separa filtros na linguagem do `-vf`.
+The `select` filter lets through only one in every `STEP` frames (`n` is the
+frame number, `mod` the remainder). `-fps_mode passthrough` stops ffmpeg from
+duplicating frames to "fill in" the dropped ones. The backslash in `\,` is
+there because a comma separates filters in `-vf`'s language.
 
-Ganho de bônus: o `VideoCapture` decodificava e entregava **todos** os frames
-para o Python descartar a maioria; o ffmpeg descarta antes do pipe. Medido no
-clipe de 577 frames: **3,3 s → 1,6 s**, com os mesmos 60 frames (diferença
-média de 2 em 255 por pixel, da conversão de cor feita por outra biblioteca). A
-varredura dos clipes de 29/09 deu as mesmas 3 pessoas com as mesmas
-similaridades.
+A bonus: `VideoCapture` decoded and handed **every** frame to Python to throw
+most away; ffmpeg drops them before the pipe. Measured on a 577-frame clip:
+**3.3 s → 1.6 s**, with the same 60 frames (a mean difference of 2 in 255 per
+pixel, from the colour conversion done by another library). Scanning the clips
+of 29/09 gave the same 3 people with the same similarities.
 
-Tamanho e número de frames vêm de `_describe()`, que roda `ffmpeg -i clipe` sem
-saída: ele imprime o cabeçalho do vídeo e para, sem decodificar nada. Abrir com
-`VideoCapture` só para perguntar o tamanho já decodificava o começo e imprimia
-o dano dali.
+Size and frame count come from `_describe()`, which runs `ffmpeg -i clip` with
+no output: it prints the video's header and stops, decoding nothing. Opening
+with `VideoCapture` just to ask the size already decoded the start and printed
+its damage.
 
-O aviso `setPreferableTarget ... not supported by the new graph engine`, que o
-OpenCV imprime ao carregar o detector de rosto, é silenciado por
-`OPENCV_LOG_LEVEL=ERROR` em `jarvis/__init__.py`. Esse arquivo roda antes de
-qualquer `import cv2` do programa, que é quando o OpenCV lê a variável.
+The warning `setPreferableTarget ... not supported by the new graph engine`,
+which OpenCV prints when loading the face detector, is silenced by
+`OPENCV_LOG_LEVEL=ERROR` in `jarvis/__init__.py`. That file runs before any of
+the program's `import cv2`, which is when OpenCV reads the variable
+(PYTHON 2.2).
+
+### 10.12 The face seen from the side (R30, 11/10/2026)
+
+When a person event's scan keeps no recognisable face, `faces_in(frame,
+sides)` also collects the good non-frontal faces (score ≥ `IDENTITY_SCORE`,
+width ≥ 36 px), and the scan saves the best — smallest nose offset, then
+largest — as `HH-MM-SS.side.jpg` beside the clip, **never into the gallery**.
+The message after the scan is, in order of preference: the recognised face,
+else "face, side view", else the best view of the person (12.9, 22.3). On the
+three daytime clips of 10/10 that had no face, each now gives a side view
+(40–59 px); they had failed on the eye spread, not the nose.
+
+Part (b), loosening the frontal limits for recognition, was measured and not
+done: side faces of the one named person match 55–100 % of the time, but with
+a single named person nothing shows that a stranger's side face would not
+match too. It waits for a second named person (CONTEXTO 13.4, R30).
+
+### 10.13 A cheaper face scan (R31, 11/10/2026)
+
+YuNet finds faces on a 960-px copy of the frame, and each face is refined on
+the full 1080p frame, where the alignment needs the detail: 45 ms per frame
+instead of 137, with 6 % fewer frontal face frames on 455 test frames — a face
+is seen in many frames of an event, so the loss per event is smaller. Outside
+events the scan no longer halves live analysis.
 
 ---
 
-## 11. Armazenamento em camadas — `archive.py`
+## 11. Tiered storage — `archive.py`
 
-### 11.1 Três camadas, deleção por último
+### 11.1 Three tiers, deletion last
 
 ```
-clips/ (disco do programa)  --30 dias-->  HD externo  --só se lotar-->  apaga o mais antigo
+clips/ (the program's disk)  --30 days-->  external drive  --only when full-->  delete the oldest
 ```
 
-**Nada é apagado de `clips/`.** O que foi gravado sai de lá apenas movido para o
-arquivo morto. A exclusão existe só no HD externo, do evento mais antigo, e
-somente quando o espaço livre cai abaixo do limite.
+**Nothing is deleted from `clips/`.** What was recorded leaves only by being
+moved to the archive. Deletion exists only on the external drive, of the
+oldest event, and only when free space falls below the limit.
 
-A alternativa descartada era apagar por idade direto da gravação. Com ~300 MB/dia
-o disco encheria, mas apagar material recente para resolver isso troca um
-problema por outro pior.
+The rejected alternative was deleting by age straight from the recordings. At
+~300 MB a day the disk would fill, but deleting recent material to solve that
+trades one problem for a worse one.
 
-### 11.2 Copiar, conferir, então apagar
+### 11.2 Copy, check, then delete
 
-Mover entre discos não é atômico. `_move_event()` copia todos os arquivos do
-evento, **confere o tamanho de cada um**, e só então remove os originais.
+Moving between disks is not atomic. `_move_event()` copies every file of the
+event, **checks the size of each**, and only then removes the originals.
 
-Uma cópia interrompida — HD desconectado no meio — deixa o original intacto e
-apaga o que já tinha ido. Melhor sobrar duplicado que faltar.
+An interrupted copy — the drive unplugged halfway — leaves the original
+intact and deletes what had already gone. Better a duplicate than a gap.
 
-Testado simulando falha na segunda cópia de um evento: o original permanece.
+Tested by simulating a failure on an event's second copy: the original stays.
 
-### 11.3 HD desconectado
+### 11.3 The drive unplugged
 
-É o caso normal, não a exceção: um HD externo passa a maior parte do tempo fora.
-`destination_state()` responde se dá para escrever agora, e todas as operações
-param na hora se não der, sem apagar nada e explicando o motivo na tela.
+It is the normal case, not the exception: an external drive spends most of its
+time unplugged. `destination_state()` answers whether it can be written now,
+and every operation stops at once if not, deleting nothing and saying why.
 
-### 11.4 Configuração na interface
+### 11.4 Configuration on the page
 
-A aba **Ajustes** mostra as três camadas com números reais — quantos eventos,
-quanto ocupam, quanto sobra em cada disco — e os botões para escolher a pasta,
-arquivar na hora e remover a configuração.
+**Settings → Archive** shows the three tiers with real numbers — how many
+events, how much they take, how much is left on each disk — with a field for
+the folder (on the M900 itself), the age to move and the free-space floor. The
+old window used a native folder dialog through `tkinter`; the web page takes
+the path as text, which is why the field says "Folder on this computer".
 
-O seletor de pasta é o nativo do Windows, via `tkinter`, que vem na biblioteca
-padrão. O HighGUI não tem diálogo de arquivo, e digitar caminho à mão seria
-ruim justamente para um HD externo, cuja letra muda.
+The choices live in `config.json` at the root, **not** in `.env`. The split is
+on purpose: `.env` holds credentials written once by hand, while this changes
+at run time from the page. `config.json` is not versioned.
 
-As escolhas ficam em `config.json` na raiz, **não** no `.env`. A separação é
-proposital: o `.env` guarda credenciais escritas uma vez à mão, enquanto isto
-muda em tempo de execução pela interface. O `config.json` não é versionado.
-
-| Chave | Padrão | O que faz |
+| Key | Default | What it does |
 |---|---|---|
-| `archive_path` | vazio | Pasta do HD externo; vazio desliga o arquivamento |
-| `archive_after_days` | 30 | Idade para mover |
-| `archive_min_free_gb` | 10 | Abaixo disso, apaga o mais antigo do HD |
+| `archive_path` | empty | The external drive's folder; empty turns archiving off |
+| `archive_after_days` | 30 | The age to move |
+| `archive_min_free_gb` | 10 | Below this, delete the oldest on the drive |
 
-### 11.5 Quando roda
+Production's `archive_path` is empty (checked 12/10/2026): nothing is archived
+yet, and nothing is deleted.
 
-`Housekeeper.tick()` é chamado no laço principal e só age a cada
-`CHECK_SECONDS = 1800`. Eventos com menos de `PROTECT_MINUTES = 10` nunca são
-tocados, porque a montagem do clipe acontece numa thread e pode ainda estar em
-andamento.
+### 11.5 When it runs
+
+`Housekeeper.tick()` is called from the main loop and acts only every
+`CHECK_SECONDS = 1800`. Events younger than `PROTECT_MINUTES = 10` are never
+touched, because the clip's assembly happens in a thread and may still be
+running.
 
 ---
 
-## 12. Notificação — `notify.py`
+## 12. Notifications — `notify.py`
 
-### 12.1 Por que Telegram
+### 12.1 Why Telegram
 
-Sem aviso, o sistema responde *"quem esteve aqui?"* e nunca *"tem alguém aí
-agora"* — é um gravador, não uma vigilância.
+Without a notification the system answers *"who was here?"* and never *"is
+someone there now?"* — it is a recorder, not surveillance.
 
-| | Telegram | E-mail | Toast do Windows |
+| | Telegram | E-mail | Windows toast |
 |---|---|---|---|
-| Chega no celular | push imediato | caixa de entrada | não |
-| Manda a miniatura | sim | anexo | não |
-| Dependência nova | nenhuma | SMTP + senha de app | — |
-| Expõe a máquina | não | não | — |
+| Reaches the phone | immediate push | inbox | no |
+| Sends the thumbnail | yes | attachment | no |
+| New dependency | none | SMTP + an app password | — |
+| Exposes the machine | no | no | — |
 
-A API é HTTP comum e o envio usa `requests`. A primeira versão usava `urllib`
-da biblioteca padrão e montava o `multipart/form-data` da foto à mão, em vinte
-linhas, para não trazer dependência nova. Foi um erro — veja a seção 12.5 e a
-seção 11 do `CONTEXTO.md`.
+The API is plain HTTP and sending uses `requests`. The first version used the
+standard library's `urllib` and built the photo's `multipart/form-data` by
+hand, in twenty lines, so as not to bring in a new dependency. That was a
+mistake — see 12.5 and CONTEXTO 11. Receiving commands uses the same API in
+the other direction, by long polling (22.5).
 
-### 12.2 Avisa no começo do evento, não no fim
+### 12.2 Notify at the start of the event, not at the end
 
-O aviso dispara em `_start()`, no primeiro frame com sujeito detectado — não
-quando o clipe fecha. A diferença importa: fechar o evento espera a pessoa sair
-mais `POST_SECONDS`, e depois a montagem leva mais alguns segundos. Avisando no
-começo, a mensagem chega enquanto a pessoa ainda está lá.
+The notification fires in `_start()`, on the first frame with a detected
+subject — not when the clip closes. The difference matters: closing the event
+waits for the person to leave plus `POST_SECONDS`, and assembly takes a few
+more seconds after that. Notifying at the start, the message arrives while the
+person is still there.
 
-O custo é não ter o nome do rosto, que só sai da varredura pós-evento. Para
-"tem alguém aí", saber na hora vale mais que saber quem. O "quem" chega depois,
-numa segunda mensagem (12.7).
+The cost is not having the face's name, which only comes from the post-event
+scan. For "is someone there", knowing at once is worth more than knowing who.
+The "who" comes later, in a second message (12.7). **Since 12/10/2026** a mode
+that leaves anyone out holds the person's message until the scan, so it can
+say who it was (22.3); Away keeps this immediate message.
 
-### 12.3 Silêncio é obrigatório
+### 12.3 Silence is mandatory
 
-Duas travas impedem a enxurrada que tornaria o recurso insuportável:
+Two locks prevent the flood that would make the feature unbearable:
 
-- **Filtro por rótulo.** `notify_labels` vem com `["person"]`. Animal não avisa,
-  senão cada gato de madrugada viraria uma mensagem.
-- **Intervalo mínimo por câmera.** `notify_cooldown = 120` segundos, contado
-  **por câmera**: alguém circulando na frente não gera vinte avisos, mas um
-  evento na Back durante o silêncio da Front ainda passa.
+- **What is sent at all.** `notify_labels` started as `["person"]`: animals
+  did not notify, or every cat at dawn would become a message. Since 12/10/2026
+  each mode has a switch per case (22.2), built from `notify_labels` at first.
+- **A minimum interval per camera.** `notify_cooldown = 120` seconds, counted
+  **per camera**: someone walking about in front does not make twenty
+  messages, but an event on Back during Front's quiet still gets through.
+  Faces have their own per-person interval (12.10).
 
-### 12.4 Nunca trava a captura
+### 12.4 It never stalls capture
 
-O envio roda numa thread. Uma rede lenta ou o Telegram fora do ar não podem
-segurar o laço de captura, e toda falha volta como `(False, motivo)` em vez de
-exceção.
+Sending runs in a thread. A slow network or Telegram being down cannot hold
+the capture loop, and every failure comes back as `(False, reason)` instead of
+an exception.
 
-### 12.5 A raiz de certificado que faltava
+### 12.5 The missing certificate root
 
-Na primeira tentativa de validar o token, isto:
+On the first attempt to validate the token, this:
 
 ```
 [SSL: CERTIFICATE_VERIFY_FAILED] self-signed certificate in certificate chain
 ```
 
-Parecia antivírus interceptando HTTPS. **Não era.** O `github.com` e o
-`google.com` verificavam normalmente — só o Telegram falhava.
+It looked like an antivirus intercepting HTTPS. **It was not.** `github.com`
+and `google.com` verified normally — only Telegram failed.
 
-A cadeia que o `api.telegram.org` apresenta termina em **"Go Daddy Root
-Certificate Authority - G2"**, e o repositório desta máquina tinha apenas
-raízes **Starfield**. A raiz Go Daddy G2 não estava instalada.
+The chain `api.telegram.org` presents ends at **"Go Daddy Root Certificate
+Authority - G2"**, and this machine's store had only **Starfield** roots. The
+Go Daddy G2 root was not installed.
 
-O navegador funciona porque o **Windows baixa raízes faltantes sob demanda**,
-pela própria CryptoAPI. O Python não aciona esse mecanismo: o
-`ssl.enum_certificates` só enxerga o que já está em cache local. Carregar o
-repositório inteiro do Windows levou de 39 para 52 CAs e continuou falhando,
-porque a raiz simplesmente não estava lá para ser carregada.
+The browser works because **Windows downloads missing roots on demand**,
+through CryptoAPI itself. Python does not trigger that mechanism:
+`ssl.enum_certificates` only sees what is already cached locally. Loading
+Windows' whole store went from 39 to 52 CAs and still failed, because the root
+simply was not there to load.
 
-A correção é o `certifi`, o conjunto de raízes da Mozilla — 121 certificados,
-incluindo a Go Daddy G2. É um arquivo de dados, não código, e garante o mesmo
-comportamento nas duas máquinas em vez de depender do que cada Windows resolveu
-baixar.
+The fix is `certifi`, Mozilla's set of roots — 121 certificates, the Go Daddy
+G2 among them. It is a data file, not code, and it guarantees the same
+behaviour on both machines instead of depending on what each Windows decided to
+download.
 
-**Duas lições, e a segunda é mais importante que a primeira.**
+**Two lessons, and the second matters more than the first.**
 
-A primeira: erro de SSL não significa necessariamente interceptação. Vale
-testar outro site antes de culpar antivírus.
+The first: an SSL error does not necessarily mean interception. Test another
+site before blaming an antivirus.
 
-A segunda: **este problema nunca deveria ter chegado a existir.** O `requests`
-já depende do `certifi` e o usa por padrão — `requests.utils.DEFAULT_CA_BUNDLE_PATH`
-aponta para `certifi.where()`. O bug só apareceu porque a primeira versão
-evitava o `requests` para manter a contagem de dependências baixa, e essa
-contagem nunca foi uma decisão do usuário. O custo real daquela economia não
-foram as vinte linhas de `multipart` — foi uma sessão inteira de depuração de
-TLS para reinstalar, à mão, uma garantia que a biblioteca dá de graça. O envio
-hoje usa `requests` e não importa `certifi` diretamente.
+The second: **this problem should never have existed.** `requests` already
+depends on `certifi` and uses it by default —
+`requests.utils.DEFAULT_CA_BUNDLE_PATH` points at `certifi.where()`. The bug
+only appeared because the first version avoided `requests` to keep the
+dependency count low, and that count was never the user's decision. The real
+cost of that saving was not the twenty lines of `multipart` — it was a whole
+session of TLS debugging to reinstall, by hand, a guarantee the library gives
+for free. Sending today uses `requests` and does not import `certifi`
+directly.
 
-### 12.6 Configuração
+### 12.6 Configuration
 
-
-**Since 12/10/2026 this lives on the web page's Notifications tab** (section
-22.4); the OpenCV window and its config editor are gone (17.10):
+**Since 12/10/2026 this lives on the web page's Notifications tab** (22.4);
+the OpenCV window and its config editor are gone (17.10):
 
 1. **Bot token** — paste the token from `@BotFather` and save; the page never
    shows it back, only whether one is set
@@ -1800,51 +1580,46 @@ hoje usa `requests` e não importa `certifi` diretamente.
 
 What is sent, and when, is the active mode's switches on the same tab (22.2).
 
-O `config.json` não é versionado, e o token é uma credencial: quem o tiver pode
-mandar mensagens pelo seu bot.
+`config.json` is not versioned, and the token is a credential: whoever has it
+can send messages through the bot.
 
-### 12.7 Segunda mensagem: o rosto e o nome
+### 12.7 The second message: the face and the name
 
-Pedido do usuário em 09/10/2026: além da miniatura do evento, a foto do rosto
-isolado e, se a pessoa for conhecida, o nome na mensagem.
+The user's request on 09/10/2026: besides the event's thumbnail, the photo of
+the face alone and, if the person is known, the name in the message.
 
-O rosto só existe depois do evento — o clipe precisa fechar, ser montado e
-varrido (10.1), uns 20 a 40 s depois de a pessoa aparecer. Por isso não dá para
-pôr na primeira mensagem sem atrasá-la, e 12.2 continua valendo. Fica assim:
+The face only exists after the event — the clip has to close, be assembled and
+be scanned (10.1), some 20 to 40 s after the person appears. So it cannot go
+in the first message without delaying it, and 12.2 still holds:
 
-| Mensagem | Quando | Foto | Texto |
+| Message | When | Photo | Text |
 |---|---|---|---|
-| 1ª | no primeiro frame com pessoa | miniatura do evento, com a caixa | `Back: person` e a hora |
-| 2ª | depois da varredura de rostos | recorte do rosto (10.10) | `Back 15:20:54: Gustavo Henrique Gomes reconhecido` ou `rosto desconhecido` |
+| 1st | on the first frame with a person | the event's thumbnail, with the box | `Back: person` and the time |
+| 2nd | after the face scan | the face's crop (10.10) | `Back 15:20:54: <name> recognized`, `probably <name>` or `unknown face` |
 
-Uma foto por pessoa encontrada no clipe, no máximo `MAX_FACES = 3`.
+One photo per person found in the clip, at most `MAX_FACES = 3`.
 
-**O caminho.** `EventRecorder._start()` guarda o que `notify.event()` devolveu
-em `self.notified`, e esse valor viaja junto para a thread de montagem:
+**The path.** `EventRecorder._start()` keeps what `notify.event()` returned
+in `self.notified`, and that value travels with the assembly thread, which
+calls `notify.after_scan()` once the scan returns (22.3). `scan_clip()`
+returns, besides what it writes into the sighting's JSON, the photo's path
+(`thumbnail_path`), the person's current name (`name`, empty if nobody gave
+one) and whether they are a resident. The name comes from the gallery at that
+moment, so someone named yesterday appears with a name today.
 
-```python
-found = faces.scan_clip(destination, camera.label, start)
-...
-if notified and found:
-    notify.faces_seen(camera.label, start, found)
-```
+**How the second relates to the first** changed twice. At first it only went
+out if the first had; since R25 (12.10) a face goes out even when its event
+fell in the camera's cooldown, with a cooldown per person instead, so a face
+is never lost to a busy camera. Since 12/10/2026 the active mode decides each
+face by its case (22.3).
 
-`scan_clip()` passou a devolver, além do que grava no JSON da aparição, o
-caminho da foto (`thumbnail_path`) e o nome atual da pessoa (`name`, vazio se
-ninguém deu nome). O nome vem da galeria na hora, então quem foi nomeado
-ontem aparece com nome hoje.
+**It stalls nothing.** The post-scan messages run on the clip's assembly
+thread, which is already in the background and already waits for the scan;
+the capture loop never sees the network.
 
-**A segunda segue a primeira.** Só sai se a primeira saiu. Quando o intervalo de
-120 s por câmera (12.3) segurou o aviso do evento, segura também o do rosto —
-senão alguém andando pelo quintal geraria uma foto de rosto a cada evento,
-justamente a enxurrada que 12.3 existe para evitar.
-
-**Não trava nada.** `faces_seen()` roda na thread de montagem do clipe, que já
-é de fundo e já espera a varredura; o laço de captura nunca vê a rede.
-
-Testado em 09/10/2026 com dois clipes de 29/09 e uma cópia da galeria: as duas
-mensagens chegaram, uma com "Gustavo Henrique Gomes reconhecido" e outra com
-"Izabel reconhecido", cada uma com o recorte do rosto.
+Tested on 09/10/2026 with two clips of 29/09 and a copy of the gallery: both
+messages arrived, one naming the user and another naming Izabel, each with the
+face's crop.
 
 ### 12.8 A person who arrives after an animal, and other changes (09/10/2026)
 
@@ -1995,77 +1770,76 @@ margin. Every box the rule drops in those events is the mat.
 
 ---
 
-## 13. Restrição importante das câmeras Tapo
+## 13. An important limit of the Tapo cameras
 
-**A câmera suporta apenas duas destas três funções ao mesmo tempo:**
+**The camera supports only two of these three functions at once:**
 
-1. Tapo Care (nuvem)
-2. Gravação em cartão SD
+1. Tapo Care (cloud)
+2. Recording to the SD card
 3. NVR / NAS / ONVIF / **RTSP**
 
-Com Tapo Care + SD ativos, o RTSP é desativado silenciosamente. O sintoma é
-peculiar: `DESCRIBE` responde `200 OK` normalmente (é só metadado), mas o
-`SETUP` fecha a conexão sem sequer pedir autenticação.
+With Tapo Care + SD on, RTSP is switched off silently. The symptom is odd:
+`DESCRIBE` answers `200 OK` normally (it is only metadata), but `SETUP` closes
+the connection without even asking for authentication.
 
-**Desativar a gravação no app não basta — o cartão precisa ser removido
-fisicamente.** Alternativa: desligar o Tapo Care.
+**Turning recording off in the app is not enough — the card has to be removed
+physically.** The alternative: turn Tapo Care off.
 
-`probe_rtsp.py` diagnostica isso mostrando cada etapa do handshake:
+`probe_rtsp.py` diagnoses it by showing each step of the handshake:
 
 ```
-uv run tools/probe_rtsp.py <ip> <usuario> <senha> stream1
+uv run python tools/probe_rtsp.py <ip> <user> <password> stream1
 ```
 
 ---
 
-## 14. Ícone e atalho
+## 14. The icon and the shortcut
 
-**Um `.bat` não tem ícone próprio.** O Windows desenha o ícone de um arquivo
-pelo tipo dele, e todo `.bat` usa o mesmo. Quem pode ter ícone é um **atalho**
-(`.lnk`), que aponta para o `.bat` e guarda o caminho de um `.ico`.
-`tools/criar_atalho.ps1` cria esse atalho na Área de Trabalho pelo objeto COM
-`WScript.Shell` — o mesmo que o Windows usa em "Criar atalho". O
-`instalar.bat` roda o script no passo 5.
+**A `.bat` has no icon of its own.** Windows draws a file's icon by its type,
+and every `.bat` uses the same one. What can have an icon is a **shortcut**
+(`.lnk`), which points at the `.bat` and keeps the path of an `.ico`.
+`tools/criar_atalho.ps1` creates that shortcut on the Desktop through the COM
+object `WScript.Shell` — the same one Windows uses for "Create shortcut".
+`instalar.bat` runs the script in its step 6.
 
-**O ícone é código.** `tools/gerar_icone.py` desenha um olho robótico com
-NumPy, sem nenhum programa de desenho:
+**The icon is code.** `tools/gerar_icone.py` draws a robotic eye with NumPy,
+with no drawing program:
 
-| Camada | Como |
+| Layer | How |
 |---|---|
-| Carcaça de aço | Círculo com brilho variando pelo ângulo (`cos`), simulando luz vinda do alto à esquerda |
-| Anel segmentado e parafusos | 12 setores alternados pelo ângulo; 12 círculos pequenos |
-| Íris | Gradiente radial do ciano quase branco no centro ao azul na borda, com 36 raios e dois anéis finos |
-| Pupila | Obturador de 6 lâminas: o raio cresce dentro de cada setor, o que dá o contorno em hélice |
-| Reflexo | Um círculo branco fora do centro |
+| Steel casing | A circle whose brightness varies with the angle (`cos`), simulating light from the top left |
+| Segmented ring and screws | 12 sectors alternating by angle; 12 small circles |
+| Iris | A radial gradient from near-white cyan in the centre to blue at the edge, with 36 rays and two thin rings |
+| Pupil | A 6-blade shutter: the radius grows within each sector, which gives the helical outline |
+| Highlight | A white circle off centre |
 
-Cada camada é uma **máscara** de 0 a 1 por pixel, calculada de uma vez sobre a
-imagem inteira a partir de dois mapas: a distância de cada pixel ao centro e o
-ângulo dele. `edge()` transforma "dentro do círculo de raio R" nessa máscara,
-com 2 px de transição para a borda não serrilhar. Em Java seria um laço duplo
-sobre x e y; aqui cada linha opera sobre o milhão de pixels de uma vez.
+Each layer is a **mask** from 0 to 1 per pixel, computed at once over the
+whole image from two maps: each pixel's distance from the centre and its
+angle. `edge()` turns "inside the circle of radius R" into that mask, with a
+2 px transition so the edge is not jagged. In Java it would be a double loop
+over x and y; here each line works on the million pixels at once.
 
-O desenho é feito a 1024 px e reduzido com `INTER_AREA` para os 7 tamanhos que
-o Windows usa (16 a 256). O `.ico` é escrito à mão: um cabeçalho de 6 bytes,
-uma entrada de 16 bytes por tamanho, e cada imagem como PNG — o formato que o
-Windows aceita desde o Vista. O OpenCV lê e grava PNG mas não `.ico`, e o
-`struct.pack` resolve em ~20 linhas.
+The drawing is made at 1024 px and reduced with `INTER_AREA` to the 7 sizes
+Windows uses (16 to 256). The `.ico` is written by hand: a 6-byte header, a
+16-byte entry per size, and each image as PNG — the format Windows accepts
+since Vista. OpenCV reads and writes PNG but not `.ico`, and `struct.pack`
+does it in ~20 lines.
 
-Aqui o Pillow faria em duas linhas. Mantido à mão porque é ferramenta de uso
-único, roda fora do caminho crítico e já está testada — não porque economiza
-dependência. Se o Pillow entrar por outro motivo, troque.
+Pillow would do it in two lines. It is kept by hand because it is a
+single-use tool, off the critical path and already tested — not to save a
+dependency (CONTEXTO 11). If Pillow comes in for another reason, switch.
 
-Para mudar o desenho, edite as cores e raios em `gerar_icone.py`, rode
-`uv run tools/gerar_icone.py` e depois o `criar_atalho.ps1` de novo (o Windows
-guarda ícones em cache; se o antigo continuar aparecendo, reinicie o Explorer).
+To change the drawing, edit the colours and radii in `gerar_icone.py`, run
+`uv run python tools/gerar_icone.py` and then `criar_atalho.ps1` again
+(Windows caches icons; if the old one keeps showing, restart Explorer).
 
 ---
 
-## 15. Núcleo e interface — vigilância sem janela
+## 15. The core and the interface — surveillance without a window
 
-### 15.1 O problema: a gravação era passageira da janela
+### 15.1 The problem: recording rode on the window
 
-Até 09/10/2026 o `main()` era um laço só, e quem ditava o ritmo dele era a
-janela:
+Until 09/10/2026 `main()` was a single loop, and the window set its pace:
 
 ```python
 key = cv2.waitKey(15) & 0xFF
@@ -2074,219 +1848,207 @@ if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
     break
 ```
 
-O `cv2.waitKey` não é só "ler tecla" — é a função que bombeia a fila de eventos
-do HighGUI, e era ela que dava o compasso de todo o resto. Detecção, gravação,
-rostos e notificação rodavam **dentro** desse laço. Fechar a janela encerrava a
-vigilância.
+`cv2.waitKey` is not just "read a key" — it is the function that pumps
+HighGUI's event queue, and it set the beat of everything else. Detection,
+recording, faces and notifications ran **inside** that loop. Closing the
+window ended the surveillance.
 
-Para um visor de câmeras isso estava certo. Para um sistema de segurança, não:
-ninguém fica com a janela aberta 24 h por dia, e é justamente quando não há
-ninguém olhando que gravar importa mais.
+For a camera viewer that was right. For a security system it is not: nobody
+keeps a window open 24 hours a day, and it is precisely when nobody is looking
+that recording matters most.
 
-### 15.2 A separação
+### 15.2 The separation
 
-`cameras.py` passou a ter três peças, e a dependência só aponta para um lado:
+`cameras.py` got separate pieces, and the dependency points one way only:
 
-| Peça | O que é | Sabe da janela? |
+| Piece | What it is | Knows about the interface? |
 |---|---|---|
-| `Core` | captura, movimento, sujeitos, gravação, arquivo | **não** |
-| `run_window` | desenha, lê teclado e mouse | sim |
-| `run_headless` | só chama `Core.step()` num laço | não |
+| `Core` | capture, motion, subjects, recording, archive | **no** |
+| `run_headless` | only calls `Core.step()` in a loop | no |
+| `run_window` | drew, read the keyboard and mouse — **removed 10/10/2026** | yes |
 
-O `Core.step()` é uma passada por todas as câmeras e devolve `True` se algum
-frame era novo. Quem chama decide o que fazer com isso:
+`Core.step()` is one pass over every camera and returns `True` if any frame
+was new. Today `main()` is:
 
 ```python
-def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    headless = HEADLESS_FLAG in argv
-    core = Core(start_cameras(), draw=not headless)
-    try:
-        (run_headless if headless else run_window)(core)
-    finally:
-        core.close()
+core = Core(start_cameras(env))
+web.attach(core)
+bot.start()
+...
+try:
+    run_headless(core, stop)
+finally:
+    bot.stop()
+    web.stop(server)
+    core.close()
 ```
 
-O `finally` é o que garante que clipe pendente seja montado e stream fechado,
-seja qual for o motivo da saída — tecla `q`, janela fechada, `Ctrl+C` ou
-exceção.
+The `finally` is what guarantees a pending clip is assembled and the streams
+closed, whatever the reason for leaving — `Ctrl+C`, `--stop` from the web, or
+an exception. The web server was started before the cameras, holding the port
+(R2, 18.8), and is handed the `Core` with `attach`.
 
-**Detalhe de Python:** `(run_headless if headless else run_window)(core)`
-escolhe a função e chama. Funções são valores, como em C# com delegate, mas sem
-precisar declarar o tipo. O parêntese em volta é obrigatório: sem ele o `if`
-ternário engoliria a chamada.
+**A Python detail:** functions are values, as with a C# delegate, without
+declaring a type. The old `main()` chose the loop with
+`(run_headless if headless else run_window)(core)`; the parentheses around the
+conditional are required, or the ternary `if` would swallow the call.
 
-### 15.3 O ritmo, sem waitKey
+### 15.3 The pace, without waitKey
 
-Sem janela não existe `waitKey`, então o laço precisa de ritmo próprio:
+Without a window there is no `waitKey`, so the loop needs a pace of its own:
 
 ```python
-while True:
+while not stop.is_set():
     if not core.step():
         time.sleep(IDLE_SLEEP)
 ```
 
-Dorme **só quando não veio frame novo**. Se veio, processa a próxima passada na
-hora. Isso é melhor que o laço antigo, que pagava os 15 ms do `waitKey` em toda
-iteração, tendo frame ou não. Medido: 2.995 passadas em 15 s, 300 com frame
-novo — ou seja, 10 fps por câmera, e o resto do tempo dormindo em vez de girar
-em falso.
+It sleeps **only when no new frame came**. If one did, it processes the next
+pass at once. That is better than the old loop, which paid `waitKey`'s 15 ms on
+every iteration, frame or not. Measured: 2,995 passes in 15 s, 300 with a new
+frame — that is, 10 fps per camera, and the rest of the time asleep instead of
+spinning. `stop` is a `threading.Event` the web sets on `--stop` (PYTHON 24).
 
-### 15.4 O `draw` e o que ele economiza
+### 15.4 `draw`, and what it saves
 
-O `Core` só monta painel se `draw=True`:
+The `Core` builds panels only if `draw=True`:
 
 ```python
 self.panels = {cam.label: make_panel(None, cam.label, PANEL_HEIGHT)
                for cam in streams} if draw else {}
 ```
 
-Medido nesta máquina: `make_panel` custa **0,43 ms por câmera** e o mosaico
-(`np.hstack`) **0,41 ms**, somando **1,27 ms** com duas câmeras, de uns 20 ms
-por frame. São ~6%. Vale economizar, mas **não é o motivo da mudança** — o
-motivo é a seção 15.1.
+Measured on the development PC: `make_panel` costs **0.43 ms per camera** and
+the mosaic (`np.hstack`) **0.41 ms**, **1.27 ms** in all with two cameras, of
+about 20 ms per frame. About 6 %. Worth saving, but **not the reason for the
+change** — the reason is 15.1. The service runs with `draw=False`; the live
+view on the page builds its panel only when a browser asks (17.7).
 
-### 15.5 Como rodar
+### 15.5 How to run it
 
-| Quero | Comando |
+| Want | Command |
 |---|---|
-| Usar o J.A.R.V.I.S. | `jarvis.bat` ou o atalho: serviço + navegador (17.7) |
-| Só o serviço, sem abrir nada | `jarvis_vigilancia.bat` (`--headless`) |
-| Parar de qualquer terminal | `uv run python -m jarvis --stop` |
-| A janela antiga, provisória | `uv run python -m jarvis --window` |
-| Ver pelo navegador ou celular | `http://127.0.0.1:8765`, ou o endereço de rede que ele imprime |
+| Use J.A.R.V.I.S. | `jarvis.bat` or the shortcut: service + browser (17.7) |
+| Only the service, opening nothing | `jarvis_vigilancia.bat` (`--headless`; the old `--sem-janela` still works) |
+| Stop it from any terminal | `uv run python -m jarvis --stop` |
+| See it in a browser or on a phone | `http://127.0.0.1:8765`, or the network address it prints |
 
-Sem janela, o encerramento é `Ctrl+C` ou `--stop`. No Windows, `Ctrl+C` no
-terminal vira `KeyboardInterrupt` no Python, que o `run_headless` captura; o
-`--stop` pede pela web e o laço sai pelo mesmo caminho. Nos dois casos o
-`finally` do `main()` fecha tudo em ordem. Production, since 09/10/2026, runs
-as a scheduled task with no console: 18.7.
-
-**Ainda não é serviço de verdade.** Rodar no boot sem ninguém logado é outro
-assunto (Agendador de Tarefas ou NSSM), e depende da interface web do item 3 do
-backlog, porque hoje não há como olhar um núcleo sem janela.
+`--window` (and `--janela`) only log the page's address since the window was
+removed. `Ctrl+C` in the terminal becomes `KeyboardInterrupt` in Python, which
+`run_headless` catches; `--stop` asks through the web and the loop leaves the
+same way. In both cases `main()`'s `finally` closes everything in order.
+Production runs as a scheduled task with no console, started with Windows
+(18.7).
 
 ---
 
-## 16. Estado atual
+## 16. Current state
 
-**Funcionando no M900 desde 29/09/2026:**
+**Running in production on the M900**, release `v2026.10.12` (12/10/2026):
 
-| Camada | Seção |
+| What | Section |
 |---|---|
-| Captura pelo ffmpeg, gravação sem recodificar, timeout de conexão | 5 |
-| Movimento com filtro de luz, máscara do relógio e confirmação temporal | 6 |
-| Pessoas e animais pelo YOLO, cenário estático, altura mínima | 7 |
-| Eventos com pré-gravação, miniatura e metadados | 8 |
-| Interface Live, Records e People, com calendário e rolagem | 9 |
-| Rostos: só de frente e sobre uma pessoa, nome que vira referência | 10 |
-| Armazenamento em camadas, HD externo após 30 dias | 11 |
-| Aviso no celular pelo Telegram, inclusive pessoa que chega depois de um animal | 12 |
-| Ícone e atalho na Área de Trabalho | 14 |
-| Vigilância sem janela (`--headless`), parada limpa (`--stop`) | 15 |
-| Interface web: ao vivo e lista de eventos, no navegador e na rede local | 17.6–17.8 |
-| Production in `C:\JARVIS` as a startup task, reviewed releases, update with rollback | 18.7 |
-| Every file ever written stays readable; `check_data.py` proves it | 19 |
+| Capture by ffmpeg, recording without re-encoding, connection timeout | 5 |
+| Motion with the lighting filter, the clock mask and temporal confirmation | 6 |
+| People and animals by YOLO, static scenery, minimum height, the dog on the mat | 7 |
+| Events with pre-recording, thumbnail, best view and metadata | 8 |
+| Faces: frontal and on a person, a name that becomes a reference, the side view | 10 |
+| The household's dogs, named by the look of their fur | 20 |
+| Tiered storage to an external drive (not configured in production) | 11 |
+| Telegram messages with the face and the name, per-camera and per-person intervals | 12 |
+| Residents, the Home/Away/Silent modes, commands from the phone | 22 |
+| The web page: Live, Recordings with video, People, Dogs, Notifications, Settings; pairing other devices | 17 |
+| Bad-detection reports, with Undo | 21 |
+| Production in `C:\JARVIS` as a startup task, reviewed releases, update with rollback | 18 |
+| Every file ever written stays readable; `check_data.py` proves it; 160 tests | 19 |
 
-Limitações aceitas, próximos passos em ordem de prioridade e o histórico de
-bugs ficam num lugar só: [CONTEXTO.md](CONTEXTO.md), seções 4, 7 e 8.
+The accepted limitations, the backlog and the plan live in one place:
+[CONTEXTO.md](CONTEXTO.md), sections 7, 8 and 14.4. The bugs already fixed are
+in [HISTORY.md](HISTORY.md) 4.
 
-## 17. Interface web — plano de execução
+## 17. The web interface
 
-Decidido em 09/10/2026. Item 3 do backlog. Esta seção é o plano, para que a
-obra possa ser retomada por outra sessão ou pela outra máquina sem perder as
-decisões. **Estágios 1 e 3 feitos em 09/10/2026** (17.6, 17.7); 4 e 2 ainda não.
+Decided on 09/10/2026 (backlog 3) and finished on 11/10/2026: the web page is
+the **only** way in. The user's turn of direction on the first day: *"I don't
+want two ways of getting in; if possible everything on the web, with one
+service running."* The original plan kept the OpenCV window beside the web to
+compare; the window was removed on 10/10 (17.10). The stages were done in the
+order 1 → 3 → 4 → remove the window and start with Windows → 2.
 
-**Mudança de rumo do usuário, no mesmo dia:** *"não quero ter duas formas de
-acesso; se possível tudo web, com um serviço rodando."* O plano original
-mantinha a janela do OpenCV ao lado da web para comparar; agora a web é o único
-acesso, e a janela sai assim que a web cobrir o que só ela faz. A ordem passou
-a ser 1 → 3 → 4 → remover a janela e subir com o Windows → 2.
+### 17.1 Why, in one sentence
 
-### 17.1 Por que, em uma frase
+Surveillance already ran without a window (section 15), but there was no way
+to **look** at a core without a window. The web closes that loop and, in
+passing, brings accents, video playback, scrolling, pasting and access from a
+phone — everything HighGUI lacks.
 
-A vigilância já roda sem janela (seção 15), mas não há como **olhar** um núcleo
-sem janela. A web fecha esse ciclo e, de passagem, entrega acento, reprodução de
-vídeo, rolagem, colar texto e acesso pelo celular — tudo que o HighGUI não tem.
+### 17.2 The stack, and why not the standard library
 
-### 17.2 A stack, e por que não a biblioteca padrão
+**FastAPI + uvicorn.** Two requirements decide it, and neither is about taste:
 
-**FastAPI + uvicorn.** Dois requisitos decidem, e nenhum é estético:
-
-| Requisito | Por que o `http.server` não serve |
+| Requirement | Why `http.server` will not do |
 |---|---|
-| Vídeo ao vivo (MJPEG) | É uma resposta que nunca termina. O `http.server` é de uma thread; um espectador travaria todo o resto |
-| Arrastar a barra do vídeo | O `<video>` exige HTTP Range. O `FileResponse` já faz; à mão é fácil de errar |
+| Live video (MJPEG) | A response that never ends. `http.server` is single-threaded; one viewer would block everything else |
+| Dragging the video's bar | `<video>` needs HTTP Range. `FileResponse` does it; by hand it is easy to get wrong |
 
-A primeira ideia desta sessão foi `http.server` "sem dependência nova" — era o
-viés da seção 11 voltando pela porta dos fundos, e foi descartada.
+The first idea in that session was `http.server` "with no new dependency" —
+the bias of CONTEXTO 11 coming back through the back door, and it was dropped.
 
-**Risco verificado:** o FastAPI traz `pydantic`, cujo núcleo é Rust compilado —
-a mesma categoria de binário que o Smart App Control bloqueou no PyTorch (7.11).
-Testado em 09/10/2026 na máquina de desenvolvimento: `import pydantic_core`
-carrega sem erro. **Confirmado no M900 também, em 09/10/2026** (`pydantic_core`
-2.50.0) — que é onde o Smart App Control mais incomodou. Antes disso foi
-preciso trocar o próprio Python por um assinado (INSTALACAO 1.2). O teste:
+**A risk checked:** FastAPI brings `pydantic`, whose core is compiled Rust —
+the same kind of binary Smart App Control blocked in PyTorch (7.11). It loads
+on both machines (HISTORY 12.2). Had it failed, the plan was Flask with a
+threaded WSGI server, pure Python, rather than abandoning the web.
 
-```bat
-uv run python -c "import pydantic_core, fastapi, uvicorn; print('ok')"
-```
+### 17.3 The four stages
 
-Se falhar lá, o plano muda: Flask com servidor WSGI com threads, que é Python
-puro, em vez de abandonar a web.
+Each ended in a commit that worked on its own.
 
-### 17.3 Os quatro estágios
+**Stage 1 — the server and the event list.** `web.py` running uvicorn in a
+thread beside the `Core`, serving a page that lists the events by reading the
+JSON files already in `clips/` (17.6).
 
-Cada um termina em commit que funciona sozinho. **A janela do OpenCV continua
-intacta do começo ao fim** — a comparação é o critério de aceite, e só se
-descarta o HighGUI depois de a web provar que é melhor.
+**Stage 2 — playback.** `FileResponse` on the `.mp4` files and a `<video>` on
+the page: watch an event and drag the bar without an external player (17.13).
 
-**Estágio 1 — servidor e lista de eventos.** `web.py` novo, subindo o uvicorn
-numa thread ao lado do `Core`. Serve uma página que lista os eventos lendo os
-JSON que já existem em `clips/`. Não toca em nada que funciona hoje. Aceite:
-abrir no navegador e ver os eventos de hoje, com acento.
+**Stage 3 — live.** `StreamingResponse` with MJPEG from the frames the `Core`
+already has in memory: both cameras live in the browser, and on a phone over
+the local network (17.7).
 
-**Estágio 2 — reprodução.** `FileResponse` nos `.mp4`, `<video>` na página.
-Fecha o item 5 do backlog (hoje clicar abre o Explorer) e o 6 fica barato,
-porque filtrar é JavaScript sobre a lista. Aceite: assistir um evento e arrastar
-a barra, sem abrir player externo.
+**Stage 4 — People and Settings.** The screens that suffered most from
+HighGUI: where the 46-character token could not be pasted and a name with an
+accent could not be typed (17.9).
 
-**Estágio 3 — ao vivo.** `StreamingResponse` com MJPEG a partir dos frames que o
-`Core` já tem em memória. Aceite: duas câmeras ao vivo no navegador, e no
-celular pela rede local.
+### 17.4 Decisions already taken, not to be reopened
 
-**Estágio 4 — People e Ajustes.** As telas que mais sofrem com o HighGUI: é
-onde não se consegue colar o token de 46 caracteres nem escrever um nome com
-acento. Aceite: cadastrar nome e colar o token pelo navegador.
+- **The local network only.** No port open to the internet. The Telegram
+  messages are what cross the network; commands from the phone come back the
+  same way, by an outgoing connection (22.5). Reading is open to the home
+  network (R4); writing needs the M900 itself or a paired device (17.12).
+- **The web reads what already exists.** The JSON files in `clips/` remain the
+  source. An event database (backlog 13) is independent and comes later, if
+  ever.
+- **The `Core` does not know about the web.** Just as it did not know there was
+  a window: whoever serves reads the `Core`. Stage 3 added two read-only
+  accessors to it, `labels` and `live_view()` (17.7) — the `Core` does not
+  import `web` and does not change its behaviour because someone is looking.
+- **No frontend framework.** Plain HTML and JavaScript are enough to list,
+  filter and play video. React here would be the opposite of useful reuse:
+  weight with no problem to justify it.
 
-### 17.4 Decisões já tomadas, para não reabrir
+### 17.5 What it closes on the backlog
 
-- **Só rede local.** Sem porta aberta para a internet, sem login. A notificação
-  do Telegram é que atravessa a rede, e já funciona. Autenticação só entra se o
-  acesso de fora algum dia entrar, e aí é decisão nova.
-- **A web lê o que já existe.** Os JSON em `clips/` continuam sendo a fonte. O
-  banco de eventos (item 13) é independente e vem depois, se vier.
-- **O `Core` não sabe da web.** Do mesmo jeito que não sabe que existe janela:
-  quem serve é que lê o `Core`. O estágio 3 acrescentou a ele dois acessos só
-  de leitura, `labels` e `live_view()` (17.7) — o `Core` não importa `web` nem
-  muda de comportamento por existir alguém olhando.
-- **Sem framework de frontend.** HTML e JavaScript simples servem para listar,
-  filtrar e tocar vídeo. React aqui seria o oposto do reaproveitamento útil:
-  peso sem problema que justifique.
+Items 5 (playback, done) and the remote access came almost for free; 6
+(search and filter) and 11 (a timeline) become cheap, because the browser
+already does the heavy part of each.
 
-### 17.5 O que isso fecha no backlog
+### 17.6 Stage 1, as built
 
-Itens 5 (reprodução), 6 (busca e filtro), 11 (linha do tempo) e o acesso remoto
-saem quase de graça, porque o navegador já faz o trabalho pesado de cada um.
+**Acceptance met on the M900:** `http://127.0.0.1:8765` showed the 139 events
+of 30/09 (Front 44, Back 95), with thumbnail, time, camera, duration and label.
 
-### 17.6 Estágio 1, como ficou
-
-**Aceite cumprido no M900:** `http://127.0.0.1:8765` mostrou os 139 eventos de
-30/09 (Front 44, Back 95), com miniatura, hora, câmera, duração e rótulo em
-português com acento.
-
-**Onde roda.** `main()` em `cameras.py` chama `web.start()` logo depois de criar
-o `Core`, com janela ou sem. O servidor sobe numa thread *daemon*:
+**Where it runs.** `main()` in `cameras.py` starts the web server before the
+cameras (R2) and hands it the `Core` afterwards. The server runs in a
+*daemon* thread:
 
 ```python
 server = uvicorn.Server(uvicorn.Config(app, host=host, port=port,
@@ -2294,124 +2056,111 @@ server = uvicorn.Server(uvicorn.Config(app, host=host, port=port,
 threading.Thread(target=server.run, name="web", daemon=True).start()
 ```
 
-O uvicorn só instala os tratadores de `Ctrl+C` quando roda na thread principal,
-então numa thread de fundo ele não rouba o `Ctrl+C` do `run_headless`. Ao sair,
-o `finally` do `main()` chama `web.stop()`, que só liga `should_exit` — o
-uvicorn termina sozinho na volta seguinte do laço dele. Por ser *daemon*, a
-thread também não segura o processo se algo der errado.
+uvicorn installs its `Ctrl+C` handlers only when it runs on the main thread,
+so in a background thread it does not steal `Ctrl+C` from `run_headless`. On
+exit, `main()`'s `finally` calls `web.stop()`, which only sets `should_exit` —
+uvicorn ends on its own at the next turn of its loop. Being a *daemon*, the
+thread does not hold the process either if something goes wrong.
 
-**O que serve.**
+**What it served at first** (the routes were renamed to English on 10/10,
+R10):
 
-| Rota | Devolve |
+| Route | Returns |
 |---|---|
-| `/` | `static/index.html` |
-| `/static/...` | CSS e JavaScript da página (`StaticFiles`) |
-| `/icone.png` | o `assets/jarvis.png`, sem duplicar o arquivo |
-| `/api/dias` | dias com gravação, do mais novo ao mais velho |
-| `/api/eventos?dia=AAAA-MM-DD` | os eventos do dia, lidos de `clips.list_clips()`; sem `dia`, hoje |
-| `/miniatura/<câmera>/<dia>/<HH-MM-SS>.jpg` | a miniatura do evento |
+| `/` | `static/index.html`, with the running version in the asset URLs (17.11) |
+| `/static/...` | the page's CSS and JavaScript (`StaticFiles`) |
+| `/icon.png` | `assets/jarvis.png`, without duplicating the file |
+| `/api/days` | days with recordings, newest first |
+| `/api/events?day=YYYY-MM-DD` | the day's events, read from `clips.list_clips()`; without `day`, today |
+| `/thumbnail/<camera>/<day>/<HH-MM-SS>.jpg` | the event's thumbnail |
 
-A API devolve **URLs, não caminhos de disco**: `_event()` troca o
-`thumbnail_path` por `/miniatura/...`. A página nunca sabe onde os arquivos
-estão.
+The API returns **URLs, not disk paths**: `_event()` swaps `thumbnail_path`
+for `/thumbnail/...`. The page never knows where the files are.
 
-**Ninguém sai de `clips/`.** A rota de miniatura recebe três pedaços do
-endereço. Cada um tem que casar com uma expressão regular estrita (letras e
-`-`/`_`; `AAAA-MM-DD`; `HH-MM-SS.jpg`), e o caminho final, depois de
-`resolve()`, tem que estar dentro de `CLIP_DIR` (`is_relative_to`). Testado: as
-cinco tentativas de sair com `..` e `%2F` voltaram 404, e um `dia` inválido
-volta 400.
+**Nobody leaves `clips/`.** The thumbnail route takes three pieces of the
+address. Each must match a strict regular expression (letters and `-`/`_`;
+`YYYY-MM-DD`; `HH-MM-SS.jpg`), and the final path, after `resolve()`, must lie
+inside `CLIP_DIR` (`is_relative_to`). Tested: five attempts to get out with
+`..` and `%2F` came back 404, and an invalid `day` comes back 400. Every route
+added since follows the same pattern.
 
-**Porta ocupada não derruba nada.** `_port_free()` tenta abrir a porta antes do
-uvicorn. Se outra instância já estiver servindo, aparece "Interface web
-desligada: a porta 8765 ja esta em uso" e a vigilância segue normalmente —
-porque a interface é opcional e gravar não é.
+**A busy port brings nothing down.** `_port_free()` tries the port before
+uvicorn. If another instance is already serving, the web interface is
+switched off with a message and surveillance carries on — the interface is
+optional and recording is not. Since R2 the port is taken atomically (18.8).
 
-**Só esta máquina, no estágio 1.** `HOST = "127.0.0.1"` escutava só conexões
-locais. O estágio 3 abriu para a rede (17.7).
+**The page.** Plain HTML, CSS and JavaScript in `src/jarvis/static/`, no
+framework (17.4). The JavaScript fetches `/api/events` and builds the cards
+from a `<template>`. The ◀ ▶ arrows jump to the previous or next day **with
+recordings**, using `/api/days`. On today's date the list refreshes every 15 s,
+and stops when the tab is not visible (`document.hidden`).
 
-**A página.** HTML, CSS e JavaScript simples em `src/jarvis/static/`, sem
-framework (17.4). O JavaScript busca `/api/eventos` e monta os cartões a partir
-de um `<template>`. As setas ◀ ▶ pulam para o dia anterior ou próximo **com
-gravação**, usando `/api/dias`. Vendo o dia de hoje, a lista se atualiza a cada
-15 s, e para quando a aba não está visível (`document.hidden`).
+Events already moved to the external drive (section 11) are not listed.
 
-Os rótulos chegam em inglês (`person`, `dog`), porque é o que o YOLO e os JSON
-usam, e a página traduz na exibição: o dado continua o mesmo, só a apresentação
-é em português. O mesmo vale para a data: o `<input type="date">` mostra no
-formato do navegador, enquanto a API fala `AAAA-MM-DD`.
+### 17.7 Stage 3, as built: live, and one entry point
 
-**O que ainda não faz:** clicar no cartão não abre o vídeo (estágio 2), e só
-lista o que está em `clips/` — eventos já movidos para o HD externo (seção 11)
-não aparecem, igual à janela.
+**Acceptance met on the M900:** both cameras live on the **Live** tab, with
+their name, detection boxes and `REC` while recording, at ~8 frames per
+second.
 
-### 17.7 Estágio 3, como ficou: ao vivo e um ponto de entrada só
-
-**Aceite cumprido no M900:** as duas câmeras ao vivo na aba **Ao vivo**, com
-nome, caixas de detecção e o `REC` de quando está gravando, a ~8 quadros por
-segundo. O celular pela rede local depende do firewall (abaixo); a regra para o
-`python.exe` existe, mas o teste no celular ainda não foi feito.
-
-**MJPEG.** Cada câmera é uma resposta HTTP que nunca termina:
-`multipart/x-mixed-replace`, uma sequência de JPEGs separados por uma linha de
-fronteira (`--frame`). O navegador troca a imagem a cada parte que chega, e
-mostra isso num `<img>` comum — sem player, sem JavaScript de vídeo. É o motivo
-por que o `http.server` foi descartado (17.2): um espectador seguraria a única
-thread dele para sempre.
+**MJPEG.** Each camera is an HTTP response that never ends:
+`multipart/x-mixed-replace`, a sequence of JPEGs separated by a boundary line
+(`--frame`). The browser swaps the image on each part that arrives, and shows
+it in an ordinary `<img>` — no player, no video JavaScript. It is why
+`http.server` was dropped (17.2): one viewer would hold its only thread
+forever.
 
 ```python
 yield (f"--{BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
        f"Content-Length: {len(data)}\r\n\r\n").encode() + data + b"\r\n"
 ```
 
-`_mjpeg()` é um *generator* comum; o `StreamingResponse` o consome numa thread
-do pool do servidor, uma por espectador. Ele dorme `1 / LIVE_FPS` entre quadros
-e para quando `web.stop()` liga o `_stopping` — sem isso, um navegador aberto
-seguraria o encerramento do programa.
+`_mjpeg()` is an ordinary *generator*; `StreamingResponse` consumes it on a
+thread from the server's pool, one per viewer. It sleeps `1 / LIVE_FPS`
+between frames and stops when `web.stop()` sets `_stopping` — without that, an
+open browser would hold up the program's shutdown. Each viewer encodes its own
+JPEGs (R14, open).
 
-**De onde vem a imagem.** `Core.live_view(label)` monta o painel **na hora do
-pedido**, a partir do que o `Core` já tem: o último frame de análise
-(`stream.latest`), as últimas detecções (`subjects.subjects`) e se está
-gravando. Reaproveita o `make_panel` da janela, então o desenho é idêntico. Só
-lê: o `make_panel` redimensiona para um array novo antes de desenhar, e o frame
-original nunca é tocado — importante, porque ele é lido pela thread da web
-enquanto o laço do `Core` segue na principal.
+**Where the picture comes from.** `Core.live_view(label)` builds the panel **at
+the time of the request**, from what the `Core` already has: the last analysis
+frame (`stream.latest`), the last detections (`subjects.subjects`) and whether
+it is recording. It reuses `make_panel`, which resizes into a new array before
+drawing, so the original frame is never touched — important, because it is
+read by the web's thread while the `Core`'s loop goes on in the main one.
 
-Ninguém olhando, ninguém paga: o `Core` continua com `draw=False` no modo
-serviço, e o painel só existe quando um navegador pede. A página fecha os
-streams quando sai da aba Ao vivo ou quando o navegador é minimizado
-(`document.hidden`), tirando o `src` das imagens.
+Nobody looking, nobody pays: the `Core` runs with `draw=False`, and the panel
+only exists while a browser asks. The page closes the streams when it leaves
+the Live tab or the browser is minimised (`document.hidden`), by removing the
+images' `src`.
 
-O rótulo da câmera desceu para `LABEL_Y = 62`: em `y = 34` ele ficava em cima do
-relógio que a própria Tapo escreve no canto.
+The camera's label moved down to `LABEL_Y = 62`: at `y = 34` it sat on the
+clock the Tapo itself writes in the corner.
 
-**Rede local.** `HOST = "0.0.0.0"` escuta em todas as interfaces, e o programa
-imprime o endereço para o celular (`lan_address()`: conectar um socket UDP não
-envia nada, só faz o Windows escolher a interface de saída, cujo endereço é o
-nosso). Na primeira vez o Windows pergunta no firewall se o `python.exe` pode
-receber conexões; sem permitir, só esta máquina abre a página. A rede do M900
-está classificada como **Pública**, e a regra criada vale para esse perfil.
-Continua sem login e sem porta aberta para a internet (17.4).
+**The local network.** `HOST = "0.0.0.0"` listens on every interface, and the
+program prints the address for a phone (`lan_address()`: connecting a UDP
+socket sends nothing, it only makes Windows choose the outgoing interface,
+whose address is ours). The first time, Windows asks in the firewall whether
+`python.exe` may receive connections; without allowing it, only this machine
+opens the page. The M900's network is classified as **Public**, and the rule
+applies to that profile — accepted by the user (R4).
 
-**Um ponto de entrada.** `main()` em `cameras.py` passou a ter três modos:
+**One entry point.** `main()` in `cameras.py` has two modes:
 
-| Comando | Faz |
+| Command | Does |
 |---|---|
-| `python -m jarvis` (o `jarvis.bat` e o atalho) | serviço + abre o navegador na página |
-| `python -m jarvis --sem-janela` (`jarvis_vigilancia.bat`) | só o serviço; para subir com o Windows |
-| `python -m jarvis --janela` | a janela antiga do OpenCV, **provisória** até o estágio 4 |
+| `python -m jarvis` (`jarvis.bat` and the shortcut) | service + opens the browser on the page |
+| `python -m jarvis --headless` (`jarvis_vigilancia.bat`) | only the service; what starts with Windows |
 
-Antes de abrir câmera, `web.already_running()` pergunta a `/api/cameras` se já
-há um J.A.R.V.I.S. servindo. Se houver, o segundo não sobe: só abre o navegador
-(ou avisa) e sai. Testado: com o serviço no ar, um segundo lançamento saiu em
-3 s e as câmeras continuaram com os dois ffmpeg da primeira instância. Sem
-isso, clicar duas vezes no atalho faria o segundo brigar pela única conexão RTSP
-de cada câmera.
+Before opening any camera, `web.already_running()` asks `/api/cameras` whether
+a J.A.R.V.I.S. is already serving. If so, the second one does not start: it
+only opens the browser (or says so) and exits. Tested: with the service up, a
+second launch left in 3 s and the cameras kept the first instance's two ffmpeg
+processes. Without it, clicking the shortcut twice would make the second fight
+over each camera's single RTSP connection.
 
-**Encerrar** continua sendo `Ctrl+C` no console. Fechar o console no X não passa
-pelo `finally` do `main()` — o Windows mata o processo, e um clipe em montagem
-se perderia. Rodar como serviço de verdade, sem console, é o passo depois do
-estágio 4.
+**Stopping** from the console is `Ctrl+C`. Closing the console with the X
+skips `main()`'s `finally` — Windows kills the process, and a clip being
+assembled would be lost. Production has no console at all (18.7).
 
 ### 17.8 Current state of the web, after the pre-production delivery (09/10/2026)
 
@@ -2535,6 +2284,34 @@ were deleted; `--window`/`--janela` now log where the web page is and start
 as usual, for one release. A pitfall met on the way: content inside a
 `<template>` lives in an inert document, where `a.href = "#x"` resolves against
 `about:blank` — use `setAttribute`.
+
+### 17.11 The page is never stale (R28, 11/10/2026)
+
+`/` is built from `index.html` with the running version in the asset URLs (`app.js?v=<git describe>`) and sent with `Cache-Control: no-cache`; a middleware, `never_stale`, adds the same header to `/static/*`. `no-cache` means *revalidate*, not *do not store*: the browser asks with the file's ETag every load and gets a cheap 304 when nothing changed — so an update can never leave an old script running on another computer. Every refused write now shows the server's reason, e.g. an unpaired device: "no PIN is set: on the M900 itself, open Settings and set one to pair other devices". The M900's own browser at 192.168.0.18 counts as another device, which is how this was tested.
+
+### 17.12 Pairing a device once (R34, 11/10/2026)
+
+Pairing with the PIN makes the server set a cookie — `HttpOnly` (no script can read it), `SameSite=Strict` (never sent by another site), 30 days — holding a random token; `devices.json` keeps only its SHA-256 hash, a label and the last use, and every write from that device renews the 30 days. A cookie set by the server survives where the page's `localStorage` did not. The M900's Settings lists the paired devices with "forget"; the R24 header still blocks forged requests.
+
+### 17.13 Playing a recording (backlog 5, 11/10/2026)
+
+`GET /video/<camera>/<day>/<HH-MM-SS>.mp4`, with the thumbnail's name checks and a resolve inside `clips/`; Starlette's `FileResponse` answers HTTP **Range** requests (206), so the browser seeks without downloading the clip. Clicking a card opens a player on the page; a day on a person's or dog's calendar leads there.
+
+### 17.14 The views of a person or dog: the best 40, Chosen and Waiting (backlog 24, R40)
+
+"Analyse" on a person or dog with more than 40 views proposes the 40 that are most different — greedy farthest-point selection: start from one view, then always add the view farthest from everything already chosen — and on confirmation keeps them and either queues the rest or, with the second button, deletes them (R40). 0.03 s for 100 face views, 0.28 s for 140 dog views; on test data the closest pair kept went from identical to clearly different.
+
+The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the queue (up to 100) of views seen after Chosen was full, which recognise nobody. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping the oldest waiting photo as a scan does, since the user did not ask for that. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
+
+### 17.15 Quiet disconnects (R32, 11/10/2026)
+
+A browser closing the live view made Windows' asyncio log a traceback at ERROR
+— 27 of them in one day (`_ProactorBasePipeTransport._call_connection_lost`).
+A loop exception handler now drops the `ConnectionResetError` there, so ERROR
+in the log means a real problem.
+
+---
+
 ## 18. Production and test (designed and built 09/10/2026)
 
 Written in English: the user decided on 09/10/2026 that documentation moves to
@@ -2808,7 +2585,7 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026** |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
-| `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (section 21) |
+| `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
 | `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
@@ -2919,35 +2696,31 @@ crops to events recorded before the feature (~21 s per event on the M900).
 
 **Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop had a **Dismiss**, replaced on 11/10 by **Bad detection** (section 21). `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's `dogs/gallery.json`.
 
----
-
-## 21. Fixes from the general review (11/10/2026)
-
-**The page is never stale (R28).** `/` is built from `index.html` with the running version in the asset URLs (`app.js?v=<git describe>`) and sent with `Cache-Control: no-cache`; a middleware, `never_stale`, adds the same header to `/static/*`. `no-cache` means *revalidate*, not *do not store*: the browser asks with the file's ETag every load and gets a cheap 304 when nothing changed — so an update can never leave an old script running on another computer. Every refused write now shows the server's reason, e.g. an unpaired device: "no PIN is set: on the M900 itself, open Settings and set one to pair other devices". The M900's own browser at 192.168.0.18 counts as another device, which is how this was tested.
-
-**The face seen from the side (R30, part a).** When a person event's scan keeps no recognisable face, `faces_in(frame, sides)` also collects the good non-frontal faces (score ≥ `IDENTITY_SCORE`, width ≥ 36 px) and the scan saves the best — smallest nose offset, then largest — as `HH-MM-SS.side.jpg` beside the clip, **never into the gallery**. The follow-up message after a sent event is, in order of preference: the recognised face, else "face, side view", else the best view. On the three daytime clips of 10/10 that had no face, each now gives a side view (40–59 px); they had failed on the eye spread, not the nose. Part (b), loosening the limits for recognition, waits for named views.
-
-**Pair a device once (R34).** Pairing with the PIN makes the server set a cookie — `HttpOnly` (no script can read it), `SameSite=Strict` (never sent by another site), 30 days — holding a random token; `devices.json` keeps only its SHA-256 hash, a label and the last use, and every write from that device renews the 30 days. A cookie set by the server survives where the page's `localStorage` did not. The M900's Settings lists the paired devices with "forget"; the R24 header still blocks forged requests.
-
-**Play a recording (backlog 5).** `GET /video/<camera>/<day>/<HH-MM-SS>.mp4`, with the thumbnail's name checks and a resolve inside `clips/`; Starlette's `FileResponse` answers HTTP **Range** requests (206), so the browser seeks without downloading the clip. Clicking a card opens a player on the page; a day on a person's or dog's calendar leads there.
-
-**Dogs gather their look-alikes (R29).** Naming or merging a dog re-examines every unnamed crop against the dog's updated views with the *sure* rule only, same lighting only, repeating until nothing joins; past recordings show the dog's current name from `dog_id` instead of the words frozen when they were recorded.
-
-**Bad detections are reported, not deleted (backlog 23).** Every unnamed face or dog card, and every label of a recording in the player, has "Bad detection": the crop leaves the gallery (or the label the card) and is kept in `reports/<kind>/` — the crop and a JSON with `kind` (face, dog), `source` (gallery, event), `verdict` ("not a dog"), label, score, box, camera, time and clip; gallery entries also keep their embeddings and sightings. Nothing learns from it yet: it is the evidence every rule change is measured against. Not versioned (it holds the household's images).
-
-**The 40 most different views (backlog 24).** "Analyse" on a person or dog with more than 40 views proposes the 40 that are most different — greedy farthest-point selection: start from one view, then always add the view farthest from everything already chosen — and on confirmation keeps them and either queues the rest or, with the second button, deletes them (R40). 0.03 s for 100 face views, 0.28 s for 140 dog views; on test data the closest pair kept went from identical to clearly different.
-
-**A cheaper face scan (R31).** YuNet now finds faces on a 960-px copy of the frame and each face is refined on the full 1080p frame, where the alignment needs the detail: 45 ms per frame instead of 137, with 6 % fewer frontal face frames on 455 test frames — a face is seen in many frames of an event, so the loss per event is smaller. **Log noise (R32):** a browser closing the live view no longer logs an asyncio traceback at ERROR.
-
-**What did not change, on purpose.** R35: the five boxes a lower ratio (1.5) would drop were all people — crouching at the door, bending, sitting below the camera — so R18 stays at 2.0, and the rare curled-up dog is left to the bad-detection reports. R30 (b): side faces of the one named person match 55–100 % of the time, but with a single named person nothing shows a stranger's side face would not match too, so the frontal limits stay until a second person is named.
-
-**Chosen and Waiting (R40, 11/10/2026).** The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the queue (up to 100) of views seen after Chosen was full, which recognise nobody. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping the oldest waiting photo as a scan does, since the user did not ask for that. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
-
-**A report can be undone, and can say what it was (R38, R37, 11/10/2026).** Settings lists every report, newest detection first, with its crop, verdict, camera, time and origin, and two controls. **Undo** puts back what the report took: a gallery report returns the entry to its gallery as it left — views, waiting views, favourite, first seen — copies its view photos back to `views/` and its sightings (JSON and crop) to their day folders; an event report takes the label out of `reported_labels`, so the card shows it again (refused with 409 when the recording was archived off this computer). The report is then deleted. For that, a report now keeps the whole entry, the sighting file names (`sighting_files`) and copies of every photo in `reports/<kind>/<stem>/` — the old `take_out` deleted the view photos, leaving nothing to restore. The two reports written before (production, 10/10) undo too: embeddings and sightings come back, and the report's crop stands in for every photo — as the view when the entry had one view, which both have, else as the entry's thumbnail. **Actually…** is an optional choice per report — person, dog, other animal, nothing, minus the label the detector gave — stored as `actually`; it is set in the list rather than at report time, so it works for reports already made and the report button stays one click. Reports remain evidence, never trained on.
-
-**A report holds exactly what left the gallery (R36).** The first version copied the entry, wrote the report (slow: files copied), then removed the entry by id — a view a scan added in between was removed with the entry, its photo deleted, and in no report. Now `Gallery.take_out` removes the entry **under the gallery lock and returns it**, the report is written from that object, the photos copied, and only then deleted (`forget_views`); if writing raises, `put_back` returns the entry. A scan that matches the entry after it left is refused like any vanished entry. The same idea as Java's `map.remove(key)`, which hands back the removed value, instead of `get` followed by `remove` (PYTHON 26).
+**Dogs gather their look-alikes (R29, 11/10/2026).** Naming or merging a dog re-examines every unnamed crop against the dog's updated views with the *sure* rule only, same lighting only, repeating until nothing joins; past recordings show the dog's current name from `dog_id` instead of the words frozen when they were recorded.
 
 ---
+
+## 21. Bad-detection reports — `reports.py` (11/10/2026)
+
+**Where the rest of this section went.** Until 12/10/2026 this section
+collected every fix of the general review of 11/10; each now lives with its
+subject: the page never stale (R28) 17.11 · pairing a device (R34) 17.12 ·
+playing a recording (backlog 5) 17.13 · the 40 most different views and
+Chosen and Waiting (backlog 24, R40) 17.14 · quiet disconnects (R32) 17.15 ·
+the side face (R30) 10.12 · a cheaper face scan (R31) 10.13 · dogs gathering
+their look-alikes (R29) 20 · the ratio kept at 2.0 (R35) 7.9.
+
+### 21.1 Report, do not delete (backlog 23)
+
+Every unnamed face or dog card, and every label of a recording in the player, has "Bad detection": the crop leaves the gallery (or the label the card) and is kept in `reports/<kind>/` — the crop and a JSON with `kind` (face, dog), `source` (gallery, event), `verdict` ("not a dog"), label, score, box, camera, time and clip; gallery entries also keep their embeddings and sightings. Nothing learns from it yet: it is the evidence every rule change is measured against. Not versioned (it holds the household's images).
+
+### 21.2 Undo, and "Actually…" (R38, R37)
+
+Settings lists every report, newest detection first, with its crop, verdict, camera, time and origin, and two controls. **Undo** puts back what the report took: a gallery report returns the entry to its gallery as it left — views, waiting views, favourite, first seen — copies its view photos back to `views/` and its sightings (JSON and crop) to their day folders; an event report takes the label out of `reported_labels`, so the card shows it again (refused with 409 when the recording was archived off this computer). The report is then deleted. For that, a report now keeps the whole entry, the sighting file names (`sighting_files`) and copies of every photo in `reports/<kind>/<stem>/` — the old `take_out` deleted the view photos, leaving nothing to restore. The two reports written before (production, 10/10) undo too: embeddings and sightings come back, and the report's crop stands in for every photo — as the view when the entry had one view, which both have, else as the entry's thumbnail. **Actually…** is an optional choice per report — person, dog, other animal, nothing, minus the label the detector gave — stored as `actually`; it is set in the list rather than at report time, so it works for reports already made and the report button stays one click. Reports remain evidence, never trained on.
+
+### 21.3 A report holds exactly what left the gallery (R36)
+
+The first version copied the entry, wrote the report (slow: files copied), then removed the entry by id — a view a scan added in between was removed with the entry, its photo deleted, and in no report. Now `Gallery.take_out` removes the entry **under the gallery lock and returns it**, the report is written from that object, the photos copied, and only then deleted (`forget_views`); if writing raises, `put_back` returns the entry. A scan that matches the entry after it left is refused like any vanished entry. The same idea as Java's `map.remove(key)`, which hands back the removed value, instead of `get` followed by `remove` (PYTHON 26).
 
 ## 22. Residents, notification modes and commands from the phone (12/10/2026)
 

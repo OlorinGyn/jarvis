@@ -199,7 +199,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | Phone notifications through Telegram, with a face and a name (decided) | ARQUITETURA 12 |
 | ✓ | Core without a window (decided) | ARQUITETURA 15 |
 | ✓ | **3.** The web interface, the only way in (decided 09/10) | ARQUITETURA 17 |
-| ✓ | **5.** Play recordings on the page (decided 11/10, `v2026.10.11.3`) | ARQUITETURA 21 |
+| ✓ | **5.** Play recordings on the page (decided 11/10, `v2026.10.11.3`) | ARQUITETURA 17.13 |
 | ✓ | **9.** Undo a merge — closed by the user: a warning before every merge instead | — |
 | ✓ | **15.** Animal re-ID — superseded by 22 | HISTORY 8 |
 | ✓ | **17.** Production and test environments (decided 09/10) | ARQUITETURA 18.7 |
@@ -209,7 +209,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **21.** A favourite photo per person (decided 10/10, `v2026.10.10.6`) | ARQUITETURA 17.10 |
 | ✓ | **22.** A Dogs tab: each household teaches its own dogs (decided 10/10, `v2026.10.10.7`); thresholds wait for ~10 named views per dog per lighting | ARQUITETURA 20 |
 | ✓ | **23.** Report a bad detection instead of deleting it, with Undo (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 21 |
-| ✓ | **24.** "Choose the best 40" views; Chosen and Waiting (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 21 |
+| ✓ | **24.** "Choose the best 40" views; Chosen and Waiting (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 17.14 |
 | ✓ | **25.** Residents, notification cases and the Home/Away/Silent modes, the Notifications tab, commands from the phone (decided 12/10, `v2026.10.12`) | ARQUITETURA 22 |
 
 **Waiting for the user's check on the M900:** item 25 — mark the user, Mirana
