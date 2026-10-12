@@ -23,6 +23,7 @@ MODEL_URL = ("https://github.com/ultralytics/assets/releases/download/"
              f"v8.4.0/{MODEL_FILE.name}")
 
 PERSON_CLASS = 0
+DOG_CLASS = 16
 CLASS_NAMES = {0: "person", 14: "bird", 15: "cat", 16: "dog",
                17: "horse", 18: "sheep", 19: "cow"}
 WANTED_CLASSES = tuple(CLASS_NAMES)
@@ -41,6 +42,8 @@ STATIC_CENTRE_TOLERANCE = 12
 STATIC_SIZE_TOLERANCE = 0.30
 STATIC_HITS = 50
 STATIC_TTL = 600.0
+SAME_PERSON_IOU = 0.5
+RECENT_PERSON_SECONDS = 2.0
 
 
 def ensure_model():
@@ -181,6 +184,7 @@ class SubjectDetector:
         self.subjects = []
         self.static = []
         self.cycle = 0
+        self.recent_people = []
         self.trace = None
 
     def _drop(self, reason, subject):
@@ -216,6 +220,11 @@ class SubjectDetector:
                 spot.hits = 0
         return kept
 
+    def _was_person_a_moment_ago(self, box, now):
+        """True when a person box of the last RECENT_PERSON_SECONDS sits where this box is."""
+        return any(now - seen < RECENT_PERSON_SECONDS and iou(box, person) >= SAME_PERSON_IOU
+                   for seen, person in self.recent_people)
+
     def detect(self, frame, motion_boxes, now=None):
         """Return a list of Detection in full-frame pixels.
 
@@ -231,12 +240,17 @@ class SubjectDetector:
         self.last_run = now
 
         minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
+        raw = _raw_detections(self.model, frame)
         found = []
-        for box, confidence, class_id in _raw_detections(self.model, frame):
+        for box, confidence, class_id in raw:
             detection = Detection(*box, confidence, CLASS_NAMES[class_id])
             if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
                 self._drop("animal below confidence", detection)
                 continue
+            if class_id == DOG_CLASS and self._was_person_a_moment_ago(box, now):
+                self._drop("the person's box from a moment ago", detection)
+                class_id = PERSON_CLASS
+                detection = detection._replace(label=CLASS_NAMES[class_id])
             if class_id == PERSON_CLASS and box[3] < minimum_person:
                 self._drop("person too short", detection)
                 continue
@@ -249,6 +263,9 @@ class SubjectDetector:
                 continue
             found.append(detection)
 
+        self.recent_people = [(seen, person) for seen, person in self.recent_people
+                              if now - seen < RECENT_PERSON_SECONDS]
+        self.recent_people += [(now, box) for box, _, class_id in raw if class_id == PERSON_CLASS]
         unique = drop_duplicates(found)
         for subject in found:
             if subject not in unique:
