@@ -70,3 +70,10 @@ def test_the_resident_switch_needs_a_name(client, tmp_path, monkeypatch, kind, g
     page = client.post(route, headers=HEADER, json={"resident": True}).json()
     assert page["resident"] is True
     assert client.get(f"/api/{kind}").json()["named"][0]["resident"] is True
+
+
+def test_find_chat_reads_the_running_poller_instead_of_telegram(client, monkeypatch):
+    monkeypatch.setattr(web.bot, "last_chat", lambda: "77")
+    monkeypatch.setattr(web.notify, "discover_chat", lambda token: pytest.fail("a second reader"))
+    assert client.post("/api/notify/discover", headers=HEADER).json() == {"chat": "77", "error": ""}
+    assert settings.load()["notify_chat"] == "77"

@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, faces, log, web
+from jarvis import ROOT, bot, faces, log, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -340,11 +340,13 @@ def main(argv=None):
     log.to_file()
     core = Core(start_cameras(env))
     web.attach(core)
+    bot.start()
     if open_browser and server is not None:
         webbrowser.open(url)
     try:
         run_headless(core, stop)
     finally:
+        bot.stop()
         web.stop(server)
         core.close()
 

@@ -29,7 +29,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, devices, dogs, faces, modes, notify, reports, settings
+from jarvis import ROOT, archive, bot, devices, dogs, faces, modes, notify, reports, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -816,8 +816,16 @@ def write_settings(request: Request, payload: dict = Body(...)):
 
 @app.post("/api/notify/discover")
 def discover_chat():
-    """Find the chat from the last message sent to the bot, and keep it."""
-    chat, problem = notify.discover_chat(settings.load().get("notify_token") or "")
+    """Find the chat from the last message sent to the bot, and keep it.
+
+    While the command poller runs it is the only reader: a second getUpdates
+    would steal its messages, so the chat comes from what it saw.
+    """
+    seen = bot.last_chat()
+    if seen is None:
+        chat, problem = notify.discover_chat(settings.load().get("notify_token") or "")
+    else:
+        chat, problem = seen, "" if seen else "no message received; send something to the bot first"
     if chat:
         settings.update(notify_chat=chat)
     return {"chat": chat, "error": problem}
