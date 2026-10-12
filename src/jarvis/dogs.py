@@ -75,6 +75,13 @@ class DogGallery(faces.Gallery):
                     changed = True
         return merged
 
+    def guess(self, entry):
+        """The named dog an unnamed crop matches, sure or probable, as a message would say; else None."""
+        found = [r for r in (match(view, self) for view in entry["embeddings"]) if r["dog_id"]]
+        if not found:
+            return None
+        return min(found, key=lambda r: (r["certainty"] != "sure", r["distance"]))["dog_id"]
+
     def add(self, embeddings, thumbnail, crops=None):
         """Add an unnamed dog, then keep only the newest MAX_UNNAMED unnamed ones."""
         dog_id = super().add(embeddings, thumbnail, crops)

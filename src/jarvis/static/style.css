@@ -43,6 +43,7 @@ h1 {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-left: 12px;
 }
@@ -835,4 +836,113 @@ input[role="switch"]:focus-visible {
 
 #modes-table th.active {
   color: var(--text);
+}
+
+.guess-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 20px 0;
+  font-size: 1rem;
+}
+
+.select-all,
+.select-clear {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.person-card .photo {
+  position: relative;
+}
+
+.person-card.selected {
+  border-color: var(--person);
+  box-shadow: 0 0 0 2px var(--person);
+}
+
+.person-card.selected .photo::after {
+  content: "✓";
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--person);
+  color: #000;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+
+.select-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.select-bar[hidden] {
+  display: none;
+}
+
+.select-bar .naming {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+}
+
+.select-bar .select-to {
+  width: auto;
+  margin: 0;
+}
+
+.select-bar .report {
+  width: auto;
+  margin: 0;
+  padding: 5px 10px;
+}
+
+.select-count {
+  font-weight: 600;
+}
+
+.select-to {
+  background: var(--background);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font: inherit;
+}
+
+.list.selecting {
+  padding-bottom: 140px;
+}
+
+@media (max-width: 480px) {
+  .guess-group .people-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .guess-heading {
+    margin: 12px 12px 0;
+  }
 }

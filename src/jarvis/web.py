@@ -56,6 +56,7 @@ SAFE_VIEW = re.compile(r"^[0-9a-f]{12}\.jpg$")
 SAFE_DOG = re.compile(r"^d_[0-9a-f]{8}$")
 SAFE_REPORT = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_[0-9a-f]{6}$")
 NAME_MAX = 60
+BATCH_MAX = 500
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
     "notify_chat": str,
@@ -369,12 +370,53 @@ def _entry_or_404(gallery, entry_id):
 
 
 def _grid(gallery):
-    cards = [_card(e) for e in gallery.people]
+    """Named entries by name, then the unnamed ones, newest first, each with the matcher's guess."""
+    named = [_card(e) for e in gallery.people if e["name"]]
+    unnamed = []
+    for entry in gallery.people:
+        if not entry["name"]:
+            card = _card(entry)
+            card["guess"] = gallery.guess(entry)
+            unnamed.append(card)
     return {
-        "named": sorted((c for c in cards if c["name"]), key=lambda c: c["name"].casefold()),
-        "unnamed": sorted((c for c in cards if not c["name"]),
-                          key=lambda c: c["first_seen"], reverse=True),
+        "named": sorted(named, key=lambda c: c["name"].casefold()),
+        "unnamed": sorted(unnamed, key=lambda c: c["first_seen"], reverse=True),
     }
+
+
+def _ids(gallery, payload):
+    """The entries a batch request names: a non-empty list of well-formed ids."""
+    safe = SAFE_DOG if gallery.id_prefix == "d" else SAFE_PERSON
+    ids = payload.get("ids")
+    if (not isinstance(ids, list) or not 0 < len(ids) <= BATCH_MAX
+            or not all(isinstance(i, str) and safe.match(i) for i in ids)):
+        raise HTTPException(400, f"ids: a list of 1 to {BATCH_MAX} entries")
+    return ids
+
+
+def _assign(gallery, payload):
+    """Join many unnamed entries to a named one ("to") or to a name ("name") at once."""
+    ids = _ids(gallery, payload)
+    target, name = payload.get("to"), payload.get("name")
+    if (target is None) == (name is None):
+        raise HTTPException(400, "either to (a named entry) or name")
+    if name is not None and (not isinstance(name, str) or not name.strip()
+                             or len(name.strip()) > NAME_MAX):
+        raise HTTPException(400, f"a name of 1 to {NAME_MAX} characters")
+    if target is not None:
+        _entry_or_404(gallery, target)
+    result = gallery.assign(ids, target, name or "")
+    if result is None:
+        raise HTTPException(409, "nothing to join: the entries were merged or reported meanwhile")
+    return result
+
+
+def _report_many(gallery, payload):
+    """Report many unnamed entries as bad detections, one report each; the gone ones are skipped."""
+    reported, gone = [], []
+    for entry_id in dict.fromkeys(_ids(gallery, payload)):
+        (reported if reports.report_entry(gallery, entry_id) else gone).append(entry_id)
+    return {"reported": reported, "gone": gone}
 
 
 def _page(gallery, entry_id):
@@ -618,6 +660,18 @@ def keep_person_spread(person_id: str, payload: dict = Body(...)):
     return _keep_spread(faces.Gallery(), person_id, payload)
 
 
+@app.post("/api/persons/assign")
+def assign_persons(payload: dict = Body(...)):
+    """Join the selected unnamed faces to a named person, or to a new name."""
+    return _assign(faces.Gallery(), payload)
+
+
+@app.post("/api/persons/report")
+def report_persons(payload: dict = Body(...)):
+    """Report the selected unnamed faces as bad detections."""
+    return _report_many(faces.Gallery(), payload)
+
+
 @app.post("/api/persons/{person_id}/report")
 def report_person(person_id: str):
     """Say an unnamed face is not a face: it leaves the gallery and is kept as a report."""
@@ -692,6 +746,18 @@ def dog_spread(dog_id: str):
 @app.post("/api/dogs/{dog_id}/spread")
 def keep_dog_spread(dog_id: str, payload: dict = Body(...)):
     return _keep_spread(dogs.DogGallery(), dog_id, payload)
+
+
+@app.post("/api/dogs/assign")
+def assign_dogs(payload: dict = Body(...)):
+    """Join the selected unnamed crops to a named dog, or to a new name."""
+    return _assign(dogs.DogGallery(), payload)
+
+
+@app.post("/api/dogs/report")
+def report_dogs(payload: dict = Body(...)):
+    """Report the selected unnamed crops as bad detections."""
+    return _report_many(dogs.DogGallery(), payload)
 
 
 @app.post("/api/dogs/{dog_id}/report")

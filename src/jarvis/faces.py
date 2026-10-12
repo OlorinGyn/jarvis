@@ -663,6 +663,55 @@ class Gallery:
             self.save()
         return merged
 
+    def assign(self, ids, target_id=None, full_name=""):
+        """Join many unnamed entries to a named one, or to a name, under one lock and one save.
+
+        With full_name and no entry by that name, the first unnamed entry still
+        there takes the name and the others join it. An id that is no longer an
+        unnamed entry was merged, named or reported meanwhile: it is skipped and
+        listed as gone. Returns None when there is nothing to join to.
+        """
+        full_name = full_name.strip()
+        with _GALLERY_LOCK:
+            self.load()
+            sources, gone, joined = [], [], []
+            for entry_id in dict.fromkeys(ids):
+                entry = self.get(entry_id)
+                if entry is None or entry["name"]:
+                    gone.append(entry_id)
+                else:
+                    sources.append(entry)
+            if target_id is not None:
+                target = self.get(target_id)
+                if target is None or not target["name"]:
+                    return None
+            else:
+                target = self.by_name(full_name)
+                if target is None:
+                    if not sources or not full_name:
+                        return None
+                    target = sources.pop(0)
+                    target["name"] = full_name
+                    joined.append(target["id"])
+            for source in sources:
+                self._merge(source, target)
+                joined.append(source["id"])
+            absorbed = self._absorb(target)
+            self.save()
+        return {"id": target["id"], "name": target["name"], "joined": joined,
+                "gone": gone, "absorbed": absorbed}
+
+    def guess(self, entry):
+        """The named person an unnamed entry looks like, or None: a hint for the page, never a name."""
+        best_id, best_score = None, MATCH_THRESHOLD
+        for person in self.people:
+            if not person["name"]:
+                continue
+            score = max((_similarity(person, e) for e in entry["embeddings"]), default=0.0)
+            if score >= best_score:
+                best_id, best_score = person["id"], score
+        return best_id
+
     def _absorb(self, person):
         """Fold in unnamed identities that clearly look like this person."""
         merged = 0

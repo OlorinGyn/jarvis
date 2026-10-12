@@ -361,7 +361,13 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const spreadBox = section.querySelector(".spread");
   const residentToggle = section.querySelector(".resident-toggle");
   const residentBox = residentToggle.querySelector("input");
+  const selectBar = section.querySelector(".select-bar");
+  const selectTo = selectBar.querySelector(".select-to");
+  const selectName = selectBar.querySelector(".select-name");
+  const chosen = new Set();
   let named = [];
+  let order = [];
+  let anchor = null;
   let proposal = null;
 
   function selected() {
@@ -418,6 +424,13 @@ function galleryTab(section, api, kind, unnamedLabel) {
       select.remove();
       return node;
     }
+    const article = node.querySelector("article");
+    article.dataset.id = entry.id;
+    article.classList.toggle("selected", chosen.has(entry.id));
+    link.addEventListener("click", (clicked) => {
+      clicked.preventDefault();
+      pick(entry.id, clicked.shiftKey);
+    });
     const input = form.querySelector("input");
     input.placeholder = section.querySelector(".rename-form input").placeholder;
     const report = document.createElement("button");
@@ -461,6 +474,73 @@ function galleryTab(section, api, kind, unnamedLabel) {
     return node;
   }
 
+  function showSelection() {
+    for (const article of unnamedGrid.querySelectorAll("article")) {
+      article.classList.toggle("selected", chosen.has(article.dataset.id));
+    }
+    selectBar.hidden = chosen.size === 0;
+    list.classList.toggle("selecting", chosen.size > 0);
+    selectBar.querySelector(".select-count").textContent = `${chosen.size} selected`;
+    selectTo.hidden = named.length === 0;
+  }
+
+  function pick(id, range) {
+    if (range && anchor !== null && order.includes(anchor)) {
+      const [from, to] = [order.indexOf(anchor), order.indexOf(id)].sort((a, b) => a - b);
+      for (const other of order.slice(from, to + 1)) chosen.add(other);
+    } else if (chosen.has(id)) {
+      chosen.delete(id);
+    } else {
+      chosen.add(id);
+    }
+    anchor = id;
+    showSelection();
+  }
+
+  function clearSelection() {
+    chosen.clear();
+    anchor = null;
+    showSelection();
+  }
+
+  function guessGroups(unnamed) {
+    const names = new Map(named.map((entry) => [entry.id, entry.name]));
+    const groups = new Map();
+    for (const entry of unnamed) {
+      const key = names.has(entry.guess) ? entry.guess : "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(entry);
+    }
+    return [...groups].sort(([a, first], [b, second]) =>
+      (a === "") - (b === "") || second.length - first.length
+    ).map(([key, entries]) => ({
+      title: key ? `Looks like ${names.get(key)}` : "No guess",
+      entries,
+    }));
+  }
+
+  function groupBox(group) {
+    const box = document.createElement("div");
+    box.className = "guess-group";
+    const heading = document.createElement("h3");
+    heading.className = "heading guess-heading";
+    heading.textContent = `${group.title} (${group.entries.length}) `;
+    const all = document.createElement("button");
+    all.type = "button";
+    all.className = "select-all";
+    all.textContent = "Select all";
+    all.addEventListener("click", () => {
+      for (const entry of group.entries) chosen.add(entry.id);
+      showSelection();
+    });
+    heading.append(all);
+    const grid = document.createElement("div");
+    grid.className = "people-grid";
+    grid.replaceChildren(...group.entries.map(card));
+    box.append(heading, grid);
+    return box;
+  }
+
   async function loadList() {
     let data;
     try {
@@ -472,11 +552,70 @@ function galleryTab(section, api, kind, unnamedLabel) {
     named = data.named;
     namedGrid.replaceChildren(...data.named.map(card));
     if (data.named.length === 0) showNotice(namedGrid, `No ${kind} is named yet: name one below.`);
-    unnamedGrid.replaceChildren(...data.unnamed.map(card));
+    const groups = guessGroups(data.unnamed);
+    order = groups.flatMap((group) => group.entries.map((entry) => entry.id));
+    for (const id of [...chosen]) if (!order.includes(id)) chosen.delete(id);
+    unnamedGrid.replaceChildren(...groups.map(groupBox));
     if (data.unnamed.length === 0) showNotice(unnamedGrid, "Nothing unnamed.");
     section.querySelector(".unnamed-count").textContent =
       data.unnamed.length ? `(${data.unnamed.length})` : "";
+    selectTo.replaceChildren(new Option("Assign to…", ""),
+      ...named.map((entry) => new Option(entry.name, entry.id)));
+    showSelection();
   }
+
+  function describeBatch(result) {
+    const parts = [`${result.name}: ${plural(result.joined.length, "photo", "photos")} joined`];
+    if (result.absorbed) parts.push(`${plural(result.absorbed, "look-alike", "look-alikes")} gathered`);
+    if (result.gone.length) parts.push(`${result.gone.length} already gone`);
+    return parts.join(", ");
+  }
+
+  async function assign(payload, target) {
+    const count = plural(chosen.size, "photo", "photos");
+    if (!confirm(`Join ${count} to ${target}? A merge cannot be undone.`)) return false;
+    try {
+      listResult.textContent = describeBatch(await send(`${api}/assign`, { ids: [...chosen], ...payload }));
+      clearSelection();
+    } catch (problem) {
+      listResult.textContent = `Not saved: ${problem.message}`;
+    }
+    loadList();
+    return true;
+  }
+
+  selectTo.addEventListener("change", async () => {
+    const target = selectTo.value;
+    if (!target) return;
+    await assign({ to: target }, selectTo.selectedOptions[0].textContent);
+    selectTo.value = "";
+  });
+
+  selectName.addEventListener("submit", async (submitted) => {
+    submitted.preventDefault();
+    const input = selectName.querySelector("input");
+    const name = input.value.trim();
+    if (!name) return;
+    if (await assign({ name }, name)) input.value = "";
+  });
+
+  selectBar.querySelector(".select-report").addEventListener("click", async () => {
+    const what = kind === "dog" ? "dog" : "face";
+    const count = plural(chosen.size, "photo", "photos");
+    if (!confirm(`Report ${count} as bad detections? Each is not a ${what}: it leaves the gallery and is kept as a report.`)) return;
+    try {
+      const result = await send(`${api}/report`, { ids: [...chosen] });
+      listResult.textContent = `Reported ${plural(result.reported.length, "photo", "photos")}` +
+        (result.gone.length ? `, ${result.gone.length} already gone` : "") +
+        ": each is kept as an example of a bad detection.";
+      clearSelection();
+    } catch (problem) {
+      listResult.textContent = `Not reported: ${problem.message}`;
+    }
+    loadList();
+  });
+
+  selectBar.querySelector(".select-clear").addEventListener("click", clearSelection);
 
   function tileButton(tile, className, symbol, title, action) {
     const button = document.createElement("button");

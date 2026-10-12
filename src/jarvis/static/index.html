@@ -44,8 +44,18 @@
       <p class="result heading-hint list-result"></p>
       <main class="people-grid named-grid"></main>
       <h2 class="heading">Unnamed faces <span class="unnamed-count"></span></h2>
-      <p class="hint heading-hint">Type a name, or pick who the face belongs to. Giving two faces the same name merges them.</p>
-      <main class="people-grid unnamed-grid"></main>
+      <p class="hint heading-hint">Type a name, or pick who the face belongs to. Giving two faces the same name merges them. Tap photos to select many and name them at once.</p>
+      <div class="unnamed-grid"></div>
+      <div class="select-bar" hidden>
+        <span class="select-count"></span>
+        <select class="select-to"><option value="">Assign to…</option></select>
+        <form class="naming select-name">
+          <input maxlength="60" autocomplete="off" placeholder="or a new name">
+          <button type="submit">Save</button>
+        </form>
+        <button type="button" class="report select-report">Bad detection</button>
+        <button type="button" class="select-clear">Clear</button>
+      </div>
     </div>
     <div class="page" hidden>
       <nav class="toolbar">
@@ -88,8 +98,18 @@
       <p class="result heading-hint list-result"></p>
       <main class="people-grid named-grid"></main>
       <h2 class="heading">Unnamed dogs <span class="unnamed-count"></span></h2>
-      <p class="hint heading-hint">Name each crop, or pick which dog it is. Naming a few of each dog, by day and at night, teaches the system to tell them apart.</p>
-      <main class="people-grid unnamed-grid"></main>
+      <p class="hint heading-hint">Name each crop, or pick which dog it is. Naming a few of each dog, by day and at night, teaches the system to tell them apart. Tap photos to select many and name them at once.</p>
+      <div class="unnamed-grid"></div>
+      <div class="select-bar" hidden>
+        <span class="select-count"></span>
+        <select class="select-to"><option value="">Assign to…</option></select>
+        <form class="naming select-name">
+          <input maxlength="60" autocomplete="off" placeholder="or a new name">
+          <button type="submit">Save</button>
+        </form>
+        <button type="button" class="report select-report">Bad detection</button>
+        <button type="button" class="select-clear">Clear</button>
+      </div>
     </div>
     <div class="page" hidden>
       <nav class="toolbar">
