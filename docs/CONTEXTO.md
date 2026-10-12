@@ -10,6 +10,7 @@ It is the brief; the past lives in `HISTORY.md`, read on demand.
 | `INSTALACAO.md` | Installing and running on a new machine, troubleshooting |
 | `PYTHON.md` | Python and the libraries, for someone coming from Java and C# |
 | `HISTORY.md` | Bugs already fixed, old measurements, every review in full, closed recommendations, old usage rows |
+| `PENDING.md` | What is not work yet: what waits for the user, open discussions, decisions not yet carried out |
 | **this file** | The rules, the current state, the backlog, the open recommendations, the plan |
 
 Section numbers here are stable on purpose: `CLAUDE.md`, the `dev` skill and
@@ -532,7 +533,8 @@ Smart App Control, passed on both machines: HISTORY 12.2.)
 Then tell the user: where the work stopped, what comes next and whether a
 precondition failed. Never ask them to run something you could run. Read the
 **open** recommendations (13.4): high-priority ones come before the next
-backlog item unless the user says otherwise. **If 14.4 holds a planned session
+backlog item unless the user says otherwise. The architect also reads
+`PENDING.md`: what waits for the user goes into the answer. **If 14.4 holds a planned session
 for your role, that is the plan** — the architect wrote it with the order and
 the reasons. Follow it, and say so when you deviate.
 
@@ -732,11 +734,7 @@ cameras ok 3 s after the start; no `Telegram commands:` trouble logged). As
 the user set it: no hand back. Weekly usage 94 % after review 15, with the
 reset on 14/10 at 16:00; above 90 % the cycle stops anyway.
 
-**Waiting for the user:**
-
-- **Backlog 25's acceptance on the M900** (section 8). Until then production
-  behaves as before: Away, people only.
-- **R42**: accept the corner, or count people with YOLO (recommended).
+**Waiting for the user:** moved to `PENDING.md` (12/10/2026).
 
 **Developer 14 (planned 12/10, after the user's three requests):** in this
 order — **R44** (high: the user captured as a dog), **backlog 26** (select
