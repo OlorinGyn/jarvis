@@ -194,8 +194,9 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
 
     Faces are announced each by its case. With no face, the side view, else
     the best view, is the faceless-person case: a follow-up after a sent
-    event, as before; or, when the person was held, the person message
-    itself, which then answers to the camera's cooldown like a first message.
+    event, as before, held or not; or, when the person was held and nothing
+    of the event went out, the person message itself, which then answers to
+    the camera's cooldown like a first message.
     """
     settings = settings or load()
     if not configured(settings):
@@ -211,7 +212,7 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     if not modes.allowed("faceless_person", settings):
         logger.info("Notification %s no face: skipped: %s mode", camera, modes.mode_of(settings))
         return 0
-    if held:
+    if held and not notified:
         if not _cooled_down(camera, settings):
             logger.info("Notification %s no face: skipped: cooldown", camera)
             return 0

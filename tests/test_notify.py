@@ -188,6 +188,14 @@ def test_a_held_resident_sends_nothing_and_a_stranger_claims_the_camera(sent, be
                             {**HOME, "notify_modes": modes.defaults(["person", "dog"])})[0]
 
 
+def test_a_held_person_with_no_face_is_sent_after_the_dog_message_of_the_same_event(sent, best):
+    home = {**HOME, "notify_modes": modes.defaults(["person", "dog"])}
+    assert notify.event("Front", [("person", None), ("unidentified dog", "other_dog")], None,
+                        home) == (True, True)
+    assert notify.after_scan("Front", START, [], True, True, None, best, home) == 1
+    assert sent[-1] == "Front 12:00:00: no face seen, best view"
+
+
 def test_without_a_hold_the_best_view_only_follows_a_sent_event(sent, best):
     assert notify.after_scan("Front", START, [], False, False, None, best, SETTINGS) == 0
     assert notify.after_scan("Front", START, [], False, True, None, best, SETTINGS) == 1
@@ -209,6 +217,20 @@ def test_the_held_person_message_follows_a_fake_scan(tmp_path, monkeypatch, sent
     clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
                     tmp_path / "12-00-00.best.jpg", held=True)
     assert sent == ["Front 12:00:00: Ana recognized"]
+
+
+class NoSegments(Camera):
+    def covering(self, start, end):
+        return []
+
+
+def test_a_held_person_whose_clip_was_not_assembled_still_gets_the_best_view(tmp_path, monkeypatch,
+                                                                            sent, best):
+    monkeypatch.setattr(notify, "load", lambda: HOME)
+    monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
+    clips._assemble(NoSegments(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
+                    best, held=True)
+    assert sent == ["Front 12:00:00: no face seen, best view"]
 
 
 def frame():

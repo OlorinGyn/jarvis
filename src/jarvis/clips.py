@@ -90,13 +90,16 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     """Wait for the final segment to close, build the clip, then read faces.
 
     When no face was found, the phone gets the side view or the best view of
-    the person instead, so it always ends with a picture of them. When the
-    person was held for the scan, that message is the person's only one.
+    the person instead, so it always ends with a picture of them, even when
+    the clip could not be built. When the person was held for the scan, that
+    message is the person's only one.
     """
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
                                end + timedelta(seconds=POST_SECONDS))
     if not segments:
+        if "person" in labels:
+            notify.after_scan(camera.label, start, [], held, notified, None, best_view)
         return
     _concat(segments, destination)
     found = []
