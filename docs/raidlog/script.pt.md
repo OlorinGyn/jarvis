@@ -854,3 +854,67 @@ verdes.
 espreita: com a fila cheia, um clique mirado numa foto pode cair na vizinha
 (R41). Decretos: "Fotos esperando só fazem sentido se eu puder comparar com as
 escolhidas."
+
+## Edição nº 12 — A Casa Aprende Quem Mora Aqui
+
+`v2026.10.12` · 12 out 2026, manhã
+
+**Quadro 1.** Creme quente, interior. Um celular na mesa soterrado por uma
+pilha de balões de mensagem que transborda para o chão, quase todos dizendo
+"Gustavo recognized". A coruja os conta num pergaminho que se desenrola para
+fora do quadro.
+LEGENDA: Dois dias de produção: 143 mensagens. 34 nomearam um rosto — 21
+delas, o Dono.
+ARQUITETO: A casa vive anunciando quem mora nela.
+
+**Quadro 2.** O castor prende um pequeno distintivo dourado, RESIDENT, em três
+cartões: o do Dono (uma silhueta, nunca desenhado), Mirana (pelo escuro) e
+Aurora (pelo claro).
+DEV: Só quem tem nome. E só conta a certeza — "probably Gustavo" continua
+tocando, porque pode ser outra pessoa.
+
+**Quadro 3.** Um grande painel de interruptores na parede: sete linhas de
+chaves, três colunas com as letras HOME, AWAY, SILENT. A coluna HOME está
+acesa.
+O DONO: Pessoa sem rosto reconhecível avisa em casa também. Um estranho no
+escuro tem que chegar ao celular.
+DEV: A gravação nunca muda. O modo só decide o que chega ao celular.
+
+**Quadro 4.** Quadro dividido. À esquerda: um cachorro entra e um cronômetro
+marca 0,1 s, uma plaquinha já na coleira: AURORA. À direita: uma pessoa entra,
+e o drone Front leva o clipe para uma bancada com uma ampulheta em cima.
+DEV: O cachorro tem nome desde o primeiro frame. A pessoa, só depois que o
+clipe é varrido. Então, em Home, a mensagem da pessoa espera a varredura.
+
+**Quadro 5.** Noite, azul profundo. A mão do Dono (só a mão) digita `/away` no
+celular. Uma longa linha de pesca vai da antena do J.A.R.V.I.S. até uma nuvem
+marcada TELEGRAM; a linha dá um puxão, e a lâmpada do painel salta para AWAY.
+DEV: Nenhuma porta aberta. A gente pergunta, e o Telegram segura a linha até
+chegar alguma coisa.
+CHEFÃO (uma segunda linha de pesca, enroscada na primeira): DOIS LEITORES?
+409!
+
+**Quadro 6.** Vermelho escuro. A coruja, lanterna erguida, encontra um chefão
+em forma de relógio sentado na vaga de mensagem da câmera. Atrás dele, uma
+figura apagada, sem rosto, espera na porta sem ser anunciada; um balão do
+cachorro já voou para o celular.
+CHEFÃO (o relógio): O CACHORRO PEGOU A VAGA. VOLTE DAQUI A DOIS MINUTOS.
+ARQUITETO: Mesmo evento, mesma visita. A mensagem da pessoa é continuação — o
+intervalo vale para o próximo evento, não para este. E se o clipe não montar,
+a melhor vista vai mesmo assim.
+
+**Quadro 7.** A página de pessoa da edição nº 11, com a fila cheia. Um cursor
+mira o × numa foto enquanto um drone enfia uma foto nova, empurrando a fileira
+um passo para a esquerda. O × agora leva uma etiqueta com nome; o servidor
+ergue uma placa: 409.
+DEV: A página diz qual foto viu. Se ela mudou de lugar, nada é apagado — a
+página recarrega.
+
+**Cartão final.** Habilidades: **Morador** (backlog 25a) · **Home, Away,
+Silent** (25b–d) · **O Painel de Interruptores** — a aba Notifications (25e) ·
+**Comandos do Celular** (25f) · **O Clique com Nome** (R41). Chefões
+derrotados: **O Intervalo Emprestado** · **O Silêncio do Clipe Perdido** ·
+**A Vizinha que Escorrega** (R41). À espreita: em casa, o Dono sai com alguém
+cujo rosto nunca aparece — e a varredura, achando só o Dono, não diz nada
+(R42); e duas mãos escrevendo o `config.json` no mesmo instante (R43).
+Decretos: "Um estranho no escuro tem que chegar ao celular."

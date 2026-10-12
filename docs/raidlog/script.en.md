@@ -823,3 +823,63 @@ ARCHITECT: Then the signed Python runs the tests itself. Ninety-two, green.
 Waiting is full, a click aimed at one photo can land on its neighbour (R41).
 Decrees: "Waiting photos only make sense if I can compare them with the chosen
 ones."
+
+## Issue #12 — The House Learns Who Lives Here
+
+`v2026.10.12` · 12 Oct 2026, morning
+
+**Panel 1.** Warm cream, indoors. A phone on the table buried under a pile of
+message bubbles spilling onto the floor, most of them reading "Gustavo
+recognized". The owl counts them with a scroll that unrolls off the panel.
+CAPTION: Two days of production: 143 messages. 34 named a face — 21 of them
+the Owner.
+ARCHITECT: The house keeps announcing the people who live in it.
+
+**Panel 2.** The beaver pins a small gold badge, RESIDENT, on three cards: the
+Owner's (a silhouette, never drawn), Mirana (dark fur) and Aurora (light fur).
+DEV: Named entries only. And only a sure match counts — "probably Gustavo"
+still rings, because that might be someone else.
+
+**Panel 3.** A big switchboard on the wall: seven rows of switches, three
+columns lettered HOME, AWAY, SILENT. The HOME column is lit.
+THE OWNER: A person with no recognisable face notifies at home too. A stranger
+in the dark must reach the phone.
+DEV: Recording never changes. A mode only decides what reaches the phone.
+
+**Panel 4.** Split panel. Left: a dog walks in and a stopwatch reads 0.1 s,
+a tag already on its collar: AURORA. Right: a person walks in, and the drone
+Front carries the clip off to a workbench with an hourglass on it.
+DEV: A dog has a name from the first frame. A person only after the clip is
+scanned. So in Home, the person's message waits for the scan.
+
+**Panel 5.** Night, deep blue. The Owner's hand (only the hand) types `/away`
+on the phone. A long fishing line runs from J.A.R.V.I.S.'s antenna up to a
+cloud marked TELEGRAM; the line twitches, and the lamp on the switchboard jumps
+to AWAY.
+DEV: No port opened. We ask, and Telegram holds the line until something
+arrives.
+BOSS (a second fishing line, tangled in the first): TWO READERS? 409!
+
+**Panel 6.** Dark red. The owl, lantern raised, finds a clock-shaped boss
+sitting on the camera's message slot. Behind it, a dim figure with no face
+waits at the door, unannounced; a dog bubble has already flown off to the
+phone.
+BOSS (the clock): THE DOG TOOK THE SLOT. COME BACK IN TWO MINUTES.
+ARCHITECT: Same event, same visit. The person's message is a follow-up — the
+cooldown is for the next event, not this one. And if the clip fails to build,
+the best view still goes.
+
+**Panel 7.** The person page from issue #11, Waiting full. A cursor aims × at
+one photo while a drone slides a new photo in, pushing the row one step left.
+The × now carries a little name tag; the server holds up a sign: 409.
+DEV: The page says which photo it saw. If it moved, nothing is deleted — the
+page reloads.
+
+**Closing card.** Abilities: **Resident** (backlog 25a) · **Home, Away,
+Silent** (25b–d) · **The Switchboard** — the Notifications tab (25e) ·
+**Commands from the Phone** (25f) · **The Named Click** (R41). Bosses
+defeated: **The Borrowed Cooldown** · **The Silent Failed Clip** · **The
+Shifting Neighbour** (R41). Lurking: at home, the Owner walks out with someone
+whose face is never seen — and the scan, finding only the Owner, says nothing
+(R42); and two hands writing `config.json` at the same instant (R43). Decrees:
+"A stranger in the dark must reach the phone."

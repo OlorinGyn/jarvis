@@ -462,6 +462,7 @@ Written in English (CLAUDE.md, language). How it works and why: ARQUITETURA
 | Cameras | `stream1`, 1080p, records in HD | `stream2`, 640x360 |
 | Page | `http://127.0.0.1:8765` (from another computer: `http://192.168.0.18:8765`) | `http://127.0.0.1:8766` |
 | Telegram | on | off, prefix `[TEST]` |
+| Commands from the phone (`/home`, `/away`…) | read by a thread, the only reader of the bot | none: no token, so the reader only sleeps |
 | Desktop | **J.A.R.V.I.S.** opens it | **J.A.R.V.I.S. (test)** starts it |
 
 Both can run at once: the camera serves `stream1` to one client and `stream2` to
@@ -478,6 +479,8 @@ settings — a name given in the test copy does not reach production.
 | Start it again | `... -Action start` |
 | Are the recordings still readable? | `... -Action check` |
 | What happened? | `C:\JARVIS\logs\jarvis.log` |
+| Change what reaches the phone | the page's **Notifications** tab, or `/home`, `/away`, `/silent` to the bot (ARQUITETURA 22) |
+| Set up or check Telegram | the **Notifications** tab: token, Find chat, Send test (ARQUITETURA 12.6) |
 
 Stopping production any other way (Task Manager, ending the task) skips the
 clean shutdown, and a clip being assembled at that moment is lost. Within

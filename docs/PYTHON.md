@@ -1092,3 +1092,131 @@ On the page, the Settings list fills each report's "Actually…" choice with
 `new Option(text, value)`, the DOM's shortcut for creating an `<option>`
 element: `select.append(new Option("dog", "dog"))` is the one-line form of
 `createElement("option")` and setting its text and value.
+
+## 27. Long polling, one reader, and a sleep that can be interrupted
+
+The Telegram bot (`bot.py`, ARQUITETURA 22.5) has to learn about a `/home`
+typed on the phone within a second or so, without opening a port on the
+M900. A **webhook** would need Telegram to connect *to* us; **long polling**
+turns it around — we connect to Telegram and ask, and Telegram holds the
+request open until there is something to say:
+
+```python
+fields = {"timeout": LONG_POLL_SECONDS,
+          "allowed_updates": json.dumps(["message", "callback_query"])}
+if self.offset is not None:
+    fields["offset"] = self.offset
+payload, problem = self.call(token, "getUpdates", fields, LONG_POLL_SECONDS + 10)
+```
+
+`timeout=50` goes to Telegram: "wait up to 50 s for a message before
+answering empty". The last argument is *our* timeout for the HTTP request, ten
+seconds longer, so a slow answer is not mistaken for a dead connection. The
+loop around it is the Java `BlockingQueue.take()` idea, stretched over HTTP:
+the thread sits blocked inside `requests.post` and wakes when a message
+arrives.
+
+`offset` is how Telegram knows what we have already read. Each update has an
+`update_id`; asking with `offset = last id + 1` confirms everything before it,
+and Telegram forgets those. That is also why **only one program may read a
+bot**: whoever asks first takes the update, and the other never sees it —
+Telegram answers the second reader **409 Conflict**. So Find chat, on the web
+page, no longer asks Telegram itself; it asks the running poller what chat it
+saw last.
+
+When something goes wrong the poller waits, longer each time — 5 s, 10, 20…
+up to 5 minutes (**exponential backoff**). The wait is not `time.sleep`:
+
+```python
+def _wait_after(self, problem, seconds=None):
+    if problem != self.trouble:
+        logger.warning("Telegram commands: %s", problem)
+        self.trouble = problem
+    wait = seconds or self.backoff
+    self.backoff = min(self.backoff * 2, MAX_BACKOFF)
+    self.stopping.wait(wait)
+```
+
+`self.stopping` is a `threading.Event` (section 24). `wait(seconds)` sleeps
+until the time passes **or** someone calls `stopping.set()`, whichever comes
+first — Java's `CountDownLatch.await(timeout)`, C#'s
+`ManualResetEventSlim.Wait(timeout)`. So `stop()` wakes the thread at once
+instead of leaving it asleep for five minutes. The `if problem != self.trouble`
+line is the "log once" rule: a network outage that lasts an hour writes one
+warning, not seventy.
+
+`seconds or self.backoff` uses `or` to pick a value, not a boolean: it
+returns the left side if it is truthy, else the right — C#'s `seconds ??
+backoff`, except that `0` and `""` count as missing too.
+
+A function that returns two things returns a **tuple**:
+
+```python
+def _api(token, method, fields, timeout):
+    ...
+    return response.json(), ""
+    ...
+    return None, _redact(str(problem), token)
+
+payload, problem = _api(...)
+```
+
+`return a, b` builds a tuple and `x, y = ...` unpacks it — C#'s
+`(var payload, var problem) = Api(...)`. `notify.event` does the same and
+returns `(sent, held)`.
+
+## 28. Optimistic concurrency: send what you saw (R41)
+
+A person's page shows the views as a grid, and × deletes "view number 7". But
+between loading the page and the click, a face scan can drop the oldest
+waiting view, and number 7 is now the photo that was number 8. Locking the
+gallery while the user looks at a page is not an option. The fix is the one
+databases use:
+
+```python
+def _check_view(views, index, expected):
+    if expected is not None and 0 <= index < len(views):
+        if (Path(views[index]).name if views[index] else "") != expected:
+            raise ViewsChanged()
+```
+
+The page sends the index **and** the name of the photo it showed there; the
+server checks, under the gallery lock, that it is still that photo, and
+refuses with 409 if not. The page then reloads and the user clicks again. It
+is the same idea as an HTTP `If-Match` with an ETag, or a `[Timestamp]` row
+version in Entity Framework: nobody waits for anybody, and a change made on
+stale information is refused instead of applied to the wrong thing. It is
+called *optimistic* because it assumes conflicts are rare and only pays when
+one happens.
+
+The check runs **inside** `with _GALLERY_LOCK:`, in the same block as the
+change. Checking first and changing in a second step would leave a gap for
+the scan to slip into — the same lesson as section 26.
+
+`ViewsChanged` is an exception class with no body but its docstring:
+
+```python
+class ViewsChanged(Exception):
+    """The view at a position is no longer the one the page showed there (R41)."""
+```
+
+The docstring is enough to make a valid class body, so no `pass` is needed.
+The web route turns it into the 409 with `except faces.ViewsChanged: raise
+HTTPException(409, ...)` — a typed exception crossing layers, as in Java.
+
+## 29. A checkbox drawn as a switch
+
+The Notifications tab has 21 on/off switches. They are plain checkboxes:
+
+```html
+<input type="checkbox" role="switch">
+```
+
+`role="switch"` tells screen readers to announce "switch, on" instead of
+"checkbox, checked"; the keyboard (Tab, Space) works because it *is* a form
+control. The look is CSS only: `appearance: none` removes the browser's own
+drawing of the box, the input itself becomes the rounded track, and a
+`::before` pseudo-element — a box CSS adds inside the element, with no HTML
+for it — is the round knob. `:checked::before` moves the knob right with a
+`transform: translateX(...)`, and a `transition` animates it. No library: the
+browser already has the control; only its picture changes.

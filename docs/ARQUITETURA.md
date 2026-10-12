@@ -1787,13 +1787,18 @@ hoje usa `requests` e não importa `certifi` diretamente.
 ### 12.6 Configuração
 
 
-O token tem ~46 caracteres e o HighGUI não tem como colar. Por isso a aba
-Ajustes abre o `config.json` no editor em vez de pedir digitação:
+**Since 12/10/2026 this lives on the web page's Notifications tab** (section
+22.4); the OpenCV window and its config editor are gone (17.10):
 
-1. **Abrir config.json** — cole o token do `@BotFather` em `notify_token`
-2. Mande qualquer mensagem para o bot no Telegram
-3. **Descobrir conversa** — lê o `chat_id` da última mensagem e grava sozinho
-4. **Enviar teste** — confirma que chega no celular
+1. **Bot token** — paste the token from `@BotFather` and save; the page never
+   shows it back, only whether one is set
+2. Send any message to the bot in Telegram
+3. **Find chat** — takes the chat of the last message the bot received and
+   saves it. While production's command poller runs, the chat comes from what
+   the poller saw, since a second reader would steal its messages (22.5)
+4. **Send test** — confirms it reaches the phone
+
+What is sent, and when, is the active mode's switches on the same tab (22.2).
 
 O `config.json` não é versionado, e o token é uma credencial: quem o tiver pode
 mandar mensagens pelo seu bot.
@@ -2805,14 +2810,14 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (section 21) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
-| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10) |
-| `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
+| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
+| `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per stored or queued view |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
 | `reports/<kind>/<stem>.json` + `.jpg` | `reports._write` | Settings → Bad-detection reports, `check_data`, each review | **since 11/10/2026** (section 21): `kind`, `verdict`, `source`, `reported_at`, `label`, `camera`, `at`, `time`, `clip`, `score`, `box`, `crop`; a gallery report adds `entry` and `sightings`, an event report `event`. **Optional since 11/10 (R38, R37):** `entry` holds the whole gallery entry (older reports: only `id`, `first_seen`, `embeddings`), `sighting_files`, `actually` |
 | `reports/<kind>/<stem>/` | `reports._keep_copies` | Undo | **since 11/10/2026 (R38)**: copies of the entry's view photos (`<12hex>.jpg`) and of its sightings' crops (`HH-MM-SS_<id>.jpg`); absent in older reports |
 | `devices.json` | `web` (pairing) | the write guard | **since 11/10/2026 (R34)**: each paired device's token SHA-256 hash, label and last use |
-| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10). Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10); `notify_mode` and `notify_modes` **since 12/10/2026** (22.2), written whole once this version saves any setting; `notify_labels` is still read, to build the default switches. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
 | `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
 | `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
 | `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |
@@ -2861,7 +2866,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, moves between Chosen and Waiting, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), and the notification rules (`test_notify.py`: redaction, labels, both cooldowns). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, moves between Chosen and Waiting, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALACAO 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -2936,8 +2941,166 @@ crops to events recorded before the feature (~21 s per event on the M900).
 
 **What did not change, on purpose.** R35: the five boxes a lower ratio (1.5) would drop were all people — crouching at the door, bending, sitting below the camera — so R18 stays at 2.0, and the rare curled-up dog is left to the bad-detection reports. R30 (b): side faces of the one named person match 55–100 % of the time, but with a single named person nothing shows a stranger's side face would not match too, so the frontal limits stay until a second person is named.
 
-**Chosen and Waiting (R40, 11/10/2026).** The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the queue (up to 100) of views seen after Chosen was full, which recognise nobody. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping the oldest waiting photo as a scan does, since the user did not ask for that. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list (R41).
+**Chosen and Waiting (R40, 11/10/2026).** The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the queue (up to 100) of views seen after Chosen was full, which recognise nobody. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping the oldest waiting photo as a scan does, since the user did not ask for that. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
 
 **A report can be undone, and can say what it was (R38, R37, 11/10/2026).** Settings lists every report, newest detection first, with its crop, verdict, camera, time and origin, and two controls. **Undo** puts back what the report took: a gallery report returns the entry to its gallery as it left — views, waiting views, favourite, first seen — copies its view photos back to `views/` and its sightings (JSON and crop) to their day folders; an event report takes the label out of `reported_labels`, so the card shows it again (refused with 409 when the recording was archived off this computer). The report is then deleted. For that, a report now keeps the whole entry, the sighting file names (`sighting_files`) and copies of every photo in `reports/<kind>/<stem>/` — the old `take_out` deleted the view photos, leaving nothing to restore. The two reports written before (production, 10/10) undo too: embeddings and sightings come back, and the report's crop stands in for every photo — as the view when the entry had one view, which both have, else as the entry's thumbnail. **Actually…** is an optional choice per report — person, dog, other animal, nothing, minus the label the detector gave — stored as `actually`; it is set in the list rather than at report time, so it works for reports already made and the report button stays one click. Reports remain evidence, never trained on.
 
 **A report holds exactly what left the gallery (R36).** The first version copied the entry, wrote the report (slow: files copied), then removed the entry by id — a view a scan added in between was removed with the entry, its photo deleted, and in no report. Now `Gallery.take_out` removes the entry **under the gallery lock and returns it**, the report is written from that object, the photos copied, and only then deleted (`forget_views`); if writing raises, `put_back` returns the entry. A scan that matches the entry after it left is refused like any vanished entry. The same idea as Java's `map.remove(key)`, which hands back the removed value, instead of `get` followed by `remove` (PYTHON 26).
+
+---
+
+## 22. Residents, notification modes and commands from the phone (12/10/2026)
+
+Backlog 25, decided by the user on 12/10/2026 and built in developer session
+13. The reason was counted in production's log: from 10/10 01:16 to 12/10,
+143 messages, 73 of them "person" at the start of an event and 34 naming a
+face — 21 of those the user. Being told hundreds of times that the people who
+live here walk around the house is noise; a mode decides what reaches the
+phone, and **recording never changes**.
+
+### 22.1 The Resident tag
+
+A named person or dog can be marked **Resident** on its page (the switch is
+hidden while the entry has no name). Stored as an optional `"resident": true`
+on the entry in `faces/gallery.json` or `dogs/gallery.json`, and removed —
+not set to `false` — when switched off. A plain rename keeps it; a merge makes
+the target a resident when either side was one (`Gallery._merge`). The grid
+card shows a "Resident" badge. The face scan copies the flag into each
+sighting it returns, so the notifier needs no second read of the gallery.
+
+### 22.2 Seven cases, three modes
+
+`modes.py` holds the rules as data. Each message belongs to one **case**:
+
+| Case | When |
+|---|---|
+| `resident_person` | a face matched **for sure** (score ≥ `LEARN_THRESHOLD`) to a person marked Resident |
+| `known_person` | any other named face, and any "probably …" match — even of a resident |
+| `unknown_face` | a face with no name |
+| `faceless_person` | a person with no recognisable face: the side-view or best-view message |
+| `resident_dog` | a dog matched for sure to a dog marked Resident |
+| `other_dog` | any other dog: probable, another name, unidentified |
+| `other_animal` | cats, birds and every other animal label |
+
+Only a sure match counts as a resident, on purpose: a stranger who looks a
+little like the user gets "probably Gustavo", and that must never be silenced.
+If the dog matching fails, the dog is `other_dog`, never the resident.
+
+One **mode** is active — **Home**, **Away** or **Silent** — and each mode has
+its own switch per case, all editable. The defaults:
+
+| | Away | Home | Silent |
+|---|---|---|---|
+| Person cases | all on | all on except `resident_person` | off |
+| `resident_dog` | from `notify_labels` | off | off |
+| `other_dog` | from `notify_labels` | from `notify_labels` | off |
+| `other_animal` | from `notify_labels` | from `notify_labels` | off |
+
+"From `notify_labels`" means on only if the older setting listed that label —
+production's lists only `person`, so no animal message appears until the user
+turns one on. A person with no recognisable face is on in Home: the user's
+choice, since a stranger in the dark must reach the phone.
+
+Stored as two optional keys in `config.json`: `notify_mode` and
+`notify_modes` (`{mode: {case: bool}}`). `settings.load()` always returns both
+whole — `modes.normalised` fills every missing mode and case from the
+defaults and drops anything it does not know — so an older `config.json`
+behaves exactly as before: Away with today's switches.
+
+### 22.3 The timing rule: a person waits for the face scan
+
+A dog is named from the first frame (about 100 ms of matching), so a resident
+dog is left out of the very first message. A person is named only after the
+clip is assembled and scanned (CONTEXTO 3, "Rosto no clipe"), seconds after
+the event ends. So:
+
+- **If every person case is on** (Away), nothing changes: the immediate
+  "person" message, then the face, side-view or best-view follow-ups.
+- **If any person case is off** (Home, Silent, or a custom mode), the person
+  is **held**: the first message goes out without them (or not at all), and
+  the person's only message comes after the scan — each face by its case,
+  or, with no face, the side view or best view as `faceless_person`.
+
+`notify.event(camera, parts, photo)` takes `(words, case)` pairs — a person's
+case is `None`, unknown until the scan — and returns `(sent, held)`.
+`EventRecorder` keeps `person_held`; a person arriving mid-event
+(`_notify_late`, 12.8) is held the same way, even after a dog's message went
+out. `notify.after_scan` sends everything that follows the scan:
+
+- faces: each by its case, three at most, each person with their own
+  cooldown; a silenced resident no longer uses up one of the three places;
+  when the person was held and a face went out, it claims the camera's
+  cooldown, as a first message would;
+- no face: `faceless_person`, if on. A follow-up when the event already sent
+  a message, held or not; when the person was held and nothing of the event
+  went out, it is the first message and answers to the camera cooldown.
+
+**Fixed in review 15 (`5224983`).** The first version checked the camera
+cooldown for every held faceless message, so in Home with a dog switch on, a
+dog message sent a moment earlier in the *same* event silenced the person with
+no face. And a held person whose clip could not be assembled (no segments)
+got no message at all, since the assembly returned before the scan; it now
+sends the best view. Both were reproduced by a test first.
+
+**Known corner (R42, waits for the user).** In Home, if the scan finds a
+resident's face and a second person in the same clip never shows a face,
+nothing is sent: the faceless message only goes when no face was found at all.
+
+### 22.4 The Notifications tab
+
+A tab of its own, between Dogs and Settings: the active mode as three radio
+buttons at the top, and a table with the cases in rows and the modes in
+columns, the active column tinted. Each cell is a real form control —
+`<input type="checkbox" role="switch">` — drawn as a switch by CSS alone
+(PYTHON 29). Flipping one posts `{"notify_modes": {mode: {case: bool}}}` at
+once; the server refuses unknown modes, unknown cases and anything that is
+not `true` or `false`, and merges the change over the stored switches. The
+Telegram form (token, chat, Find chat, test, prefix, cooldown) moved here from
+Settings. The older per-label checkboxes are gone: `notify_labels` is still
+read, only to build the defaults.
+
+### 22.5 Commands from the phone — `bot.py`
+
+A thread in production reads the bot's messages with **long polling**:
+`getUpdates` with `timeout=50` keeps the request open until a message arrives
+or 50 s pass (PYTHON 27). It is an outgoing connection like sending, so **no
+port is opened** on the M900.
+
+| Command | Does |
+|---|---|
+| `/home`, `/away`, `/silent` | makes that mode active and answers with what it sends |
+| `/mode` | shows the active mode, with one tap button per mode |
+| any other `/command` | the list of commands |
+
+`setMyCommands` lists them in Telegram's "/" menu, once per token. The bot
+changes the mode and **nothing else**. Only the configured `notify_chat` is
+obeyed; a message from any other chat is logged ("ignored a message from chat
+N") and its taps answered empty. A command older than 120 s is ignored, so a
+restart does not replay yesterday's `/away` (Telegram keeps unread updates for
+24 h). A tap on a mode button has no date and is obeyed whenever it arrives:
+at worst, it sets the mode the user tapped.
+
+**One reader per bot.** Telegram hands each update to whoever asks and forgets
+it once the next `offset` is confirmed; a second program polling the same bot
+gets **409 Conflict**. So Find chat, which used to call `getUpdates` itself,
+now asks the running poller for the chat it saw last (`bot.last_chat()`), and
+only falls back to `getUpdates` when no poller runs. The test copy has no
+token, so its poller only sleeps; if a token were pasted there, one of the two
+would get 409, log it once and back off for two minutes.
+
+Trouble — network, 409, a refusal, an unexpected exception — is logged once
+per distinct problem as `Telegram commands: …` and retried after 5 s,
+doubling up to 5 minutes. Capture never waits on it, and the token is
+redacted from every line (R16).
+
+### 22.6 A move names the photo it was shown (R41)
+
+The four view moves and the favourite address a view by its position, and a
+scan that finds Waiting full drops the oldest, shifting every position by
+one. Each move now also sends the name of the photo the page showed at that
+position (`{"view": "<name>"}`, "" for a view without a photo); the gallery
+compares it **inside its lock** and raises `ViewsChanged`, which the server
+answers with 409 "the views changed: the page was refreshed", and the page
+reloads the person. Without the field the move behaves as before. Checked on
+production's galleries: every stored view has a page URL, so the name the
+page sends always matches a stored one (PYTHON 28).

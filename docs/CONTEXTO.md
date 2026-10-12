@@ -331,7 +331,7 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
-25. **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
+25. **Done 12/10 (`v2026.10.12`, ARQUITETURA 22); the acceptance on the M900 waits for the user** (mark the residents, then Home). **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
     - **(a) The Resident tag.** A switch **Resident** on the person and dog pages, named entries only; stored as an optional `"resident": true` in `gallery.json` (additive). Renaming keeps it; a merge keeps the target's, or sets it when either was a resident. The grid card shows it.
     - **(b) The cases, one switch each:** resident person recognised · other known person, or any "probably …" match · unknown face · person with no recognisable face (the side-view and best-view messages) · resident dog · other dog (probable, another name, unidentified) · other animals. Only a **sure** match counts as a resident — a "probably Gustavo" or "probably Aurora" is not silenced, so a weak match of a stranger is never hidden.
     - **(c) Modes:** **Home**, **Away**, **Silent**; one is active; each has its own switches, all editable. Defaults: Away — every person case on; Home — the two resident cases off, the rest as Away (a person with no recognisable face **notifies**: the user's choice, a stranger in the dark must reach the phone); Silent — all off. Animal switches start from today's `notify_labels`, so nothing new arrives until the user turns it on. **Recording never changes**: a mode only decides what reaches the phone. Stored as new optional keys in `config.json` (`notify_mode`, `notify_modes`); `notify_labels` stays for older versions.
@@ -407,6 +407,11 @@ src/jarvis/
   archive.py      layer 5: moves to the external drive, deletes only there when full
   settings.py     settings editable from the interface (config.json)
   notify.py       phone notification through Telegram, with thumbnail and face
+  modes.py        notification cases, the Home/Away/Silent modes and their switches
+  bot.py          commands from the phone: Telegram long polling, switches the mode only
+  dogs.py         the dog gallery: crops, appearance descriptor, matching (ARQUITETURA 20)
+  reports.py      bad-detection reports and their Undo (ARQUITETURA 21)
+  devices.py      paired devices for the write guard (ARQUITETURA 21)
   log.py          logging: console, crash hooks, logs/jarvis.log for the service
   web.py          web interface: FastAPI in a thread beside the Core
   static/         the web page: index.html, style.css, app.js
@@ -764,8 +769,9 @@ decidir.
 | 12 | 11/10/2026 | `5675cfe..a4cc3a2`, developer session 10 — R34, backlog 5, R29 (the first automatic cycle) | no code fixed; 64 tests pass; R35 kept open on the developer's data; release `v2026.10.11.3` |
 | 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no release code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4`. **The first deploy failed and rolled back on its own**: `--stop` returned while the old version still assembled a clip (22 s), the new one found both cameras busy. Fixed in `production.ps1` (`3ae5faa`: wait up to 180 s until no process runs from `C:\JARVIS`); the second deploy passed |
 | 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6`, deployed at 17:46: 352 events, 36 face and 147 dog sightings, 2 reports read before and after, cameras ok 4 s after the start; production lists both old reports with their photos |
+| 15 | 12/10/2026 | `v2026.10.11.6..e7df623`, developer session 13 — backlog 25 (a)–(f), R41 | **one code fix** (`5224983`): a held person with no face was silenced by a dog message of the same event, and got nothing when the clip failed to assemble; 160 tests pass; R42 (a decision for the user) and R43 opened; release `v2026.10.12` (13.15) |
 
-**Last review covers up to the `v2026.10.11.6` release commit.** The next one
+**Last review covers up to the `v2026.10.12` release commit.** The next one
 starts from the commit after it.
 
 ### 13.3 Revisão 1 — o que foi corrigido na hora
@@ -828,7 +834,9 @@ subir de novo em 09/10.
 | ✓ | R38 | **high** | A report made by mistake cannot be undone | done `2c2c943`: Settings → Bad-detection reports, with Undo; older reports undo too (ARQUITETURA 21) |
 | ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `76a5a9e`, release `v2026.10.11.5`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
 | ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARQUITETURA 21) |
-| | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | open (13.14) |
+| ✓ | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | done `f4fe810`: each move names the photo it was shown, 409 if it changed (ARQUITETURA 22.6) |
+| | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open (13.15) |
+| | R43 | low | `config.json` is rewritten in place with no lock, and now has two writers (the page and the phone) | open (13.15) |
 | | R33 | medium | The documentation has grown by appending: README stale, CONTEXTO 1,388 lines read by every session | open — the architect, in a new conversation (13.12) |
 | ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARQUITETURA 21); rare cases go to bad-detection reports |
@@ -1443,6 +1451,63 @@ was refreshed" — when the view at that index is no longer it, the check
 Waiting, reads the page, lets a scan add a view, and a × on the old index is
 refused.
 
+### 13.15 Review 15 — developer session 13 (12/10/2026)
+
+Backlog 25 and R41, reviewed whole (`v2026.10.11.6..e7df623`, 19 files). The
+rules matrix, the defaults built from an older `config.json`, the resident
+flag through rename and merge, the bot's chat check and the R41 check under
+the lock all hold; every new POST passes the write guard; `check_data` reads
+everything; no comments; 158 tests pass as delivered. Away is today's
+behaviour, as the developer said: every person case on means nothing is held.
+R41's corner (a stored view with no page URL would always answer 409) does not
+occur: every view in production's two galleries and the test copy's has a URL.
+
+**Fixed in the review (`5224983`), reproduced first by two tests.** (1) In a
+mode that holds people, the faceless message checked the camera cooldown even
+when the same event had already sent a message: Home with a dog switch on, a
+dog announced a moment before, and the person with no recognisable face — the
+case the user wants on the phone in Home — was skipped as "cooldown". Inside
+one event it is a follow-up, as it always was in Away; the cooldown now
+applies only when nothing of the event went out. (2) A held person whose clip
+could not be assembled got no message at all; it now sends the best view. 160
+tests pass.
+
+**The developer's other points, decided.** `_notify_late` now records the new
+labels even after a sent message: right, it is what lets a person arriving
+after a dog's message be held. One switch for every non-dog animal, instead of
+`notify_labels` per label: as backlog 25 (b) specified. A tap on a `/mode`
+button has no date, so one made while production was down is obeyed at the
+next start: accepted, it sets the mode the user tapped. `bot.py` against the
+real Bot API is first exercised by this deploy: watch `jarvis.log` for
+`Telegram commands:`.
+
+**R42 — In Home, a resident's face hides a second person with no face
+(medium, the user's decision).** The faceless message goes only when the scan
+found no face at all. If the user walks out with someone whose face is never
+seen, the scan finds the user's face (silenced in Home) and nothing is sent —
+against the user's own rule that a stranger in the dark must reach the phone.
+The scan cannot tell one person from two by faces; YOLO can, by counting
+person boxes in the same frame. Options: (a) accept the corner; (b) when the
+person was held, every face found was silenced, and YOLO saw more people at
+once than distinct faces were found, send the best view as
+`faceless_person`. (b) costs a counter in `EventRecorder` and, when YOLO
+counts a dog as a second person (R18), one extra message. The architect
+recommends (b).
+
+**R43 — `config.json` is rewritten in place, with no lock, by two writers
+(low).** `settings.update` reads, changes and writes the whole file with
+`write_text`, which truncates first. Until 12/10 only the page wrote it; now
+the bot does too (`/home`). A read that lands inside another write sees a
+truncated file, `_stored()` answers `{}`, and an `update` that started from it
+saves the defaults — **the token, the chat, the PIN and the archive path
+erased**. It needs two writes within milliseconds of each other (a switch on
+the page and a command from the phone at the same moment), so it is unlikely,
+but the loss is silent. Fix: one lock around `update`, and write to a
+temporary file then `os.replace` it — keeping in mind that on Windows
+`os.replace` fails while another thread has the file open, so it needs a short
+retry. Acceptance: a test where two threads update different keys many times
+and both survive.
+
 ---
 
 ## 14. Sessions and token budget
@@ -1503,20 +1568,26 @@ disk, which is exactly why the roles hand over through files.
 | D12 | developer | high | 11/10 17:25–17:40 | session 12, the scheduled cycle, a new conversation: R38, R40, R37, R36 (92 tests) | 34% → 44%: R38 4, R40 4, R37 1, R36 1 | 87% → 88% | 74k → 193k tokens |
 | A17 | architect | ultracode | 11/10 17:38–17:50 | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 53% | 88% → 89% | 78k → 180k tokens, a new conversation. **The whole scheduled cycle cost ~19 points of the 5-hour window (dev 10, architect 8) and ~2 of the week** |
 | A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
+| D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
 
 ### 14.4 Next sessions
 
-**The scheduled cycle of 11/10 17:23 is done** (review 14, `v2026.10.11.6`). As
-the user set it, the architect waits for the user: no hand back. Weekly usage
-is at 89 %, with the reset on 14/10 at 16:00.
+**The cycle of 12/10 is done** (review 15, `v2026.10.12`). As the user set
+it: release, deploy, and wait for the user — no hand back. Weekly usage is at
+93 %, with the reset on 14/10 at 16:00; above 90 % the cycle stops anyway.
 
-**Developer 13 (decided by the user 12/10, one delivery):** backlog 25 —
-the Resident tag, the notification rules and modes, the Notifications tab and
-the Telegram commands, in the order (a) → (f) of the item; then R41 (low) if
-the session has room. R30 (b) still waits for a second named person.
-**Started by the user on 12/10 at 11:00 with the weekly at 90 %: the weekly
-stop is waived for this cycle only.** After the review: release, deploy, and
-wait for the user — no hand back.
+**Waiting for the user:**
+
+- **Backlog 25's acceptance on the M900.** Mark the user, Mirana and Aurora
+  **Resident** (their page → the Resident switch), then choose **Home** on the
+  Notifications tab or send `/home` to the bot. Expected: a recognised
+  resident sends nothing, a person with no face does, and `/away` from the
+  phone changes the mode the page shows. Until then production behaves as
+  before: Away, people only.
+- **R42** (13.15): accept the corner, or count people with YOLO (recommended).
+
+**Next developer session, when the weekly allows:** R43 (low), and R42 if the
+user picks (b). R30 (b) still waits for a second named person.
 
 **The architect:** R33, the documentation rewrite (13.12). It reads and
 rewrites the three big documents whole, so it costs more than a review; the
@@ -1558,3 +1629,4 @@ review and commits.
 | 9 | `v2026.10.11`, `.2` and `.3` | The Front Desk Learns Manners / A Recepção Aprende Modos | written |
 | 10 | `v2026.10.11.4` | The Evidence Box / A Caixa de Provas | written |
 | 11 | `v2026.10.11.5` and `.6` | Second Chances / Segunda Chance | written |
+| 12 | `v2026.10.12` | The House Learns Who Lives Here / A Casa Aprende Quem Mora Aqui | written |
