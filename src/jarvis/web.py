@@ -413,9 +413,24 @@ def _resident(gallery, entry_id, payload):
     return _page(gallery, entry_id)
 
 
-def _cover(gallery, entry_id, index):
+VIEWS_CHANGED = "the views changed: the page was refreshed"
+
+
+def _shown(payload):
+    """The photo name the page showed at the index it sends; None when it sent none (R41)."""
+    view = (payload or {}).get("view")
+    if view is not None and not isinstance(view, str):
+        raise HTTPException(400, "view must be the photo name shown")
+    return view
+
+
+def _cover(gallery, entry_id, index, payload=None):
     _entry_or_404(gallery, entry_id)
-    if not gallery.set_cover(entry_id, index):
+    try:
+        chosen = gallery.set_cover(entry_id, index, _shown(payload))
+    except faces.ViewsChanged:
+        raise HTTPException(409, VIEWS_CHANGED)
+    if not chosen:
         raise HTTPException(400, "only a view with a photo can be the favourite")
     return _page(gallery, entry_id)
 
@@ -431,11 +446,15 @@ MOVES = {
 }
 
 
-def _move(gallery, entry_id, move, index):
+def _move(gallery, entry_id, move, index, payload=None):
     """Delete a view, or move it between the chosen and the waiting ones."""
     _entry_or_404(gallery, entry_id)
     method, refusal = MOVES[move]
-    if not getattr(gallery, method)(entry_id, index):
+    try:
+        moved = getattr(gallery, method)(entry_id, index, _shown(payload))
+    except faces.ViewsChanged:
+        raise HTTPException(409, VIEWS_CHANGED)
+    if not moved:
         raise HTTPException(400, refusal)
     return _page(gallery, entry_id)
 
@@ -558,33 +577,33 @@ def mark_resident(person_id: str, payload: dict = Body(...)):
 
 
 @app.post("/api/persons/{person_id}/views/{index}/cover")
-def choose_cover(person_id: str, index: int):
+def choose_cover(person_id: str, index: int, payload: dict = Body(default={})):
     """Make one view, which must have a photo, the person's picture on the People grid."""
-    return _cover(faces.Gallery(), person_id, index)
+    return _cover(faces.Gallery(), person_id, index, payload)
 
 
 @app.post("/api/persons/{person_id}/views/{index}/remove")
-def remove_view(person_id: str, index: int):
+def remove_view(person_id: str, index: int, payload: dict = Body(default={})):
     """Delete one chosen view; nothing takes its place unless the user moves a waiting one up."""
-    return _move(faces.Gallery(), person_id, "remove", index)
+    return _move(faces.Gallery(), person_id, "remove", index, payload)
 
 
 @app.post("/api/persons/{person_id}/views/{index}/demote")
-def demote_view(person_id: str, index: int):
+def demote_view(person_id: str, index: int, payload: dict = Body(default={})):
     """Move one chosen view to the waiting ones."""
-    return _move(faces.Gallery(), person_id, "demote", index)
+    return _move(faces.Gallery(), person_id, "demote", index, payload)
 
 
 @app.post("/api/persons/{person_id}/pending/{index}/promote")
-def promote_view(person_id: str, index: int):
+def promote_view(person_id: str, index: int, payload: dict = Body(default={})):
     """Move one waiting view into the chosen ones, while there is room."""
-    return _move(faces.Gallery(), person_id, "promote", index)
+    return _move(faces.Gallery(), person_id, "promote", index, payload)
 
 
 @app.post("/api/persons/{person_id}/pending/{index}/remove")
-def remove_waiting(person_id: str, index: int):
+def remove_waiting(person_id: str, index: int, payload: dict = Body(default={})):
     """Delete one waiting view."""
-    return _move(faces.Gallery(), person_id, "remove-waiting", index)
+    return _move(faces.Gallery(), person_id, "remove-waiting", index, payload)
 
 
 @app.get("/api/persons/{person_id}/spread")
@@ -641,28 +660,28 @@ def mark_resident_dog(dog_id: str, payload: dict = Body(...)):
 
 
 @app.post("/api/dogs/{dog_id}/views/{index}/cover")
-def choose_dog_cover(dog_id: str, index: int):
-    return _cover(dogs.DogGallery(), dog_id, index)
+def choose_dog_cover(dog_id: str, index: int, payload: dict = Body(default={})):
+    return _cover(dogs.DogGallery(), dog_id, index, payload)
 
 
 @app.post("/api/dogs/{dog_id}/views/{index}/remove")
-def remove_dog_view(dog_id: str, index: int):
-    return _move(dogs.DogGallery(), dog_id, "remove", index)
+def remove_dog_view(dog_id: str, index: int, payload: dict = Body(default={})):
+    return _move(dogs.DogGallery(), dog_id, "remove", index, payload)
 
 
 @app.post("/api/dogs/{dog_id}/views/{index}/demote")
-def demote_dog_view(dog_id: str, index: int):
-    return _move(dogs.DogGallery(), dog_id, "demote", index)
+def demote_dog_view(dog_id: str, index: int, payload: dict = Body(default={})):
+    return _move(dogs.DogGallery(), dog_id, "demote", index, payload)
 
 
 @app.post("/api/dogs/{dog_id}/pending/{index}/promote")
-def promote_dog_view(dog_id: str, index: int):
-    return _move(dogs.DogGallery(), dog_id, "promote", index)
+def promote_dog_view(dog_id: str, index: int, payload: dict = Body(default={})):
+    return _move(dogs.DogGallery(), dog_id, "promote", index, payload)
 
 
 @app.post("/api/dogs/{dog_id}/pending/{index}/remove")
-def remove_waiting_dog_view(dog_id: str, index: int):
-    return _move(dogs.DogGallery(), dog_id, "remove-waiting", index)
+def remove_waiting_dog_view(dog_id: str, index: int, payload: dict = Body(default={})):
+    return _move(dogs.DogGallery(), dog_id, "remove-waiting", index, payload)
 
 
 @app.get("/api/dogs/{dog_id}/spread")

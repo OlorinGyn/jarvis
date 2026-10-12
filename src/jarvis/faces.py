@@ -322,6 +322,17 @@ def _similarity(person, embedding):
                default=0.0)
 
 
+class ViewsChanged(Exception):
+    """The view at a position is no longer the one the page showed there (R41)."""
+
+
+def _check_view(views, index, expected):
+    """Refuse a move when the page named another photo at this position; expected None skips the check."""
+    if expected is not None and 0 <= index < len(views):
+        if (Path(views[index]).name if views[index] else "") != expected:
+            raise ViewsChanged()
+
+
 class Gallery:
     """Everyone the system has seen, named or not.
 
@@ -444,7 +455,7 @@ class Gallery:
             self._take(person, embedding, view)
             self.save()
 
-    def remove_view(self, person_id, index):
+    def remove_view(self, person_id, index, expected=None):
         """Delete one chosen view; nothing waiting takes its place unless the user moves it up.
 
         Returns False when there is no such view, or when it is the person's
@@ -453,6 +464,7 @@ class Gallery:
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
+            _check_view(views_of(person or {"embeddings": []}), index, expected)
             if person is None or not 0 <= index < len(person["embeddings"]) or len(person["embeddings"]) == 1:
                 return False
             views = views_of(person)
@@ -464,12 +476,13 @@ class Gallery:
         self._forget_view(removed)
         return True
 
-    def demote_view(self, person_id, index):
+    def demote_view(self, person_id, index, expected=None):
         """Move one chosen view to the end of the waiting ones. False for the last chosen view or a full queue."""
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
             pending = (person or {}).get("pending") or []
+            _check_view(views_of(person or {"embeddings": []}), index, expected)
             if (person is None or not 0 <= index < len(person["embeddings"])
                     or len(person["embeddings"]) == 1 or len(pending) >= MAX_PENDING):
                 return False
@@ -481,12 +494,13 @@ class Gallery:
             self.save()
         return True
 
-    def promote_view(self, person_id, index):
+    def promote_view(self, person_id, index, expected=None):
         """Move one waiting view into the chosen ones. False when none is there or the chosen are full."""
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
             pending = (person or {}).get("pending") or []
+            _check_view([w.get("view") for w in pending], index, expected)
             if (person is None or not 0 <= index < len(pending)
                     or len(person["embeddings"]) >= MAX_EMBEDDINGS):
                 return False
@@ -497,12 +511,13 @@ class Gallery:
             self.save()
         return True
 
-    def remove_waiting(self, person_id, index):
+    def remove_waiting(self, person_id, index, expected=None):
         """Delete one waiting view and its photo."""
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
             pending = (person or {}).get("pending") or []
+            _check_view([w.get("view") for w in pending], index, expected)
             if person is None or not 0 <= index < len(pending):
                 return False
             removed = pending.pop(index).get("view")
@@ -596,11 +611,12 @@ class Gallery:
                 self._forget_view(dropped["view"])
         return True
 
-    def set_cover(self, person_id, index):
+    def set_cover(self, person_id, index, expected=None):
         """Make one stored view, which must have a photo, the person's favourite picture."""
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
+            _check_view(views_of(person or {"embeddings": []}), index, expected)
             if person is None or not 0 <= index < len(person["embeddings"]):
                 return False
             view = views_of(person)[index]

@@ -507,14 +507,19 @@ function galleryTab(section, api, kind, unnamedLabel) {
     return tile;
   }
 
-  async function change(route, done, question) {
+  async function change(route, done, question, photo) {
     if (question && !confirm(question)) return;
     try {
-      showEntry(await send(`${api}/${selected()}/${route}`));
+      showEntry(await send(`${api}/${selected()}/${route}`, { view: photoName(photo) }));
       pageResult.textContent = done;
     } catch (problem) {
       pageResult.textContent = `Not done: ${problem.message}`;
+      if (problem.status === 409) loadEntry(selected());
     }
+  }
+
+  function photoName(photo) {
+    return photo ? photo.split("/").pop() : "";
   }
 
   function viewTile(photo, index, entry) {
@@ -523,15 +528,15 @@ function galleryTab(section, api, kind, unnamedLabel) {
       const chosen = entry.cover_index === index;
       const favourite = tileButton(tile, "cover", "★",
         chosen ? "The photo shown on the grid" : "Show this photo on the grid",
-        () => change(`views/${index}/cover`, "Favourite photo saved."));
+        () => change(`views/${index}/cover`, "Favourite photo saved.", null, photo));
       favourite.classList.toggle("chosen", chosen);
     }
     if (entry.views > 1) {
       tileButton(tile, "", "×", "Delete this view",
         () => change(`views/${index}/remove`, "View deleted.",
-          "Delete this view? It will no longer be used to recognise them."));
+          "Delete this view? It will no longer be used to recognise them.", photo));
       tileButton(tile, "move", "↓", "Move this view to Waiting",
-        () => change(`views/${index}/demote`, "View moved to Waiting."));
+        () => change(`views/${index}/demote`, "View moved to Waiting.", null, photo));
     }
     return tile;
   }
@@ -539,11 +544,11 @@ function galleryTab(section, api, kind, unnamedLabel) {
   function waitingTile(photo, index, entry) {
     const tile = photoTile(photo);
     tileButton(tile, "", "×", "Delete this waiting view",
-      () => change(`pending/${index}/remove`, "Waiting view deleted.", "Delete this waiting view?"));
+      () => change(`pending/${index}/remove`, "Waiting view deleted.", "Delete this waiting view?", photo));
     const full = entry.views >= 40;
     tileButton(tile, "move", "↑",
       full ? "Chosen is full: move one down or delete one first" : "Move this view into Chosen",
-      () => change(`pending/${index}/promote`, "View moved into Chosen."));
+      () => change(`pending/${index}/promote`, "View moved into Chosen.", null, photo));
     return tile;
   }
 
