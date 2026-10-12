@@ -26,7 +26,8 @@ function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-const TABS = ["live", "recordings", "people", "dogs", "notifications", "settings"];
+const TABS = ["live", "recordings", "people", "dogs", "settings"];
+const SETTINGS_PARTS = ["notifications", "devices", "archive", "reports"];
 
 function currentTab() {
   const tab = location.hash.slice(1).split("/")[0];
@@ -227,7 +228,24 @@ async function checkHealth() {
   }
 }
 
+function showSettingsPart() {
+  const wanted = location.hash.slice(1).split("/")[1];
+  const part = SETTINGS_PARTS.includes(wanted) ? wanted : SETTINGS_PARTS[0];
+  for (const box of document.querySelectorAll("#settings .settings")) {
+    box.hidden = box.dataset.part !== part;
+  }
+  for (const link of document.querySelectorAll("#settings .subtabs a")) {
+    link.classList.toggle("active", link.dataset.part === part);
+  }
+  loadSettings();
+  if (part === "reports") loadReports();
+}
+
 function showTab() {
+  if (location.hash.split("/")[0] === "#notifications") {
+    location.replace("#settings/notifications");
+    return;
+  }
   const tab = currentTab();
   for (const section of document.querySelectorAll(".tab")) {
     section.classList.toggle("active", section.id === tab);
@@ -242,11 +260,8 @@ function showTab() {
     peopleTab.show();
   } else if (tab === "dogs") {
     dogsTab.show();
-  } else if (tab === "notifications") {
-    loadSettings();
   } else if (tab === "settings") {
-    loadSettings();
-    loadReports();
+    showSettingsPart();
   }
 }
 

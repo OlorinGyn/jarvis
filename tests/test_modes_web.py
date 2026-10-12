@@ -1,4 +1,4 @@
-"""The Notifications tab and the Resident switch, through the page's own API."""
+"""Settings → Notifications and the Resident switch, through the page's own API."""
 
 import json
 

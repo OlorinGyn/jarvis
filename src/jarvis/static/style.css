@@ -689,6 +689,14 @@ h1 {
   .tabs {
     margin-left: 0;
   }
+
+  header {
+    padding: 12px 16px 10px;
+  }
+
+  .tabs a {
+    padding: 6px 7px;
+  }
 }
 
 .toggle {
@@ -945,4 +953,29 @@ input[role="switch"]:focus-visible {
   .guess-heading {
     margin: 12px 12px 0;
   }
+}
+
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 16px 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.subtabs a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.subtabs a.active {
+  color: var(--text);
+  border-bottom-color: var(--person);
+}
+
+.settings[hidden] {
+  display: none;
 }

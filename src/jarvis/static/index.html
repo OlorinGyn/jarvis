@@ -16,7 +16,6 @@
       <a href="#recordings" data-tab="recordings">Recordings</a>
       <a href="#people" data-tab="people">People</a>
       <a href="#dogs" data-tab="dogs">Dogs</a>
-      <a href="#notifications" data-tab="notifications">Notifications</a>
       <a href="#settings" data-tab="settings">Settings</a>
     </nav>
     <span id="connection" hidden>No connection to J.A.R.V.I.S.</span>
@@ -146,8 +145,14 @@
     </div>
   </section>
 
-  <section id="notifications" class="tab">
-    <main class="settings">
+  <section id="settings" class="tab">
+    <nav class="subtabs">
+      <a href="#settings/notifications" data-part="notifications">Notifications</a>
+      <a href="#settings/devices" data-part="devices">Other devices</a>
+      <a href="#settings/archive" data-part="archive">Archive</a>
+      <a href="#settings/reports" data-part="reports">Bad-detection reports</a>
+    </nav>
+    <div class="settings" data-part="notifications">
       <div id="modes-panel" class="panel">
         <h2>What reaches the phone</h2>
         <p class="hint">Recording never changes: a mode only decides which messages are sent. From the phone, /home, /away and /silent switch it, and /mode shows it.</p>
@@ -180,12 +185,8 @@
         </div>
         <p class="result" id="notify-result"></p>
       </form>
-
-    </main>
-  </section>
-
-  <section id="settings" class="tab">
-    <main class="settings">
+    </div>
+    <div class="settings" data-part="devices" hidden>
       <form id="pin-form" class="panel">
         <h2>Other devices</h2>
         <p class="hint" id="pin-state"></p>
@@ -196,7 +197,8 @@
         <p class="result" id="pin-result"></p>
         <ul id="device-list"></ul>
       </form>
-
+    </div>
+    <div class="settings" data-part="archive" hidden>
       <form id="archive-form" class="panel">
         <h2>Archive (external drive)</h2>
         <label>Folder on this computer <input name="archive_path" autocomplete="off"></label>
@@ -210,14 +212,15 @@
         <div class="actions"><button type="submit">Save</button></div>
         <p class="result" id="archive-result"></p>
       </form>
-
+    </div>
+    <div class="settings" data-part="reports" hidden>
       <div id="reports-panel" class="panel">
         <h2>Bad-detection reports</h2>
         <p class="hint">Each "Bad detection" or "Not a …" is kept here as an example. Undo one made by mistake: the crop returns to its tab, or the label to its recording.</p>
         <p class="result" id="reports-result"></p>
         <ul id="report-list"></ul>
       </div>
-    </main>
+    </div>
   </section>
 
   <template id="person-card">
