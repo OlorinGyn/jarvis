@@ -238,6 +238,16 @@ Without these the system does not do its job well.
 
 It works without them, but is incomplete.
 
+26. **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
+    - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
+    - **(b) Grouped by the system's guess.** The unnamed crops are shown in groups by what the matcher thinks now — "Looks like Aurora (12)", "Looks like Mirana (8)", "No guess (5)" — from the same `dogs.match` the messages use (sure or probable), newest first inside each group, each group with "Select all". Usually most of a group is the right dog: select it, untick the wrong ones, assign. A hint, never an automatic name.
+    - **(c) One action bar**, fixed at the bottom while anything is selected: "N selected · Assign to [named dog ▾] · or a new name · Bad detection · Clear". Assigning asks once ("Join 7 photos to Aurora? A merge cannot be undone"), as every merge does.
+    - **(d) One request, one lock.** `POST /api/dogs/assign` with `{"ids": [...], "to": "<id>"}` or `{"ids": [...], "name": "..."}` merges every entry under one gallery lock and one save, gathers look-alikes once (R29), and answers how many joined and which ids were gone (merged or reported meanwhile: skipped, not an error). `POST /api/dogs/report` with ids writes one report per entry (backlog 23 unchanged). Unnamed entries are addressed by id, which is stable, so R41's problem does not arise. Through the write guard like every POST.
+    - **(e) The same on People's Unnamed faces**, since both tabs are one component (`galleryTab`); "Belongs to…" stays on each card for a single one.
+    - Data: nothing new. **Acceptance:** tests — three ids assigned to a named dog (views, sightings and favourite follow), one id already gone is skipped and named in the answer, a new name creates the entry, the batch report writes one report per entry; checked in the built-in browser at desktop width and at 375 px.
+
+27. **Notifications as a part of Settings** (decided by the user 12/10/2026: a Notifications tab is not ideal; make it a subsection of Settings). Settings gets a sub-navigation at its top — **Notifications · Other devices · Archive · Bad-detection reports** — with Notifications first, each part reachable as `#settings/<part>` so a link and the back button land on it. The tab bar loses Notifications; an old `#notifications` link opens `#settings/notifications`. Texts that say "the Notifications tab" say "Settings → Notifications". No server change. **Acceptance:** checked in the built-in browser at desktop width and at 375 px.
+
 4. **Measure the M900 running** (proposto) — CPU with both cameras in motion,
    and whether `HWACCEL` helps (INSTALACAO 6).
 6. **Search and filter** (proposto) — with ~100 events a day, by date only is
@@ -593,7 +603,8 @@ after it.
 
 ### 13.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.15, one section per review; the next one is 13.16.
+`HISTORY.md` 13.3 to 13.16, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.17.
 
 ### 13.4 Recommendations, open
 
@@ -601,6 +612,7 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
+| R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | open (13.4 below, HISTORY 13.16) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a **second named person** to test that the right one still wins (HISTORY 13.12) |
 | R43 | low | `config.json` is rewritten in place with no lock, and now has two writers | open |
@@ -609,6 +621,29 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
 | R10 | **high** | Everything except the conversation in English | every document's text in English since 12/10 (R33); left, a developer item: the Portuguese **file names** and the text of `instalar.bat` and `tools/diagnostico.py` |
+
+**R44 — The user bending over becomes a "dog" (high).** From reading the
+bad-detection reports (HISTORY 13.16): 4 of the 6 dog reports are the user
+bent over — at the car door, or petting Mirana — that YOLO calls `dog` at
+0.6–0.8 with no person score at all, so the crop lands in the Dogs tab and the
+event gets a `dog` label. The cue that separates it, measured box by box: the
+"dog" box is **the person's own box from a moment before** — IoU ≥ 0.5 with a
+person box seen on the same camera in the last 2 s held for 9 of the 15
+reported boxes, and for **0 of 309** boxes of real dogs in events with a
+person (a dog at someone's feet lies inside the person's box but is far
+smaller, so its IoU stays low). Fix: `SubjectDetector` keeps the person boxes
+of the last 2 s; a `dog` box with IoU ≥ `SAME_PERSON_IOU` = 0.5 against any of
+them is **relabelled `person`** (then the person rules — minimum height, the
+mat — apply as to any person). So no `dog` label, no dog crop and no dog
+message come from it, and the person's own message is unaffected. Trace
+reason in `replay.py`: "the person's box from a moment ago". **Acceptance:** a
+test with a person box followed 1 s later by a `dog` box in the same place
+(relabelled) and a small dog box at the person's feet (kept); `replay.py` on
+the four reported clips (`Front/2026-10-12/11-28-48`, `11-45-20`, `12-39-56`,
+`12-40-23`) and the six true-dog clips with a person of HISTORY 13.16: the
+reported boxes change, the true dogs do not. **What it will not catch:** the
+dark object at the bottom of Front (2 reports) and a bend with no person seen
+before it (1) — those wait for more reports (13.16).
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -702,9 +737,14 @@ reset on 14/10 at 16:00; above 90 % the cycle stops anyway.
   behaves as before: Away, people only.
 - **R42**: accept the corner, or count people with YOLO (recommended).
 
-**Next developer session, when the weekly allows:** R43 (low); R42 if the
-user picks (b); R10's file names and the two tools' text (13.4). R30 (b)
-still waits for a second named person.
+**Developer 14 (planned 12/10, after the user's three requests):** in this
+order — **R44** (high: the user captured as a dog), **backlog 26** (select
+many unnamed crops, assign or report them at once), **backlog 27**
+(Notifications inside Settings), then **R43** (low) if there is room. R42
+joins only if the user picks (b). R10's file names stay for a session of their
+own: they touch 26 files and the production task. R30 (b) still waits for a
+second named person. **When to start is the user's call**: the weekly is at
+97 %, and a developer session has cost about 2 points of it.
 
 **R33 is done** (12/10, A20): the documentation rewrite the architect owed.
 The documents are in English, CONTEXTO is a brief, and the past is in

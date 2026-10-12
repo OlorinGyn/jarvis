@@ -898,6 +898,47 @@ temporary file then `os.replace` it — keeping in mind that on Windows
 retry. Acceptance: a test where two threads update different keys many times
 and both survive.
 
+### 13.16 Reading the bad-detection reports (12/10/2026)
+
+Asked by the user, who sees themselves "a lot" on the Dogs tab. Production
+held 6 dog reports and no face report. Every one is "not a dog", every one is
+on Front by day, and **every reported event also had `person`**. A sheet of
+each crop beside its event showed two kinds:
+
+| Kind | Reports | What the crop shows |
+|---|---|---|
+| The user bent over | 4 (15:36:08 on 10/10; 11:28:48, 12:39:56, 12:40:23 on 12/10) | bending into the car door, or over Mirana while petting her |
+| A dark object at the bottom of the frame | 2 (17:45:14 on 10/10 — "Actually: nothing"; 11:45:20 on 12/10) | a still, dark shape at the bottom of Front, near the door |
+
+**Measured on the clips** (YOLO replayed at 4 fps on the M900, a scratch
+script beside `replay.py`): the 6 reported clips, 6 clips where a named dog
+was matched for sure and a person was also in the event, and 6 with the dog
+alone — 644 dog boxes in all. The true-dog clips with a person:
+`Back/2026-10-12/12-40-35`, `Back/2026-10-12/13-59-03`, `Front/2026-10-11/16-20-00`,
+`Front/2026-10-11/16-34-56`, `Front/2026-10-12/17-01-55`, `Front/2026-10-12/17-35-54`.
+
+- **YOLO's own scores do not separate them.** The bent-over user is `dog` at
+  0.62–0.81 (median 0.74, like real dogs at 0.68), and the `person` score in
+  the same box is 0.00 at the median, at most 0.18: YOLO is sure.
+- **Touching the bottom edge does not either**: true dogs do too (Aurora on
+  the mat: 10 of 10 boxes in one clip).
+- **A human face inside the box does not**: YuNet found none in the reported
+  boxes (the head is down or away).
+- **"Inside a recent person's box" does not**: a real dog at someone's feet is
+  inside the person's box too (49 of 309 true boxes at ≥ 0.5).
+- **The person's own box, a moment before, does.** IoU ≥ 0.5 with a person box
+  seen in the previous 2 s: **9 of the 15 reported boxes, 0 of 309** true-dog
+  boxes in events with a person (14 of 309 at ≥ 0.3). The bending user keeps
+  almost the same box (IoU 0.90–0.99) while YOLO changes the class.
+
+That became R44 (CONTEXTO 13.4). It leaves 3 reports: the two dark-object ones
+(IoU 0.12 with any person) and one bend at 12:40:23 with no person seen in the
+2 s before. The dark object is a candidate for using the reports themselves —
+a reported box marks a place that is not a dog on that camera — but two
+reports are too few to set a distance, and Aurora lies on a mat nearby. It
+waits for more reports, which backlog 26's "Bad detection" on many crops at
+once makes cheap to give.
+
 ## 14.3 Usage log, up to 12/10/2026 morning
 
 The current rows are in `CONTEXTO.md` 14.3.
