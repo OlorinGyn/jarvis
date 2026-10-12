@@ -1502,6 +1502,7 @@ disk, which is exactly why the roles hand over through files.
 | A16 | architect | ultracode | 11/10 14:50–15:15 | review 14, release `v2026.10.11.4`, a rolled-back deploy diagnosed and fixed, script 10 | 72% → ~78% | 81% → 82% | 860k → 880k |
 | D12 | developer | high | 11/10 17:25–17:40 | session 12, the scheduled cycle, a new conversation: R38, R40, R37, R36 (92 tests) | 34% → 44%: R38 4, R40 4, R37 1, R36 1 | 87% → 88% | 74k → 193k tokens |
 | A17 | architect | ultracode | 11/10 17:38–17:50 | review 14, docs, comic script 11, release and deploy `v2026.10.11.6` | 45% → 53% | 88% → 89% | 78k → 180k tokens, a new conversation. **The whole scheduled cycle cost ~19 points of the 5-hour window (dev 10, architect 8) and ~2 of the week** |
+| A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
 
 ### 14.4 Next sessions
 
@@ -1512,8 +1513,10 @@ is at 89 %, with the reset on 14/10 at 16:00.
 **Developer 13 (decided by the user 12/10, one delivery):** backlog 25 —
 the Resident tag, the notification rules and modes, the Notifications tab and
 the Telegram commands, in the order (a) → (f) of the item; then R41 (low) if
-the session has room. R30 (b) still waits for a second named person. The
-weekly limit was at 90 % on 12/10; the developer starts when the user says.
+the session has room. R30 (b) still waits for a second named person.
+**Started by the user on 12/10 at 11:00 with the weekly at 90 %: the weekly
+stop is waived for this cycle only.** After the review: release, deploy, and
+wait for the user — no hand back.
 
 **The architect:** R33, the documentation rewrite (13.12). It reads and
 rewrites the three big documents whole, so it costs more than a review; the
