@@ -686,7 +686,7 @@ Rows before 12/10 11:00: `HISTORY.md` 14.3.
 | A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
 | D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
 | A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
-| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → ~55% | 94% → 96% | 215k → 440k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
+| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
 
 ### 14.4 Next sessions
 
