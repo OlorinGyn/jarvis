@@ -7,8 +7,8 @@ what was decided, tested and ruled out about the project. **Read it, with
 
 | Document | For |
 |---|---|
-| `ARQUITETURA.md` | How the system works and why, layer by layer |
-| `INSTALACAO.md` | Installing and running on a new machine, troubleshooting |
+| `ARCHITECTURE.md` | How the system works and why, layer by layer |
+| `INSTALL.md` | Installing and running on a new machine, troubleshooting |
 | `PYTHON.md` | Python and the libraries, for someone coming from Java and C# |
 | `PROCESS.md` | How the work is done: the user's rules, the resume routine, reviews, the token budget, biases, the raid log |
 | `BACKLOG.md` | The work: the backlog, the open recommendations, the next sessions |
@@ -39,11 +39,11 @@ interface is a web page served by the service itself: **Live**,
 
 **Production runs on the M900 since 09/10/2026**, from `C:\JARVIS`, a clone
 checked out at a **release tag**, started with Windows by a scheduled task
-and changed only by `tools/production.ps1` (ARQUITETURA 18.7). Every release
+and changed only by `tools/production.ps1` (ARCHITECTURE 18.7). Every release
 is deployed the same way — every file read before and after with the new
 code, rolled back on its own if anything fails; the current one is the last
 row of `HISTORY.md` 13.2 and `PROCESS.md` 3.2. The folder above is the test
-copy, on `stream2` and port 8766, with no Telegram token (INSTALACAO 9).
+copy, on `stream2` and port 8766, with no Telegram token (INSTALL 9).
 
 **The RTX 4080 is deliberately ignored.** Nothing here is trained, and
 developing on the same CPU path the M900 uses avoids divergence between the
@@ -61,7 +61,7 @@ both native. The vision ecosystem is Python-first.
 which forces **re-encoding** to save. Measured: the old pipeline made files
 **25 % larger than the camera's original, with three generations of loss**.
 One ffmpeg process per camera serves two outputs — `-c copy` segments (a byte
-copy) and 960×540 frames for analysis (ARQUITETURA 5.1, 5.2).
+copy) and 960×540 frames for analysis (ARCHITECTURE 5.1, 5.2).
 
 **No PyTorch.** Windows 11's **Smart App Control** blocks binaries without a
 recognised signature, and PyTorch's DLLs are unsigned (`WinError 4551`).
@@ -70,7 +70,7 @@ through `cv2.dnn` on the official `yolo11s.onnx`, which also removed ~2.5 GB of
 dependencies. Measured 09/10/2026 on the same blob, CPU against CPU:
 `cv2.dnn` 37.8 ms, `onnxruntime` 34.6 ms, identical output — another ONNX
 runtime would buy nothing; the real loss was GPU to CPU, which the M900 cannot
-undo (ARQUITETURA 7.11). The low dependency count that followed is **not a
+undo (ARCHITECTURE 7.11). The low dependency count that followed is **not a
 merit of the project** (`PROCESS.md` 5).
 
 **The official signed Python, not the one `uv` downloads.** Smart App Control
@@ -82,17 +82,17 @@ says `python-preference = "system"`, and the `.bat` files call
 `uv run python -m jarvis` instead of the unsigned `jarvis.exe`. The rule: **on
 the M900 every executable in the path must be signed** — reputation is no
 guarantee. The same reason makes the tests run as `python -m pytest`
-(ARQUITETURA 19.5, INSTALACAO 1.2).
+(ARCHITECTURE 19.5, INSTALL 1.2).
 
 **A web interface with FastAPI.** `http.server` was considered and dropped: it
 is single-threaded, so live MJPEG would block everything, and it has no HTTP
 Range, which `<video>` needs to seek. `pydantic_core` (compiled Rust) loads
 under Smart App Control on both machines (HISTORY 12.2). The web is the only
-way in, by the user's decision (ARQUITETURA 17).
+way in, by the user's decision (ARCHITECTURE 17).
 
 **No compressing the videos.** Built and removed. Measured on a real file: zip
 saves **0.2 %**, bzip2 and lzma make the file **bigger**. H.264 is already
-entropy-coded (ARQUITETURA 8.7).
+entropy-coded (ARCHITECTURE 8.7).
 
 **One RTSP connection per camera.** The Tapo accepts one session on `stream1`;
 a second gets `406 Not Acceptable`. That is why one ffmpeg makes both outputs.
@@ -100,14 +100,14 @@ a second gets `406 Not Acceptable`. That is why one ffmpeg makes both outputs.
 **Faces in the clip, not live.** A 60 px face in 1080p becomes 30 px in the
 960×540 analysis frames, and the recogniser wants ~112 px. `scan_clip()` runs
 on the assembled clip at full resolution, off the critical path. This is also
-why a person's name is known only seconds after the event (ARQUITETURA 22.3).
+why a person's name is known only seconds after the event (ARCHITECTURE 22.3).
 
 **YuNet and SFace, not InsightFace.** Both built into OpenCV, no new
 dependency. Measured: similarity **1.000** for the same face and **0.045** for
 different faces, with a 0.363 threshold.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
-household teaches the system its own dogs on the Dogs tab (ARQUITETURA 20).
+household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 
 ## 4. Bugs found and fixed — do not reintroduce
 
@@ -117,12 +117,12 @@ changing capture, motion, the face scan, notifications or production.
 ## 5. Reference measurements
 
 Moved to `HISTORY.md` 5. Measurements behind a current rule stay beside the
-rule in `ARQUITETURA.md`.
+rule in `ARCHITECTURE.md`.
 
 ## 6. Solved: the M900 got no frames (29/09/2026)
 
 Moved to `HISTORY.md` 6. The lesson that still applies: on a new machine,
-test the camera IP in `.env` first (INSTALACAO 8).
+test the camera IP in `.env` first (INSTALL 8).
 
 ## 7. Known and accepted limitations
 
@@ -133,11 +133,11 @@ test the camera IP in `.env` first (INSTALACAO 8).
 - **Only the household's dogs are named**, and only when the user has named
   enough views; two dogs that look alike stay "dog", the honest answer. Other
   animals are only labels (`cat`, `bird`…), and YOLO's hesitation between
-  species accumulates in `labels` (ARQUITETURA 7.1).
+  species accumulates in `labels` (ARCHITECTURE 7.1).
 - **A person standing still for ~12 s is suppressed** by the static-scene
   suppression until they move again.
 - **No archive configured in production.** Recordings grow ~300 MB/day in
-  `clips/`; the archive (ARQUITETURA 11) moves them to an external drive after
+  `clips/`; the archive (ARCHITECTURE 11) moves them to an external drive after
   30 days only when `archive_path` is set, and production's is empty. The
   rolling buffer in `clips/_buffer/` cleans itself.
 - **No undo of a merge** on People or Dogs (closed by the user, backlog 9): a
@@ -169,30 +169,30 @@ src/jarvis/
   web.py          the web interface: FastAPI in a thread beside the Core
   static/         the page: index.html, style.css, app.js
   geometry.py     Detection type and box utilities
-tests/            pytest: python -m pytest (ARQUITETURA 19.5)
+tests/            pytest: python -m pytest (ARCHITECTURE 19.5)
 tools/
   production.ps1  production on the M900: install, update, start, stop, status, check
-  check_data.py   reads every file on disk with the current code (ARQUITETURA 19)
-  replay.py       why each frame of a video was kept or dropped (ARQUITETURA 12.10)
+  check_data.py   reads every file on disk with the current code (ARCHITECTURE 19)
+  replay.py       why each frame of a video was kept or dropped (ARCHITECTURE 12.10)
   face_tuning.py, dog_tuning.py, dog_crops.py   measure thresholds; crop past dog events
-  diagnostico.py  capture diagnosis (variants, and --local without a camera)
+  diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
-  refazer_rostos.py  rebuilds faces/ from the recorded clips
-  verificar_clipes.py  counts damaged blocks per camera on one day
-  gerar_epub.py, epub.css   every .md into one EPUB for an e-reader
-  gerar_icone.py, criar_atalho.ps1   the icon and the desktop shortcut
+  rebuild_faces.py rebuilds faces/ from the recorded clips
+  check_clips.py  counts damaged blocks per camera on one day
+  make_epub.py, epub.css   every .md into one EPUB for an e-reader
+  make_icon.py, create_shortcut.ps1   the icon and the desktop shortcut
 assets/           jarvis.ico and a PNG preview (generated, but versioned)
-docs/             ARQUITETURA, INSTALACAO, PYTHON; this file, PROCESS, BACKLOG, PENDING, HISTORY
+docs/             ARCHITECTURE, INSTALL, PYTHON; this file, PROCESS, BACKLOG, PENDING, HISTORY
 docs/raidlog/     the comic script of each release, English and Portuguese (PROCESS 6)
 CLAUDE.md         instructions for Claude Code (roles, language, rules)
 .claude/skills/dev/SKILL.md  the developer's session: /dev or "Dev, ..."
 HANDOFF.md        developer → architect notes; empty between deliveries
-instalar.bat      install on a new machine
+install.bat       install on a new machine
 jarvis.bat        start the service and open the browser
-jarvis_vigilancia.bat  service only, no browser (--headless)
+jarvis_headless.bat service only, no browser (--headless)
 ```
 
-Structure explained in ARQUITETURA 3. Not versioned: `.env` (credentials),
+Structure explained in ARCHITECTURE 3. Not versioned: `.env` (credentials),
 `config.json` (Telegram token, PIN), `models/` (~73 MB, downloaded on
 demand), `clips/`, `faces/`, `dogs/`, `reports/`, `devices.json`, `backups/`
 (copies the tools make before touching data), `logs/` and `HOLD`.
@@ -200,7 +200,7 @@ demand), `clips/`, `faces/`, `dogs/`, `reports/`, `devices.json`, `backups/`
 **Outside the repository:** `C:\JARVIS` on the M900 is production — a clone
 of the same GitHub repository at a release tag, with its own `.env`,
 `config.json` and data. Never edit it by hand; `tools/production.ps1` is the
-only thing that changes it (ARQUITETURA 18.7).
+only thing that changes it (ARCHITECTURE 18.7).
 
 ## 10. Useful commands
 
@@ -224,19 +224,19 @@ jarvis.bat                                              test copy: service + bro
 uv run python -m jarvis --headless                      service only, no browser
 uv run python -m jarvis --stop                          stop the copy running from this folder, cleanly
 uv run python tools/check_data.py                       can the current code read every file on disk?
-uv run python -m pytest                                 the automatic tests (not `uv run pytest`: ARQUITETURA 19.5)
+uv run python -m pytest                                 the automatic tests (not `uv run pytest`: ARCHITECTURE 19.5)
 uv run python tools/replay.py <video> [--prime]         why each frame was kept or dropped
-uv run python tools/diagnostico.py Front                test capture variants
-uv run python tools/diagnostico.py --local              test ffmpeg without a camera
+uv run python tools/diagnose.py Front                   test capture variants
+uv run python tools/diagnose.py --local                 test ffmpeg without a camera
 uv run python tools/probe_rtsp.py <ip> <user> <pw> stream1   raw RTSP
 powershell Test-NetConnection <ip> -Port 554            does the camera answer on that IP?
-uv run python tools/refazer_rostos.py                   rebuild faces/ (stop the program first)
-uv run python tools/verificar_clipes.py [YYYY-MM-DD]    image damage coming from the cameras
-uv run python tools/gerar_epub.py                       the documentation as an EPUB
+uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
+uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
+uv run python tools/make_epub.py                        the documentation as an EPUB
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
 ```
 
-**The documentation EPUB.** `tools/gerar_epub.py` joins every `.md` of the
+**The documentation EPUB.** `tools/make_epub.py` joins every `.md` of the
 project into one EPUB in `docs/epub/`, one chapter per document, so the
 cross-references stay a tap away on the reader. New documents join on their
 own (the `ORDEM` list sets the known ones' order; anything else goes at the

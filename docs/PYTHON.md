@@ -33,7 +33,7 @@ why `import cv2` works in this command and would fail with the system's
 of an executable JAR's `Main-Class`. `pyproject.toml` also declares a `jarvis`
 command in `[project.scripts]`, and `uv run jarvis` would work, but `uv`
 generates it as an unsigned `jarvis.exe`, which Smart App Control blocks on
-the M900; `python -m` goes through the signed Python instead (INSTALACAO 1.2).
+the M900; `python -m` goes through the signed Python instead (INSTALL 1.2).
 
 **There is no compilation.** No `javac`, no build. A typo on a line shows up
 only when that line runs — which makes tests far more important than in Java.
@@ -74,7 +74,7 @@ Why `src/` in the middle? Without it, running `python` from the project root
 would import the `jarvis/` folder straight from disk, and an installation
 error would go unnoticed. With `src/`, `jarvis` is found only if it is
 **installed** in the venv — `uv sync` does that in editable mode, pointing at
-the files instead of copying them. See ARQUITETURA 3.1.
+the files instead of copying them. See ARCHITECTURE 3.1.
 
 The tools in `tools/` live outside the package but use it like any library:
 `from jarvis import cameras, capture`.
@@ -101,7 +101,7 @@ declarations resolved at compile time and could never have that side effect.
 Here the damage would only be one more warning in the terminal. In an old
 version of the project the same trap broke RTSP: `OPENCV_FFMPEG_CAPTURE_OPTIONS`
 had to be set before `import cv2`, and moving the import up — as any linter
-would suggest — switched TCP off silently (ARQUITETURA 5.8). The lesson: in
+would suggest — switched TCP off silently (ARCHITECTURE 5.8). The lesson: in
 Python the **order** of imports can carry meaning, and nothing in the file
 warns you when it does.
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 ```
 
 `__name__` is `"__main__"` when the file is run directly, and the module's
-name when it is imported. Without that guard, `tools/diagnostico.py`
+name when it is imported. Without that guard, `tools/diagnose.py`
 importing `cameras` to reuse something from it would open the cameras as a
 side effect.
 
@@ -147,7 +147,7 @@ def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None):
 ```
 
 The program calls it without `gallery` and each scan loads the gallery from
-disk; `tools/refazer_rostos.py` passes one gallery for every clip.
+disk; `tools/rebuild_faces.py` passes one gallery for every clip.
 
 Type hints (`def f(x: int) -> str`) exist, but they are **annotations ignored
 at run time** — documentation checked by external tools (mypy), never by the
@@ -293,7 +293,7 @@ Membership (`label in self.notify_tried`) is O(1) — the same reason as a
 > A historical note: there used to be a section here on `deque(maxlen=...)`
 > as a ring buffer, used by the in-memory pre-recording. That structure went
 > away when the pre-recording started coming from the segments on disk
-> (ARQUITETURA 5.5). The `deque(maxlen=12)` that keeps ffmpeg's last error
+> (ARCHITECTURE 5.5). The `deque(maxlen=12)` that keeps ffmpeg's last error
 > messages, in `capture.py`, is the same feature: past 12, the oldest drops
 > out on its own.
 
@@ -601,7 +601,7 @@ It happened in the project: the face scan, in a background thread, started
 using YOLO through the same `load_model()` as the live loop. The program
 crashed with `buf.shape() == m.shape()` right after an event. The fix was a
 second network for the background thread and a `threading.Lock` so the scans
-queue up (ARQUITETURA 10.9):
+queue up (ARCHITECTURE 10.9):
 
 ```python
 _SCAN_LOCK = threading.Lock()
@@ -707,7 +707,7 @@ grey card when the image would not open.
 processed the window's event queue. Without it the window never redrew. It was
 the piece that replaces the event loop that WinForms or Swing make implicit —
 and the reason the surveillance loop rode on the window until it was separated
-(ARQUITETURA 15).
+(ARCHITECTURE 15).
 
 ---
 
@@ -715,7 +715,7 @@ and the reason the surveillance loop rode on the window until it was separated
 
 YOLO runs through OpenCV's `dnn` module, on the `.onnx` file — the standard
 format for taking a trained network from one library to another. PyTorch left
-the project because of Smart App Control (ARQUITETURA 7.11), and with it the
+the project because of Smart App Control (ARCHITECTURE 7.11), and with it the
 `ultralytics` library, which hid all the pre- and post-processing. Now it is
 explicit in `people._raw_detections()`, and each step teaches something about
 numpy.
@@ -787,7 +787,7 @@ both forms into `[0, 3]`.
 
 ### 17.5 `zip`
 
-`zip` walks two sequences in parallel — in `tools/gerar_icone.py`, each image
+`zip` walks two sequences in parallel — in `tools/make_icon.py`, each image
 with its PNG:
 
 ```python
@@ -928,7 +928,7 @@ finally:
     process.wait()
 ```
 
-And `tools/diagnostico.py` uses `with tempfile.TemporaryDirectory() as
+And `tools/diagnose.py` uses `with tempfile.TemporaryDirectory() as
 pasta:`: the temporary folder is deleted on leaving the block, error or not —
 `try-with-resources` for a directory.
 
@@ -1059,7 +1059,7 @@ UTF-8 has the same trap; .NET's `StreamReader` detects the mark by default.
 
 ## 26. Take it out under the lock, then work on it
 
-A bad-detection report (ARQUITETURA 21, R36) does three things to a gallery
+A bad-detection report (ARCHITECTURE 21, R36) does three things to a gallery
 entry: copy it into a report, copy its photos, delete it. The first version
 did it in the order that reads naturally:
 
@@ -1122,7 +1122,7 @@ element: `select.append(new Option("dog", "dog"))` is the one-line form of
 
 ## 27. Long polling, one reader, and a sleep that can be interrupted
 
-The Telegram bot (`bot.py`, ARQUITETURA 22.5) has to learn about a `/home`
+The Telegram bot (`bot.py`, ARCHITECTURE 22.5) has to learn about a `/home`
 typed on the phone within a second or so, without opening a port on the
 M900. A **webhook** would need Telegram to connect *to* us; **long polling**
 turns it around — we connect to Telegram and ask, and Telegram holds the
@@ -1250,7 +1250,7 @@ browser already has the control; only its picture changes.
 
 ## 30. Changing one field of an immutable tuple, and a set that keeps order
 
-**`_replace` (R44).** `Detection` is a `NamedTuple` (7.2 of ARQUITETURA): like
+**`_replace` (R44).** `Detection` is a `NamedTuple` (7.2 of ARCHITECTURE): like
 a Java `record`, its fields cannot be assigned. When a `dog` box turns out to
 be the person who stood there a moment ago, the code needs the same box with
 another label:
@@ -1324,4 +1324,4 @@ Windows adds one wrinkle that Linux does not have: a file that another thread
 has open cannot be replaced, and cannot be opened while it is being replaced.
 Both sides answer `PermissionError`, so both retry for a moment (50 × 10 ms)
 instead of failing. The measurement that justified each piece is in
-ARQUITETURA 11.6.
+ARCHITECTURE 11.6.

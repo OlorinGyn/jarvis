@@ -127,7 +127,7 @@ function Sync {
     } finally { Pop-Location }
     $signature = Get-AuthenticodeSignature (Join-Path $ProdDir '.venv\Scripts\pythonw.exe')
     if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Python Software Foundation') {
-        throw 'The production Python is not the signed python.org build; Smart App Control may block it. See INSTALACAO 1.2.'
+        throw 'The production Python is not the signed python.org build; Smart App Control may block it. See INSTALL 1.2.'
     }
 }
 

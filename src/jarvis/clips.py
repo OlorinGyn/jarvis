@@ -11,7 +11,7 @@ Each event produces three files sharing one basename, plus two optional ones:
     19-17-30.alert.jpg  only when the notification went out after the start
     19-17-30.best.jpg   only when a person was seen: the frame showing one best
 
-See docs/ARQUITETURA.md sections 5, 8 and 19.
+See docs/ARCHITECTURE.md sections 5, 8 and 19.
 """
 
 import json

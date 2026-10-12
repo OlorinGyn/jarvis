@@ -1,11 +1,11 @@
 """Check a day's recordings for image damage that came from the camera.
 
-Usage: uv run tools/verificar_clipes.py [AAAA-MM-DD]
+Usage: uv run tools/check_clips.py [AAAA-MM-DD]
 
 Decodes every clip of the day with ffmpeg and counts the H.264 errors, per
 clip and per camera. Recording copies the camera's bytes untouched, so damage
 here was already in the stream: almost always the camera's Wi-Fi. See
-docs/INSTALACAO.md section 8.
+docs/INSTALL.md section 8.
 """
 
 import subprocess

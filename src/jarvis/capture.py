@@ -8,7 +8,7 @@ serve both purposes:
     output 2  small decoded frames on stdout, for motion and YOLO.
 
 Recorded clips are assembled from the segments, so what lands on disk is
-exactly what the camera produced. See docs/ARQUITETURA.md section 5.
+exactly what the camera produced. See docs/ARCHITECTURE.md section 5.
 """
 
 import subprocess

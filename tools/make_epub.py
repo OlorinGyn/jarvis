@@ -1,6 +1,6 @@
 """Build one EPUB from every markdown file in the project.
 
-Usage: uv run python tools/gerar_epub.py
+Usage: uv run python tools/make_epub.py
 
 Produces docs/epub/JARVIS - Documentacao Completa.epub and nothing else: a
 single book whose chapters are the documents, so cross references between them
@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SAIDA = ROOT / "docs" / "epub" / "JARVIS - Documentacao Completa.epub"
 CSS = ROOT / "tools" / "epub.css"
 
-ORDEM = ["README.md", "docs/CONTEXTO.md", "docs/ARQUITETURA.md",
-         "docs/INSTALACAO.md", "docs/PYTHON.md", "CLAUDE.md"]
+ORDEM = ["README.md", "docs/CONTEXT.md", "docs/ARCHITECTURE.md",
+         "docs/INSTALL.md", "docs/PYTHON.md", "CLAUDE.md"]
 
 
 def achar_pandoc():

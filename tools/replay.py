@@ -11,7 +11,7 @@ real time decides as production would. Quiet frames are skipped unless --all.
 A fresh motion detector is blind while it learns the background; --prime
 learns it from the video's first seconds and then replays from the start,
 closer to production, whose background was learned long before the event.
-See docs/CONTEXTO.md, R17.
+See docs/HISTORY.md section 13.6, R17.
 """
 
 import argparse

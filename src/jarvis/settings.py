@@ -4,7 +4,7 @@ Separate from .env on purpose: .env holds camera credentials, written once by
 hand. This holds choices made in the interface, so it has to be readable and
 writable at runtime.
 
-See docs/ARQUITETURA.md section 11.
+See docs/ARCHITECTURE.md section 11.
 """
 
 import json

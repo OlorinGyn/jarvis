@@ -3,7 +3,7 @@
 Capture is handled by ffmpeg (see capture.py), not by OpenCV, so the video kept
 on disk is the camera's own stream with no re-encoding.
 
-See docs/ARQUITETURA.md for the pipeline and the reasoning behind it.
+See docs/ARCHITECTURE.md for the pipeline and the reasoning behind it.
 No option: service plus browser. --headless: the service alone. --stop: ask a
 running service to shut down cleanly. Ctrl+C also stops. --window, the old
 OpenCV window, is gone: the flag now only says where the web page is.

@@ -1,4 +1,4 @@
-"""J.A.R.V.I.S. home surveillance. See docs/ARQUITETURA.md."""
+"""J.A.R.V.I.S. home surveillance. See docs/ARCHITECTURE.md."""
 
 import os
 from pathlib import Path

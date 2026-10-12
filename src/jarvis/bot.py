@@ -6,7 +6,7 @@ Only the configured chat is obeyed; anything else is ignored and logged.
 Find chat reads the chats this poller saw, because two readers of the same
 bot steal each other's messages, and Telegram answers 409 to the second.
 Network trouble is logged once and retried, slower each time; capture
-never waits on it. See docs/CONTEXTO.md, backlog 25 (f).
+never waits on it. See docs/HISTORY.md section 8, backlog 25 (f).
 """
 
 import json

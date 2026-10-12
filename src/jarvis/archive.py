@@ -8,7 +8,7 @@ the archive, oldest first, and only when that drive runs out of room.
 Copy, verify, then delete: an interrupted move leaves the original intact
 rather than a half-written file on the far side.
 
-See docs/ARQUITETURA.md section 11.
+See docs/ARCHITECTURE.md section 11.
 """
 
 import shutil

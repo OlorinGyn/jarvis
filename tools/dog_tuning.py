@@ -7,7 +7,7 @@ against everything else, exactly as a new crop would be. It counts, per
 lighting, how often the answer is right and sure, right but only probable,
 wrong (sure or probable), or no name at all; then the same for a grid of
 other thresholds, so SURE_* and PROBABLE_* in dogs.py can be set from data.
-See CONTEXTO backlog 22.
+See HISTORY 8, backlog 22.
 """
 
 import argparse

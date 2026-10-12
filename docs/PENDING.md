@@ -7,7 +7,7 @@ It is kept apart from the documentation of the application and from the plan
 the developer follows, so the architect can write it while a developer
 session runs.
 
-An item leaves this file when it becomes a decision (`CONTEXTO.md`), work
+An item leaves this file when it becomes a decision (`CONTEXT.md`), work
 (`BACKLOG.md`) or is dropped with its reason (`HISTORY.md`). If the file only
 grows, decisions are being postponed.
 
@@ -27,7 +27,7 @@ grows, decisions are being postponed.
 - **Which documents go into the EPUB** (12/10/2026). The user will read every
   document and say which go in. Already decided by them: a file that only
   holds what Claude and the developer exchange stays out. Today
-  `tools/gerar_epub.py` takes every `.md` at the root and in `docs/`, so
+  `tools/make_epub.py` takes every `.md` at the root and in `docs/`, so
   `PROCESS.md`, `BACKLOG.md`, `PENDING.md`, `HISTORY.md` and `HANDOFF.md` would
   go in; when the list comes, `ORDEM` becomes the list of what goes in, not
   just the order.

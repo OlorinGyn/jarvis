@@ -8,7 +8,7 @@ Only the service writes the file. `--stop` and a launch that finds the service
 already running log to the console alone: on Windows, rotating a log that
 another process holds open fails.
 
-See docs/ARQUITETURA.md section 18.
+See docs/ARCHITECTURE.md section 18.
 """
 
 import logging

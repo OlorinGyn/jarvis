@@ -3,7 +3,7 @@
 An unnamed face or dog marked "Bad detection" leaves the gallery and the
 tabs; a label rejected on a recording leaves its card. Each report is a crop
 and a JSON in reports/<kind>/, for the replay and tuning tools and for the
-next review to read. See docs/CONTEXTO.md, backlog 23.
+next review to read. See docs/HISTORY.md section 8, backlog 23.
 """
 
 import json

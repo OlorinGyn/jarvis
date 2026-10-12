@@ -1,15 +1,15 @@
 # J.A.R.V.I.S. — history
 
-What used to fill `CONTEXTO.md` and is no longer needed to resume work: the
+What used to fill `CONTEXT.md` and is no longer needed to resume work: the
 bugs already fixed, old measurements, a solved incident, the long text of
 finished backlog items, every review in full, the closed recommendations and
 the old rows of the usage log. Moved here on 12/10/2026 (R33), so every
 session's resume reads a short brief instead of about 25k tokens.
 
-**Section numbers are the ones `CONTEXTO.md` had**, so an older reference such
-as "CONTEXTO 13.6" is now "HISTORY 13.6". Read on demand, not at every resume.
+**Section numbers are the ones `CONTEXT.md` had**, so an older reference such
+as "CONTEXT 13.6" is now "HISTORY 13.6". Read on demand, not at every resume.
 From review 15 on, each review writes its own section here (13.16, 13.17…)
-and its row in 13.2; a recommendation's text moves here from `CONTEXTO.md`
+and its row in 13.2; a recommendation's text moves here from `CONTEXT.md`
 13.4 when it closes.
 
 ---
@@ -22,27 +22,27 @@ and its row in 13.2; a recommendation's text moves here from `CONTEXTO.md`
 | The video stretched on resize | `WINDOW_KEEPRATIO` is 0 on the Win32 backend | Build an image of the window's exact size with `getWindowImageRect` and letterbox it |
 | Clicking a card opened Documents | `subprocess` with a list quotes every argument with a space, and Explorer's `/select,` went inside the quotes | Pass a ready-made string on Windows |
 | Face detection found nothing | Sampling read the clip's first frames, and the pre-recording makes the start come **before** the person arrives | Compute the step from the total frame count |
-| A 44 px face was thrown away | `MIN_FACE_WIDTH` too high | Lower the floor and **mark** small faces instead of dropping them. Today the frontal-face test filters, not the width (ARQUITETURA 10.9) |
+| A 44 px face was thrown away | `MIN_FACE_WIDTH` too high | Lower the floor and **mark** small faces instead of dropping them. Today the frontal-face test filters, not the width (ARCHITECTURE 10.9) |
 | The gallery ignored a test path | `def __init__(self, path=GALLERY_FILE)` freezes the value at definition time | `path=None` and resolve inside |
 | Grey "Not Responding" window | The loop blocked reading the pipe; the first frame takes **2.45 s** | One reader thread per camera; the loop never blocks |
 | "no signal" with no reason | ffmpeg's `stderr` went to `DEVNULL`, and the start-up `ok` checked `poll()` before the process had time to fail | Capture stderr, wait for a real first frame, translate known errors |
 | False person detections | Wall objects under infrared | Minimum height (measured: false 36–86 px, real people 294–306 px, **18/18 right**) |
 | Mosquitoes triggering recordings | Insects near the lens look big in IR | Temporal confirmation: only what stays 3 frames in the same place is reported (**83 % fewer triggers**) |
 | "no frame received" on the M900, no error | `.env` with `.env.example`'s sample IPs; with no timeout ffmpeg waits for TCP forever, silently | `-timeout` on RTSP and a translation of `Error number -138` (section 6) |
-| False daytime motion on Front | Patches of sun and leaf shadow; the camera's clock in the corner | Lighting filter by correlation with the background, and a mask over the clock: **99 → 15 frames**, person covered 262 → 258 of 273 (ARQUITETURA 6.7) |
-| 14 "people" for 3 real ones; a name was not recognised later | Every unmatched face became a person (profiles, the back of a head, an arm); the same name created twins; it only learned from faces ≥ 80 px | Frontal-face filter + YOLO, joining by name, absorbing on naming, learning by similarity (ARQUITETURA 10.4, 10.9) |
-| The program crashed right after an event (`buf.shape() == m.shape()`) | The face scan used the live loop's YOLO network, from another thread | A network of its own for background threads, and scans in a queue (ARQUITETURA 10.9) |
-| Terminal full of `[h264] error while decoding MB` | The Back camera sending damaged blocks (Wi-Fi), printed by OpenCV's internal decoder during the face scan | The scan reads through our own ffmpeg with `-loglevel quiet`, 2× faster; `tools/verificar_clipes.py` measures the damage (ARQUITETURA 10.11) |
-| Poor face photo | It was the recogniser's 112 px crop, enlarged twice | A crop of the original frame with hair and shoulders, 300 px (ARQUITETURA 10.10) |
-| Scripts depended on the current folder | Relative paths (`Path("clips")`) | `ROOT` in the package; every path starts from the root (ARQUITETURA 3.2) |
-| The M900 would not start, `Failed to spawn: python` (`WinError 4551`), 09/10 | Smart App Control started refusing the Python `uv` downloads (unsigned) — the same file that ran on 29–30/09; the reputation verdict changed on its own | The official Python signed by the PSF + `python-preference = "system"`; the `.bat` files call `python -m jarvis`, without the unsigned `jarvis.exe` (INSTALACAO 1.2) |
+| False daytime motion on Front | Patches of sun and leaf shadow; the camera's clock in the corner | Lighting filter by correlation with the background, and a mask over the clock: **99 → 15 frames**, person covered 262 → 258 of 273 (ARCHITECTURE 6.7) |
+| 14 "people" for 3 real ones; a name was not recognised later | Every unmatched face became a person (profiles, the back of a head, an arm); the same name created twins; it only learned from faces ≥ 80 px | Frontal-face filter + YOLO, joining by name, absorbing on naming, learning by similarity (ARCHITECTURE 10.4, 10.9) |
+| The program crashed right after an event (`buf.shape() == m.shape()`) | The face scan used the live loop's YOLO network, from another thread | A network of its own for background threads, and scans in a queue (ARCHITECTURE 10.9) |
+| Terminal full of `[h264] error while decoding MB` | The Back camera sending damaged blocks (Wi-Fi), printed by OpenCV's internal decoder during the face scan | The scan reads through our own ffmpeg with `-loglevel quiet`, 2× faster; `tools/check_clips.py` measures the damage (ARCHITECTURE 10.11) |
+| Poor face photo | It was the recogniser's 112 px crop, enlarged twice | A crop of the original frame with hair and shoulders, 300 px (ARCHITECTURE 10.10) |
+| Scripts depended on the current folder | Relative paths (`Path("clips")`) | `ROOT` in the package; every path starts from the root (ARCHITECTURE 3.2) |
+| The M900 would not start, `Failed to spawn: python` (`WinError 4551`), 09/10 | Smart App Control started refusing the Python `uv` downloads (unsigned) — the same file that ran on 29–30/09; the reputation verdict changed on its own | The official Python signed by the PSF + `python-preference = "system"`; the `.bat` files call `python -m jarvis`, without the unsigned `jarvis.exe` (INSTALL 1.2) |
 
-| A person arriving after an animal was never announced (R1) | Notification tried only on the event's first frame | One attempt per new label during the event, photo `HH-MM-SS.alert.jpg` (ARQUITETURA 12.8) |
-| Two launches a moment apart brought up two copies (R2) | Port checked, then bound later in another thread | Port bound atomically in the main thread, `SO_EXCLUSIVEADDRUSE`, handed to uvicorn (ARQUITETURA 18.8) |
-| Live picture froze when the service restarted (R3) | A dead MJPEG connection keeps its last frame | `frame_age`, "no signal" after 5 s, page reconnects when `started` changes (ARQUITETURA 17.8) |
-| `config.json` saved with a BOM silently lost the token | `json.loads` on `utf-8` fails on the mark; `load()` returned defaults | Every JSON reader uses `utf-8-sig` (ARQUITETURA 19.3) |
-| The production data gate always passed | PowerShell function output joins its return value | `\| Out-Host`; proven with a corrupted file (ARQUITETURA 18.9) |
-| A crash would have ended production until the next reboot | "Restart on failure" only acts on a failed *start* | Task trigger every 5 min + ignore new; `HOLD` file for updates (ARQUITETURA 18.7) |
+| A person arriving after an animal was never announced (R1) | Notification tried only on the event's first frame | One attempt per new label during the event, photo `HH-MM-SS.alert.jpg` (ARCHITECTURE 12.8) |
+| Two launches a moment apart brought up two copies (R2) | Port checked, then bound later in another thread | Port bound atomically in the main thread, `SO_EXCLUSIVEADDRUSE`, handed to uvicorn (ARCHITECTURE 18.8) |
+| Live picture froze when the service restarted (R3) | A dead MJPEG connection keeps its last frame | `frame_age`, "no signal" after 5 s, page reconnects when `started` changes (ARCHITECTURE 17.8) |
+| `config.json` saved with a BOM silently lost the token | `json.loads` on `utf-8` fails on the mark; `load()` returned defaults | Every JSON reader uses `utf-8-sig` (ARCHITECTURE 19.3) |
+| The production data gate always passed | PowerShell function output joins its return value | `\| Out-Host`; proven with a corrupted file (ARCHITECTURE 18.9) |
+| A crash would have ended production until the next reboot | "Restart on failure" only acts on a failed *start* | Task trigger every 5 min + ignore new; `HOLD` file for updates (ARCHITECTURE 18.7) |
 
 ## 5. Reference measurements
 
@@ -74,7 +74,7 @@ development PC.
 **Cause:** the cameras are at `192.168.0.116` (Front) and `192.168.0.42`
 (Back), and the M900's `.env` pointed at `.10` and `.11`, where nothing
 answers. Both machines are on the **same network**; `.10` and `.11` were the
-sample values of `.env.example`, which `instalar.bat` copies to create `.env`.
+sample values of `.env.example`, which `install.bat` copies to create `.env`.
 The development PC's `.env`, not versioned, had the right IPs. With no
 timeout, ffmpeg waits for the TCP connection forever and **writes nothing**.
 The only line, even at `-loglevel verbose`, was `Starting connection attempt
@@ -82,7 +82,7 @@ to 192.168.0.10 port 554`.
 
 **How it was found, in order:**
 
-1. `tools/diagnostico.py --local` read 7776000 of 7776000 bytes: decoding,
+1. `tools/diagnose.py --local` read 7776000 of 7776000 bytes: decoding,
    the pipe, the binary and the antivirus ruled out at once
 2. The capture command by hand with a detailed log: zero frames **and zero
    segments**, so it did not even connect. The log stopped at the connection
@@ -98,7 +98,7 @@ did not test `.env`. On a new machine, **test the IP in `.env` first**. So it
 does not happen again, `.env.example` now holds the text `ip-da-camera` instead
 of an IP, and the program refuses to start while it is there.
 
-**Fix:** `-timeout` on RTSP (ARQUITETURA 5.7). A wrong IP now shows in ~6 s as
+**Fix:** `-timeout` on RTSP (ARCHITECTURE 5.7). A wrong IP now shows in ~6 s as
 a timeout telling you to check the network and the camera's IP.
 
 **Still the user's:** reserve `.116` and `.42` by MAC on the M900's router.
@@ -108,7 +108,7 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
-26. **Done 12/10 (`v2026.10.12.2`, ARQUITETURA 17.16).** **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
+26. **Done 12/10 (`v2026.10.12.2`, ARCHITECTURE 17.16).** **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
     - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
     - **(b) Grouped by the system's guess.** The unnamed crops are shown in groups by what the matcher thinks now — "Looks like Aurora (12)", "Looks like Mirana (8)", "No guess (5)" — from the same `dogs.match` the messages use (sure or probable), newest first inside each group, each group with "Select all". Usually most of a group is the right dog: select it, untick the wrong ones, assign. A hint, never an automatic name.
     - **(c) One action bar**, fixed at the bottom while anything is selected: "N selected · Assign to [named dog ▾] · or a new name · Bad detection · Clear". Assigning asks once ("Join 7 photos to Aurora? A merge cannot be undone"), as every merge does.
@@ -116,9 +116,9 @@ backlog itself is `BACKLOG.md` 1.
     - **(e) The same on People's Unnamed faces**, since both tabs are one component (`galleryTab`); "Belongs to…" stays on each card for a single one.
     - Data: nothing new. **Acceptance:** tests — three ids assigned to a named dog (views, sightings and favourite follow), one id already gone is skipped and named in the answer, a new name creates the entry, the batch report writes one report per entry; checked in the built-in browser at desktop width and at 375 px.
 
-27. **Done 12/10 (`v2026.10.12.2`, ARQUITETURA 22.4).** **Notifications as a part of Settings** (decided by the user 12/10/2026: a Notifications tab is not ideal; make it a subsection of Settings). Settings gets a sub-navigation at its top — **Notifications · Other devices · Archive · Bad-detection reports** — with Notifications first, each part reachable as `#settings/<part>` so a link and the back button land on it. The tab bar loses Notifications; an old `#notifications` link opens `#settings/notifications`. Texts that say "the Notifications tab" say "Settings → Notifications". No server change. **Acceptance:** checked in the built-in browser at desktop width and at 375 px.
+27. **Done 12/10 (`v2026.10.12.2`, ARCHITECTURE 22.4).** **Notifications as a part of Settings** (decided by the user 12/10/2026: a Notifications tab is not ideal; make it a subsection of Settings). Settings gets a sub-navigation at its top — **Notifications · Other devices · Archive · Bad-detection reports** — with Notifications first, each part reachable as `#settings/<part>` so a link and the back button land on it. The tab bar loses Notifications; an old `#notifications` link opens `#settings/notifications`. Texts that say "the Notifications tab" say "Settings → Notifications". No server change. **Acceptance:** checked in the built-in browser at desktop width and at 375 px.
 
-25. **Done 12/10 (`v2026.10.12`, ARQUITETURA 22); the acceptance on the M900 waits for the user** (mark the residents, then Home). **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
+25. **Done 12/10 (`v2026.10.12`, ARCHITECTURE 22); the acceptance on the M900 waits for the user** (mark the residents, then Home). **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
     - **(a) The Resident tag.** A switch **Resident** on the person and dog pages, named entries only; stored as an optional `"resident": true` in `gallery.json` (additive). Renaming keeps it; a merge keeps the target's, or sets it when either was a resident. The grid card shows it.
     - **(b) The cases, one switch each:** resident person recognised · other known person, or any "probably …" match · unknown face · person with no recognisable face (the side-view and best-view messages) · resident dog · other dog (probable, another name, unidentified) · other animals. Only a **sure** match counts as a resident — a "probably Gustavo" or "probably Aurora" is not silenced, so a weak match of a stranger is never hidden.
     - **(c) Modes:** **Home**, **Away**, **Silent**; one is active; each has its own switches, all editable. Defaults: Away — every person case on; Home — the two resident cases off, the rest as Away (a person with no recognisable face **notifies**: the user's choice, a stranger in the dark must reach the phone); Silent — all off. Animal switches start from today's `notify_labels`, so nothing new arrives until the user turns it on. **Recording never changes**: a mode only decides what reaches the phone. Stored as new optional keys in `config.json` (`notify_mode`, `notify_modes`); `notify_labels` stays for older versions.
@@ -131,11 +131,11 @@ backlog itself is `BACKLOG.md` 1.
 
 24. **Done 11/10 (`v2026.10.11.4`).** **"Choose the best 40" for a person or a dog** (decided 11/10/2026). When a person or dog holds more than 40 views (the 40 kept plus the queue), their page gets an **Analyse** button: the software picks the 40 **most different** views — greedy farthest-point selection over the embeddings (cosine for faces, the Bhattacharyya distance for dogs, keeping day and night both represented), which covers angles and lighting instead of 40 near-copies — shows the proposal, and on confirmation keeps those 40 and moves the rest to the queue. Manual removal stays as it is. Tests: the selection spreads (minimum pairwise distance grows), nothing is lost (views + queue unchanged as a set). **Since `v2026.10.11.6` (R40):** the queue is shown as **Waiting** beside **Chosen**, views move between them by the user's hand only (removing a chosen view no longer pulls a waiting one), and the proposal can also discard the views it does not keep.
 
-22. **Done in code 10/10 (`v2026.10.10.7`, ARQUITETURA 20); the thresholds wait for the user's names.** **11/10, first names:** Aurora 5 views (3 day, 2 infrared), Mirana 3 (day only) — checked on a sheet, all correct. `dog_tuning.py` on them: day 2 right-sure, 1 right-probable, 1 wrong-probable, 2 no name; infrared not measurable (Mirana has no infrared view). Too few to tune: about 10 per dog **per lighting** are needed. **A Dogs tab: each household teaches the system its own dogs** (decided 10/10/2026). The user confirmed the two-dog measurement (item 15) — the dark group is Mirana, the light one Aurora — and set the rule: **nothing about their dogs goes into the code.** The software is not only for this house; anyone must be able to teach it their own animals. So it mirrors People: (a) every dog detection keeps a crop cut out of its box (GrabCut) and an **appearance descriptor** computed from the fur pixels only — a normalised tone histogram, plus hue and saturation when the frame is in colour; (b) a **Dogs** tab next to People: a grid of named dogs, the unnamed crops with a name field and "Belongs to…", and a dog page with its views, favourite photo and calendar — the same screens and rules as items 19 and 21; (c) a dog gallery in its own folder, `dogs/` (`gallery.json` + `views/`), new files only, read by `check_data`; (d) matching by nearest neighbour against each named dog's views, **day views compared with day views and infrared with infrared**, and a name given only when the nearest dog is clearly closer than the second and within a distance limit — otherwise just "dog"; (e) the event's `animals` list, the Recordings card and the Telegram text use the names. **Notification rule (the user, 10/10):** the alert is about *a dog being there*, not about knowing which — so whenever a dog is detected and `dog` is among the alert labels, notify, and word it by certainty, the same three levels as faces (12.8): a clear match → the dog's name; a weak one → "probably <name>"; none → "unidentified dog". The thresholds start conservative and are tuned as the named views grow; if the patterns never firm up, the feature still works as "a dog was there", which is what exists today. Dogs that look alike stay "dog", which is the honest answer. Acceptance on this house's data: after the user names a few crops of each, production's past dog events are named correctly in most clear cases and at night, with no colour rule anywhere in the code. Supersedes item 15's model research.
+22. **Done in code 10/10 (`v2026.10.10.7`, ARCHITECTURE 20); the thresholds wait for the user's names.** **11/10, first names:** Aurora 5 views (3 day, 2 infrared), Mirana 3 (day only) — checked on a sheet, all correct. `dog_tuning.py` on them: day 2 right-sure, 1 right-probable, 1 wrong-probable, 2 no name; infrared not measurable (Mirana has no infrared view). Too few to tune: about 10 per dog **per lighting** are needed. **A Dogs tab: each household teaches the system its own dogs** (decided 10/10/2026). The user confirmed the two-dog measurement (item 15) — the dark group is Mirana, the light one Aurora — and set the rule: **nothing about their dogs goes into the code.** The software is not only for this house; anyone must be able to teach it their own animals. So it mirrors People: (a) every dog detection keeps a crop cut out of its box (GrabCut) and an **appearance descriptor** computed from the fur pixels only — a normalised tone histogram, plus hue and saturation when the frame is in colour; (b) a **Dogs** tab next to People: a grid of named dogs, the unnamed crops with a name field and "Belongs to…", and a dog page with its views, favourite photo and calendar — the same screens and rules as items 19 and 21; (c) a dog gallery in its own folder, `dogs/` (`gallery.json` + `views/`), new files only, read by `check_data`; (d) matching by nearest neighbour against each named dog's views, **day views compared with day views and infrared with infrared**, and a name given only when the nearest dog is clearly closer than the second and within a distance limit — otherwise just "dog"; (e) the event's `animals` list, the Recordings card and the Telegram text use the names. **Notification rule (the user, 10/10):** the alert is about *a dog being there*, not about knowing which — so whenever a dog is detected and `dog` is among the alert labels, notify, and word it by certainty, the same three levels as faces (12.8): a clear match → the dog's name; a weak one → "probably <name>"; none → "unidentified dog". The thresholds start conservative and are tuned as the named views grow; if the patterns never firm up, the feature still works as "a dog was there", which is what exists today. Dogs that look alike stay "dog", which is the honest answer. Acceptance on this house's data: after the user names a few crops of each, production's past dog events are named correctly in most clear cases and at night, with no colour rule anywhere in the code. Supersedes item 15's model research.
 
 21. **Done 10/10 (`v2026.10.10.6`).** **A favourite photo per person** (decided 10/10/2026). On the person's page the user picks which of the stored views is the photo shown on the People grid. Additive: an optional `cover` per person in `gallery.json`, the portable path of the chosen view's crop; the grid uses it when set and the file exists, otherwise today's `thumbnail`. When the favourite view is removed (`remove_view`) or merged away, `cover` falls back to the first view that has a photo. The write goes through the R24 guard; `check_data` and `tests/test_gallery.py` cover the new key.
 
-19. **Done 10/10 (`v2026.10.10.4`, ARQUITETURA 17.10).** **People by person, not by day; attach a face to an existing name** (decided 10/10/2026, redesigned by the user the same day). The People tab today lists sightings by day. The user wants instead: **(a)** one screen with every **named** person (they fit on one screen), and a separate place for the unnamed faces; **(b)** clicking a person opens their page: first **the stored views that recognise them** (up to `MAX_EMBEDDINGS` = 40), then **a calendar of every recording they appear in**; **(c)** on an unnamed face, a "belongs to…" picker of existing names instead of typing — the merge itself already exists (`Gallery.rename` → `_merge`); **(d)** when a person already holds 40 views, new ones **wait in a queue** instead of being dropped (today `_merge` and `reinforce` drop them); on the person's page the user can **remove** one of the 40, and the oldest waiting view takes its place. This replaces the architect's earlier idea of replacing the most redundant view automatically: the user wants the choice. **Data, additive only:** a view today is a bare embedding with no picture, so to show the 40 the gallery must start keeping each view's face crop — an optional list aligned with `embeddings` (`null` for the views stored before, shown as "no photo"), plus an optional `pending` queue; `check_data` must read old and new. **(e) Rename a person** from their page (added by the user, 10/10). `Gallery.rename` already does it, but a new name that belongs to someone else **merges the two** — the page must say so and ask before doing it. **Fresh start (decided by the user, 10/10):** production's gallery holds only two named people and views without pictures, so when this version is deployed the architect **deletes** production's `faces/` — the user chose no backup — and the gallery restarts empty; the user names the two people again, and every view from then on has its picture. Clearing it before the deploy would be pointless: the running version would keep storing views without pictures until then. **Animals:** the user wants the same for the dogs; that needs item 15 first.
+19. **Done 10/10 (`v2026.10.10.4`, ARCHITECTURE 17.10).** **People by person, not by day; attach a face to an existing name** (decided 10/10/2026, redesigned by the user the same day). The People tab today lists sightings by day. The user wants instead: **(a)** one screen with every **named** person (they fit on one screen), and a separate place for the unnamed faces; **(b)** clicking a person opens their page: first **the stored views that recognise them** (up to `MAX_EMBEDDINGS` = 40), then **a calendar of every recording they appear in**; **(c)** on an unnamed face, a "belongs to…" picker of existing names instead of typing — the merge itself already exists (`Gallery.rename` → `_merge`); **(d)** when a person already holds 40 views, new ones **wait in a queue** instead of being dropped (today `_merge` and `reinforce` drop them); on the person's page the user can **remove** one of the 40, and the oldest waiting view takes its place. This replaces the architect's earlier idea of replacing the most redundant view automatically: the user wants the choice. **Data, additive only:** a view today is a bare embedding with no picture, so to show the 40 the gallery must start keeping each view's face crop — an optional list aligned with `embeddings` (`null` for the views stored before, shown as "no photo"), plus an optional `pending` queue; `check_data` must read old and new. **(e) Rename a person** from their page (added by the user, 10/10). `Gallery.rename` already does it, but a new name that belongs to someone else **merges the two** — the page must say so and ask before doing it. **Fresh start (decided by the user, 10/10):** production's gallery holds only two named people and views without pictures, so when this version is deployed the architect **deletes** production's `faces/` — the user chose no backup — and the gallery restarts empty; the user names the two people again, and every view from then on has its picture. Clearing it before the deploy would be pointless: the running version would keep storing views without pictures until then. **Animals:** the user wants the same for the dogs; that needs item 15 first.
 
 20. **Done 10/10 (`v2026.10.10.4`).** **Who appears in each recording** (decided 10/10/2026). On the Recordings tab, each event shows under its time the named people seen in it (`People: Gustavo; Izabel`, unknown faces as "unknown") and the animals (`Dogs: …` — today only the label and count, since dogs have no identity until item 15). The data exists: each face sighting records its `clip`; the event list can join on it, with no change on disk.
 
@@ -150,7 +150,7 @@ backlog itself is `BACKLOG.md` 1.
    phone. Delivered along with it, for free: remote access and items 5, 6 and
    11. **Stack: FastAPI + uvicorn**, chosen for MJPEG and HTTP Range, not
    taste. A plan in four stages, each with an acceptance criterion:
-   ARQUITETURA 17.
+   ARCHITECTURE 17.
 
    **The user's decision, 09/10/2026: the web is the only way in**, with one
    service running — *"I don't want two ways of getting in"*. It replaced the
@@ -158,19 +158,19 @@ backlog itself is `BACKLOG.md` 1.
 
    | | Step | State |
    |---|---|---|
-   | ✓ | Stage 1 — the event list | done 09/10 (ARQUITETURA 17.6) |
-   | ✓ | Stage 3 — live, local network, the shortcut opens service + browser | done 09/10 (ARQUITETURA 17.7) |
-   | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARQUITETURA 17.9) |
+   | ✓ | Stage 1 — the event list | done 09/10 (ARCHITECTURE 17.6) |
+   | ✓ | Stage 3 — live, local network, the shortcut opens service + browser | done 09/10 (ARCHITECTURE 17.7) |
+   | ✓ | Stage 4 — People and Settings on the web | done 10/10 (ARCHITECTURE 17.9) |
    | ✓ | Start with Windows, no console | done by item 17 (production task), 09/10 |
-   | ✓ | Remove the OpenCV window (`ui.py`, `--window`) | done 10/10 (ARQUITETURA 17.10) |
+   | ✓ | Remove the OpenCV window (`ui.py`, `--window`) | done 10/10 (ARCHITECTURE 17.10) |
    | ✓ | Stage 2 — play the video on the page | done 11/10 (item 5) |
 
 15. **Re-ID de animais** — **superseded by item 22** (the user's two-dog idea, generalised). History: **researched 10/10/2026, parked: no solution good enough for its cost now** (the user accepted that outcome in advance). *Measured:* the cheapest idea, telling the dogs apart by fur tone (works day and night in principle, since IR keeps white bright and black dark), failed on production's data: 168 dog detections in 89 events give a continuous spread of median tones from 7 to 249, with no clusters — a box holds the mat, the floor, sun and shade as much as the dog. *Read:* the models made for it are MegaDescriptor (WildlifeDatasets; Swin and EfficientNet variants on Hugging Face, best published for animals) and frozen DINOv2 with nearest-neighbour matching (weaker; a community dog model reports about 0.54 top-1 on whole-body dogs). Neither ships as ONNX: export needs PyTorch on the development PC, the run would be `onnxruntime` or a newer `cv2.dnn`, at an unmeasured CPU cost per crop on the M900. *What it would take:* a dog gallery the user labels by hand, a new model, and two or three sessions; expected to work on clear daytime views and poorly at night or with the dog lying down. Revisit only if knowing *which* dog becomes worth that. Today every event already says *that* a dog was there (item 20). **Reopened the same day with the user's idea — and it works on the data.** The house has two dogs, so the question is not *which dog in the world* but *which of the two*: keep the existing YOLO dog detection and tell the two apart with plain computer vision. Measured on production's clips: cutting the dog out of its box with OpenCV's GrabCut first, then taking the median tone of the fur pixels, splits 89 detections in 54 events into **a dark group (0–42, 42 detections) and a light group (150–210, 31)**, with 16 in between; **at night the split is clean** (2 dark, 14 light, none in between), since infrared keeps white fur bright and dark fur dark. A contact sheet of each group was sent to the user to confirm which dog is which. Proposed rule: tone below ~60 → the dark dog, above ~140 → the light one, in between → just "dog"; GrabCut on a handful of crops per event in the post-event scan costs little. Waits for the user: the two names and the confirmation of the sheet; then it is a small developer session (`people.py` or `faces.py`, the event's `animals` list, tests). A visiting dog would be named as one of the two — accepted by the user ("the only two dogs at home, most of the time"). The original item was a
-    whole-body classifier (ARQUITETURA 10.8).
+    whole-body classifier (ARCHITECTURE 10.8).
 
 ## 12.2 A precondition checked on 09/10/2026
 
-Web interface (backlog 3, ARQUITETURA 17) depended on `pydantic_core`, compiled
+Web interface (backlog 3, ARCHITECTURE 17) depended on `pydantic_core`, compiled
 Rust — the same kind of binary Smart App Control blocked in PyTorch:
 
 ```bash
@@ -183,7 +183,7 @@ uv run python -c "import pydantic_core, fastapi, uvicorn; print('ok')"
 | M900 (deploy) | yes, tested 09/10/2026 — `pydantic_core` 2.50.0, after switching to the signed Python |
 
 Had it failed, plan B was Flask with a threaded WSGI server, pure Python
-(ARQUITETURA 17.2).
+(ARCHITECTURE 17.2).
 
 ## 13. Architecture review
 
@@ -191,7 +191,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 
 | # | Date | Range reviewed | Result |
 |---|---|---|---|
-| 1 | 09/10/2026 | `b3d9c94..456b613` — signed Python, web stages 1 and 3, the face in the notification | 2 documentation errors fixed; R1–R9 opened. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARQUITETURA 18) |
+| 1 | 09/10/2026 | `b3d9c94..456b613` — signed Python, web stages 1 and 3, the face in the notification | 2 documentation errors fixed; R1–R9 opened. During the review the user decided R4 (keep LAN access) and the language rule (R10), and asked for production and test environments (backlog 17, ARCHITECTURE 18) |
 | 2 | 09/10/2026 | `760d68e..67f7d23` — everything before production: logging, clean stop, per-install stream and port, R1–R3, R5, R8, `check_data`, `production.ps1` | 4 code problems fixed in `8a81084` (13.5); full production cycle tested including a forced rollback; HANDOFF integrated; R11–R14 opened; **first release `v2026.10.09` tagged** |
 | 3 | 10/10/2026 | `87e736b`, developer session 1 — R15, R16, R10 in part, R19, R20, R11 | no code fixed: the diff, `check_data`, the comment check and the redaction and `select` expressions all checked out; HANDOFF integrated; R18 raised to high, R21–R22 opened; release `v2026.10.10` tagged |
 | 4 | 10/10/2026 | `5d91305..1b8822d`, developer session 2 — R21 measured, backlog 18, R22, R17, R10 code part | no code fixed; R21's fix decided (R23); release `v2026.10.10.2` tagged |
@@ -210,17 +210,17 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 
 ### 13.3 Review 1 — what was fixed on the spot
 
-- **The wrong story of the Python block** (INSTALACAO 1.2, sections 3 and 4 of
-  CONTEXTO). It said a `uv sync` had switched Python to 3.14.7 and that
+- **The wrong story of the Python block** (INSTALL 1.2, sections 3 and 4 of
+  CONTEXT). It said a `uv sync` had switched Python to 3.14.7 and that
   Windows had already blocked it on 29/09. Both are false: 3.14.7 was
   downloaded on 29/09 and ran until 30/09 — Windows' verdict changed on the
   **same file** —, and the blocks of 29/09 in the event log were PyTorch DLLs
   loaded by Python. The mistake came from filtering the log by the word
   "python" without reading the whole message.
-- **"The `Core` does not change"** (ARQUITETURA 17.4) no longer held after
+- **"The `Core` does not change"** (ARCHITECTURE 17.4) no longer held after
   stage 3, which added `labels` and `live_view()`. Rewritten to what matters:
   the `Core` does not know about the web.
-- **`jarvis_vigilancia.bat`** still told the user to use `jarvis.bat` to see
+- **`jarvis_headless.bat`** still told the user to use `jarvis.bat` to see
   the cameras.
 
 A fact raised in the review: **the M900's last recording was from 30/09 at
@@ -234,50 +234,50 @@ the text of R11 onwards is in the review section that opened it, below.
 
 | | # | Priority | Recommendation | State |
 |---|---|---|---|---|
-| ✓ | R1 | **high** | Notify a person who appears in the middle of an event | done `760d68e` (ARQUITETURA 12.8) |
-| ✓ | R2 | medium | A race at start-up: two launches in a row bring up two instances | done `760d68e`, made atomic in review 2 `8a81084` (ARQUITETURA 18.8) |
-| ✓ | R3 | medium | The live view freezes without warning when the service restarts | done `760d68e` (ARQUITETURA 17.8) |
+| ✓ | R1 | **high** | Notify a person who appears in the middle of an event | done `760d68e` (ARCHITECTURE 12.8) |
+| ✓ | R2 | medium | A race at start-up: two launches in a row bring up two instances | done `760d68e`, made atomic in review 2 `8a81084` (ARCHITECTURE 18.8) |
+| ✓ | R3 | medium | The live view freezes without warning when the service restarts | done `760d68e` (ARCHITECTURE 17.8) |
 | ✓ | R4 | medium | Exposure on a Wi-Fi network classified as Public — **the user's decision** | decided 09/10: keep open to the LAN |
-| ✓ | R5 | medium | "Recognised" with a low similarity | done `760d68e` (ARQUITETURA 12.8) |
-| ✓ | R6 | medium | Automatic tests for the web routes and the notification locks | done `9e25534`: 23 tests, `uv run pytest` (ARQUITETURA 19.5) |
-| ✓ | R8 | low | A network failure on the page is not shown to the user | done `760d68e` (ARQUITETURA 17.8) |
-| ✓ | R11 | **high** | `settings.save()` drops keys it does not know | done `524b14f` (ARQUITETURA 19.2) |
+| ✓ | R5 | medium | "Recognised" with a low similarity | done `760d68e` (ARCHITECTURE 12.8) |
+| ✓ | R6 | medium | Automatic tests for the web routes and the notification locks | done `9e25534`: 23 tests, `uv run pytest` (ARCHITECTURE 19.5) |
+| ✓ | R8 | low | A network failure on the page is not shown to the user | done `760d68e` (ARCHITECTURE 17.8) |
+| ✓ | R11 | **high** | `settings.save()` drops keys it does not know | done `524b14f` (ARCHITECTURE 19.2) |
 | ✓ | R13 | verification | The startup task survives a reboot, and restarts after a crash | **reboot verified 10/10**: Windows up 00:58:07, task at 00:58:16, cameras ok 00:59:06, in session 0 with no window. **crash verified the same night**: the user ended Python in Task Manager about 01:01 (the task shows result 1, Task Manager's exit code); the 5-minute trigger at 01:06:10 started it again, cameras ok at 01:06:16. A crash costs at most ~5 min of recording |
-| ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARQUITETURA 18.7) |
-| ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARQUITETURA 12.9) |
-| ✓ | R17 | medium | No way to tell why something was *not* recorded: a replay tool | done `cc08df1` (ARQUITETURA 12.10) |
-| ✓ | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | done `13bb4d5`, ratio 2.0 after the replay (ARQUITETURA 12.10) |
-| ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARQUITETURA 12.9) |
-| ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARQUITETURA 12.9) |
+| ✓ | R15 | **high** | ffmpeg opens console windows on the user's desktop | done `9eaa42c` (ARCHITECTURE 18.7) |
+| ✓ | R16 | **high** | Notification outcomes are never logged, and an error detail can carry the bot token | done `9ae537b` (ARCHITECTURE 12.9) |
+| ✓ | R17 | medium | No way to tell why something was *not* recorded: a replay tool | done `cc08df1` (ARCHITECTURE 12.10) |
+| ✓ | R18 | **high** since review 3 | The white dog lying on the Front mat is detected as `person` | done `13bb4d5`, ratio 2.0 after the replay (ARCHITECTURE 12.10) |
+| ✓ | R19 | **high** | The event's picture is its first frame, so it can show the dog instead of the person | done `085b3b6` (ARCHITECTURE 12.9) |
+| ✓ | R20 | **high** | The face scan samples too sparsely and misses short frontal moments | done `668588d` (ARCHITECTURE 12.9) |
 | ✓ | R21 | **high** | What the dense face scan costs live analysis on the M900 | measured `6ff6eda`: YOLO 1.6× slower during a scan; fix decided as R23 (13.8) |
-| ✓ | R22 | medium | Nothing records where the dense scan looked | done `c5166d1` (ARQUITETURA 12.10) |
-| ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARQUITETURA 12.10) |
-| ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARQUITETURA 17.10) |
-| ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARQUITETURA 12.10) |
+| ✓ | R22 | medium | Nothing records where the dense scan looked | done `c5166d1` (ARCHITECTURE 12.10) |
+| ✓ | R23 | **high** | A face scan slows YOLO while an event may be happening | done `754fa45`: YOLO 342 ms with the scan paused, against ~590 ms (ARCHITECTURE 12.10) |
+| ✓ | R24 | **high** | Anyone on the Wi-Fi, or a web page they open, can now change settings and names | done `f2a7c3e` (ARCHITECTURE 17.10) |
+| ✓ | R25 | medium | A face found in an event that fell in the cooldown is never sent | done `74fd71e` (ARCHITECTURE 12.10) |
 | ✓ | R26 | low | Production installs the development tools (pytest, httpx2) | done `59d35fd` |
-| ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARQUITETURA 20) |
-| ✓ | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | done `a54f357` (ARQUITETURA 21) |
-| ✓ | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | done `49a17b8` (ARQUITETURA 21) |
-| ✓ | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | done `d00b99f`: 137 → 45 ms per frame (ARQUITETURA 21) |
+| ✓ | R27 | medium | Every dog not matched for sure becomes a new unnamed entry; the Dogs tab fills up | done `0b69a6b` (ARCHITECTURE 20) |
+| ✓ | R28 | **high** | Another computer runs an old copy of the page after every update, and a refused change fails without saying why | done `a54f357` (ARCHITECTURE 21) |
+| ✓ | R29 | medium | Naming a dog does not gather its look-alike crops, as naming a person does | done `49a17b8` (ARCHITECTURE 21) |
+| ✓ | R31 | medium | The face scan runs YuNet on full 1080p frames and halves live analysis outside events | done `d00b99f`: 137 → 45 ms per frame (ARCHITECTURE 21) |
 | ✓ | R32 | low | Browsers closing the live view log Windows asyncio errors (27 tracebacks) | done `ef464f8` |
-| ✓ | R36 | low | A report can race a scan that reinforces the same entry, losing that one new view | done `0daa7ff`: taken out under the lock first (ARQUITETURA 21) |
-| ✓ | R37 | low | A report says what it is not, never what it is (the user's own face filed as a dog) | done `72924d7`: "Actually…" in the Settings list (ARQUITETURA 21) |
-| ✓ | R38 | **high** | A report made by mistake cannot be undone | done `2c2c943`: Settings → Bad-detection reports, with Undo; older reports undo too (ARQUITETURA 21) |
+| ✓ | R36 | low | A report can race a scan that reinforces the same entry, losing that one new view | done `0daa7ff`: taken out under the lock first (ARCHITECTURE 21) |
+| ✓ | R37 | low | A report says what it is not, never what it is (the user's own face filed as a dog) | done `72924d7`: "Actually…" in the Settings list (ARCHITECTURE 21) |
+| ✓ | R38 | **high** | A report made by mistake cannot be undone | done `2c2c943`: Settings → Bad-detection reports, with Undo; older reports undo too (ARCHITECTURE 21) |
 | ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `76a5a9e`, release `v2026.10.11.5`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
-| ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARQUITETURA 21) |
-| ✓ | R33 | medium | The documentation had grown by appending: README stale, CONTEXTO read whole by every session | done 12/10 by the architect: CONTEXTO cut to a brief and this file; README, INSTALACAO, PYTHON and ARQUITETURA in English; ARQUITETURA reorganised by subject (text in 13.12) |
-| ✓ | R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | done `aa68bc4`: a dog box where a person stood in the last 2 s is that person (ARQUITETURA 7.12, 13.16 below) |
-| ✓ | R43 | low | `config.json` is rewritten in place, with no lock, by two writers | done `565a34b`: one lock, write then replace, retries on Windows (ARQUITETURA 11.6) |
-| ✓ | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | done `f4fe810`: each move names the photo it was shown, 409 if it changed (ARQUITETURA 22.6) |
-| ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
-| ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARQUITETURA 21); rare cases go to bad-detection reports |
+| ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARCHITECTURE 21) |
+| ✓ | R33 | medium | The documentation had grown by appending: README stale, CONTEXT read whole by every session | done 12/10 by the architect: CONTEXT cut to a brief and this file; README, INSTALL, PYTHON and ARCHITECTURE in English; ARCHITECTURE reorganised by subject (text in 13.12) |
+| ✓ | R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | done `aa68bc4`: a dog box where a person stood in the last 2 s is that person (ARCHITECTURE 7.12, 13.16 below) |
+| ✓ | R43 | low | `config.json` is rewritten in place, with no lock, by two writers | done `565a34b`: one lock, write then replace, retries on Windows (ARCHITECTURE 11.6) |
+| ✓ | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | done `f4fe810`: each move names the photo it was shown, 409 if it changed (ARCHITECTURE 22.6) |
+| ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARCHITECTURE 21) |
+| ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARCHITECTURE 21); rare cases go to bad-detection reports |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
 with that frame's labels. If the event began with a dog, `notify.event()`
 refused (only `person` notified) and nobody tried again: the person arriving
 seconds later **got no notification at all**, and so no second message with
-the face either (ARQUITETURA 12.7), which depended on the first one having
+the face either (ARCHITECTURE 12.7), which depended on the first one having
 gone out. On 30/09, 29 of the 85 events with a person also had an animal; in
 every one where the animal came first, the person passed without a message
 (the JSON does not keep the order, so how many cannot be said). Suggested fix:
@@ -307,7 +307,7 @@ it marks the images "no connection" and reconnects when the server returns
 dead connection).
 
 **R4 — Exposure on the network (medium, the user's decision).** The server
-listens on `0.0.0.0` without a login, as decided (ARQUITETURA 17.4). But the
+listens on `0.0.0.0` without a login, as decided (ARCHITECTURE 17.4). But the
 M900's Wi-Fi network is classified by Windows as **Public**, and the firewall
 rule created applies to that profile. In practice any device on the same
 Wi-Fi — visitors included — sees the cameras live and every recording.
@@ -319,7 +319,7 @@ the same Wi-Fi can see the cameras; that is accepted. Closed.
 
 **R5 — "Recognised" with a low similarity (medium).** The second message said
 "<name> recognised" for any match above `MATCH_THRESHOLD` (0.363). With 40 px
-faces, ARQUITETURA 10.4 already admits 0.37 can be chance — that is why
+faces, ARCHITECTURE 10.4 already admits 0.37 can be chance — that is why
 `LEARN_THRESHOLD` is 0.45. The message should reflect the difference: below
 0.45, "probably <name>".
 
@@ -330,7 +330,7 @@ on disk) and `notify`'s locks (`_allowed`, R1). FastAPI has `TestClient`; it
 needs `httpx` as a development dependency. The check that day was a loose
 script in the scratchpad, which does not stay in the repository.
 
-**R7 — `instalar.bat` does not check the Python (low).** Step 3 installs the
+**R7 — `install.bat` does not check the Python (low).** Step 3 installs the
 official Python and ignores any error. If `winget` fails, `uv` falls back to
 its own unsigned Python, and the problem of 09/10 returns without warning.
 Suggestion: after `uv sync`, check the signature of `.venv\Scripts\python.exe`
@@ -355,12 +355,12 @@ the code and a real run, before the first release.
 - **R2 was only half fixed.** The port was checked in the main thread and bound
   later in uvicorn's; two launches a moment apart both saw it free. Now bound
   atomically with `SO_EXCLUSIVEADDRUSE` and handed to uvicorn. Tested: two
-  launches at the same instant, one runs (ARQUITETURA 18.8).
+  launches at the same instant, one runs (ARCHITECTURE 18.8).
 - **Crash recovery would not have worked.** "Restart on failure" only acts when
   a task fails to start; a crash after starting would have ended the
   surveillance until the next reboot. Replaced by a 5-minute trigger with
   "ignore new", plus a `HOLD` file so the trigger cannot start production
-  mid-update or after a deliberate stop (ARQUITETURA 18.7).
+  mid-update or after a deliberate stop (ARCHITECTURE 18.7).
 - **Updates needed admin.** Starting and stopping a scheduled task does; the
   script now stops through `--stop` and starts `pythonw.exe` directly, and only
   the task registration asks for elevation.
@@ -374,7 +374,7 @@ the code and a real run, before the first release.
 **Tested before tagging**, in a temporary folder: install, stop with hold, the
 task's start refused while held, status, start, and an update to a version
 broken on purpose — it failed the health check and rolled back on its own to
-the previous version, both cameras fresh (ARQUITETURA 18.7).
+the previous version, both cameras fresh (ARCHITECTURE 18.7).
 
 **New recommendations:**
 
@@ -420,7 +420,7 @@ the start at 20:20:55, and 19 events: 7 on Front, 12 on Back.
 1. **Windows named "site-pack…" — two that stayed, others that flashed.**
    Production's ffmpeg. The install started production in the user's session
    (session 6), not through the task, and every console program started from
-   `pythonw.exe` gets a window of its own (ARQUITETURA 18.7). The two that
+   `pythonw.exe` gets a window of its own (ARCHITECTURE 18.7). The two that
    stay are the captures, the ones that flash are clip assembly and the face
    scan. Closing one kills that ffmpeg. → **R15.**
 2. **"Not recorded going out for a delivery, nor coming back."** **It was
@@ -546,7 +546,7 @@ hand behaved — the token is redacted both literal and `%3A`-encoded, and the
 `select` expression for a person seen 36–44 s into the clip comes out as
 `not(mod(n\,14))+(between(t\,34.50\,45.50))*not(mod(n\,2))`. The developer
 reproduced every problem before fixing it, which is what the `dev` skill asks.
-What changed is in ARQUITETURA 12.9, 18.7 and 19.2.
+What changed is in ARCHITECTURE 12.9, 18.7 and 19.2.
 
 **What the review weighed hardest:**
 
@@ -578,11 +578,11 @@ with a lower priority.
 **R22 — Log where the dense scan looked (medium).** One INFO line per scan:
 the clip, the spans in seconds, frames read and time taken. Storing the spans
 in the event JSON, as the developer proposed, would also let
-`refazer_rostos.py` rescan densely; it is additive, so allowed, but not needed
+`rebuild_faces.py` rescan densely; it is additive, so allowed, but not needed
 until a rescan is.
 
 **R10, left:** older documentation, `ui.py` (including its Telegram test text),
-`cameras.build_camera_list()`'s `SystemExit`, `tools/diagnostico.py`, and the
+`cameras.build_camera_list()`'s `SystemExit`, `tools/diagnose.py`, and the
 Portuguese file names.
 ### 13.8 Review 4 — developer session 2
 
@@ -590,7 +590,7 @@ Reviewed `5d91305..1b8822d`. No code fixed. The trace hooks in `motion.py`
 and `people.py` change no decision (the developer compared old and new on all
 561 frames of the 22:29 clip); every module imports, `ui.py` included after
 its translation; no comments; the version reads `v2026.10.10-12-g1b8822d` in
-the test copy. Integrated into ARQUITETURA 12.10.
+the test copy. Integrated into ARCHITECTURE 12.10.
 
 **R21's fix, decided by the architect — R23.** The developer measured that a
 dense scan makes YOLO 1.6× slower and that fewer threads only make YOLO slower
@@ -636,7 +636,7 @@ right and measured wrong. Measure before choosing, even the obvious.
 Reviewed `11c6663..5f3c356`: R23, R18 and web stage 4. No code fixed. The new
 routes check every input, the face route stays inside `faces/`, the page never
 builds HTML from data (no `innerHTML`), and the token is write-only. Integrated
-into ARQUITETURA 12.10 and 17.9. The three points the developer left open,
+into ARCHITECTURE 12.10 and 17.9. The three points the developer left open,
 decided here rather than handed to the user:
 
 1. **R18 at 2.0 instead of 2.5 — accepted.** The replay found the dog sitting
@@ -672,7 +672,7 @@ the next session's first item.
 Reviewed `3a91964..5eb8964`. No code fixed: every path that touches a
 person's `embeddings` goes through `_take` or `remove_view`, both inside the
 gallery lock and both saving; imports, comments and `check_data` clean.
-Integrated into ARQUITETURA 17.10 and 19.2. The threat model of R24 is
+Integrated into ARCHITECTURE 17.10 and 19.2. The threat model of R24 is
 accepted as written there.
 
 **"Fewer face messages — is that normal?" (the user, 10/10).** Measured on
@@ -717,7 +717,7 @@ script without a hard refresh; an unpaired write shows the message.
 
 **"The Dogs tab should behave like People: favourite photo, 40 views,
 grouping."** The first two exist — the Dogs tab is the same code as People
-(ARQUITETURA 20) — and the other computer's stale page (R28) can hide them.
+(ARCHITECTURE 20) — and the other computer's stale page (R28) can hide them.
 Grouping does not: naming a person gathers the unnamed faces that clearly
 look like them (`_absorb`), but the developer turned it off for dogs.
 
@@ -778,12 +778,12 @@ real problem.
 through beyond it. Worth a pass with the built-in browser after R28 lands.
 
 **Documentation — R33 (medium, the architect's own).** README still describes
-three OpenCV tabs and `jarvis.bat` opening a window; ARQUITETURA (2,909 lines)
-and CONTEXTO (1,388) grew by dated appendices (12.9, 12.10, 17.9, 17.10, 20).
-CONTEXTO is read by every session's resume routine — about 25k tokens each
-time. Plan: README rewritten in English; CONTEXTO cut to the current brief
+three OpenCV tabs and `jarvis.bat` opening a window; ARCHITECTURE (2,909 lines)
+and CONTEXT (1,388) grew by dated appendices (12.9, 12.10, 17.9, 17.10, 20).
+CONTEXT is read by every session's resume routine — about 25k tokens each
+time. Plan: README rewritten in English; CONTEXT cut to the current brief
 (rules, state, backlog, open recommendations, plan), with the review history
-and usage log moved to a `docs/HISTORY.md` read on demand; ARQUITETURA
+and usage log moved to a `docs/HISTORY.md` read on demand; ARCHITECTURE
 reorganised by subject with the dated sections folded in; and R10's
 translation done along the way. To be done in a new conversation, where the
 documents can be read whole without this one's 750k of context.
@@ -826,7 +826,7 @@ and Undo copies a photo back only where none exists. 92 tests pass,
 Smart App Control blocks `.venv\Scripts\pytest.exe`, an unsigned launcher
 (os error 4551); `uv run python -m pytest` runs the same tests through the
 signed Python. The developer had already used the second form; the docs and
-the `dev` skill now say so (ARQUITETURA 19.5).
+the `dev` skill now say so (ARCHITECTURE 19.5).
 
 **The developer's questions, decided.** (1) An old report undone with more
 than one view keeps its crop as the entry's thumbnail, a file that a later
@@ -1022,7 +1022,7 @@ sighting file once.
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
-`PROCESS.md` 4; until 12/10/2026 the newest rows lived in `CONTEXTO.md` 14.3.
+`PROCESS.md` 4; until 12/10/2026 the newest rows lived in `CONTEXT.md` 14.3.
 
 | # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
 |---|---|---|---|---|---|---|---|
@@ -1057,7 +1057,7 @@ Every session's row: what it covered and what it cost. How to measure is
 | A18 | architect | ultracode | 12/10 10:50–11:00 | the notification cases counted from production's log, backlog 25 designed with the user, cycle started | 3% → 6% (new window) | 90% → 90% | 182k → 210k tokens, review 14's conversation |
 | D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
 | A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
-| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
+| A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXT cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALL, PYTHON (1–22) and ARCHITECTURE (1–17.7, ~2,400 lines) in English; ARCHITECTURE reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
 | A21 | architect | ultracode | 12/10 afternoon–evening | the user's three requests: the 6 dog reports read and measured (two YOLO replays, 644 boxes; HISTORY 13.16), R44, backlog 26 and 27 designed, developer 14 planned and started | 54% → window reset → 4% | 97% → 0% (the weekly read 0 % at the end, its reset still shown for 14/10) | 443k → 490k tokens, the same conversation |
 | D14 | developer | high | 12/10 evening | session 14: R44, backlog 26 and 27, R43 (174 tests) | 6% → 22%: R44 + 26 12, 27 2, R43 and HANDOFF 2 | 1% → 3% | 68k → 212k tokens, a new conversation |
-| A22 | architect | ultracode | 12/10 20:07–20:50 | the user's question, clear or compact: "clear, not compact" and `PENDING.md`; review 16, release and deploy `v2026.10.12.2`, raid log 13; CONTEXTO split into CONTEXTO, PROCESS and BACKLOG (the developer's resume ~10.3k → ~8.0k tokens, the architect's ~11.1k); developer 15 planned and started | 12% → 40%, shared with developer 14 until 20:17 (22% at its end): about 17 points for this session | 2% → 6% | 72k → 280k tokens, a new conversation |
+| A22 | architect | ultracode | 12/10 20:07–20:50 | the user's question, clear or compact: "clear, not compact" and `PENDING.md`; review 16, release and deploy `v2026.10.12.2`, raid log 13; CONTEXT split into CONTEXT, PROCESS and BACKLOG (the developer's resume ~10.3k → ~8.0k tokens, the architect's ~11.1k); developer 15 planned and started | 12% → 40%, shared with developer 14 until 20:17 (22% at its end): about 17 points for this session | 2% → 6% | 72k → 280k tokens, a new conversation |

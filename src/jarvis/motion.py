@@ -5,7 +5,7 @@ CONFIRM_FRAMES frames, which rejects insects, rain and sensor flicker. A blob
 whose content still correlates with the background is a change of light, not
 an object, and is dropped before that.
 
-See docs/ARQUITETURA.md for how each step works and how to tune it.
+See docs/ARCHITECTURE.md for how each step works and how to tune it.
 """
 
 import cv2

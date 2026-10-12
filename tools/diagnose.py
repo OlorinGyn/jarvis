@@ -1,7 +1,7 @@
 """Find a working ffmpeg capture command for this machine.
 
-Usage: uv run tools/diagnostico.py [rotulo]
-       uv run tools/diagnostico.py --local     testa o ffmpeg sem nenhuma camera
+Usage: uv run tools/diagnose.py [rotulo]
+       uv run tools/diagnose.py --local     testa o ffmpeg sem nenhuma camera
 
 Tries the current command and several variants, reporting how many analysis
 frames each one delivers. A camera that connects but sends no frames stops

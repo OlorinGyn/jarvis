@@ -1,7 +1,7 @@
 # J.A.R.V.I.S. — installing and running it
 
 How to get the system running on a new machine, and how production runs.
-For **how** it works, see [ARQUITETURA.md](ARQUITETURA.md).
+For **how** it works, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -20,7 +20,7 @@ Four things:
 packaged in the `imageio-ffmpeg` dependency; the rest are in `pyproject.toml`
 and `uv` installs them.
 
-`instalar.bat` takes care of `uv`, Python and the Redistributable on its own.
+`install.bat` takes care of `uv`, Python and the Redistributable on its own.
 
 ### 1.1 Why the Visual C++ Redistributable
 
@@ -63,7 +63,7 @@ program had no way to start again. Windows' `CodeIntegrity` log does not show
 when the verdict turned: the M900 had not run J.A.R.V.I.S. between 30/09 and
 09/10, and the first recorded block of `python.exe` is the attempt of 09/10.
 (The blocks of 29/09 in the same log are something else: PyTorch DLLs loaded
-by Python, the case in ARQUITETURA 7.11.)
+by Python, the case in ARCHITECTURE 7.11.)
 
 The python.org Python is **signed by the Python Software Foundation**, and a
 valid signature passes without depending on reputation. `pyproject.toml`
@@ -83,27 +83,27 @@ Get-AuthenticodeSignature .venv\Scripts\python.exe
 
 It must say `Valid` and `CN=Python Software Foundation`. The same rule is why
 the tests run as `uv run python -m pytest`: `uv run pytest` starts an unsigned
-launcher that Smart App Control blocks (ARQUITETURA 19.5).
+launcher that Smart App Control blocks (ARCHITECTURE 19.5).
 
 ## 2. Step by step
 
 ```bat
 git clone https://github.com/OlorinGyn/jarvis.git
 cd jarvis
-instalar.bat
+install.bat
 ```
 
-`instalar.bat` does seven things:
+`install.bat` does seven things:
 
 1. Installs `uv` if missing (if it does, **close the window and run it
    again** — the PATH only updates in a new window)
 2. Makes sure the Visual C++ Redistributable is there (see 1.1)
 3. Installs the official Python 3.14, for the current user only (see 1.2)
 4. `uv sync` — installs the dependencies from `uv.lock`, at the exact versions
-   that were tested, and `jarvis` itself as a package (ARQUITETURA 3.1)
+   that were tested, and `jarvis` itself as a package (ARCHITECTURE 3.1)
 5. Downloads the vision models (~73 MB in all, see section 3)
 6. Creates the **J.A.R.V.I.S.** shortcut on the Desktop, with the eye icon (a
-   `.bat` cannot have its own icon; see ARQUITETURA 14)
+   `.bat` cannot have its own icon; see ARCHITECTURE 14)
 7. Creates `.env` from `.env.example` and opens it in Notepad
 
 Each step has its own error message. The first version lumped the model
@@ -119,7 +119,7 @@ jarvis.bat
 To recreate only the shortcut:
 
 ```bat
-powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
+powershell -ExecutionPolicy Bypass -File tools\create_shortcut.ps1
 ```
 
 That starts the service — cameras, detection, recording, faces, dogs,
@@ -128,7 +128,7 @@ tabs **Live**, **Recordings**, **People**, **Dogs** and **Settings**
 (Notifications is its first part). Clicking the shortcut with the service already running only
 opens the browser; it does not start a second one, which would fight over the
 camera. The console that stays open is the service: stop it with `Ctrl+C` in
-it, not with the X (ARQUITETURA 17.7).
+it, not with the X (ARCHITECTURE 17.7).
 
 The `.bat` only checks that `.env` exists and calls
 `uv run python -m jarvis`, which goes straight to the signed Python instead of
@@ -138,7 +138,7 @@ To start **only the service**, without opening the browser — what starting
 with Windows uses (section 5):
 
 ```bat
-jarvis_vigilancia.bat
+jarvis_headless.bat
 ```
 
 **From a phone or another computer** on the same Wi-Fi: the console shows the
@@ -146,7 +146,7 @@ address, something like `http://192.168.0.18:8765`. The first time, Windows
 asks whether Python may receive connections from the network; allow it.
 Without that, only the computer itself opens the page. Reading is open to the
 home network; changing anything from another device needs pairing it once
-with the PIN set in Settings (ARQUITETURA 17.12).
+with the PIN set in Settings (ARCHITECTURE 17.12).
 
 To stop it from any terminal, without looking for the service's console:
 
@@ -172,7 +172,7 @@ not be versioned:
 | `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo |
 
 The models are downloaded by `people.ensure_model()` and
-`faces.ensure_models()` the first time each layer runs. `instalar.bat` does it
+`faces.ensure_models()` the first time each layer runs. `install.bat` does it
 ahead of time so the first event does not wait for the download.
 
 ## 4. Configuring the cameras
@@ -195,7 +195,7 @@ in the Tapo app: camera → gear → Advanced Settings → Camera Account.
 the SD card, and RTSP. With the first two on, RTSP is switched off silently —
 the symptom is `DESCRIBE` answering `200 OK` and `SETUP` closing the
 connection. **Turning recording off in the app is not enough: the card has to
-be removed physically.** Or turn Tapo Care off. Details in ARQUITETURA 13.
+be removed physically.** Or turn Tapo Care off. Details in ARCHITECTURE 13.
 
 **Reserve the IP by MAC on the router.** Without it the address changes on a
 DHCP renewal and the system stops connecting.
@@ -210,7 +210,7 @@ to get wrong by hand:
   would kill the surveillance every three days.
 - **A trigger every 5 minutes**, not "restart on failure", which only acts
   when the task fails to *start*, not when the program crashes later
-  (ARQUITETURA 18.7).
+  (ARCHITECTURE 18.7).
 
 The task runs production from `C:\JARVIS` without a console, whether or not
 anyone is logged on.
@@ -228,7 +228,7 @@ that matter most, in order of impact:
 | `MODEL_FILE` and `MODEL_URL` | `people.py` | `yolo11s.onnx`. Switching both to `yolo11n.onnx` is much faster and a little less accurate |
 
 **Measure before changing anything.** Recording itself costs almost nothing,
-because the camera's packets are copied without re-encoding (ARQUITETURA 5.1).
+because the camera's packets are copied without re-encoding (ARCHITECTURE 5.1).
 The cost is in decoding for analysis and in YOLO. `HWACCEL` only affects the
 analysis output; recording never decodes. Measuring the M900 is backlog 4.
 
@@ -256,7 +256,7 @@ folder is left at the root, it can be deleted. `.env`, `models/`, `clips/` and
 
 The camera accepts **a single RTSP session** on `stream1`. Check that no other
 J.A.R.V.I.S. is running — production and the test copy use different streams
-on purpose (ARQUITETURA 18.2) — or an orphaned ffmpeg:
+on purpose (ARCHITECTURE 18.2) — or an orphaned ffmpeg:
 
 ```bat
 tasklist | findstr ffmpeg
@@ -282,13 +282,13 @@ tell them apart: each camera accepts only its own Camera Account and answers
 **It connects but no picture ever arrives ("no frame received")**
 
 First of all, do the IP test above: old versions of `capture.py`, without
-`-timeout`, showed this message for a wrong IP too (ARQUITETURA 5.7; the
+`-timeout`, showed this message for a wrong IP too (ARCHITECTURE 5.7; the
 story is in HISTORY 6).
 
 RTSP is fine but ffmpeg does not deliver frames for analysis. Run:
 
 ```bat
-uv run python tools/diagnostico.py Front
+uv run python tools/diagnose.py Front
 ```
 
 It tests five variants of the capture command, 14 seconds each, and reports
@@ -337,11 +337,11 @@ re-encoding, so the damage came that way. Since the connection is TCP, the
 network loses nothing on the way; the camera itself drops data when its Wi-Fi
 chokes.
 
-Since 30/09/2026 these lines no longer reach the terminal (ARQUITETURA 10.11).
+Since 30/09/2026 these lines no longer reach the terminal (ARCHITECTURE 10.11).
 To see whether a camera has a bad signal:
 
 ```bat
-uv run python tools/verificar_clipes.py 2026-09-30
+uv run python tools/check_clips.py 2026-09-30
 ```
 
 ```
@@ -359,7 +359,7 @@ reaches farther than 5 GHz.
 
 **The Live tab shows "no signal"**
 
-The picture is marked after 5 s without a frame (ARQUITETURA 17.8). The camera's
+The picture is marked after 5 s without a frame (ARCHITECTURE 17.8). The camera's
 reason is in the log (`logs\jarvis.log`; production's in
 `C:\JARVIS\logs\jarvis.log`). The common ones:
 
@@ -378,16 +378,16 @@ ffmpeg (`tasklist | findstr ffmpeg`).
 **Wrong or repeated faces on People**
 
 First use the page: rename, "Belongs to…" to merge, and "Bad detection" for a
-crop that is not a face (ARQUITETURA 17.10, 21). As a last resort, with the
+crop that is not a face (ARCHITECTURE 17.10, 21). As a last resort, with the
 program **stopped**:
 
 ```bat
-uv run python tools/refazer_rostos.py
+uv run python tools/rebuild_faces.py
 ```
 
 It moves the current `faces/` to `backups/faces_<date-time>/` and rebuilds
 everything from the recorded clips. The names must be given again, but one
-card per person is enough: their other faces get the name with it (ARQUITETURA
+card per person is enough: their other faces get the name with it (ARCHITECTURE
 10.4). Once everything is right, the copy in `backups/` can be deleted.
 
 **No face appears on People**
@@ -398,14 +398,14 @@ holds:
 - the event had `person` among its labels;
 - the face is **frontal** — profile, the back of the head and a lowered head
   are ignored (a side face can still reach the phone as a picture, never the
-  gallery: ARQUITETURA 10.12);
+  gallery: ARCHITECTURE 10.12);
 - it is on a person YOLO sees in the same frame;
 - if it is someone new, it appeared in at least 2 frames of the clip.
 
 And it shows a few seconds after the event: the scan runs after the clip is
-assembled, one at a time. Details in ARQUITETURA 10.9. At night, in infrared,
+assembled, one at a time. Details in ARCHITECTURE 10.9. At night, in infrared,
 the face is usually ~44 px against the ideal ~112 px, and recognition is
-unreliable (ARQUITETURA 10.5).
+unreliable (ARCHITECTURE 10.5).
 
 **`WinError 1114` or `Error loading ... .dll`**
 
@@ -418,9 +418,9 @@ signature. It has happened three times:
 
 | When | What was blocked | Way out |
 |---|---|---|
-| 29/09/2026 | PyTorch's DLLs | PyTorch removed, YOLO through `cv2.dnn` (ARQUITETURA 7.11) |
+| 29/09/2026 | PyTorch's DLLs | PyTorch removed, YOLO through `cv2.dnn` (ARCHITECTURE 7.11) |
 | 09/10/2026 | **Python itself**, the one `uv` downloads | the official signed Python (section 1.2) |
-| 11/10/2026 | `.venv\Scripts\pytest.exe`, `uv`'s unsigned launcher | `uv run python -m pytest` (ARQUITETURA 19.5) |
+| 11/10/2026 | `.venv\Scripts\pytest.exe`, `uv`'s unsigned launcher | `uv run python -m pytest` (ARCHITECTURE 19.5) |
 
 If the message names `python.exe` or `uv` says `Failed to spawn: python`, it is
 the second case: check the signature with `Get-AuthenticodeSignature
@@ -444,17 +444,17 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v VerifiedAndReputa
 
 **The disk is filling up**
 
-The real rate is **~300 MB a day** (measured 30/09/2026, ARQUITETURA 8.6).
+The real rate is **~300 MB a day** (measured 30/09/2026, ARCHITECTURE 8.6).
 Set an archive folder in **Settings → Archive** — an external drive — and
 events older than 30 days move there; it deletes only there, when that drive
-fills (ARQUITETURA 11). Without one, nothing is deleted: the
+fills (ARCHITECTURE 11). Without one, nothing is deleted: the
 recordings are in `clips/<camera>/<date>/`, one folder per day, and old days
 can be deleted by hand. The buffer in `clips/_buffer/` cleans itself, and
 `backups/` holds only what the tools saved.
 
 ## 9. Production and test (since 09/10/2026)
 
-How it works and why: ARQUITETURA 18.
+How it works and why: ARCHITECTURE 18.
 
 ### 9.1 The two copies
 
@@ -470,7 +470,7 @@ How it works and why: ARQUITETURA 18.
 | Desktop | **J.A.R.V.I.S.** opens it | **J.A.R.V.I.S. (test)** starts it |
 
 Both can run at once: the camera serves `stream1` to one client and `stream2` to
-several (ARQUITETURA 18.2). Each copy has its own recordings, faces and
+several (ARCHITECTURE 18.2). Each copy has its own recordings, faces and
 settings — a name given in the test copy does not reach production.
 
 ### 9.2 Day to day
@@ -483,8 +483,8 @@ settings — a name given in the test copy does not reach production.
 | Start it again | `... -Action start` |
 | Are the recordings still readable? | `... -Action check` |
 | What happened? | `C:\JARVIS\logs\jarvis.log` |
-| Change what reaches the phone | the page's **Settings → Notifications**, or `/home`, `/away`, `/silent` to the bot (ARQUITETURA 22) |
-| Set up or check Telegram | **Settings → Notifications**: token, Find chat, Send test (ARQUITETURA 12.6) |
+| Change what reaches the phone | the page's **Settings → Notifications**, or `/home`, `/away`, `/silent` to the bot (ARCHITECTURE 22) |
+| Set up or check Telegram | **Settings → Notifications**: token, Find chat, Send test (ARCHITECTURE 12.6) |
 
 Stopping production any other way (Task Manager, ending the task) skips the
 clean shutdown, and a clip being assembled at that moment is lost. Within
@@ -506,7 +506,7 @@ Telegram.
 
 ### 9.4 Installing on a new machine
 
-From the project folder, after `instalar.bat` and with the program closed:
+From the project folder, after `install.bat` and with the program closed:
 
 ```bat
 powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action install
@@ -523,7 +523,7 @@ again.
 | Symptom | Look at |
 |---|---|
 | The page does not open | `-Action status`; if it says HELD, `-Action start`; otherwise `C:\JARVIS\logs\jarvis.log` |
-| Another computer gets nothing, and the log says `Invalid HTTP request received` | the browser is trying `https://`; type `http://192.168.0.18:8765` (ARQUITETURA 17.8) |
+| Another computer gets nothing, and the log says `Invalid HTTP request received` | the browser is trying `https://`; type `http://192.168.0.18:8765` (ARCHITECTURE 17.8) |
 | A camera shows "no signal" | its last frame is over 5 s old; the reason is written under it, and the camera reconnects on its own |
 | Telegram message "update ... FAILED" | the previous version is back; the message says whether it is running |
-| Black console windows titled `...site-packages\imageio_ffmpeg\...`, two that stay and others that flash | production's ffmpeg, visible when production was started by `production.ps1` instead of by Windows (ARQUITETURA 18.7). **Do not close them**: closing one of the two that stay cuts that camera until it reconnects, and closing a flashing one loses the clip being assembled. **Gone since `v2026.10.10`** (R15): seen on an older version, they disappear after a reboot |
+| Black console windows titled `...site-packages\imageio_ffmpeg\...`, two that stay and others that flash | production's ffmpeg, visible when production was started by `production.ps1` instead of by Windows (ARCHITECTURE 18.7). **Do not close them**: closing one of the two that stay cuts that camera until it reconnects, and closing a flashing one loses the clip being assembled. **Gone since `v2026.10.10`** (R15): seen on an older version, they disappear after a reboot |

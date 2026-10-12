@@ -7,7 +7,7 @@ nobody is at the computer.
 
 Sending happens in a thread: the network must never stall the capture loop.
 
-See docs/ARQUITETURA.md section 12.
+See docs/ARCHITECTURE.md section 12.
 """
 
 import logging

@@ -4,7 +4,7 @@ Detects people and animals by body shape, never by face, so a covered face
 still counts as human. Animal identity is a separate problem, not attempted.
 
 Runs the ONNX export through OpenCV's dnn module rather than PyTorch. See
-docs/ARQUITETURA.md section 7.11 for why.
+docs/ARCHITECTURE.md section 7.11 for why.
 """
 
 import time

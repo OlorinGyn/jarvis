@@ -15,7 +15,7 @@ write into the repository is in English.
 
 1. Run the resume routine, `docs/PROCESS.md` section 2. Its fast-forward
    pull is how the architect's plan reaches this machine; if it does not
-   fast-forward, stop and show the user. Read `docs/CONTEXTO.md` (the
+   fast-forward, stop and show the user. Read `docs/CONTEXT.md` (the
    project) and `docs/PROCESS.md` 1–2; the rest of PROCESS (reviews, the
    budget, biases, the raid log) only when the plan points at it, and
    `docs/PENDING.md` not at all — it is the architect's.
@@ -45,7 +45,7 @@ write into the repository is in English.
    - Prefer a well-regarded library to hand-written code (PROCESS 5).
 3. **Verify** against the acceptance, and keep the numbers. Run the tests
    with `uv run python -m pytest`: `uv run pytest` starts an unsigned
-   launcher that Smart App Control blocks on the M900 (ARQUITETURA 19.5).
+   launcher that Smart App Control blocks on the M900 (ARCHITECTURE 19.5).
 4. **Commit**, one item per commit, with a message that explains why.
    Stage files by name — never `git add -A` — and never stage `.env`,
    `config.json`, `models/`, `clips/`, `faces/`, `dogs/`, `reports/`,

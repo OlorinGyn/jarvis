@@ -1,6 +1,6 @@
 # Instructions for Claude Code
 
-Read three files before touching anything: `docs/CONTEXTO.md`, the project —
+Read three files before touching anything: `docs/CONTEXT.md`, the project —
 the decisions that must not be undone without a new reason, what has been
 ruled out; `docs/PROCESS.md`, how the work is done; and `docs/BACKLOG.md`, the
 backlog, the open recommendations and the plan. The architect also reads
@@ -75,7 +75,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | Backlog, review log, recommendations | reads them | manages them |
 | `git pull` / `git push`, release tags | only the resume routine's fast-forward pull | yes |
 | `HANDOFF.md` | writes it at the end of a delivery | reads it, integrates it, empties it |
-| Documentation EPUB | no | generates it **only when the user asks** (CONTEXTO 10) |
+| Documentation EPUB | no | generates it **only when the user asks** (CONTEXT 10) |
 | Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (PROCESS 6) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
 
@@ -138,7 +138,7 @@ through git, and the old conversation stays on disk ("Resume previous
 session", the `.jsonl` files under `~/.claude/projects/`). So **before the
 architect clears itself it rereads the user's own messages in that
 conversation** and checks that each one ended somewhere: a decision
-(CONTEXTO), work (BACKLOG), dropped with its reason (HISTORY), or still open
+(CONTEXT), work (BACKLOG), dropped with its reason (HISTORY), or still open
 (`docs/PENDING.md`). When the user mentions something the files do not
 hold, search those transcripts before saying you do not know. The developer
 always clears. The one exception is the user's: when a discussion with the

@@ -6,7 +6,7 @@ saturation when the frame is in colour. Nothing here knows any particular
 dog; the user names crops on the Dogs tab and the gallery learns from that.
 
 The gallery is People's (views with photos, queue, favourite), kept in its
-own folder, dogs/. See docs/CONTEXTO.md, backlog 22.
+own folder, dogs/. See docs/HISTORY.md section 8, backlog 22.
 """
 
 import json

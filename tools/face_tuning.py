@@ -11,7 +11,7 @@ band is safe while the right person still clears MATCH_THRESHOLD. Faces from
 the newest person clips where no named person was seen show the other side:
 how often a stranger, or the same person unrecognised, would match someone.
 --root is a folder laid out like the project (faces/, clips/), such as a copy
-of production's. See CONTEXTO R30 (b).
+of production's. See BACKLOG 2, R30 (b).
 """
 
 import argparse

@@ -4,7 +4,7 @@ cd /d "%~dp0"
 title J.A.R.V.I.S.
 
 if not exist ".env" (
-    echo Arquivo .env nao encontrado. Rode instalar.bat primeiro.
+    echo Arquivo .env nao encontrado. Rode install.bat primeiro.
     pause
     exit /b 1
 )

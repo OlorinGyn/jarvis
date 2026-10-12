@@ -1,9 +1,9 @@
 """Draw the J.A.R.V.I.S. icon, a robotic eye, into assets/jarvis.ico.
 
-Usage: uv run tools/gerar_icone.py
+Usage: uv run tools/make_icon.py
 
 Everything is drawn with NumPy and OpenCV at 1024px and scaled down, so the
-design lives in code and can be changed and regenerated. See docs/ARQUITETURA.md
+design lives in code and can be changed and regenerated. See docs/ARCHITECTURE.md
 section 14.
 """
 

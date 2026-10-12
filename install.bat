@@ -21,7 +21,7 @@ if errorlevel 1 (
     )
     echo.
     echo O uv foi instalado, mas o PATH so atualiza numa janela nova.
-    echo FECHE esta janela e rode instalar.bat novamente.
+    echo FECHE esta janela e rode install.bat novamente.
     pause
     exit /b 0
 ) else (
@@ -64,7 +64,7 @@ if errorlevel 1 (
 )
 
 echo [6/7] Atalho na Area de Trabalho...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\criar_atalho.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\create_shortcut.ps1"
 
 echo [7/7] Configuracao das cameras...
 if exist ".env" (

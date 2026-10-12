@@ -4,7 +4,7 @@ Runs uvicorn in a thread next to the Core. Recordings come from what is already
 on disk, the JSON and thumbnails in clips/. Live video comes from
 Core.live_view(), which only reads. The Core does not know the web exists.
 
-See docs/ARQUITETURA.md sections 17 and 18.
+See docs/ARCHITECTURE.md sections 17 and 18.
 """
 
 import asyncio

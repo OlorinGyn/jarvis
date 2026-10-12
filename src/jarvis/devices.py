@@ -4,7 +4,7 @@ The PIN used to live in the browser's storage, which browsers clear (Safari
 after 7 days unused, private windows, another address for the same M900).
 Pairing now gives the device a random token in an HttpOnly cookie; the
 server keeps only its SHA-256 hash in devices.json, with a label and the
-last use. See docs/CONTEXTO.md, R34.
+last use. See docs/HISTORY.md section 13.13, R34.
 """
 
 import hashlib

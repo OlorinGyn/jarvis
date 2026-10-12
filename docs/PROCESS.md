@@ -2,10 +2,10 @@
 
 The rules of the work between the user, the developer and the architect,
 whatever the item. What the project is and what was decided about it is
-`CONTEXTO.md`; the work itself — backlog, recommendations, the next
+`CONTEXT.md`; the work itself — backlog, recommendations, the next
 sessions — is `BACKLOG.md`; what is not work yet is `PENDING.md`; the past is
-`HISTORY.md`. Split out of `CONTEXTO.md` on 12/10/2026, when the user asked
-that each document carry only what belongs to it; CONTEXTO's old section
+`HISTORY.md`. Split out of `CONTEXT.md` on 12/10/2026, when the user asked
+that each document carry only what belongs to it; CONTEXT's old section
 numbers point here.
 
 ---
@@ -31,7 +31,7 @@ writes `HANDOFF.md`, and the architect integrates it (3.1, `CLAUDE.md`).
 **Generated files must never break** (the user, 09/10/2026). A new version
 reads everything an older one wrote. Changes are additive; anything else is
 announced to the user first and ships with a migration. `tools/check_data.py`
-proves it, and every production update runs it (ARQUITETURA 19).
+proves it, and every production update runs it (ARCHITECTURE 19).
 
 **Before committing, check that `.env` did not go in.** It holds the real
 camera passwords, which once leaked into examples in the documentation and
@@ -98,7 +98,7 @@ in at the end; the developer keeps its numbers for `HANDOFF.md`.
 
 **Check that Python still runs.** If `uv sync` or `uv run` fails with `Failed
 to spawn: python` or `WinError 4551`, Smart App Control is blocking an
-unsigned interpreter. The way out is in INSTALACAO 1.2 — the official Python
+unsigned interpreter. The way out is in INSTALL 1.2 — the official Python
 and a recreated `.venv` — and it is yours: do it before answering.
 
 ### 2.2 Check what the item in progress needs
@@ -122,7 +122,7 @@ the reasons. Follow it, and say so when you deviate.
 
 | File | Why | Consequence |
 |---|---|---|
-| `.env` | camera credentials | each machine has its own; `instalar.bat` creates it if missing |
+| `.env` | camera credentials | each machine has its own; `install.bat` creates it if missing |
 | `config.json` | the Telegram token and the PIN | **notifications start off on a new machine** |
 | `models/` | ~73 MB | downloaded on first use |
 | `clips/`, `faces/`, `dogs/`, `reports/` | recordings and galleries | local by nature |
@@ -149,7 +149,7 @@ The developer never edits documentation. At the end of a delivery it writes
 section, topics worth teaching, what to review hardest — and asks: *"Arquiteto,
 precisamos da sua análise."* The architect decides what is worth documenting,
 integrates it, empties the file, pushes, and tags a release when the code is
-fit for production. Production only ever runs tags (ARQUITETURA 18.7), named
+fit for production. Production only ever runs tags (ARCHITECTURE 18.7), named
 `vYYYY.MM.DD`; a second release on the same day is `vYYYY.MM.DD.2` —
 `production.ps1` sorts tags as versions. The developer's session is the `dev`
 skill (`.claude/skills/dev/SKILL.md`), which the architect maintains. The
@@ -224,7 +224,7 @@ Every session's row, with what it cost: `HISTORY.md` 14.3.
 ## 5. Claude's biases — constraints the user never chose
 
 This section exists because the user asked **"where can I find these biases
-you may have created?"** The honest answer was: nowhere. `CONTEXTO.md` 3 records
+you may have created?"** The honest answer was: nowhere. `CONTEXT.md` 3 records
 decisions, but a decision has an author. What was missing was a record of what
 Claude started treating as a rule **with nobody having decided it**.
 
@@ -264,7 +264,7 @@ App Control (an unsigned DLL, `WinError 4551`). Switching to `cv2.dnn` was
 right. The mistake was generalising: "fewer dependencies" became a design
 criterion, and Claude started writing by hand things that existed ready-made.
 It cost a whole session debugging TLS to reimplement what `requests` already
-delivers (ARQUITETURA 12.5). The correct rule is narrower: **be wary of large
+delivers (ARCHITECTURE 12.5). The correct rule is narrower: **be wary of large
 binary dependencies**, because that is what broke the deploy. A pure-Python or
 data-only package does not have that problem and needs no justification.
 
@@ -277,7 +277,7 @@ because a token could not be pasted into the window. Worse was what it
 dragged along: **the surveillance loop rode on the window** — `cv2.waitKey`
 set the pace and closing the window stopped recording. The user saw it
 themselves when saying they would not always want to watch live. The core was
-separated (ARQUITETURA 15) and the window removed on 10/10 (`v2026.10.10.4`).
+separated (ARCHITECTURE 15) and the window removed on 10/10 (`v2026.10.10.4`).
 **A correction of merit:** when proposing this, Claude said the M900 spent CPU
 drawing for nobody. True, but measured afterwards it was small — about 6 % of
 a frame. The gain of the separation is not CPU; it is surveillance that does
@@ -285,7 +285,7 @@ not die with the window.
 
 **No tests — never discussed, corrected 10/10/2026.** 2,600 lines and no
 tests; Claude never proposed them and the user never refused. R6 added them;
-there are 160 on 12/10 (ARQUITETURA 19.5).
+there are 160 on 12/10 (ARCHITECTURE 19.5).
 
 **Everything in one process — a consequence, not a choice.** Capture,
 detection, recording, faces, the web and the Telegram poller share one Python

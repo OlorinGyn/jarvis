@@ -3,7 +3,7 @@
 A mode only decides what is sent; recording never changes. Each mode holds
 one switch per case, all editable. The defaults are built from the older
 notify_labels, so a config.json written before the modes keeps sending what
-it sent. See docs/CONTEXTO.md, backlog 25.
+it sent. See docs/HISTORY.md section 8, backlog 25.
 """
 
 PERSON_CASES = ("resident_person", "known_person", "unknown_face", "faceless_person")

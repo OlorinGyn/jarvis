@@ -1,6 +1,6 @@
 """Rebuild faces/ from every recorded clip, with the current face pipeline.
 
-Usage: uv run tools/refazer_rostos.py
+Usage: uv run tools/rebuild_faces.py
 
 Moves the current faces/ aside to backups/faces_<data-hora>/ first, so nothing
 is lost. Names are not carried over: identities are rebuilt from scratch, and

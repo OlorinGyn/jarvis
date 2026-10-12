@@ -6,7 +6,7 @@ the recogniser needs. Scanning the recorded clip gives full resolution and
 costs nothing on the live path.
 
 Uses YuNet and SFace, both built into OpenCV, so no extra dependency. See
-docs/ARQUITETURA.md section 10.
+docs/ARCHITECTURE.md section 10.
 """
 
 import hashlib

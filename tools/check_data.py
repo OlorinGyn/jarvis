@@ -6,7 +6,7 @@ The user's rule: a new version must never break files written by an older
 one. This reads every event, face and dog sighting, both galleries, the
 bad-detection reports and config.json the same way the program does, and
 fails if any of them can no longer be read.
-Run it before and after every production update. See docs/ARQUITETURA.md
+Run it before and after every production update. See docs/ARCHITECTURE.md
 section 19.
 """
 

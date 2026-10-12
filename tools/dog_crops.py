@@ -7,7 +7,7 @@ same for events recorded before, so the Dogs tab has something to name
 from the start. For each event labelled "dog" it reads the clip at the
 analysis size, finds the frame where the dogs show best with YOLO, and
 records each dog of that frame (dogs.record). Events already in the dog
-gallery are skipped, so it can run again safely. See CONTEXTO backlog 22.
+gallery are skipped, so it can run again safely. See HISTORY 8, backlog 22.
 """
 
 import argparse
