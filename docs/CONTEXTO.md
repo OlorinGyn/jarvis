@@ -331,6 +331,15 @@ Sem isto o sistema não cumpre bem o próprio objetivo.
 
 Funciona sem, mas incompleto.
 
+25. **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
+    - **(a) The Resident tag.** A switch **Resident** on the person and dog pages, named entries only; stored as an optional `"resident": true` in `gallery.json` (additive). Renaming keeps it; a merge keeps the target's, or sets it when either was a resident. The grid card shows it.
+    - **(b) The cases, one switch each:** resident person recognised · other known person, or any "probably …" match · unknown face · person with no recognisable face (the side-view and best-view messages) · resident dog · other dog (probable, another name, unidentified) · other animals. Only a **sure** match counts as a resident — a "probably Gustavo" or "probably Aurora" is not silenced, so a weak match of a stranger is never hidden.
+    - **(c) Modes:** **Home**, **Away**, **Silent**; one is active; each has its own switches, all editable. Defaults: Away — every person case on; Home — the two resident cases off, the rest as Away (a person with no recognisable face **notifies**: the user's choice, a stranger in the dark must reach the phone); Silent — all off. Animal switches start from today's `notify_labels`, so nothing new arrives until the user turns it on. **Recording never changes**: a mode only decides what reaches the phone. Stored as new optional keys in `config.json` (`notify_mode`, `notify_modes`); `notify_labels` stays for older versions.
+    - **(d) The timing problem, and its rule.** A dog is named from the first frame (~100 ms), so a resident dog is silenced in the first message itself. A person is named only after the clip is assembled and scanned (section 3, "Rosto no clipe"). So: **when the active mode has any person case off, the person message waits for the face scan** and goes out once, saying who was found, or with the side or best view; when every person case is on (Away), today's immediate message and follow-ups stay. The camera and per-person cooldowns keep working. A mid-event arrival (`_notify_late`) follows the same rules.
+    - **(e) A Notifications tab.** The switches as a table — cases in rows, the three modes in columns, the active mode chosen at the top — drawn as real on/off switches (`<input type="checkbox" role="switch">` and CSS, no library), fitting a phone. The Telegram setup (token, chat, find chat, test, prefix, cooldown) moves there from Settings.
+    - **(f) Commands from the phone.** A thread in production asks Telegram for new messages (`getUpdates` long polling: an outgoing connection like sending, **no port opened**). Only the configured chat is obeyed; anything from another chat is ignored and logged. `/home`, `/away`, `/silent` switch the mode and answer with what it means; `/mode` shows the current one with tap buttons (inline keyboard); `setMyCommands` lists them in Telegram's "/" menu. The bot can change the mode and nothing else. Find chat must read through the same poller (two readers steal each other's updates); only production polls — the test copy has no token (checked 12/10), and a second poller on the same token gets a 409 from Telegram: log once and back off. Network failures never touch capture; R16's token redaction applies.
+    - **Acceptance:** tests for the rules matrix (each case × mode), the held person message with a fake scan, the resident flag through rename and merge, the defaults built from an older `config.json`, the poller ignoring other chats; `check_data` reads the new keys. On the M900: the user, Mirana and Aurora marked Resident; in Home a recognised resident sends nothing and a person with no face does; `/away` from the phone changes the mode the page shows.
+
 23. **Done 11/10 (`v2026.10.11.4`).** **Report a bad detection instead of deleting it** (decided 11/10/2026). Some unnamed crops are not even a dog, or not a face. Each unnamed face and dog crop (and a person or animal label on a Recordings event) gets **"Bad detection"**: the crop leaves the gallery and the tabs, and is kept as an example in a new folder `reports/<kind>/` — the crop plus a JSON with camera, time, clip, label, score, box and what the user said (`not a dog`, `not a face`, `not a person`). Nothing is learned from it automatically yet; it is the improvement process's evidence: `tools/replay.py` and the tuning tools can be pointed at it, and each review reads the new reports (a rule like R18 or R35 is then measured against what the user flagged). Replaces the plain Dismiss of R27, which deleted without a trace. Additive: new files only; `check_data` reads them. **Since `v2026.10.11.6` (R38, R37):** Settings lists the reports; each can be undone — the entry returns to its gallery with its photos and sightings, or the label to its recording — and can say what it actually was (person, dog, other animal, nothing).
 
 24. **Done 11/10 (`v2026.10.11.4`).** **"Choose the best 40" for a person or a dog** (decided 11/10/2026). When a person or dog holds more than 40 views (the 40 kept plus the queue), their page gets an **Analyse** button: the software picks the 40 **most different** views — greedy farthest-point selection over the embeddings (cosine for faces, the Bhattacharyya distance for dogs, keeping day and night both represented), which covers angles and lighting instead of 40 near-copies — shows the proposal, and on confirmation keeps those 40 and moves the rest to the queue. Manual removal stays as it is. Tests: the selection spreads (minimum pairwise distance grows), nothing is lost (views + queue unchanged as a set). **Since `v2026.10.11.6` (R40):** the queue is shown as **Waiting** beside **Chosen**, views move between them by the user's hand only (removing a chosen view no longer pulls a waiting one), and the proposal can also discard the views it does not keep.
@@ -1500,17 +1509,18 @@ disk, which is exactly why the roles hand over through files.
 the user set it, the architect waits for the user: no hand back. Weekly usage
 is at 89 %, with the reset on 14/10 at 16:00.
 
-**Ready for the developer when the user starts a session:** R41 (low — moves
-carry the photo name, 409 when it no longer matches). Small; it can open a
-session together with whatever the user decides next. R30 (b) still waits for
-a second named person.
+**Developer 13 (decided by the user 12/10, one delivery):** backlog 25 —
+the Resident tag, the notification rules and modes, the Notifications tab and
+the Telegram commands, in the order (a) → (f) of the item; then R41 (low) if
+the session has room. R30 (b) still waits for a second named person. The
+weekly limit was at 90 % on 12/10; the developer starts when the user says.
 
 **The architect:** R33, the documentation rewrite (13.12). It reads and
 rewrites the three big documents whole, so it costs more than a review; the
 user decides when, given the weekly limit.
 
 **Waiting for the user:** every other open backlog item is **(proposto)** —
-1 (zones), 2 (system health) and the rest of section 8.
+1 (zones), 2 (system health; a "camera down" message would join backlog 25's switches) and the rest of section 8.
 
 Test the other-computer path with the M900's own browser at 192.168.0.18.
 
