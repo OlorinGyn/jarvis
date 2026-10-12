@@ -9,7 +9,7 @@ See docs/ARQUITETURA.md section 11.
 
 import json
 
-from . import ROOT
+from . import ROOT, modes
 
 FILE = ROOT / "config.json"
 
@@ -22,6 +22,8 @@ DEFAULTS = {
     "notify_labels": ["person"],
     "notify_cooldown": 120,
     "notify_prefix": "",
+    "notify_mode": modes.DEFAULT_MODE,
+    "notify_modes": None,
     "write_pin": "",
 }
 
@@ -36,12 +38,18 @@ def _stored():
 
 
 def load():
-    """Current settings, with any missing key filled from DEFAULTS."""
+    """Current settings, with any missing key filled from DEFAULTS.
+
+    The notification modes are always whole: a config.json from before them
+    gets the defaults built from its notify_labels (backlog 25).
+    """
     values = dict(DEFAULTS)
     stored = _stored()
     for key in DEFAULTS:
         if key in stored:
             values[key] = stored[key]
+    values["notify_mode"] = modes.mode_of(values)
+    values["notify_modes"] = modes.normalised(values["notify_modes"], values["notify_labels"])
     return values
 
 

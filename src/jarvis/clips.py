@@ -86,11 +86,12 @@ def _clip_moments(segments, spans):
 
 
 def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
-              person_spans=(), dog_view=None):
+              person_spans=(), dog_view=None, held=False):
     """Wait for the final segment to close, build the clip, then read faces.
 
-    When the event notified and no face was found, the phone gets the best
-    view of the person instead, so it always ends with a picture of them.
+    When no face was found, the phone gets the side view or the best view of
+    the person instead, so it always ends with a picture of them. When the
+    person was held for the scan, that message is the person's only one.
     """
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
@@ -106,12 +107,9 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
                                     busy=recording_now)
         except Exception as problem:
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
-    if found:
-        notify.faces_seen(camera.label, start, found)
-    elif notified and faces.side_view_path(destination).exists():
-        notify.side_face(camera.label, start, faces.side_view_path(destination))
-    elif notified and best_view:
-        notify.best_view(camera.label, start, best_view)
+    if "person" in labels:
+        notify.after_scan(camera.label, start, found, held, notified,
+                          faces.side_view_path(destination), best_view)
     if dog_view:
         try:
             dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
@@ -124,16 +122,23 @@ def recording_now():
     return any(recorder.recording for recorder in list(_recorders))
 
 
-def _message_words(frame, subjects, labels):
-    """The words of a notification: the labels, with each dog named by certainty.
+def _message_parts(frame, subjects, labels):
+    """(words, case) for each subject of a message: each dog named by certainty, a person's case None.
 
-    None when no dog is among them, so the message stays as it always was.
+    The notification modes switch each case on or off; a person's is known
+    only after the face scan.
     """
-    if "dog" not in labels:
-        return None
-    boxes = [(s.x, s.y, s.w, s.h) for s in subjects if s.label == "dog"]
-    others = [label for label in sorted(labels) if label != "dog"]
-    return others + (dogs.words_for(frame, boxes) if boxes else ["dog"])
+    parts = []
+    for label in sorted(labels):
+        if label == "person":
+            parts.append(("person", None))
+        elif label == "dog":
+            boxes = [(s.x, s.y, s.w, s.h) for s in subjects if s.label == "dog"]
+            found = dogs.identify(frame, boxes) if boxes else [("dog", False)]
+            parts += [(words, "resident_dog" if resident else "other_dog") for words, resident in found]
+        else:
+            parts.append((label, "other_animal"))
+    return parts
 
 
 def available_days():
@@ -194,6 +199,7 @@ class EventRecorder:
         self.labels = set()
         self.best_confidence = 0.0
         self.notified = False
+        self.person_held = False
         self.notify_tried = set()
         self.moment = 0
         self.sent_moment = None
@@ -241,6 +247,7 @@ class EventRecorder:
         self.started_at = stamp
         self.started = time.monotonic()
         self.recording = True
+        self.person_held = False
         self.labels = set()
         self.best_confidence = 0.0
         self.moment = 0
@@ -253,8 +260,8 @@ class EventRecorder:
 
         seen = {s.label for s in subjects}
         self.notify_tried = set(seen)
-        self.notified = notify.event(self.label, sorted(seen), str(thumbnail),
-                                     names=_message_words(frame, subjects, seen))
+        self.notified, self.person_held = notify.event(
+            self.label, _message_parts(frame, subjects, seen), str(thumbnail))
         if self.notified:
             self.sent_moment = self.moment
 
@@ -266,17 +273,20 @@ class EventRecorder:
         would pass in silence. One attempt per new label keeps config.json
         from being read every frame. The photo is of this moment, saved as
         HH-MM-SS.alert.jpg so the archive moves it with the rest of the event.
+        A person arriving after a sent message is still held for the scan
+        when the mode asks for it.
         """
-        if self.notified:
-            return
         new = {s.label for s in subjects} - self.notify_tried
         if not new:
             return
         self.notify_tried |= new
+        if self.notified:
+            self.person_held |= "person" in new and notify.holds_person()
+            return
         photo = self.base.with_name(f"{self.base.name}.alert.jpg")
         self._save_thumbnail(frame, subjects, photo)
-        self.notified = notify.event(self.label, sorted(new), str(photo),
-                                     names=_message_words(frame, subjects, new))
+        self.notified, held = notify.event(self.label, _message_parts(frame, subjects, new), str(photo))
+        self.person_held |= held
         if self.notified:
             self.sent_moment = self.moment
         else:
@@ -367,13 +377,13 @@ class EventRecorder:
         meta = self._write_metadata(ended_at, reason, best)
         destination = self.base.with_suffix(".mp4")
         already_sent = best is not None and self.best_view["moment"] == self.sent_moment
-        followup = None if already_sent else best
+        followup = best if self.person_held or not already_sent else None
 
         job = threading.Thread(target=_assemble,
                                args=(self.camera, self.started_at, ended_at,
                                      destination, set(self.labels), self.notified,
                                      followup, [tuple(s) for s in self.person_spans],
-                                     self.dog_view))
+                                     self.dog_view, self.person_held))
         job.start()
         _jobs.append(job)
 

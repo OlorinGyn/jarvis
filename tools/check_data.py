@@ -14,7 +14,7 @@ import json
 import sys
 from pathlib import Path
 
-from jarvis import devices, dogs, faces, reports, settings, web
+from jarvis import devices, dogs, faces, modes, reports, settings, web
 from jarvis.clips import CLIP_DIR
 
 EVENT_KEYS = ("camera", "started_at", "time", "seconds", "labels", "video", "thumbnail")
@@ -73,6 +73,8 @@ def check_faces(problems):
         if "cover" in person and not isinstance(person["cover"], str):
             problems.append(f"gallery person {person['id']}: cover is not a path")
         faces.cover_of(person)
+        if "resident" in person and not isinstance(person["resident"], bool):
+            problems.append(f"gallery person {person['id']}: resident is not true or false")
         for waiting in person.get("pending") or []:
             if not isinstance(waiting, dict) or len(waiting.get("embedding") or []) != EMBEDDING_SIZE:
                 problems.append(f"gallery person {person['id']}: a queued view is unreadable")
@@ -107,7 +109,17 @@ def check_settings(problems):
         problems.append(f"{settings.FILE}: unreadable ({problem})")
         return "unreadable"
     unknown = sorted(set(stored) - set(settings.DEFAULTS))
-    settings.load()
+    values = settings.load()
+    if "notify_mode" in stored and stored["notify_mode"] not in modes.MODES:
+        problems.append(f"{settings.FILE}: notify_mode {stored['notify_mode']!r} is not one of {modes.MODES}")
+    stored_modes = stored.get("notify_modes")
+    if stored_modes is not None and not (
+            isinstance(stored_modes, dict)
+            and all(isinstance(switches, dict) and all(isinstance(on, bool) for on in switches.values())
+                    for switches in stored_modes.values())):
+        problems.append(f"{settings.FILE}: notify_modes holds values this version does not read")
+    if set(values["notify_modes"]) != set(modes.MODES):
+        problems.append(f"{settings.FILE}: the notification modes could not be built")
     if unknown:
         return (f"{len(stored)} key(s); warning: this version does not know {unknown} "
                 f"and would drop them on save (readable, so not a failure)")
@@ -129,6 +141,8 @@ def check_dogs(problems):
             problems.append(f"dog {dog['id']}: descriptors of size {wrong}")
         faces.views_of(dog)
         faces.cover_of(dog)
+        if "resident" in dog and not isinstance(dog["resident"], bool):
+            problems.append(f"dog {dog['id']}: resident is not true or false")
     sightings = 0
     for day in sorted(dogs.days_with_dogs()):
         for path in (dogs.DOG_DIR / day.isoformat()).glob("*.json"):

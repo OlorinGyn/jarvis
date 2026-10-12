@@ -25,6 +25,8 @@ def sent(tmp_path, monkeypatch):
     monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
     monkeypatch.setattr(clips, "_concat", lambda segments, destination: destination.write_bytes(b"x"))
     monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [])
+    monkeypatch.setattr(notify, "load", lambda: {"notify_token": "x", "notify_chat": "1",
+                                                 "notify_mode": "away", "notify_cooldown": 120})
     monkeypatch.setattr(notify, "side_face", lambda *a, **k: calls.append("side"))
     monkeypatch.setattr(notify, "best_view", lambda *a, **k: calls.append("best"))
     monkeypatch.setattr(notify, "faces_seen", lambda *a, **k: calls.append("faces"))
