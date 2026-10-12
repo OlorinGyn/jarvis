@@ -722,10 +722,11 @@ Rows before 12/10 11:00: `HISTORY.md` 14.3.
 | D13 | developer | high | 12/10 10:58–11:17 | session 13: backlog 25 (a)–(f), R41 (158 tests) | 6% → 23%: (a)–(d) 9, (e) 3, (f) 2, R41 3 | 90% → 92% | 73k → 252k tokens, a new conversation |
 | A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
 | A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
+| A21 | architect | ultracode | 12/10 afternoon–evening | the user's three requests: the 6 dog reports read and measured (two YOLO replays, 644 boxes; HISTORY 13.16), R44, backlog 26 and 27 designed, developer 14 planned and started | 54% → window reset → 4% | 97% → 0% (the weekly read 0 % at the end, its reset still shown for 14/10) | 443k → 490k tokens, the same conversation |
 
 ### 14.4 Next sessions
 
-**The cycle of 12/10 is done** (review 15, `v2026.10.12`, deployed at 11:27:
+**Review 15's cycle is done** (`v2026.10.12`, deployed at 11:27:
 407 events, 40 face and 177 dog sightings, 2 reports read before and after;
 cameras ok 3 s after the start; no `Telegram commands:` trouble logged). As
 the user set it: no hand back. Weekly usage 94 % after review 15, with the
@@ -743,8 +744,9 @@ many unnamed crops, assign or report them at once), **backlog 27**
 (Notifications inside Settings), then **R43** (low) if there is room. R42
 joins only if the user picks (b). R10's file names stay for a session of their
 own: they touch 26 files and the production task. R30 (b) still waits for a
-second named person. **When to start is the user's call**: the weekly is at
-97 %, and a developer session has cost about 2 points of it.
+second named person. **Started by the architect on 12/10 in the evening**:
+the weekly read 0 % after the evaluation (it had been 97 %), so no stop
+condition held.
 
 **R33 is done** (12/10, A20): the documentation rewrite the architect owed.
 The documents are in English, CONTEXTO is a brief, and the past is in
