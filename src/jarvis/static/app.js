@@ -26,7 +26,7 @@ function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-const TABS = ["live", "recordings", "people", "dogs", "settings"];
+const TABS = ["live", "recordings", "people", "dogs", "notifications", "settings"];
 
 function currentTab() {
   const tab = location.hash.slice(1).split("/")[0];
@@ -242,6 +242,8 @@ function showTab() {
     peopleTab.show();
   } else if (tab === "dogs") {
     dogsTab.show();
+  } else if (tab === "notifications") {
+    loadSettings();
   } else if (tab === "settings") {
     loadSettings();
     loadReports();
@@ -697,6 +699,77 @@ function showArchive(state) {
   }));
 }
 
+const modesResult = document.getElementById("modes-result");
+
+function modeButton(mode, name, active) {
+  const option = document.createElement("label");
+  option.className = "mode-option";
+  const radio = document.createElement("input");
+  radio.type = "radio";
+  radio.name = "notify_mode";
+  radio.value = mode;
+  radio.checked = mode === active;
+  radio.addEventListener("change", async () => {
+    try {
+      fillSettings(await send("/api/settings", { notify_mode: mode }));
+      modesResult.textContent = `${name} is now the active mode.`;
+    } catch (problem) {
+      modesResult.textContent = `Not changed: ${problem.message}`;
+      loadSettings();
+    }
+  });
+  const text = document.createElement("span");
+  text.textContent = name;
+  option.append(radio, text);
+  return option;
+}
+
+function modeSwitch(mode, modeName, caseKey, caseName, on) {
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.setAttribute("role", "switch");
+  box.checked = on;
+  box.setAttribute("aria-label", `${caseName} in ${modeName}`);
+  box.addEventListener("change", async () => {
+    const wanted = box.checked;
+    try {
+      fillSettings(await send("/api/settings", { notify_modes: { [mode]: { [caseKey]: wanted } } }));
+      modesResult.textContent = `${modeName}: ${caseName} ${wanted ? "on" : "off"}.`;
+    } catch (problem) {
+      box.checked = !wanted;
+      modesResult.textContent = `Not saved: ${problem.message}`;
+    }
+  });
+  return box;
+}
+
+function showModes(values) {
+  document.getElementById("mode-choice").replaceChildren(
+    ...values.notify_mode_names.map(([mode, name]) => modeButton(mode, name, values.notify_mode)));
+  const table = document.getElementById("modes-table");
+  const head = table.querySelector("thead tr");
+  head.replaceChildren(head.firstElementChild, ...values.notify_mode_names.map(([mode, name]) => {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = name;
+    cell.classList.toggle("active", mode === values.notify_mode);
+    return cell;
+  }));
+  table.querySelector("tbody").replaceChildren(...values.notify_cases.map(([caseKey, caseName]) => {
+    const row = document.createElement("tr");
+    const label = document.createElement("th");
+    label.scope = "row";
+    label.textContent = caseName;
+    row.append(label, ...values.notify_mode_names.map(([mode, modeName]) => {
+      const cell = document.createElement("td");
+      cell.classList.toggle("active", mode === values.notify_mode);
+      cell.append(modeSwitch(mode, modeName, caseKey, caseName, values.notify_modes[mode][caseKey]));
+      return cell;
+    }));
+    return row;
+  }));
+}
+
 function fillSettings(values) {
   notifyForm.notify_token.value = "";
   document.getElementById("token-state").textContent = values.notify_token_set
@@ -705,17 +778,7 @@ function fillSettings(values) {
   notifyForm.notify_chat.value = values.notify_chat || "";
   notifyForm.notify_cooldown.value = values.notify_cooldown;
   notifyForm.notify_prefix.value = values.notify_prefix || "";
-  const choices = document.getElementById("label-choices");
-  choices.replaceChildren(choices.querySelector("legend"), ...values.notify_label_choices.map((label) => {
-    const option = document.createElement("label");
-    option.className = "choice";
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.value = label;
-    box.checked = values.notify_labels.includes(label);
-    option.append(box, ` ${label}`);
-    return option;
-  }));
+  showModes(values);
   showPairing(values);
   archiveForm.archive_path.value = values.archive_path || "";
   archiveForm.archive_after_days.value = values.archive_after_days;
@@ -748,7 +811,6 @@ notifyForm.addEventListener("submit", (submitted) => {
     notify_chat: notifyForm.notify_chat.value,
     notify_cooldown: Number(notifyForm.notify_cooldown.value),
     notify_prefix: notifyForm.notify_prefix.value,
-    notify_labels: [...document.querySelectorAll("#label-choices input:checked")].map((b) => b.value),
   };
   if (notifyForm.notify_token.value.trim()) payload.notify_token = notifyForm.notify_token.value;
   saveSettings(payload, notifyResult);

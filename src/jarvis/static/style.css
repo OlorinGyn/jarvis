@@ -752,3 +752,87 @@ input[role="switch"]:focus-visible {
 .badge[hidden] {
   display: none;
 }
+
+#modes-panel {
+  grid-column: 1 / -1;
+}
+
+.mode-choice {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.mode-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.panel .mode-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.mode-option span {
+  display: block;
+  padding: 8px 18px;
+  color: var(--muted);
+}
+
+.mode-option + .mode-option span {
+  border-left: 1px solid var(--line);
+}
+
+.mode-option input:checked + span {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.mode-option input:focus-visible + span {
+  outline: 2px solid var(--person);
+  outline-offset: -2px;
+}
+
+.modes-wrap {
+  overflow-x: auto;
+}
+
+#modes-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 640px;
+}
+
+#modes-table th,
+#modes-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+#modes-table th[scope="row"] {
+  text-align: left;
+  font-weight: normal;
+  font-size: 0.9rem;
+}
+
+#modes-table th[scope="col"] {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+#modes-table th[scope="col"]:first-child {
+  text-align: left;
+}
+
+#modes-table .active {
+  background: rgba(61, 122, 79, 0.15);
+}
+
+#modes-table th.active {
+  color: var(--text);
+}

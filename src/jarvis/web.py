@@ -29,7 +29,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, devices, dogs, faces, notify, reports, settings
+from jarvis import ROOT, archive, devices, dogs, faces, modes, notify, reports, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -62,6 +62,8 @@ EDITABLE = {
     "notify_prefix": str,
     "notify_labels": list,
     "notify_cooldown": float,
+    "notify_mode": str,
+    "notify_modes": dict,
     "archive_path": str,
     "archive_after_days": int,
     "archive_min_free_gb": float,
@@ -751,6 +753,8 @@ def _settings_view(request):
     values["paired"] = devices.known(request.cookies.get(devices.COOKIE))
     values["devices"] = devices.listing() if values["local"] else []
     values["notify_label_choices"] = list(NOTIFY_LABELS)
+    values["notify_cases"] = [[case, modes.CASE_NAMES[case]] for case in modes.CASES]
+    values["notify_mode_names"] = [[mode, modes.MODE_NAMES[mode]] for mode in modes.MODES]
     values["archive"] = jsonable_encoder(archive.summary())
     return values
 
@@ -758,6 +762,12 @@ def _settings_view(request):
 def _clean(key, value):
     """One setting from the page, checked and converted, or a 400."""
     kind = EDITABLE[key]
+    if key == "notify_mode":
+        if value in modes.MODES:
+            return value
+        raise HTTPException(400, f"notify_mode must be one of {', '.join(modes.MODES)}")
+    if key == "notify_modes":
+        return _clean_modes(value)
     if kind is str and isinstance(value, str):
         return value.strip()
     if kind is list and isinstance(value, list) and all(v in NOTIFY_LABELS for v in value):
@@ -766,6 +776,19 @@ def _clean(key, value):
         if value >= (1 if key == "archive_after_days" else 0):
             return kind(value)
     raise HTTPException(400, f"invalid value for {key}")
+
+
+def _clean_modes(value):
+    """The switches from the page: known modes and cases only, each true or false, merged over the current ones."""
+    if not isinstance(value, dict) or not all(
+            mode in modes.MODES and isinstance(switches, dict)
+            and all(case in modes.CASES and isinstance(on, bool) for case, on in switches.items())
+            for mode, switches in value.items()):
+        raise HTTPException(400, "invalid value for notify_modes")
+    current = settings.load()["notify_modes"]
+    for mode, switches in value.items():
+        current[mode].update(switches)
+    return current
 
 
 @app.get("/api/settings")

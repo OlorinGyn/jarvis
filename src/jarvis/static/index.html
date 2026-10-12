@@ -16,6 +16,7 @@
       <a href="#recordings" data-tab="recordings">Recordings</a>
       <a href="#people" data-tab="people">People</a>
       <a href="#dogs" data-tab="dogs">Dogs</a>
+      <a href="#notifications" data-tab="notifications">Notifications</a>
       <a href="#settings" data-tab="settings">Settings</a>
     </nav>
     <span id="connection" hidden>No connection to J.A.R.V.I.S.</span>
@@ -125,16 +126,29 @@
     </div>
   </section>
 
-  <section id="settings" class="tab">
+  <section id="notifications" class="tab">
     <main class="settings">
+      <div id="modes-panel" class="panel">
+        <h2>What reaches the phone</h2>
+        <p class="hint">Recording never changes: a mode only decides which messages are sent. From the phone, /home, /away and /silent switch it, and /mode shows it.</p>
+        <div class="mode-choice" id="mode-choice" role="radiogroup" aria-label="Active mode"></div>
+        <div class="modes-wrap">
+          <table id="modes-table">
+            <thead><tr><th scope="col">Case</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="hint">Resident: marked on the person's or dog's page. Only a sure match counts; a "probably …" is never left out. When a mode leaves any person out, a person's message waits for the face scan and says who it was.</p>
+        <p class="result" id="modes-result"></p>
+      </div>
+
       <form id="notify-form" class="panel">
-        <h2>Phone notifications (Telegram)</h2>
+        <h2>Telegram</h2>
         <label>Bot token
           <input type="password" name="notify_token" autocomplete="off" placeholder="paste the token to set or replace it">
         </label>
         <p class="hint" id="token-state"></p>
         <label>Chat <input name="notify_chat" autocomplete="off"></label>
-        <fieldset id="label-choices"><legend>Notify about</legend></fieldset>
         <label>Minimum interval per camera, seconds
           <input type="number" name="notify_cooldown" min="0" step="1">
         </label>
@@ -147,6 +161,11 @@
         <p class="result" id="notify-result"></p>
       </form>
 
+    </main>
+  </section>
+
+  <section id="settings" class="tab">
+    <main class="settings">
       <form id="pin-form" class="panel">
         <h2>Other devices</h2>
         <p class="hint" id="pin-state"></p>
