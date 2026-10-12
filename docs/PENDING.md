@@ -17,6 +17,12 @@ grows, decisions are being postponed.
   behaves as before: Away, people only.
 - **R42**: accept the corner, or count people with YOLO (recommended)
   (CONTEXTO 13.4).
+- **Which documents go into the EPUB** (12/10/2026). The user will read every
+  document and say which go in. Already decided by them: a file that only
+  holds what Claude and the developer exchange stays out. Today
+  `tools/gerar_epub.py` takes every `.md` at the root and in `docs/`, so
+  `PENDING.md`, `HISTORY.md` and `HANDOFF.md` would go in; when the list
+  comes, `ORDEM` becomes the list of what goes in, not just the order.
 
 ## Decided, not yet done
 
