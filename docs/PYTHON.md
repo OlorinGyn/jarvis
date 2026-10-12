@@ -1233,7 +1233,7 @@ HTTPException(409, ...)` — a typed exception crossing layers, as in Java.
 
 ## 29. A checkbox drawn as a switch
 
-The Notifications tab has 21 on/off switches. They are plain checkboxes:
+Settings → Notifications has 21 on/off switches. They are plain checkboxes:
 
 ```html
 <input type="checkbox" role="switch">
@@ -1247,3 +1247,81 @@ drawing of the box, the input itself becomes the rounded track, and a
 for it — is the round knob. `:checked::before` moves the knob right with a
 `transform: translateX(...)`, and a `transition` animates it. No library: the
 browser already has the control; only its picture changes.
+
+## 30. Changing one field of an immutable tuple, and a set that keeps order
+
+**`_replace` (R44).** `Detection` is a `NamedTuple` (7.2 of ARQUITETURA): like
+a Java `record`, its fields cannot be assigned. When a `dog` box turns out to
+be the person who stood there a moment ago, the code needs the same box with
+another label:
+
+```python
+detection = detection._replace(label=CLASS_NAMES[class_id])
+```
+
+`_replace` returns a **copy** with the named fields changed — what a `with`
+expression does to a C# record (`d with { Label = "person" }`). The leading
+underscore is not "private" here: `namedtuple` prefixes its own methods with
+`_` so they cannot clash with a field someone calls `replace`.
+
+**`dict.fromkeys` (backlog 26).** The page may send the same id twice. To drop
+duplicates and keep the order the user picked them in:
+
+```python
+for entry_id in dict.fromkeys(ids):
+```
+
+A `dict` keeps insertion order (guaranteed since Python 3.7), and
+`fromkeys` makes each id a key with the value `None`, so a repeated id is
+just written again in the same place. It is Java's `LinkedHashSet`. A plain
+`set(ids)` would also drop the duplicates, but in no particular order.
+
+## 31. Two writers, one file: the lock, and write-then-rename (R43)
+
+`config.json` is changed by a read-modify-write: read the whole file, change
+one key, write the whole file. Since the Telegram bot also writes it, two
+classic bugs became possible:
+
+- **Lost update.** The page and the bot both read the file, each changes its
+  own key, both write: the second write carries the first one's *old* value,
+  and the first change vanishes.
+- **Torn read.** `write_text` truncates the file and then writes it. A reader
+  that opens it in between sees an empty or half file.
+
+The lost update is fixed with a lock around the whole cycle:
+
+```python
+_LOCK = threading.RLock()
+
+def update(**changes):
+    with _LOCK:
+        values = load()
+        values.update(changes)
+        return save(values)
+```
+
+`with _LOCK:` is C#'s `lock (...) { }` or Java's `synchronized`. It is an
+`RLock` — a *re-entrant* lock, Java's `ReentrantLock` — because `update` holds
+it and then calls `save`, which takes it again; a plain `Lock` would wait for
+itself forever. (C#'s `lock` and Java's `synchronized` are re-entrant by
+default; Python's `Lock` is not.)
+
+The torn read is fixed by never writing the real file at all:
+
+```python
+temporary.write_text(text, encoding="utf-8")
+os.replace(temporary, FILE)
+```
+
+Write everything to a temporary file next to it, then rename it over the old
+one. The rename is atomic, so a reader opens either the old file or the new
+one, never half of either. It is how editors and databases save files, and
+what .NET's `File.Replace` does. The temporary file must be on the same disk —
+hence next to `config.json`, not in the system's temp folder: `os.replace`
+cannot move a file across disks, and a move that copies is not atomic.
+
+Windows adds one wrinkle that Linux does not have: a file that another thread
+has open cannot be replaced, and cannot be opened while it is being replaced.
+Both sides answer `PermissionError`, so both retry for a moment (50 × 10 ms)
+instead of failing. The measurement that justified each piece is in
+ARQUITETURA 11.6.

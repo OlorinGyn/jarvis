@@ -13,8 +13,15 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **Backlog 25's acceptance on the M900** (CONTEXTO 8). Until then production
-  behaves as before: Away, people only.
+- **Backlog 25's acceptance on the M900** (CONTEXTO 8): mark the user, Mirana
+  and Aurora Resident, choose Home, and confirm that a recognised resident
+  sends nothing, a person with no face does, and `/away` from the phone
+  changes the mode the page shows. Until then production behaves as before:
+  Away, people only.
+- **Backlog 3's acceptance**: open the page from a phone
+  (`http://192.168.0.18:8765`).
+- **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
+  dogs and name them at once; Notifications is now inside Settings.
 - **R42**: accept the corner, or count people with YOLO (recommended)
   (CONTEXTO 13.4).
 - **Which documents go into the EPUB** (12/10/2026). The user will read every

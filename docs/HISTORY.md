@@ -108,6 +108,16 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `CONTEXTO.md` section 8.
 
+26. **Done 12/10 (`v2026.10.12.2`, ARQUITETURA 17.16).** **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
+    - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
+    - **(b) Grouped by the system's guess.** The unnamed crops are shown in groups by what the matcher thinks now — "Looks like Aurora (12)", "Looks like Mirana (8)", "No guess (5)" — from the same `dogs.match` the messages use (sure or probable), newest first inside each group, each group with "Select all". Usually most of a group is the right dog: select it, untick the wrong ones, assign. A hint, never an automatic name.
+    - **(c) One action bar**, fixed at the bottom while anything is selected: "N selected · Assign to [named dog ▾] · or a new name · Bad detection · Clear". Assigning asks once ("Join 7 photos to Aurora? A merge cannot be undone"), as every merge does.
+    - **(d) One request, one lock.** `POST /api/dogs/assign` with `{"ids": [...], "to": "<id>"}` or `{"ids": [...], "name": "..."}` merges every entry under one gallery lock and one save, gathers look-alikes once (R29), and answers how many joined and which ids were gone (merged or reported meanwhile: skipped, not an error). `POST /api/dogs/report` with ids writes one report per entry (backlog 23 unchanged). Unnamed entries are addressed by id, which is stable, so R41's problem does not arise. Through the write guard like every POST.
+    - **(e) The same on People's Unnamed faces**, since both tabs are one component (`galleryTab`); "Belongs to…" stays on each card for a single one.
+    - Data: nothing new. **Acceptance:** tests — three ids assigned to a named dog (views, sightings and favourite follow), one id already gone is skipped and named in the answer, a new name creates the entry, the batch report writes one report per entry; checked in the built-in browser at desktop width and at 375 px.
+
+27. **Done 12/10 (`v2026.10.12.2`, ARQUITETURA 22.4).** **Notifications as a part of Settings** (decided by the user 12/10/2026: a Notifications tab is not ideal; make it a subsection of Settings). Settings gets a sub-navigation at its top — **Notifications · Other devices · Archive · Bad-detection reports** — with Notifications first, each part reachable as `#settings/<part>` so a link and the back button land on it. The tab bar loses Notifications; an old `#notifications` link opens `#settings/notifications`. Texts that say "the Notifications tab" say "Settings → Notifications". No server change. **Acceptance:** checked in the built-in browser at desktop width and at 375 px.
+
 25. **Done 12/10 (`v2026.10.12`, ARQUITETURA 22); the acceptance on the M900 waits for the user** (mark the residents, then Home). **Residents, notification rules and modes** (decided by the user 12/10/2026, one developer delivery). The user, Mirana and Aurora live here; being told hundreds of times that they walk around the house is noise. Today (10/10 01:16 → 12/10, 143 messages) 73 were "person" at the start of an event, 34 named a face — **21 of them the user** — 10 a side view, 26 a best view; dogs do not notify at all (`notify_labels` is `["person"]`).
     - **(a) The Resident tag.** A switch **Resident** on the person and dog pages, named entries only; stored as an optional `"resident": true` in `gallery.json` (additive). Renaming keeps it; a merge keeps the target's, or sets it when either was a resident. The grid card shows it.
     - **(b) The cases, one switch each:** resident person recognised · other known person, or any "probably …" match · unknown face · person with no recognisable face (the side-view and best-view messages) · resident dog · other dog (probable, another name, unidentified) · other animals. Only a **sure** match counts as a resident — a "probably Gustavo" or "probably Aurora" is not silenced, so a weak match of a stranger is never hidden.
@@ -196,6 +206,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 13 | 11/10/2026 | `a4cc3a2..c55e4c0`, developer session 11 (a new conversation) — backlog 23, 24, R31, R32; R35 and R30 (b) measured | no release code fixed; 79 tests pass; R35 closed, R36–R37 opened; release `v2026.10.11.4`. **The first deploy failed and rolled back on its own**: `--stop` returned while the old version still assembled a clip (22 s), the new one found both cameras busy. Fixed in `production.ps1` (`3ae5faa`: wait up to 180 s until no process runs from `C:\JARVIS`); the second deploy passed |
 | 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6`, deployed at 17:46: 352 events, 36 face and 147 dog sightings, 2 reports read before and after, cameras ok 4 s after the start; production lists both old reports with their photos |
 | 15 | 12/10/2026 | `v2026.10.11.6..e7df623`, developer session 13 — backlog 25 (a)–(f), R41 | **one code fix** (`5224983`): a held person with no face was silenced by a dog message of the same event, and got nothing when the clip failed to assemble; 160 tests pass; R42 (a decision for the user) and R43 opened; release `v2026.10.12` (13.15) |
+| 16 | 12/10/2026 | `v2026.10.12..a53aa84`, developer session 14 — R44, backlog 26 and 27, R43 | no release code fixed; `.gitignore` now covers R43's temporary file; R44 replayed on six dog-alone clips (no box relabelled); 174 tests pass; R45 opened (low); release `v2026.10.12.2` (13.17) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -255,6 +266,8 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `76a5a9e`, release `v2026.10.11.5`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
 | ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARQUITETURA 21) |
 | ✓ | R33 | medium | The documentation had grown by appending: README stale, CONTEXTO read whole by every session | done 12/10 by the architect: CONTEXTO cut to a brief and this file; README, INSTALACAO, PYTHON and ARQUITETURA in English; ARQUITETURA reorganised by subject (text in 13.12) |
+| ✓ | R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | done `aa68bc4`: a dog box where a person stood in the last 2 s is that person (ARQUITETURA 7.12, 13.16 below) |
+| ✓ | R43 | low | `config.json` is rewritten in place, with no lock, by two writers | done `565a34b`: one lock, write then replace, retries on Windows (ARQUITETURA 11.6) |
 | ✓ | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | done `f4fe810`: each move names the photo it was shown, 409 if it changed (ARQUITETURA 22.6) |
 | ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARQUITETURA 21) |
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARQUITETURA 21); rare cases go to bad-detection reports |
@@ -938,6 +951,73 @@ a reported box marks a place that is not a dog on that camera — but two
 reports are too few to set a distance, and Aurora lies on a mat nearby. It
 waits for more reports, which backlog 26's "Bad detection" on many crops at
 once makes cheap to give.
+
+**R44 as it was opened (high).** `SubjectDetector` keeps the person boxes of
+the last 2 s; a `dog` box with IoU ≥ `SAME_PERSON_IOU` = 0.5 against any of
+them is **relabelled `person`** (then the person rules — minimum height, the
+mat — apply as to any person), so no `dog` label, no dog crop and no dog
+message come from it, and the person's own message is unaffected. Trace
+reason in `replay.py`: "the person's box from a moment ago". Acceptance: a
+test with a person box followed 1 s later by a `dog` box in the same place
+(relabelled) and a small dog box at the person's feet (kept); `replay.py` on
+the four reported clips (`Front/2026-10-12/11-28-48`, `11-45-20`, `12-39-56`,
+`12-40-23`) and the six true-dog clips with a person: the reported boxes
+change, the true dogs do not. Done in developer session 14 (13.17).
+
+### 13.17 Review 16 — developer session 14 (12/10/2026)
+
+R44, backlog 26 and 27 and R43, reviewed whole (`v2026.10.12..a53aa84`, 15
+files). 174 tests pass (`python -m pytest`), `check_data` reads every file
+(no format changed: `guess` is a field of an answer, and `config.json` keeps
+its content), no comments in the code. Both new POST routes pass the write
+guard and check every id against the id pattern; the page writes every name
+with `textContent`, so a name cannot inject HTML.
+
+**R44, checked beyond the delivery.** The developer replayed the reported
+clips and the six true-dog clips with a person. Not the dog alone: a dog that
+YOLO calls `person` for one run (R18) would have its next 2 s of dog boxes
+relabelled. Replayed here with `--prime` on six of production's dog-only
+events of 12/10 (`Front` 20-05-07 and 11-28-05; `Back` 20-04-05, 16-27-50,
+10-59-19, 10-58-35): 174 dog frames, **no box relabelled**. The developer's
+table, frames per label with the rule off (`SAME_PERSON_IOU` = 2) → on:
+
+| Clip | Kind | dog frames | person frames | relabelled YOLO runs |
+|---|---|---|---|---|
+| Front 12/10 11-28-48 | reported, bend | 298 → 289 | 191 → 197 | 3 |
+| Front 12/10 12-39-56 | reported, bend | 18 → 9 | 61 → 67 | 3 (one then dropped as wide at the bottom edge) |
+| Front 12/10 12-40-23 | reported, bend, no person before | 3 → 3 | 21 → 21 | 0 (expected) |
+| Front 12/10 11-45-20 | reported, dark object | 12 → 12 | 66 → 66 | 0 (expected) |
+| 6 true-dog clips with a person | | identical | identical | **0** |
+
+The replay counts frames and 13.16 counted boxes, so the two are not the same
+unit. Recording every person box YOLO returned, kept or later dropped, is
+accepted: the replays show no cost, and the bending user's earlier box may be
+one a person rule drops.
+
+**Fixed in the review.** `.gitignore` held `config.json` but not R43's
+temporary `config.json.<pid>.<thread>.tmp`: a crash between the write and the
+replace would leave the Telegram token and the PIN in an untracked file that
+`git add .` would commit. `config.json.*` added; `git check-ignore` confirms.
+
+**The developer's other points, decided.** An id named meanwhile is answered
+as gone, not joined: right, the user named it on purpose. The face guess at
+`MATCH_THRESHOLD`: accepted, it is a hint and the merge asks first. `load()`
+without the lock: accepted, the atomic replace and the read retry are enough
+for a reader. `assign` with `to` an unnamed entry answers 409 "merged or
+reported meanwhile", a wrong reason; the page never sends it (its list holds
+named entries only), so no change. The scan per merged entry became R45.
+
+**R45 — A merge finds its sightings by reading every one (low).**
+`_repoint_sightings` reads every sighting file of the gallery's folder to
+rewrite those that pointed at the merged entry — once per entry merged, under
+the gallery lock, while the clip thread waits to add its sightings. Sightings
+are never pruned: production has 205 dog sightings after four days (about 50 a
+day), so in a year a batch of 60 photos would read about a million files.
+Nothing today. Fix: one pass per batch with an `{old: new}` map. Bounding the
+scan by the entry's `first_seen` is **not** safe: `tools/dog_crops.py` gives
+crops to old events, so an entry made today can have sightings dated days
+before. Acceptance: a test where a batch of several entries reads each
+sighting file once.
 
 ## 14.3 Usage log, up to 12/10/2026 morning
 

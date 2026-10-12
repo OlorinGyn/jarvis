@@ -17,8 +17,7 @@ device on the home network:
 | **Recordings** | the events by day, with who appeared; plays and seeks each clip |
 | **People** | the named people and the unnamed faces; name, merge, choose the views that recognise them |
 | **Dogs** | the same for the household's dogs |
-| **Notifications** | what reaches the phone in each mode, and the Telegram setup |
-| **Settings** | pairing other devices, the archive, bad-detection reports |
+| **Settings** | first **Notifications** — what reaches the phone in each mode, and the Telegram setup — then pairing other devices, the archive, bad-detection reports |
 
 From the phone, `/home`, `/away` and `/silent` sent to the bot switch the mode.
 

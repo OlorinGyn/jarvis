@@ -901,6 +901,40 @@ foresaw.
 `CLASS_NAMES` lists only the seven that matter, and filtering by class uses
 that same dictionary.
 
+### 7.12 A dog where a person stood a moment ago (R44, 12/10/2026)
+
+When the user bends over — at the car door, petting the dog — YOLO can change
+its mind about the same body and call it `dog` at 0.6–0.8, with no `person`
+score left in that box. The crop landed in the Dogs tab and the event got a
+`dog` label: 4 of the first 6 dog reports (HISTORY 13.16). YOLO's scores, the
+bottom edge and a face inside the box do not separate it from a real dog.
+**Where a person stood a moment before** does: the bending body keeps almost
+the same box (IoU 0.90–0.99, 7.7), while a dog at someone's feet is a small
+box inside a big one, with a low IoU.
+
+So `SubjectDetector` keeps `recent_people`: every `person` box YOLO returned in
+the last `RECENT_PERSON_SECONDS` = 2.0, with its time — as YOLO gave it, before
+any person rule. A `dog` box (`DOG_CLASS` = 16) that passed
+`ANIMAL_CONFIDENCE` and has IoU ≥ `SAME_PERSON_IOU` = 0.5 with one of them
+**becomes a `person`**, and then meets the person rules like any other
+(minimum height, the mat, 7.9). The order matters: the relabel comes after the
+animal threshold, so a weak dog box is still dropped instead of becoming a new
+person. Only earlier runs count — the current frame's people are added after
+the loop, and within one frame the non-maximum suppression already keeps one
+box per spot — and each camera has its own `SubjectDetector`, so one camera's
+person never relabels another's dog. `replay.py` prints it as "the person's
+box from a moment ago", followed by the box kept as a person.
+
+Measured with `replay.py --prime`: the two reported bends with a person seen
+before lose dog frames (298 → 289 and 18 → 9; the first still has many because
+the dog really is there while the user pets her); the six true-dog clips with
+a person and six with the dog alone do not change — no box relabelled.
+**What it does not catch:** the dark object at the bottom of Front (two
+reports) and a bend with no person seen in the 2 s before (one); they wait for
+more reports. **The risk it takes:** a dog walking into the very box a person
+left less than 2 s earlier, at a similar size, would be called a person; 0 of
+309 true-dog boxes did.
+
 ---
 
 ## 8. The recording layer — `clips.py`
@@ -1470,6 +1504,28 @@ yet, and nothing is deleted.
 touched, because the clip's assembly happens in a thread and may still be
 running.
 
+### 11.6 One writer at a time, and the whole file (R43, 12/10/2026)
+
+Since 12/10 two threads write `config.json` — the page and the Telegram bot
+(`/home`, 22.5) — and `settings.update` is a read-modify-write. Two of them
+interleaving lose one change (a *lost update*); a read that lands inside a
+write sees a truncated file (a *torn read*), `_stored()` answers `{}`, and an
+update that starts from it saves the defaults: the token, the chat, the PIN
+and the archive path erased, silently. Reproduced with two writers and a
+reader, 200 rounds each: the reader saw the token gone about 190 times in 200.
+
+Two classic pieces fix it (PYTHON 31). A module `threading.RLock`, held by
+`update` from the read to the write and by `save`. And the file is never
+rewritten in place: `_write` writes `config.json.<pid>.<thread>.tmp` beside it
+and `os.replace`s it, so a reader gets the old file or the new one. On Windows
+a file open in one thread cannot be replaced, nor opened while it is being
+replaced, so the replace and the read both retry `PermissionError`
+50 × 10 ms. With the lock and the replace alone the reader still lost the
+token 3–13 times; with both retries, 8 runs of 8 were clean. `load()` takes
+no lock: it relies on the atomic replace and the read retry. The temporary
+name is in `.gitignore`, so a copy left behind by a crash, which holds the
+token, never reaches a commit.
+
 ---
 
 ## 12. Notifications — `notify.py`
@@ -1567,7 +1623,7 @@ directly.
 
 ### 12.6 Configuration
 
-**Since 12/10/2026 this lives on the web page's Notifications tab** (22.4);
+**Since 12/10/2026 this lives on the web page, in Settings → Notifications** (22.4);
 the OpenCV window and its config editor are gone (17.10):
 
 1. **Bot token** — paste the token from `@BotFather` and save; the page never
@@ -1957,7 +2013,7 @@ Production runs as a scheduled task with no console, started with Windows
 | Tiered storage to an external drive (not configured in production) | 11 |
 | Telegram messages with the face and the name, per-camera and per-person intervals | 12 |
 | Residents, the Home/Away/Silent modes, commands from the phone | 22 |
-| The web page: Live, Recordings with video, People, Dogs, Notifications, Settings; pairing other devices | 17 |
+| The web page: Live, Recordings with video, People, Dogs, Settings (Notifications first); pairing other devices | 17 |
 | Bad-detection reports, with Undo | 21 |
 | Production in `C:\JARVIS` as a startup task, reviewed releases, update with rollback | 18 |
 | Every file ever written stays readable; `check_data.py` proves it; 160 tests | 19 |
@@ -2309,6 +2365,44 @@ A browser closing the live view made Windows' asyncio log a traceback at ERROR
 — 27 of them in one day (`_ProactorBasePipeTransport._call_connection_lost`).
 A loop exception handler now drops the `ConnectionResetError` there, so ERROR
 in the log means a real problem.
+
+### 17.16 Many unnamed photos at once (backlog 26, 12/10/2026)
+
+The user's request: name or report the unnamed crops of the Dogs tab many at a
+time, instead of one "Belongs to…" per photo. People gets it too, since both
+tabs are the same `galleryTab` factory (20).
+
+- **Grouped by a guess.** `_grid` adds `guess` to each unnamed card: the named
+  entry it looks like. For a dog, `dogs.match` over its views, sure before
+  probable, then the nearest; for a face, the named person with the best
+  similarity at or above `MATCH_THRESHOLD`. The page groups the unnamed grid as
+  "Looks like Aurora (12)", biggest first, "No guess" last, each with
+  **Select all**. A guess is a hint and never names anything; the face guess
+  uses the matching threshold, lower than the learning one, so a group may
+  hold a wrong face.
+- **Selecting.** Tapping a photo selects it (a green frame and a check mark);
+  the name link still opens the entry. Shift-click selects the range from the
+  last photo tapped, in display order. While anything is selected, a bar stays
+  at the bottom of the screen: "N selected · Assign to… · or a new name · Bad
+  detection · Clear". Each action asks once ("Join 7 photos to Aurora? A merge
+  cannot be undone."). The selection survives a reload of the list, minus the
+  photos that left. On a phone the unnamed groups show two columns.
+- **One request each.** `POST /api/{dogs,persons}/assign` with `{"ids", "to"}`
+  or `{"ids", "name"}` runs `Gallery.assign` under one lock, one load and one
+  save. Ids that are no longer unnamed — merged, named or reported meanwhile —
+  are skipped and answered as `gone`; with a new name the first remaining
+  photo takes it and the rest join it; the look-alikes are gathered once at
+  the end (R29). `POST /api/{dogs,persons}/report` writes one report per entry
+  (21) and answers `{reported, gone}`. Both take 1 to `BATCH_MAX` = 500
+  well-formed ids and pass the write guard (17.12).
+- **Found on the way:** with six tabs the tab bar did not wrap, so a phone laid
+  the page out 545 px wide — the layout viewport grows to the widest content —
+  and the bar fixed to the bottom fell below the screen. The tabs wrap now.
+
+**Known cost (R45):** each photo joined rewrites its sightings with a scan of
+every day folder, under the gallery lock, and sightings are never pruned
+(about 50 dog sightings a day on the M900), so a large batch gets slower as
+the months pass.
 
 ---
 
@@ -2819,17 +2913,23 @@ sends the best view. Both were reproduced by a test first.
 resident's face and a second person in the same clip never shows a face,
 nothing is sent: the faceless message only goes when no face was found at all.
 
-### 22.4 The Notifications tab
+### 22.4 Notifications, the first part of Settings
 
-A tab of its own, between Dogs and Settings: the active mode as three radio
-buttons at the top, and a table with the cases in rows and the modes in
+**Since backlog 27 (12/10/2026, the user's)** Notifications is not a tab of its
+own: Settings has a sub-navigation — Notifications · Other devices · Archive ·
+Bad-detection reports — and each part is shown as `#settings/<part>`; no part,
+or an unknown one, shows Notifications. An old `#notifications` link is
+replaced by `#settings/notifications` with `location.replace`, which adds no
+history entry, so Back does not bounce. The reports list is read only when its
+part is shown, and the five tabs fit in one line on a 375 px phone.
+
+The part itself: the active mode as three radio buttons at the top, and a table with the cases in rows and the modes in
 columns, the active column tinted. Each cell is a real form control —
 `<input type="checkbox" role="switch">` — drawn as a switch by CSS alone
 (PYTHON 29). Flipping one posts `{"notify_modes": {mode: {case: bool}}}` at
 once; the server refuses unknown modes, unknown cases and anything that is
 not `true` or `false`, and merges the change over the stored switches. The
-Telegram form (token, chat, Find chat, test, prefix, cooldown) moved here from
-Settings. The older per-label checkboxes are gone: `notify_labels` is still
+Telegram form (token, chat, Find chat, test, prefix, cooldown) sits below it. The older per-label checkboxes are gone: `notify_labels` is still
 read, only to build the defaults.
 
 ### 22.5 Commands from the phone — `bot.py`

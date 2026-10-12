@@ -124,8 +124,8 @@ powershell -ExecutionPolicy Bypass -File tools\criar_atalho.ps1
 
 That starts the service — cameras, detection, recording, faces, dogs,
 notifications — and opens the browser at `http://127.0.0.1:8765`, with the
-tabs **Live**, **Recordings**, **People**, **Dogs**, **Notifications** and
-**Settings**. Clicking the shortcut with the service already running only
+tabs **Live**, **Recordings**, **People**, **Dogs** and **Settings**
+(Notifications is its first part). Clicking the shortcut with the service already running only
 opens the browser; it does not start a second one, which would fight over the
 camera. The console that stays open is the service: stop it with `Ctrl+C` in
 it, not with the X (ARQUITETURA 17.7).
@@ -483,8 +483,8 @@ settings — a name given in the test copy does not reach production.
 | Start it again | `... -Action start` |
 | Are the recordings still readable? | `... -Action check` |
 | What happened? | `C:\JARVIS\logs\jarvis.log` |
-| Change what reaches the phone | the page's **Notifications** tab, or `/home`, `/away`, `/silent` to the bot (ARQUITETURA 22) |
-| Set up or check Telegram | the **Notifications** tab: token, Find chat, Send test (ARQUITETURA 12.6) |
+| Change what reaches the phone | the page's **Settings → Notifications**, or `/home`, `/away`, `/silent` to the bot (ARQUITETURA 22) |
+| Set up or check Telegram | **Settings → Notifications**: token, Find chat, Send test (ARQUITETURA 12.6) |
 
 Stopping production any other way (Task Manager, ending the task) skips the
 clean shutdown, and a clip being assembled at that moment is lost. Within

@@ -212,12 +212,10 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **23.** Report a bad detection instead of deleting it, with Undo (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 21 |
 | ✓ | **24.** "Choose the best 40" views; Chosen and Waiting (decided 11/10, `v2026.10.11.4`) | ARQUITETURA 17.14 |
 | ✓ | **25.** Residents, notification cases and the Home/Away/Silent modes, the Notifications tab, commands from the phone (decided 12/10, `v2026.10.12`) | ARQUITETURA 22 |
+| ✓ | **26.** Select many unnamed photos, name or report them at once (decided 12/10, `v2026.10.12.2`) | ARQUITETURA 17.16 |
+| ✓ | **27.** Notifications as the first part of Settings (decided 12/10, `v2026.10.12.2`) | ARQUITETURA 22.4 |
 
-**Waiting for the user's check on the M900:** item 25 — mark the user, Mirana
-and Aurora Resident, choose Home, and confirm that a recognised resident sends
-nothing, a person with no face does, and `/away` from the phone changes the
-mode the page shows. Item 3 — open the page from a phone
-(`http://192.168.0.18:8765`).
+**Waiting for the user's check on the M900:** items 25 and 3, in `PENDING.md`.
 
 ### Critical
 
@@ -238,16 +236,6 @@ Without these the system does not do its job well.
 ### Important
 
 It works without them, but is incomplete.
-
-26. **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
-    - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
-    - **(b) Grouped by the system's guess.** The unnamed crops are shown in groups by what the matcher thinks now — "Looks like Aurora (12)", "Looks like Mirana (8)", "No guess (5)" — from the same `dogs.match` the messages use (sure or probable), newest first inside each group, each group with "Select all". Usually most of a group is the right dog: select it, untick the wrong ones, assign. A hint, never an automatic name.
-    - **(c) One action bar**, fixed at the bottom while anything is selected: "N selected · Assign to [named dog ▾] · or a new name · Bad detection · Clear". Assigning asks once ("Join 7 photos to Aurora? A merge cannot be undone"), as every merge does.
-    - **(d) One request, one lock.** `POST /api/dogs/assign` with `{"ids": [...], "to": "<id>"}` or `{"ids": [...], "name": "..."}` merges every entry under one gallery lock and one save, gathers look-alikes once (R29), and answers how many joined and which ids were gone (merged or reported meanwhile: skipped, not an error). `POST /api/dogs/report` with ids writes one report per entry (backlog 23 unchanged). Unnamed entries are addressed by id, which is stable, so R41's problem does not arise. Through the write guard like every POST.
-    - **(e) The same on People's Unnamed faces**, since both tabs are one component (`galleryTab`); "Belongs to…" stays on each card for a single one.
-    - Data: nothing new. **Acceptance:** tests — three ids assigned to a named dog (views, sightings and favourite follow), one id already gone is skipped and named in the answer, a new name creates the entry, the batch report writes one report per entry; checked in the built-in browser at desktop width and at 375 px.
-
-27. **Notifications as a part of Settings** (decided by the user 12/10/2026: a Notifications tab is not ideal; make it a subsection of Settings). Settings gets a sub-navigation at its top — **Notifications · Other devices · Archive · Bad-detection reports** — with Notifications first, each part reachable as `#settings/<part>` so a link and the back button land on it. The tab bar loses Notifications; an old `#notifications` link opens `#settings/notifications`. Texts that say "the Notifications tab" say "Settings → Notifications". No server change. **Acceptance:** checked in the built-in browser at desktop width and at 375 px.
 
 4. **Measure the M900 running** (proposto) — CPU with both cameras in motion,
    and whether `HWACCEL` helps (INSTALACAO 6).
@@ -549,7 +537,7 @@ the reasons. Follow it, and say so when you deviate.
 
 If `config.json` is missing or has no `notify_token`, tell the user — it is
 the only thing here that needs them, because the token is a credential only
-they have. The chat is found on the Notifications tab with Find chat.
+they have. The chat is found in Settings → Notifications with Find chat.
 
 ---
 
@@ -599,14 +587,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 13.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 15, covers
-up to the `v2026.10.12` release commit**; the next starts from the commit
+The table of every review is `HISTORY.md` 13.2. **The last review, 16, covers
+up to the `v2026.10.12.2` release commit**; the next starts from the commit
 after it.
 
 ### 13.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.16, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.17.
+`HISTORY.md` 13.3 to 13.17, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.18.
 
 ### 13.4 Recommendations, open
 
@@ -614,38 +602,14 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | open (13.4 below, HISTORY 13.16) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a **second named person** to test that the right one still wins (HISTORY 13.12) |
-| R43 | low | `config.json` is rewritten in place with no lock, and now has two writers | open |
+| R45 | low | A merge finds its sightings by reading every one, once per entry merged | open (HISTORY 13.17) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R7 | low | `instalar.bat` does not check that the Python is signed | partly: `production.ps1` checks it (HISTORY 13.4) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
 | R10 | **high** | Everything except the conversation in English | every document's text in English since 12/10 (R33); left, a developer item: the Portuguese **file names** and the text of `instalar.bat` and `tools/diagnostico.py` |
-
-**R44 — The user bending over becomes a "dog" (high).** From reading the
-bad-detection reports (HISTORY 13.16): 4 of the 6 dog reports are the user
-bent over — at the car door, or petting Mirana — that YOLO calls `dog` at
-0.6–0.8 with no person score at all, so the crop lands in the Dogs tab and the
-event gets a `dog` label. The cue that separates it, measured box by box: the
-"dog" box is **the person's own box from a moment before** — IoU ≥ 0.5 with a
-person box seen on the same camera in the last 2 s held for 9 of the 15
-reported boxes, and for **0 of 309** boxes of real dogs in events with a
-person (a dog at someone's feet lies inside the person's box but is far
-smaller, so its IoU stays low). Fix: `SubjectDetector` keeps the person boxes
-of the last 2 s; a `dog` box with IoU ≥ `SAME_PERSON_IOU` = 0.5 against any of
-them is **relabelled `person`** (then the person rules — minimum height, the
-mat — apply as to any person). So no `dog` label, no dog crop and no dog
-message come from it, and the person's own message is unaffected. Trace
-reason in `replay.py`: "the person's box from a moment ago". **Acceptance:** a
-test with a person box followed 1 s later by a `dog` box in the same place
-(relabelled) and a small dog box at the person's feet (kept); `replay.py` on
-the four reported clips (`Front/2026-10-12/11-28-48`, `11-45-20`, `12-39-56`,
-`12-40-23`) and the six true-dog clips with a person of HISTORY 13.16: the
-reported boxes change, the true dogs do not. **What it will not catch:** the
-dark object at the bottom of Front (2 reports) and a bend with no person seen
-before it (1) — those wait for more reports (13.16).
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -660,17 +624,15 @@ once than distinct faces were found, send the best view as
 counts a dog as a second person (R18), one extra message. The architect
 recommends (b).
 
-**R43 — `config.json` is rewritten in place, with no lock, by two writers
-(low).** `settings.update` reads, changes and writes the whole file with
-`write_text`, which truncates first. Until 12/10 only the page wrote it; now
-the bot does too (`/home`). A read that lands inside another write sees a
-truncated file, `_stored()` answers `{}`, and an `update` that started from it
-saves the defaults — **the token, the chat, the PIN and the archive path
-erased**. It needs two writes within milliseconds of each other, so it is
-unlikely, but the loss is silent. Fix: one lock around `update`, and write to
-a temporary file then `os.replace` it — on Windows `os.replace` fails while
-another thread has the file open, so it needs a short retry. Acceptance: a
-test where two threads update different keys many times and both survive.
+**R45 — A merge finds its sightings by reading every one (low).**
+`_repoint_sightings` reads every sighting file of the gallery's folder, once
+per entry merged, under the gallery lock while the clip thread waits.
+Sightings are never pruned (about 50 dog sightings a day on the M900), so a
+batch of 60 photos in a year's time would read about a million files. Fix: one
+pass per batch with an `{old: new}` map — not a bound by `first_seen`, since
+`tools/dog_crops.py` gives today's entries sightings of older days.
+Acceptance: a test where a batch of several entries reads each sighting file
+once.
 
 **R10, what is left — the file names, and two tools' text.** Every document
 is in English since 12/10. Still Portuguese: the text `instalar.bat` and
@@ -725,6 +687,7 @@ Rows before 12/10 11:00: `HISTORY.md` 14.3.
 | A19 | architect | ultracode | 12/10 11:17–11:30 | review 15, one code fix, docs, script 12, release and deploy `v2026.10.12` | 25% → 34% | 93% → 94% | 108k → 215k tokens, a new conversation |
 | A20 | architect | ultracode | 12/10 11:30–12:45 | R33 and R10's documents, asked by the user: CONTEXTO cut to a brief (1632 → 740 lines) and `HISTORY.md`; README, INSTALACAO, PYTHON (1–22) and ARQUITETURA (1–17.7, ~2,400 lines) in English; ARQUITETURA reorganised by subject; every cross-reference checked by script | 34% → 54% | 94% → 97% | 215k → 443k tokens, the same conversation. **Translating ~4,000 lines cost about 20 points of the window and 2 of the week** — far less than feared |
 | A21 | architect | ultracode | 12/10 afternoon–evening | the user's three requests: the 6 dog reports read and measured (two YOLO replays, 644 boxes; HISTORY 13.16), R44, backlog 26 and 27 designed, developer 14 planned and started | 54% → window reset → 4% | 97% → 0% (the weekly read 0 % at the end, its reset still shown for 14/10) | 443k → 490k tokens, the same conversation |
+| D14 | developer | high | 12/10 evening | session 14: R44, backlog 26 and 27, R43 (174 tests) | 6% → 22%: R44 + 26 12, 27 2, R43 and HANDOFF 2 | 1% → 3% | 68k → 212k tokens, a new conversation |
 
 ### 14.4 Next sessions
 

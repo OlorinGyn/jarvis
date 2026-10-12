@@ -30,8 +30,9 @@ models/
 # epub gerados sob demanda, nao versionados
 docs/epub/
 
-# configuracao local da maquina
+# the machine's own settings, and the temporary copy written before replacing them
 config.json
+config.json.*
 
 # registro do programa (logs/jarvis.log, com rotacao)
 logs/
