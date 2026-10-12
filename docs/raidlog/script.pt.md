@@ -918,3 +918,72 @@ derrotados: **O Intervalo Emprestado** · **O Silêncio do Clipe Perdido** ·
 cujo rosto nunca aparece — e a varredura, achando só o Dono, não diz nada
 (R42); e duas mãos escrevendo o `config.json` no mesmo instante (R43).
 Decretos: "Um estranho no escuro tem que chegar ao celular."
+
+## Edição nº 13 — O Dono Não É Cachorro
+
+`v2026.10.12.2` · 12 out 2026, noite
+
+**Quadro 1.** Creme quente, interior. A aba Dogs numa tela grande: fileiras de
+fotos de cachorro e, no meio delas, um recorte que é claramente as costas de
+uma pessoa curvada na porta de um carro — uma silhueta, nunca desenhada —
+etiquetado `dog 0.74`. Mais dois iguais.
+O DONO: Eu tô sendo captado demais na aba Dogs.
+
+**Quadro 2.** A coruja abre a caixa de provas da edição nº 10: seis
+denúncias de cachorro. Quatro fotos são a mesma silhueta curvada. Um medidor
+na caixa marca `person 0.00`.
+ARQUITETO: Quatro de seis são você, abaixado. E o YOLO tem certeza — não sobra
+nenhuma nota de pessoa naquela caixa.
+
+**Quadro 3.** Close, duas caixas transparentes uma sobre a outra: uma caixa
+`person`, desbotada, carimbada "2 s atrás", e a caixa `dog` de agora — quase o
+mesmo retângulo. Ao lado, um cachorro de verdade aos pés de alguém: uma
+caixinha dentro de uma caixa grande, mal se sobrepondo.
+ARQUITETO: Mas a caixa não se mexeu. Dois segundos atrás, essa mesma caixa era
+uma pessoa. Um cachorro aos seus pés nunca ocupa a sua caixa assim.
+
+**Quadro 4.** O castor encaixa uma pequena ampulheta na lateral do
+J.A.R.V.I.S., cheia de caixinhas de pessoa no lugar da areia.
+DEV: Toda caixa de pessoa dos últimos dois segundos fica na memória. Uma caixa
+de cachorro em cima de uma delas é aquela pessoa.
+J.A.R.V.I.S.: `the person's box from a moment ago: dog 0.74`
+
+**Quadro 5.** Noite, azul profundo. A coruja, lanterna erguida, passa num
+pequeno projetor um filme de Mirana e Aurora sozinhas no quintal. Um contador
+no projetor: `relabelled: 0`.
+ARQUITETO: E um cachorro de verdade sem ninguém por perto? Seis clipes, 174
+quadros de cachorro. Nenhum rebatizado.
+
+**Quadro 6.** As fotos sem nome, agora separadas em pilhas com placas: "Looks
+like Aurora (12)", "No guess". O castor toca nas fotos e elas acendem com
+moldura verde; uma barra no rodapé diz "7 selected · Assign to… · Bad
+detection · Clear".
+O DONO: Selecionar várias fotos e dar todas a um cachorro — não "Belongs to…"
+uma por uma.
+DEV: Agrupadas pelo palpite do comparador. Só uma dica: o nome continua sendo
+seu.
+
+**Quadro 7.** Um arquivo de gavetas com a etiqueta SETTINGS; o castor encaixa
+uma gaveta NOTIFICATIONS no topo, ao lado de DEVICES, ARCHIVE e REPORTS. Num
+celular no canto, uma barra de abas larga demais para a tela empurra a barra
+de baixo para fora da borda.
+O DONO: Uma aba Notifications não é o ideal. Faz dela uma parte de Settings.
+DEV: E no celular as abas agora quebram linha — a barra tinha caído para fora
+da tela.
+
+**Quadro 8.** Vermelho-escuro. Duas mãos — uma saindo da página web, outra de
+uma nuvem do Telegram — puxam a mesma folha de papel, `config.json`,
+rasgando-a. O chefão é a metade rasgada, acenando.
+CHEFÃO (a folha rasgada): MEIO ARQUIVO! O TOKEN SUMIU!
+DEV: Escreve uma cópia inteira nova e troca de uma vez. Um escritor por vez.
+ARQUITETO (erguendo uma cópia esquecida achada debaixo da mesa, com a chave
+ainda dentro): E esta cópia guarda o token. Ela nunca vai para o git.
+
+**Cartão final.** Habilidades: **A Memória de Dois Segundos** (R44) ·
+**Selecionar Várias** (backlog 26) · **A Gaveta de Settings** (backlog 27) ·
+**A Troca do Arquivo Inteiro** (R43). Chefões derrotados: **O Cachorro
+Curvado** (R44) · **Meio Arquivo** (R43) · **A Barra de Abas Fugitiva**. À
+espreita: o Dono saindo de casa com alguém que nunca mostra o rosto ainda
+espera a escolha do Dono (R42); e todo merge lê todos os avistamentos já
+escritos — uma pilha que cresce cinquenta por dia (R45). Decretos:
+"Notifications é parte de Settings."

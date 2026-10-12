@@ -748,3 +748,4 @@ review and commits.
 | 10 | `v2026.10.11.4` | The Evidence Box / A Caixa de Provas | written |
 | 11 | `v2026.10.11.5` and `.6` | Second Chances / Segunda Chance | written |
 | 12 | `v2026.10.12` | The House Learns Who Lives Here / A Casa Aprende Quem Mora Aqui | written |
+| 13 | `v2026.10.12.2` | The Owner Is Not a Dog / O Dono Não É Cachorro | written |

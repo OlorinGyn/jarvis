@@ -883,3 +883,69 @@ Shifting Neighbour** (R41). Lurking: at home, the Owner walks out with someone
 whose face is never seen — and the scan, finding only the Owner, says nothing
 (R42); and two hands writing `config.json` at the same instant (R43). Decrees:
 "A stranger in the dark must reach the phone."
+
+## Issue #13 — The Owner Is Not a Dog
+
+`v2026.10.12.2` · 12 Oct 2026, evening
+
+**Panel 1.** Warm cream, indoors. The Dogs tab on a big screen: rows of dog
+photos, and among them a crop that is plainly a person's back bent at a car
+door — a silhouette, never drawn — tagged `dog 0.74`. Two more like it.
+THE OWNER: I keep showing up in the Dogs tab.
+
+**Panel 2.** The owl opens the evidence box from issue #10: six dog reports.
+Four photos are the same bent silhouette. A gauge on the box reads
+`person 0.00`.
+ARCHITECT: Four of six are you, bending over. And YOLO is sure — no person
+score left in that box at all.
+
+**Panel 3.** Close-up, two transparent boxes laid one over the other: a
+`person` box, faded, stamped "2 s ago", and the `dog` box now — almost the
+same rectangle. Beside it, a small real dog at someone's feet: a little box
+inside a big one, barely overlapping.
+ARCHITECT: But the box did not move. Two seconds ago, this exact box was a
+person. A dog at your feet never sits in your box like that.
+
+**Panel 4.** The beaver fits a small hourglass to J.A.R.V.I.S.'s side, filled
+with tiny person boxes instead of sand.
+DEV: Every person box of the last two seconds stays in memory. A dog box on
+top of one of them is that person.
+J.A.R.V.I.S.: `the person's box from a moment ago: dog 0.74`
+
+**Panel 5.** Night, deep blue. The owl, lantern raised, runs a film strip of
+Mirana and Aurora alone in the yard through a small projector. A counter on
+the projector: `relabelled: 0`.
+ARCHITECT: And a real dog with nobody around? Six clips, 174 dog frames. Not
+one renamed.
+
+**Panel 6.** The unnamed photos, now sorted into piles with signs: "Looks like
+Aurora (12)", "No guess". The beaver taps photos and they light up with green
+frames; a bar along the bottom reads "7 selected · Assign to… · Bad detection
+· Clear".
+THE OWNER: Select many photos and give them to one dog — not "Belongs to…" one
+by one.
+DEV: Grouped by what the matcher guesses. Only a hint: the name is still
+yours.
+
+**Panel 7.** A filing cabinet labelled SETTINGS; the beaver slides a drawer
+labelled NOTIFICATIONS into its top slot, beside DEVICES, ARCHIVE and
+REPORTS. On a phone in the corner, a tab bar too wide for the screen pushes
+the bottom bar off the edge.
+THE OWNER: A Notifications tab isn't ideal. Make it part of Settings.
+DEV: And on the phone the tabs wrap now — the bar had fallen off the screen.
+
+**Panel 8.** Dark red. Two hands — one from the web page, one from a Telegram
+cloud — tug at the same sheet of paper, `config.json`, tearing it. The boss is
+the torn half, waving.
+BOSS (the torn page): HALF A FILE! THE TOKEN IS GONE!
+DEV: Write a whole new copy, then swap it in at once. One writer at a time.
+ARCHITECT (holding up a forgotten copy found under the desk, the key still in
+it): And this copy holds the token. It never goes to git.
+
+**Closing card.** Abilities: **The Two-Second Memory** (R44) · **Select Many**
+(backlog 26) · **The Settings Drawer** (backlog 27) · **The Whole-File Swap**
+(R43). Bosses defeated: **The Bent-Over Dog** (R44) · **Half a File** (R43) ·
+**The Runaway Tab Bar**. Lurking: the Owner walking out at home with someone
+who never shows a face still waits for the Owner's choice (R42); and every
+merge reads every sighting ever written — a pile that grows by fifty a day
+(R45). Decrees: "Notifications belongs in Settings."
