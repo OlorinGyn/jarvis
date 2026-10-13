@@ -126,6 +126,7 @@ jarvis/
 │   ├── rebuild_faces.py  rebuilds faces/ from the clips
 │   ├── check_clips.py    image damage coming from the cameras
 │   ├── make_epub.py      joins the .md files into an EPUB for an e-reader
+│   ├── check_doc_refs.py every "<DOC> <section>" reference lands on a heading
 │   ├── make_icon.py      draws the icon (section 14)
 │   └── create_shortcut.ps1 the Desktop shortcut with the icon
 ├── assets/               jarvis.ico and a PNG preview (generated, versioned)
@@ -133,12 +134,16 @@ jarvis/
 │   ├── ARCHITECTURE.md   how it works and why
 │   ├── INSTALL.md        installing and running on a new machine
 │   ├── PYTHON.md         Python and the libraries, for Java/C# developers
-│   ├── CONTEXT.md        rules, decisions, backlog, plan
+│   ├── CONTEXT.md        the project: decisions, limits, repository map, commands
+│   ├── PROCESS.md        how the work is done: rules, resume, reviews, budget
+│   ├── BACKLOG.md        the work: backlog, open recommendations, next sessions
+│   ├── PENDING.md        what is not work yet: waiting for the user, open discussions
 │   ├── HISTORY.md        bugs fixed, every review, closed recommendations
 │   └── raidlog/          the comic script of each release
 ├── install.bat           install on a new machine (run once)
 ├── jarvis.bat            the service and the browser (the Desktop shortcut points here)
 ├── jarvis_headless.bat   the service only: records, notifies and serves the page
+├── jarvis_vigilancia.bat its old name, calling it; removed in the next release
 ├── CLAUDE.md             working rules, read by every Claude Code session
 ├── HANDOFF.md            developer to architect, emptied after each review
 ├── README.md             introduction and links to docs/
@@ -1213,7 +1218,9 @@ causes:
 | The user gives a name that already exists | The two people **become one**, adding up their views — the page warns first |
 
 Absorbing and merging (`_merge`) move the views to the named person and
-rewrite the `person_id` of the old sightings. Up to `MAX_EMBEDDINGS = 40`
+rewrite the `person_id` of the old sightings. The rewrite waits for `save()`:
+each merge records `{old id: new id}`, and the save reads the sighting files
+once for the whole operation, however many entries it merged (R45). Up to `MAX_EMBEDDINGS = 40`
 views per person; more wait in a queue the user manages (17.14).
 
 Measured on the same set of clips with the new pipeline: **3 people**. Naming
@@ -2399,10 +2406,14 @@ tabs are the same `galleryTab` factory (20).
   the page out 545 px wide — the layout viewport grows to the widest content —
   and the bar fixed to the bottom fell below the screen. The tabs wrap now.
 
-**Known cost (R45):** each photo joined rewrites its sightings with a scan of
-every day folder, under the gallery lock, and sightings are never pruned
-(about 50 dog sightings a day on the M900), so a large batch gets slower as
-the months pass.
+**The sightings, once per batch (R45, 12/10/2026).** Joining a photo
+rewrites the sightings that pointed at it, and sightings are never pruned
+(about 50 dog sightings a day on the M900). Each photo joined used to scan
+every day folder, under the gallery lock; now the whole batch is one scan, at
+the save (10.4). Measured: a batch of five reads each sighting file once
+instead of five times. Bounding the scan by the entry's `first_seen` would
+not be safe: `tools/dog_crops.py` gives today's entries sightings of older
+days.
 
 ---
 

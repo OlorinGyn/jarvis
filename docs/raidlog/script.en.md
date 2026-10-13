@@ -949,3 +949,60 @@ it): And this copy holds the token. It never goes to git.
 who never shows a face still waits for the Owner's choice (R42); and every
 merge reads every sighting ever written — a pile that grows by fifty a day
 (R45). Decrees: "Notifications belongs in Settings."
+
+## Issue #14 — Every Name in English
+
+`v2026.10.12.3` · 12 Oct 2026, night
+
+**Panel 1.** Warm cream, indoors. A shelf of thick books whose spines still
+read ARQUITETURA, INSTALACAO, CONTEXTO, and a row of toolboxes stencilled
+`diagnostico`, `refazer_rostos`, `gerar_epub`. The beaver, a label maker in
+hand.
+THE OWNER: Everything but our conversation in English.
+DEV: The pages are English since this morning. The covers aren't.
+
+**Panel 2.** The beaver peels ARQUITETURA off a spine and presses on
+ARCHITECTURE. A golden thread — the book's history — runs from the old label
+into the new one, unbroken.
+DEV: Just the new name in this commit, nothing else. Git still knows it's the
+same book.
+ARCHITECT: And translate the toolboxes in the next one. A file that changes
+its name and its words at once looks like a stranger.
+
+**Panel 3.** A corridor of signposts pointing at book pages — "ARCHITECTURE
+18.7", "INSTALL 1.2", "PROCESS 3". A small inspector robot walks along
+tapping each one; three signs glow red, all on the HISTORY shelf.
+J.A.R.V.I.S.: `3 broken reference(s)`
+DEV: The same three before the rename and after. Old sentences, not mine.
+
+**Panel 4.** Night, deep blue. The owl, lantern raised, rewrites three lines
+in the HISTORY book. The inspector's lamp turns green.
+J.A.R.V.I.S.: `0 broken reference(s)`
+ARCHITECT: Now the inspector walks this corridor in every review.
+
+**Panel 5.** An old door labelled `jarvis_vigilancia.bat`; behind it a short
+corridor to a new door, `jarvis_headless.bat`. The beaver hangs a sign on the
+old one: MOVED — ONE MORE RELEASE.
+DEV: Anything still knocking on the old door gets walked to the new one. One
+release, then the old door goes.
+
+**Panel 6.** Dark red. The boss of issue #13's last card rises: a mountain of
+sighting cards with eyes, fifty more falling on top every day. Five ghostly
+beavers climb it at once, each carrying one photo.
+BOSS (the pile): READ ME AGAIN! AND AGAIN! AND AGAIN!
+DEV: Five photos for Aurora, five climbs through every card ever written.
+
+**Panel 7.** The beaver at the foot of the pile writes on a clipboard —
+"a → Aurora, b → Aurora, c → Aurora…" — then climbs once with a stamp. The
+pile shrinks back to a heap.
+DEV: Each merge just writes down who moved where. The save climbs once.
+ARCHITECT: Five reads became one. And a chain — a into b, then b into c —
+lands every card straight on c.
+
+**Closing card.** Abilities: **The New Covers** (R10) · **The Signpost
+Inspector** (`check_doc_refs.py`) · **One Climb** (R45). Bosses defeated:
+**The Endless Pile** (R45) · **The Portuguese Covers** (R10). Lurking: the
+Owner walking out at home with someone who never shows a face still waits for
+the Owner's choice (R42); zones and a health watch are only proposals; and
+after one more session the decided work runs out — the next page is the
+Owner's to write.

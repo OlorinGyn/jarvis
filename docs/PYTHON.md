@@ -1325,3 +1325,77 @@ has open cannot be replaced, and cannot be opened while it is being replaced.
 Both sides answer `PermissionError`, so both retry for a moment (50 × 10 ms)
 instead of failing. The measurement that justified each piece is in
 ARCHITECTURE 11.6.
+
+## 32. Record now, write once: a unit of work (R45)
+
+Merging a photo into a dog rewrites the sighting files that pointed at it.
+Before R45, `_merge` did that I/O itself, so a batch of 60 photos scanned
+every sighting file 60 times. Now `_merge` only **records the intent**:
+
+```python
+self.repoints = {old: target["id"] if new == source["id"] else new
+                 for old, new in self.repoints.items()}
+self.repoints[source["id"]] = target["id"]
+```
+
+and `save()` applies the whole map in one pass before writing
+`gallery.json`. It is the **Unit of Work** pattern — Entity Framework's
+`DbContext` collects changes and `SaveChanges()` writes them at once; JPA's
+persistence context does the same at `flush()`.
+
+The first line is a **dict comprehension**, `{key: value for ... in ...}` —
+like a LINQ `ToDictionary` or Java's `Collectors.toMap`, written inline. Its
+job here is to collapse chains: if `a` was merged into `b` (`{a: b}`) and now
+`b` is merged into `c`, every value equal to `b` becomes `c`, then `b: c` is
+added — `{a: c, b: c}`. A sighting of `a` goes straight to `c`, never to the
+`b` that no longer exists. `x if cond else y` is Python's ternary, C#'s
+`cond ? x : y` written in reading order.
+
+`load()` starts every operation with `self.repoints = {}`, so a merge from an
+operation that failed before saving is never applied — as a `DbContext` that
+is thrown away without `SaveChanges()`.
+
+## 33. Counting calls in a test: `monkeypatch` as a spy (R45)
+
+R45's acceptance was "each sighting file is read once". The test proves it by
+replacing a method of a real class for the duration of one test:
+
+```python
+original = faces.Path.read_text
+
+def counting(path, *args, **kwargs):
+    reads[path.name] = reads.get(path.name, 0) + 1
+    return original(path, *args, **kwargs)
+
+monkeypatch.setattr(faces.Path, "read_text", counting)
+```
+
+`monkeypatch` is a pytest fixture: ask for it as a test parameter and pytest
+hands it in, as an injected dependency. `setattr` swaps `Path.read_text` for
+`counting`, which counts and then calls the original — Mockito's `spy`, but
+on the class itself, and possible only because Python classes can be changed
+at run time (Java and C# would need an interface or a mocking library that
+rewrites bytecode). At the end of the test pytest **undoes it on its own**;
+`monkeypatch.undo()` undoes it early, so the test's last check reads files
+normally. `*args, **kwargs` take any positional and keyword arguments and pass
+them on unchanged — C#'s `params object[]`, plus named arguments.
+
+## 34. A rename git can follow, and a `.bat` that works from any folder (R10)
+
+**Git does not store renames.** It stores snapshots; when it shows history it
+*guesses* that a deleted file and an added one with at least 50 % of the same
+content are one file moved. That is why R10 renamed the files in one commit
+with almost no other change (`git mv`), and translated their text in the
+next: `diagnose.py` translated would no longer look 50 % like
+`diagnostico.py`. `git log --follow docs/ARCHITECTURE.md` walks back across
+the rename to the file's first `ARQUITETURA.md` commit. An IDE's "Rename
+file" refactoring does the same in one step; in git, the rename is inferred
+afterwards.
+
+**`%~dp0` in a batch file** is "the drive and folder of this script", so
+`cd /d "%~dp0"` makes a `.bat` work wherever it is started from — Java's
+"relative to the class, not the working directory". `call other.bat %*` runs
+another batch file and comes back, passing every argument along (`%*`).
+Without `call`, cmd would jump to the other file and never return: that is
+how the old `jarvis_vigilancia.bat` hands over to `jarvis_headless.bat` in a
+single line.

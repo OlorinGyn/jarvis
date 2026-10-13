@@ -38,7 +38,9 @@ write into the repository is in English.
    - No comments in code; one-line docstrings only. Check with the command in
      PROCESS section 1.
    - English identifiers and program text; never mix languages in a name.
-     Code you touch that is still Portuguese moves to English (R10).
+   - A docstring or message that points at a document's section ("See
+     docs/ARCHITECTURE.md section 11"): `uv run python tools/check_doc_refs.py`
+     must exit 0 before the commit.
    - **Generated files never break.** Changes to anything read from or
      written to disk are additive. Run `uv run python tools/check_data.py`
      before committing them. If a change cannot be additive, stop and ask.
@@ -68,7 +70,7 @@ write into the repository is in English.
   port 8766). When a test needs a real event, copy it from production into
   this folder's `clips/` and work on the copy.
 - Edit `docs/`, `README.md`, `CLAUDE.md` or anything in `.claude/` — unless
-  the plan names that edit explicitly, as R10's renames do.
+  the plan names that edit explicitly, as R10's renames did.
 - Push, or create a release tag. That is the architect's job.
 - Start a backlog item marked **(proposto)**.
 

@@ -180,6 +180,7 @@ tools/
   rebuild_faces.py rebuilds faces/ from the recorded clips
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
+  check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
   make_icon.py, create_shortcut.ps1   the icon and the desktop shortcut
 assets/           jarvis.ico and a PNG preview (generated, but versioned)
 docs/             ARCHITECTURE, INSTALL, PYTHON; this file, PROCESS, BACKLOG, PENDING, HISTORY
@@ -190,6 +191,7 @@ HANDOFF.md        developer → architect notes; empty between deliveries
 install.bat       install on a new machine
 jarvis.bat        start the service and open the browser
 jarvis_headless.bat service only, no browser (--headless)
+jarvis_vigilancia.bat its old name, calls jarvis_headless.bat; removed in the next release
 ```
 
 Structure explained in ARCHITECTURE 3. Not versioned: `.env` (credentials),
@@ -233,14 +235,15 @@ powershell Test-NetConnection <ip> -Port 554            does the camera answer o
 uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/make_epub.py                        the documentation as an EPUB
+uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
 ```
 
 **The documentation EPUB.** `tools/make_epub.py` joins every `.md` of the
-project into one EPUB in `docs/epub/`, one chapter per document, so the
-cross-references stay a tap away on the reader. New documents join on their
-own (the `ORDEM` list sets the known ones' order; anything else goes at the
-end). The `.md` files are never changed, EPUBs are not versioned, and the
+project into one EPUB, `docs/epub/JARVIS - Documentation.epub`, one chapter
+per document, so the cross-references stay a tap away on the reader. New
+documents join on their own (the `ORDER` list sets the known ones' order;
+anything else goes at the end). The `.md` files are never changed, EPUBs are not versioned, and the
 script checks at the end that the count of tables and code blocks matches the
 sources, including tables nested in list items. It needs pandoc
 (`winget install --id JohnMacFarlane.Pandoc -e`, found even off the PATH;

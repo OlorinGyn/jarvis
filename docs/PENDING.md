@@ -29,7 +29,7 @@ grows, decisions are being postponed.
   holds what Claude and the developer exchange stays out. Today
   `tools/make_epub.py` takes every `.md` at the root and in `docs/`, so
   `PROCESS.md`, `BACKLOG.md`, `PENDING.md`, `HISTORY.md` and `HANDOFF.md` would
-  go in; when the list comes, `ORDEM` becomes the list of what goes in, not
+  go in; when the list comes, `ORDER` becomes the list of what goes in, not
   just the order.
 
 ## Decided, not yet done

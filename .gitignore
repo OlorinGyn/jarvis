@@ -18,23 +18,23 @@ wheels/
 # recorded clips
 clips/
 
-# rostos detectados e galeria
+# detected faces and the gallery
 faces/
 
-# copias de seguranca feitas pelas ferramentas
+# backups the tools make before touching data
 backups/
 
-# modelos ONNX (baixados sob demanda)
+# ONNX models (downloaded on demand)
 models/
 
-# epub gerados sob demanda, nao versionados
+# EPUBs generated on demand, not versioned
 docs/epub/
 
 # the machine's own settings, and the temporary copy written before replacing them
 config.json
 config.json.*
 
-# registro do programa (logs/jarvis.log, com rotacao)
+# the program's log (logs/jarvis.log, rotated)
 logs/
 
 # present while production is held (update in progress or deliberate stop)

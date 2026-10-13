@@ -6,11 +6,11 @@ finished backlog items, every review in full, the closed recommendations and
 the old rows of the usage log. Moved here on 12/10/2026 (R33), so every
 session's resume reads a short brief instead of about 25k tokens.
 
-**Section numbers are the ones `CONTEXT.md` had**, so an older reference such
-as "CONTEXT 13.6" is now "HISTORY 13.6". Read on demand, not at every resume.
-From review 15 on, each review writes its own section here (13.16, 13.17…)
-and its row in 13.2; a recommendation's text moves here from `CONTEXT.md`
-13.4 when it closes.
+**Section numbers are the ones `CONTEXT.md` had**, so an older reference to
+CONTEXT's section 13.6 now means HISTORY 13.6. Read on demand, not at every
+resume. From review 15 on, each review writes its own section here (13.16,
+13.17…) and its row in 13.2; a recommendation's text moves here from
+`BACKLOG.md` 2 when it closes.
 
 ---
 
@@ -207,6 +207,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 14 | 11/10/2026 | `1cea950..e03a083`, developer session 12 (scheduled cycle) — R38, R40, R37, R36; before it, R39 fixed by the architect (`76a5a9e`, release `v2026.10.11.5`) | no code fixed; 92 tests pass; `uv run pytest` found blocked by Smart App Control, docs moved to `python -m pytest`; R41 opened (low); release `v2026.10.11.6`, deployed at 17:46: 352 events, 36 face and 147 dog sightings, 2 reports read before and after, cameras ok 4 s after the start; production lists both old reports with their photos |
 | 15 | 12/10/2026 | `v2026.10.11.6..e7df623`, developer session 13 — backlog 25 (a)–(f), R41 | **one code fix** (`5224983`): a held person with no face was silenced by a dog message of the same event, and got nothing when the clip failed to assemble; 160 tests pass; R42 (a decision for the user) and R43 opened; release `v2026.10.12` (13.15) |
 | 16 | 12/10/2026 | `v2026.10.12..a53aa84`, developer session 14 — R44, backlog 26 and 27, R43 | no release code fixed; `.gitignore` now covers R43's temporary file; R44 replayed on six dog-alone clips (no box relabelled); 174 tests pass; R45 opened (low); release `v2026.10.12.2` (13.17) |
+| 17 | 12/10/2026 | `v2026.10.12.2..f4489a0`, developer session 15 — R10's file names and the tools' text, R45 | no code fixed; 176 tests pass; the new `check_doc_refs.py` exits 0 after rewording three historical lines; `.gitignore`'s last Portuguese comments translated; R10 and R45 closed; release `v2026.10.12.3` (13.18) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -266,11 +267,13 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R39 | **high** | Person and dog pages showed no photos | fixed by the architect `76a5a9e`, release `v2026.10.11.5`: backlog 24 added a hidden proposal grid with the same class, and the page filled the first `.views-grid` it found — the hidden one. The tests cover the server only; a check of the page in a browser would have caught it |
 | ✓ | R40 | **high** | Waiting views are hidden, and move into the chosen ones on their own | done `4d9a190`: Chosen and Waiting grids, ↓ ↑ × moves, Analyse can discard (ARCHITECTURE 21) |
 | ✓ | R33 | medium | The documentation had grown by appending: README stale, CONTEXT read whole by every session | done 12/10 by the architect: CONTEXT cut to a brief and this file; README, INSTALL, PYTHON and ARCHITECTURE in English; ARCHITECTURE reorganised by subject (text in 13.12) |
-| ✓ | R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | done `aa68bc4`: a dog box where a person stood in the last 2 s is that person (ARCHITECTURE 7.12, 13.16 below) |
+| ✓ | R44 | **high** | The user bending over becomes a "dog": a crop in the Dogs tab and a `dog` label | done `aa68bc4`: a dog box where a person stood in the last 2 s is that person (ARCHITECTURE 7.12; 13.16 below) |
 | ✓ | R43 | low | `config.json` is rewritten in place, with no lock, by two writers | done `565a34b`: one lock, write then replace, retries on Windows (ARCHITECTURE 11.6) |
 | ✓ | R41 | low | A view is moved by its position, which a full queue shifts when a scan adds one | done `f4fe810`: each move names the photo it was shown, 409 if it changed (ARCHITECTURE 22.6) |
 | ✓ | R34 | **high** | Devices have to type the PIN again and again | done `d6aa12e` (ARCHITECTURE 21) |
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARCHITECTURE 21); rare cases go to bad-detection reports |
+| ✓ | R10 | **high** | Everything except the conversation in English | done: the code and the program's text by 10/10, every document's text on 12/10 by the architect (R33), the file names and the last two tools' text in `f855a9e` and `aa6e243`; the old `--sem-janela` and `--janela` flags stay as aliases (13.18 below) |
+| ✓ | R45 | low | A merge finds its sightings by reading every one, once per entry merged | done `351bc23`: one pass per save with an `{old: new}` map; a batch of 5 reads each sighting once instead of 5 times (ARCHITECTURE 17.16; 13.17 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -343,7 +346,8 @@ stayed as it was. Show "No connection to J.A.R.V.I.S." in the summary.
 **R9 — Check on the development PC.** `python-preference = "system"` was
 tested only on the M900. On the dev PC, if another Python 3.14 is installed in
 Windows, `uv` uses it; if not, it keeps its own. Next session there: run
-routine 12.1, check which interpreter `.venv` uses and that `jarvis` starts.
+the resume routine (PROCESS 2.1), check which interpreter `.venv` uses and
+that `jarvis` starts.
 
 ### 13.5 Review 2 — what was fixed, and the new recommendations
 
@@ -1019,10 +1023,51 @@ crops to old events, so an entry made today can have sightings dated days
 before. Acceptance: a test where a batch of several entries reads each
 sighting file once.
 
+### 13.18 Review 17 — developer session 15 (12/10/2026)
+
+R10's file names and the tools' text, and R45, reviewed whole
+(`v2026.10.12.2..f4489a0`, three code commits, 53 files counting the
+documents). 176 tests pass, `check_data` reads every file (no format
+changed), no comments in the code.
+
+**R45, checked against every caller.** `_merge` now only records
+`{old: new}`; `save()` repoints the sightings in one pass, then writes
+`gallery.json` — the same order as before. Every caller of `_merge`
+(`rename`, `assign`, `Gallery._absorb`, `DogGallery._absorb`) runs under the
+lock and ends in `save()`; their early returns all come before the first
+merge. `load()` empties the map, so an operation that raised before saving
+never repoints anything. A chain collapses when it is recorded, and an entry
+is never merged into itself (`rename` and `_absorb` skip it; `assign` takes
+only unnamed sources and a named target). A failure between the sightings and
+`gallery.json` leaves the same state as before the change.
+
+**R10, checked.** No old name is left outside the record of the rename
+itself. The renamed tools passed an AST check for names used but never bound
+(the translation renamed most identifiers): none. The `.bat` files keep CRLF
+in the working tree and LF in the index, as before (`core.autocrlf`). The
+code holds no Portuguese but the `--sem-janela` and `--janela` flags, kept on
+purpose as aliases. R10 is closed.
+
+**Fixed in the review (text only).** The three historical lines the new
+`check_doc_refs.py` flagged, so it exits 0; `.gitignore`'s five Portuguese
+comments (patterns unchanged, the ignored list identical); R9's pointer to the
+old "routine 12.1"; this file's header, which still sent closing
+recommendations' text from CONTEXT's old section 13.4 instead of BACKLOG 2.
+
+**The developer's points, decided.** Historical sentences here now carry the
+new names (`CONTEXT.md` where the file was `CONTEXTO.md` then): accepted, a
+reference that works is worth more than the name of the time, and the rename
+commit records it. The `jarvis_vigilancia.bat` shim goes in the next release
+(developer 16). `jarvis_headless.bat` names port 8765: production's port; the
+test copy is the exception, accepted. `check_doc_refs.py` joins every review
+that touches `docs/` (PROCESS 3.1). Its limit: it checks only references that
+name their document — "13.16 below" or a bare "section 11" are not checked.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
-`PROCESS.md` 4; until 12/10/2026 the newest rows lived in `CONTEXT.md` 14.3.
+`PROCESS.md` 4; until 12/10/2026 the newest rows lived in the 14.3 section
+of `CONTEXT.md`.
 
 | # | Role | Effort | Date | Scope | 5-hour window | Weekly | Context |
 |---|---|---|---|---|---|---|---|
@@ -1061,3 +1106,4 @@ Every session's row: what it covered and what it cost. How to measure is
 | A21 | architect | ultracode | 12/10 afternoon–evening | the user's three requests: the 6 dog reports read and measured (two YOLO replays, 644 boxes; HISTORY 13.16), R44, backlog 26 and 27 designed, developer 14 planned and started | 54% → window reset → 4% | 97% → 0% (the weekly read 0 % at the end, its reset still shown for 14/10) | 443k → 490k tokens, the same conversation |
 | D14 | developer | high | 12/10 evening | session 14: R44, backlog 26 and 27, R43 (174 tests) | 6% → 22%: R44 + 26 12, 27 2, R43 and HANDOFF 2 | 1% → 3% | 68k → 212k tokens, a new conversation |
 | A22 | architect | ultracode | 12/10 20:07–20:50 | the user's question, clear or compact: "clear, not compact" and `PENDING.md`; review 16, release and deploy `v2026.10.12.2`, raid log 13; CONTEXT split into CONTEXT, PROCESS and BACKLOG (the developer's resume ~10.3k → ~8.0k tokens, the architect's ~11.1k); developer 15 planned and started | 12% → 40%, shared with developer 14 until 20:17 (22% at its end): about 17 points for this session | 2% → 6% | 72k → 280k tokens, a new conversation |
+| D15 | developer | high | 12/10 20:46–21:08 | session 15: R10's file names and the tools' text, `check_doc_refs.py`, R45 (176 tests) | 42% → 49%: R10 6, R45 1, HANDOFF under 1 | 6% → 7% | 70k → ≈175k tokens, a new conversation |

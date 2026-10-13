@@ -113,12 +113,10 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 |---|---|---|---|
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a **second named person** to test that the right one still wins (HISTORY 13.12) |
-| R45 | low | A merge finds its sightings by reading every one, once per entry merged | open (HISTORY 13.17) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R7 | low | `install.bat` does not check that the Python is signed | partly: `production.ps1` checks it (HISTORY 13.4) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
-| R10 | **high** | Everything except the conversation in English | every document's text in English since 12/10 (R33); left, a developer item: the Portuguese **file names** and the text of `instalar.bat` and `tools/diagnostico.py` |
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -133,57 +131,39 @@ once than distinct faces were found, send the best view as
 counts a dog as a second person (R18), one extra message. The architect
 recommends (b).
 
-**R45 — A merge finds its sightings by reading every one (low).**
-`_repoint_sightings` reads every sighting file of the gallery's folder, once
-per entry merged, under the gallery lock while the clip thread waits.
-Sightings are never pruned (about 50 dog sightings a day on the M900), so a
-batch of 60 photos in a year's time would read about a million files. Fix: one
-pass per batch with an `{old: new}` map — not a bound by `first_seen`, since
-`tools/dog_crops.py` gives today's entries sightings of older days.
-Acceptance: a test where a batch of several entries reads each sighting file
-once.
-
-**R10, what is left — the file names, and two tools' text.** Every document
-is in English since 12/10. Still Portuguese: the text `instalar.bat` and
-`tools/diagnostico.py` print, and the documents' own names (`ARQUITETURA.md`,
-`INSTALACAO.md`, `CONTEXTO.md` → `ARCHITECTURE.md`, `INSTALL.md`,
-`CONTEXT.md`), the tools (`diagnostico.py`, `refazer_rostos.py`,
-`verificar_clipes.py`, `gerar_icone.py`, `gerar_epub.py`, `criar_atalho.ps1`)
-and the launchers (`instalar.bat`, `jarvis_vigilancia.bat` — the second may be
-what the startup task or the desktop shortcut calls, so a rename keeps the old
-name working for one release). A developer item, because the names are referenced from code: every
-reference — `CLAUDE.md`, the `dev` skill, the docstrings of 26 files in
-`src/` and `tools/` ("See docs/ARQUITETURA.md section 11"), `gerar_epub.py`'s
-`ORDEM`, the shortcut and the scheduled task — changes in the same commit, and
-a script checks that every `<DOC> <section>` reference still lands on a
-heading (the architect's check of 12/10 can be reused).
-
 ---
 
 ## 3. Next sessions
 
-**Review 16's cycle is done** (`v2026.10.12.2`, deployed at 20:33: 477
-events, 55 face and 205 dog sightings, 6 reports, every file read before and
-after; cameras ok 3 s after the start). The same evening the context
-documents were split by subject, as the user asked: `CONTEXTO.md` (the
-project), `PROCESS.md`, this file, `PENDING.md`.
+**Review 17's cycle is done** (`v2026.10.12.3`): R10 and R45 closed — every
+file name, tool and launcher is in English, and a merge batch reads each
+sighting once.
 
-**Developer 15 (planned 12/10, evening):** in this order —
+**Developer 16 (planned 12/10, night):** in this order —
 
-1. **R10's file names and the two tools' text** (high, section 2): the
-   documents (`ARQUITETURA.md` → `ARCHITECTURE.md`, `INSTALACAO.md` →
-   `INSTALL.md`, `CONTEXTO.md` → `CONTEXT.md`), the tools and the launchers
-   R10 lists, with `git mv` so their history follows. **The one item where the
-   developer edits `docs/`, `README.md`, `CLAUDE.md` and
-   `.claude/skills/dev/SKILL.md` — only the references to the renamed files,
-   nothing else;** documentation worth changing beyond that goes to
-   `HANDOFF.md` as usual. References in the code to CONTEXTO's moved sections
-   (2, 8, 11–15) land on pointers today; point them at `PROCESS` or
-   `BACKLOG` while renaming. A script checks that every `<DOC> <section>`
-   reference lands on a heading. `tools/gerar_epub.py` follows the new names;
-   which documents the EPUB carries still waits for the user (`PENDING.md`).
-2. **R45** (low), if there is room.
+1. **Delete `jarvis_vigilancia.bat`**, the shim developer 15 left for one
+   release (it shipped in `v2026.10.12.3`). Nothing on the M900 calls it:
+   the startup task runs `pythonw -m jarvis --headless` and the Desktop
+   shortcut points at `jarvis.bat`. Check that no file in the repository names
+   it except `docs/` (the architect updates those).
+2. **R7** (low, text in `HISTORY.md` 13.4): `install.bat` checks, after
+   `uv sync`, that `.venv\Scripts\python.exe` is signed by the Python
+   Software Foundation, and stops with a clear message pointing at INSTALL 1.2
+   when it is not. The same test as `production.ps1`'s
+   (`Get-AuthenticodeSignature`, line 128: status `Valid` and the PSF in the
+   subject); whether the `.bat` runs it as one PowerShell line or both call a
+   small shared script is the developer's choice. **Acceptance:** the check
+   passes on this folder's `.venv` (`python.exe` is `Valid`, PSF — checked by
+   the architect), and fails on an unsigned file: `uv` writes unsigned
+   launchers into `.venv\Scripts` (`jarvis.exe` and `pytest.exe` are
+   `NotSigned`; ARCHITECTURE 19.5), so point it at one of those to prove the
+   failure path.
+   Do not run `install.bat` end to end: it installs software and writes a
+   Desktop shortcut.
 
 **Not planned:** R42 waits for the user's choice and R30 (b) for a second
-named person. Every other open backlog item is **(proposto)** — 1 (zones),
-2 (system health) and the rest of section 1.
+named person. R14 stays open until a measurement says live encoding matters
+(backlog 4, proposto); R12 is an operating rule, not code; R9 needs the
+development PC. Every other open backlog item is **(proposto)** — 1 (zones),
+2 (system health) and the rest of section 1. **After developer 16 the decided
+work runs out**: the next cycle needs the user to choose.

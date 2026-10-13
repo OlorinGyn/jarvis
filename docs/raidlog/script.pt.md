@@ -987,3 +987,63 @@ espreita: o Dono saindo de casa com alguém que nunca mostra o rosto ainda
 espera a escolha do Dono (R42); e todo merge lê todos os avistamentos já
 escritos — uma pilha que cresce cinquenta por dia (R45). Decretos:
 "Notifications é parte de Settings."
+
+## Edição nº 14 — Todo Nome em Inglês
+
+`v2026.10.12.3` · 12 out 2026, noite
+
+**Quadro 1.** Creme quente, interior. Uma estante de livros grossos cujas
+lombadas ainda dizem ARQUITETURA, INSTALACAO, CONTEXTO, e uma fileira de
+caixas de ferramentas estampadas `diagnostico`, `refazer_rostos`,
+`gerar_epub`. O castor, com uma rotuladora na mão.
+O DONO: Tudo em inglês, menos a nossa conversa.
+DEV: As páginas estão em inglês desde hoje de manhã. As capas não.
+
+**Quadro 2.** O castor descola ARQUITETURA de uma lombada e cola
+ARCHITECTURE. Um fio dourado — a história do livro — sai da etiqueta velha e
+entra na nova, sem se partir.
+DEV: Só o nome novo neste commit, mais nada. O git continua sabendo que é o
+mesmo livro.
+ARQUITETO: E traduz as caixas de ferramentas no próximo. Um arquivo que troca
+de nome e de palavras ao mesmo tempo parece um estranho.
+
+**Quadro 3.** Um corredor de placas apontando para páginas de livros —
+"ARCHITECTURE 18.7", "INSTALL 1.2", "PROCESS 3". Um pequeno robô inspetor
+caminha batendo em cada uma; três placas brilham vermelhas, todas na
+prateleira do HISTORY.
+J.A.R.V.I.S.: `3 broken reference(s)`
+DEV: As mesmas três antes e depois do rename. Frases antigas, não minhas.
+
+**Quadro 4.** Noite, azul profundo. A coruja, lanterna erguida, reescreve
+três linhas no livro HISTORY. A lâmpada do inspetor fica verde.
+J.A.R.V.I.S.: `0 broken reference(s)`
+ARQUITETO: Agora o inspetor percorre este corredor em toda revisão.
+
+**Quadro 5.** Uma porta velha com a placa `jarvis_vigilancia.bat`; atrás
+dela, um corredor curto até uma porta nova, `jarvis_headless.bat`. O castor
+pendura um aviso na velha: MUDOU — SÓ MAIS UMA VERSÃO.
+DEV: Quem ainda bater na porta velha é levado até a nova. Uma versão, depois
+a porta velha sai.
+
+**Quadro 6.** Vermelho-escuro. O chefão do cartão final da edição nº 13 se
+ergue: uma montanha de cartões de avistamento com olhos, cinquenta a mais
+caindo por cima todo dia. Cinco castores fantasmas escalam ao mesmo tempo,
+cada um com uma foto.
+CHEFÃO (a pilha): ME LÊ DE NOVO! E DE NOVO! E DE NOVO!
+DEV: Cinco fotos para a Aurora, cinco escaladas por todos os cartões já
+escritos.
+
+**Quadro 7.** O castor, ao pé da pilha, anota numa prancheta — "a → Aurora,
+b → Aurora, c → Aurora…" — e depois escala uma vez só, com um carimbo. A
+pilha volta a ser um montinho.
+DEV: Cada merge só anota quem foi para onde. O save escala uma vez.
+ARQUITETO: Cinco leituras viraram uma. E uma corrente — a em b, depois b em
+c — leva cada cartão direto para c.
+
+**Cartão final.** Habilidades: **As Capas Novas** (R10) · **O Inspetor de
+Placas** (`check_doc_refs.py`) · **Uma Escalada Só** (R45). Chefões
+derrotados: **A Pilha Sem Fim** (R45) · **As Capas em Português** (R10). À
+espreita: o Dono saindo de casa com alguém que nunca mostra o rosto ainda
+espera a escolha do Dono (R42); zonas e um vigia de saúde são só propostas; e
+depois de mais uma sessão o trabalho decidido acaba — a próxima página é o
+Dono quem escreve.

@@ -170,7 +170,9 @@ and the real system (logs, files, measurements). It fixes on the spot what is
 text or wrong documentation, and code only to fix what the review finds,
 reproduced by a test first. What is left in code becomes a **recommendation**
 (`BACKLOG.md` 2) for the developer. It writes the review's own section in `HISTORY.md`
-13 and its row in 13.2 there.
+13 and its row in 13.2 there. When the range or the review touches `docs/`,
+`uv run python tools/check_doc_refs.py` must exit 0: every `<DOC> <section>`
+reference lands on a heading (review 17).
 
 **The developer reads the open recommendations** before starting (2.3). When
 it implements one, it says so in `HANDOFF.md` with the commit; the architect
@@ -179,14 +181,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 16, covers
-up to the `v2026.10.12.2` release commit**; the next starts from the commit
+The table of every review is `HISTORY.md` 13.2. **The last review, 17, covers
+up to the `v2026.10.12.3` release commit**; the next starts from the commit
 after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.17, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.18.
+`HISTORY.md` 13.3 to 13.18, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.19.
 
 ---
 
@@ -326,3 +328,4 @@ review and commits.
 | 11 | `v2026.10.11.5` and `.6` | Second Chances / Segunda Chance | written |
 | 12 | `v2026.10.12` | The House Learns Who Lives Here / A Casa Aprende Quem Mora Aqui | written |
 | 13 | `v2026.10.12.2` | The Owner Is Not a Dog / O Dono Não É Cachorro | written |
+| 14 | `v2026.10.12.3` | Every Name in English / Todo Nome em Inglês | written |

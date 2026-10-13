@@ -19,10 +19,11 @@ review in full, closed recommendations, the usage log — is in
 | Text the program shows: web page, notifications, terminal | English |
 | The raid log comic scripts (`docs/raidlog/`) | **both**, English and Portuguese |
 
-Technical terms stay in English everywhere. Until the migration in
-`docs/BACKLOG.md` R10 is done, older documents and parts of the code are
-still in Portuguese; **everything new is written in English**, and anything you
-touch moves to English with it. Never mix the two inside one identifier name.
+Technical terms stay in English everywhere. The migration (R10) finished on
+12/10/2026: every document, file name, identifier and program text is in
+English; the only Portuguese left on purpose is the old `--sem-janela` and
+`--janela` flags, kept as aliases. **Everything new is written in English.**
+Never mix the two inside one identifier name.
 
 ## The user's rules
 
