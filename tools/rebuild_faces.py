@@ -2,7 +2,7 @@
 
 Usage: uv run tools/rebuild_faces.py
 
-Moves the current faces/ aside to backups/faces_<data-hora>/ first, so nothing
+Moves the current faces/ aside to backups/faces_<date-time>/ first, so nothing
 is lost. Names are not carried over: identities are rebuilt from scratch, and
 naming one card per person in the People screen is enough to name the rest.
 Close the J.A.R.V.I.S. before running: it writes to the same folder.
@@ -36,16 +36,16 @@ def main():
         backup = ROOT / "backups" / f"faces_{datetime.now():%Y%m%d-%H%M%S}"
         backup.parent.mkdir(exist_ok=True)
         shutil.move(faces.FACE_DIR, backup)
-        print(f"rostos antigos movidos para {backup.relative_to(ROOT)}")
+        print(f"old faces moved to {backup.relative_to(ROOT)}")
 
-    print(f"{len(clips)} clipe(s) para analisar")
+    print(f"{len(clips)} clip(s) to scan")
     gallery = faces.Gallery()
     for started, camera, path in clips:
         found = faces.scan_clip(path, camera, started, gallery)
-        print(f"  {camera:6} {started:%d/%m %H:%M:%S}  {len(found)} rosto(s)")
+        print(f"  {camera:6} {started:%d/%m %H:%M:%S}  {len(found)} face(s)")
 
     gallery.load()
-    print(f"pronto: {len(gallery.people)} pessoa(s) na galeria")
+    print(f"done: {len(gallery.people)} person(s) in the gallery")
 
 
 if __name__ == "__main__":

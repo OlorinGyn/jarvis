@@ -120,7 +120,7 @@ def main():
     master = draw()
     write_ico([scaled(master, size) for size in ICON_SIZES], OUTPUT)
     cv2.imwrite(str(PREVIEW), scaled(master, 256))
-    print(f"{OUTPUT.relative_to(ROOT)} e {PREVIEW.relative_to(ROOT)} gerados")
+    print(f"{OUTPUT.relative_to(ROOT)} and {PREVIEW.relative_to(ROOT)} written")
 
 
 if __name__ == "__main__":

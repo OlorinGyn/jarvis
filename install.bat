@@ -1,87 +1,87 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Instalacao do J.A.R.V.I.S.
+title J.A.R.V.I.S. installation
 
 echo ============================================
-echo   J.A.R.V.I.S. - instalacao
+echo   J.A.R.V.I.S. - installation
 echo ============================================
 echo.
 
 where uv >nul 2>&1
 if errorlevel 1 (
-    echo [1/7] uv nao encontrado. Instalando...
+    echo [1/7] uv not found. Installing it...
     winget install --id=astral-sh.uv -e --accept-source-agreements --accept-package-agreements
     if errorlevel 1 (
         echo.
-        echo ERRO: nao consegui instalar o uv automaticamente.
-        echo Instale manualmente em https://docs.astral.sh/uv/ e rode este script de novo.
+        echo ERROR: could not install uv automatically.
+        echo Install it by hand from https://docs.astral.sh/uv/ and run this script again.
         pause
         exit /b 1
     )
     echo.
-    echo O uv foi instalado, mas o PATH so atualiza numa janela nova.
-    echo FECHE esta janela e rode install.bat novamente.
+    echo uv is installed, but the PATH only updates in a new window.
+    echo CLOSE this window and run install.bat again.
     pause
     exit /b 0
 ) else (
-    echo [1/7] uv encontrado.
+    echo [1/7] uv found.
 )
 
-echo [2/7] Verificando o Visual C++ Redistributable...
-echo       ^(o OpenCV depende dele e nao o empacota^)
+echo [2/7] Checking the Visual C++ Redistributable...
+echo       ^(OpenCV depends on it and does not bundle it^)
 winget install --id=Microsoft.VCRedist.2015+.x64 -e --accept-source-agreements --accept-package-agreements >nul 2>&1
-echo       pronto.
+echo       done.
 
-echo [3/7] Python oficial, assinado pela Python Software Foundation...
-echo       ^(o Smart App Control do Windows 11 bloqueia o Python sem assinatura^)
+echo [3/7] The official Python, signed by the Python Software Foundation...
+echo       ^(Windows 11's Smart App Control blocks an unsigned Python^)
 winget install --id=Python.Python.3.14 -e --scope user --accept-source-agreements --accept-package-agreements --silent >nul 2>&1
-echo       pronto.
+echo       done.
 
-echo [4/7] Instalando dependencias ^(pode demorar na primeira vez^)...
+echo [4/7] Installing dependencies ^(may take a while the first time^)...
 uv sync
 if errorlevel 1 (
     echo.
-    echo ERRO: falha ao instalar as dependencias.
+    echo ERROR: could not install the dependencies.
     pause
     exit /b 1
 )
 
-echo [5/7] Baixando modelos de visao ^(~73 MB^)...
-uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      modelos prontos')"
+echo [5/7] Downloading vision models ^(~73 MB^)...
+uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      models ready')"
 if errorlevel 1 (
     echo.
-    echo ERRO: falha ao preparar os modelos.
+    echo ERROR: could not prepare the models.
     echo.
-    echo Se a mensagem acima menciona DLL ou WinError 1114, falta o
-    echo Visual C++ Redistributable:
+    echo If the message above mentions a DLL or WinError 1114, the
+    echo Visual C++ Redistributable is missing:
     echo.
     echo    winget install --id Microsoft.VCRedist.2015+.x64 -e
     echo.
-    echo Qualquer outro erro: verifique a conexao com a internet.
+    echo Any other error: check the internet connection.
     pause
     exit /b 1
 )
 
-echo [6/7] Atalho na Area de Trabalho...
+echo [6/7] Desktop shortcut...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\create_shortcut.ps1"
 
-echo [7/7] Configuracao das cameras...
+echo [7/7] Camera configuration...
 if exist ".env" (
-    echo      .env ja existe, mantido como esta.
+    echo      .env already exists, kept as it is.
 ) else (
     copy ".env.example" ".env" >nul
-    echo      .env criado a partir do modelo.
+    echo      .env created from the template.
     echo.
-    echo      ATENCAO: edite o arquivo .env com o IP e as credenciais
-    echo      das suas cameras antes de iniciar.
+    echo      ATTENTION: edit the .env file with your cameras' IP
+    echo      and credentials before starting.
     echo.
     notepad ".env"
 )
 
 echo.
 echo ============================================
-echo   Instalacao concluida.
-echo   Use jarvis.bat para iniciar o programa.
+echo   Installation finished.
+echo   Use jarvis.bat to start the program.
 echo ============================================
 pause

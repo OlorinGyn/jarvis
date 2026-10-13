@@ -1,6 +1,6 @@
 """Check a day's recordings for image damage that came from the camera.
 
-Usage: uv run tools/check_clips.py [AAAA-MM-DD]
+Usage: uv run tools/check_clips.py [YYYY-MM-DD]
 
 Decodes every clip of the day with ffmpeg and counts the H.264 errors, per
 clip and per camera. Recording copies the camera's bytes untouched, so damage
@@ -31,7 +31,7 @@ def main():
     day = sys.argv[1] if len(sys.argv) > 1 else date.today().isoformat()
     clips = sorted(CLIP_DIR.glob(f"*/{day}/*.mp4"), key=lambda p: p.stem)
     if not clips:
-        raise SystemExit(f"nenhuma gravacao em {day}")
+        raise SystemExit(f"no recordings on {day}")
 
     per_camera = Counter()
     clips_per_camera = Counter()
@@ -41,11 +41,11 @@ def main():
         clips_per_camera[camera] += 1
         if errors:
             per_camera[camera] += 1
-            print(f"  {camera:6} {path.stem}  {errors} bloco(s) danificado(s)")
+            print(f"  {camera:6} {path.stem}  {errors} damaged block(s)")
 
     print(f"\n{day}:")
     for camera in sorted(clips_per_camera):
-        print(f"  {camera:6} {per_camera[camera]} de {clips_per_camera[camera]} clipes com dano")
+        print(f"  {camera:6} {per_camera[camera]} of {clips_per_camera[camera]} clips damaged")
 
 
 if __name__ == "__main__":

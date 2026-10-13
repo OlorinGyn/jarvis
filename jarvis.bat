@@ -4,16 +4,16 @@ cd /d "%~dp0"
 title J.A.R.V.I.S.
 
 if not exist ".env" (
-    echo Arquivo .env nao encontrado. Rode install.bat primeiro.
+    echo .env file not found. Run install.bat first.
     pause
     exit /b 1
 )
 
 uv run python -m jarvis
-set CODIGO=%errorlevel%
+set CODE=%errorlevel%
 
-if not "%CODIGO%"=="0" (
+if not "%CODE%"=="0" (
     echo.
-    echo O programa terminou com erro ^(codigo %CODIGO%^).
+    echo The program ended with an error ^(code %CODE%^).
     pause
 )

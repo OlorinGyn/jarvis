@@ -1,23 +1,23 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title J.A.R.V.I.S. - servico
+title J.A.R.V.I.S. - service
 
 if not exist ".env" (
-    echo Arquivo .env nao encontrado. Rode install.bat primeiro.
+    echo .env file not found. Run install.bat first.
     pause
     exit /b 1
 )
 
-echo Servico do J.A.R.V.I.S.: grava, avisa e serve a pagina. Ctrl+C encerra.
-echo Para ver as cameras: http://127.0.0.1:8765 ou o atalho da Area de Trabalho.
+echo J.A.R.V.I.S. service: records, notifies and serves the page. Ctrl+C stops it.
+echo To see the cameras: http://127.0.0.1:8765 or the Desktop shortcut.
 echo.
 
-uv run python -m jarvis --sem-janela
-set CODIGO=%errorlevel%
+uv run python -m jarvis --headless
+set CODE=%errorlevel%
 
-if not "%CODIGO%"=="0" (
+if not "%CODE%"=="0" (
     echo.
-    echo O programa terminou com erro ^(codigo %CODIGO%^).
+    echo The program ended with an error ^(code %CODE%^).
     pause
 )

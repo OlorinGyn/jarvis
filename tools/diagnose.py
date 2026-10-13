@@ -1,7 +1,7 @@
 """Find a working ffmpeg capture command for this machine.
 
-Usage: uv run tools/diagnose.py [rotulo]
-       uv run tools/diagnose.py --local     testa o ffmpeg sem nenhuma camera
+Usage: uv run tools/diagnose.py [camera]
+       uv run tools/diagnose.py --local     tests ffmpeg with no camera at all
 
 Tries the current command and several variants, reporting how many analysis
 frames each one delivers. A camera that connects but sends no frames stops
@@ -22,167 +22,167 @@ FRAME_BYTES = capture.ANALYSIS_WIDTH * capture.ANALYSIS_HEIGHT * 3
 
 
 def base(url, buffer, segments=True, wallclock=True, rate="-r"):
-    comando = [
+    command = [
         capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "warning", "-nostdin",
         "-rtsp_transport", "tcp",
         "-timeout", str(capture.SOCKET_TIMEOUT_SECONDS * 1_000_000),
     ]
     if wallclock:
-        comando += ["-use_wallclock_as_timestamps", "1"]
-    comando += ["-i", url]
+        command += ["-use_wallclock_as_timestamps", "1"]
+    command += ["-i", url]
     if segments:
-        comando += [
+        command += [
             "-map", "0:v", "-an", "-c", "copy", "-f", "segment",
             "-segment_format", "mp4", "-segment_time", str(capture.SEGMENT_SECONDS),
             "-reset_timestamps", "1", "-strftime", "1",
             str(buffer / capture.SEGMENT_NAME),
         ]
-    comando += ["-map", "0:v", "-an"]
+    command += ["-map", "0:v", "-an"]
     if rate == "-r":
-        comando += ["-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}",
+        command += ["-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}",
                     "-r", str(capture.ANALYSIS_FPS)]
     elif rate == "filter":
-        comando += ["-vf", f"fps={capture.ANALYSIS_FPS},"
+        command += ["-vf", f"fps={capture.ANALYSIS_FPS},"
                            f"scale={capture.ANALYSIS_WIDTH}:{capture.ANALYSIS_HEIGHT}"]
     else:
-        comando += ["-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}"]
-    comando += ["-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"]
-    return comando
+        command += ["-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}"]
+    command += ["-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"]
+    return command
 
 
-def tentar(nome, comando, buffer):
-    for antigo in buffer.glob("*.mp4"):
-        antigo.unlink(missing_ok=True)
+def attempt(name, command, buffer):
+    for old in buffer.glob("*.mp4"):
+        old.unlink(missing_ok=True)
 
-    processo = subprocess.Popen(comando, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, bufsize=0)
-    estado = {"bytes": 0, "primeiro": None, "erros": []}
-    inicio = time.monotonic()
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, bufsize=0)
+    state = {"bytes": 0, "first": None, "errors": []}
+    start = time.monotonic()
 
-    def ler():
+    def read():
         while True:
-            pedaco = processo.stdout.read(65536)
-            if not pedaco:
+            chunk = process.stdout.read(65536)
+            if not chunk:
                 return
-            if estado["primeiro"] is None:
-                estado["primeiro"] = time.monotonic() - inicio
-            estado["bytes"] += len(pedaco)
+            if state["first"] is None:
+                state["first"] = time.monotonic() - start
+            state["bytes"] += len(chunk)
 
-    def erros():
-        for linha in processo.stderr:
-            texto = linha.decode(errors="replace").strip()
-            if texto and len(estado["erros"]) < 6:
-                estado["erros"].append(texto)
+    def errors():
+        for line in process.stderr:
+            text = line.decode(errors="replace").strip()
+            if text and len(state["errors"]) < 6:
+                state["errors"].append(text)
 
-    threading.Thread(target=ler, daemon=True).start()
-    threading.Thread(target=erros, daemon=True).start()
+    threading.Thread(target=read, daemon=True).start()
+    threading.Thread(target=errors, daemon=True).start()
     time.sleep(SECONDS)
-    processo.terminate()
+    process.terminate()
     try:
-        processo.wait(timeout=5)
+        process.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        processo.kill()
+        process.kill()
 
-    frames = estado["bytes"] / FRAME_BYTES
-    segmentos = len(list(buffer.glob("*.mp4")))
-    marca = "OK " if frames >= 5 else "-- "
-    primeiro = f"{estado['primeiro']:.1f}s" if estado["primeiro"] else "nunca"
-    print(f"  {marca}{nome:34} {frames:6.1f} frames  "
-          f"1o em {primeiro:>7}  segmentos {segmentos}")
-    for e in estado["erros"][:2]:
+    frames = state["bytes"] / FRAME_BYTES
+    segments = len(list(buffer.glob("*.mp4")))
+    mark = "OK " if frames >= 5 else "-- "
+    first = f"{state['first']:.1f}s" if state["first"] else "never"
+    print(f"  {mark}{name:34} {frames:6.1f} frames  "
+          f"1st at {first:>7}  segments {segments}")
+    for e in state["errors"][:2]:
         print(f"       ffmpeg: {e[:88]}")
     return frames
 
 
-def teste_local():
+def local_test():
     """Decode a video ffmpeg makes itself, with no camera involved.
 
     Separates 'ffmpeg cannot decode on this machine' from anything to do with
     the cameras or the network.
     """
-    with tempfile.TemporaryDirectory(prefix="jarvis_local_") as pasta:
-        _teste_local(Path(pasta) / "amostra.mp4")
+    with tempfile.TemporaryDirectory(prefix="jarvis_local_") as folder:
+        _local_test(Path(folder) / "sample.mp4")
 
 
-def _teste_local(amostra):
-    print("1) gerando um video de teste 1920x1080 h264...")
-    criar = subprocess.run(
+def _local_test(sample):
+    print("1) making a 1920x1080 h264 test video...")
+    make = subprocess.run(
         [capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y",
          "-f", "lavfi", "-i", "testsrc=size=1920x1080:rate=15", "-t", "2",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(amostra)],
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(sample)],
         capture_output=True)
-    if not amostra.exists():
-        print("   FALHOU ao gerar. O ffmpeg nao consegue codificar aqui.")
-        print("   " + criar.stderr.decode(errors="replace")[:300])
+    if not sample.exists():
+        print("   FAILED to make it. ffmpeg cannot encode on this machine.")
+        print("   " + make.stderr.decode(errors="replace")[:300])
         return
-    print(f"   ok, {amostra.stat().st_size/1024:.0f} KB")
+    print(f"   ok, {sample.stat().st_size/1024:.0f} KB")
 
-    print("2) decodificando para rawvideo 960x540, como o programa faz...")
-    esperado = 5 * FRAME_BYTES
-    decodificar = subprocess.run(
+    print("2) decoding to 960x540 rawvideo, as the program does...")
+    expected = 5 * FRAME_BYTES
+    decode = subprocess.run(
         [capture.ffmpeg_exe(), "-hide_banner", "-loglevel", "error",
-         "-i", str(amostra), "-frames:v", "5",
+         "-i", str(sample), "-frames:v", "5",
          "-s", f"{capture.ANALYSIS_WIDTH}x{capture.ANALYSIS_HEIGHT}",
          "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1"],
         capture_output=True)
-    recebido = len(decodificar.stdout)
-    print(f"   recebido {recebido} bytes, esperado {esperado}")
-    if decodificar.stderr:
-        print("   " + decodificar.stderr.decode(errors="replace")[:300])
+    received = len(decode.stdout)
+    print(f"   received {received} bytes, expected {expected}")
+    if decode.stderr:
+        print("   " + decode.stderr.decode(errors="replace")[:300])
 
     print()
-    if recebido == esperado:
-        print("VEREDITO: o ffmpeg decodifica e escreve no pipe normalmente.")
-        print("O problema esta na captura RTSP, nao no decode. Rode sem --local.")
-    elif recebido == 0:
-        print("VEREDITO: o ffmpeg NAO decodifica nesta maquina.")
-        print("Nao tem relacao com as cameras. Suspeite do binario do")
-        print("imageio-ffmpeg, de antivirus, ou de politica do Windows.")
+    if received == expected:
+        print("VERDICT: ffmpeg decodes and writes to the pipe normally.")
+        print("The problem is in the RTSP capture, not in decoding. Run without --local.")
+    elif received == 0:
+        print("VERDICT: ffmpeg does NOT decode on this machine.")
+        print("It has nothing to do with the cameras. Suspect the")
+        print("imageio-ffmpeg binary, an antivirus, or a Windows policy.")
     else:
-        print("VEREDITO: decode parcial. Leia o stderr acima.")
+        print("VERDICT: partial decode. Read the stderr above.")
 
 
 def main():
     if "--local" in sys.argv:
-        teste_local()
+        local_test()
         return
     wanted = sys.argv[1].capitalize() if len(sys.argv) > 1 else None
     env = cameras.load_env()
-    todas = cameras.build_camera_list(env)
-    escolhidas = [c for c in todas if wanted is None or c[0] == wanted]
-    if not escolhidas:
-        raise SystemExit(f"camera {wanted!r} nao encontrada em {[c[0] for c in todas]}")
+    every = cameras.build_camera_list(env)
+    chosen = [c for c in every if wanted is None or c[0] == wanted]
+    if not chosen:
+        raise SystemExit(f"camera {wanted!r} not found in {[c[0] for c in every]}")
 
-    label, url = escolhidas[0]
-    with tempfile.TemporaryDirectory(prefix="jarvis_diag_") as pasta:
-        testar_variantes(label, url, Path(pasta))
+    label, url = chosen[0]
+    with tempfile.TemporaryDirectory(prefix="jarvis_diag_") as folder:
+        try_variants(label, url, Path(folder))
 
 
-def testar_variantes(label, url, buffer):
-    print(f"camera: {label}   |   {SECONDS}s por variante   |   "
-          f"esperado ~{capture.ANALYSIS_FPS * SECONDS} frames\n")
+def try_variants(label, url, buffer):
+    print(f"camera: {label}   |   {SECONDS}s per variant   |   "
+          f"expected ~{capture.ANALYSIS_FPS * SECONDS} frames\n")
 
-    variantes = [
-        ("atual (como o programa roda)", base(url, buffer)),
-        ("sem use_wallclock_as_timestamps", base(url, buffer, wallclock=False)),
-        ("fps por filtro em vez de -r", base(url, buffer, rate="filter")),
-        ("sem limitar taxa (todos os frames)", base(url, buffer, rate="none")),
-        ("so analise, sem gravar segmentos", base(url, buffer, segments=False)),
+    variants = [
+        ("current (as the program runs)", base(url, buffer)),
+        ("no use_wallclock_as_timestamps", base(url, buffer, wallclock=False)),
+        ("fps by filter instead of -r", base(url, buffer, rate="filter")),
+        ("no rate limit (every frame)", base(url, buffer, rate="none")),
+        ("analysis only, no segments", base(url, buffer, segments=False)),
     ]
 
-    resultados = [(nome, tentar(nome, comando, buffer)) for nome, comando in variantes]
-    atual = resultados[0][1]
-    melhor = max(resultados, key=lambda r: r[1])
+    results = [(name, attempt(name, command, buffer)) for name, command in variants]
+    current = results[0][1]
+    best = max(results, key=lambda r: r[1])
 
     print(f"\n{'=' * 66}")
-    if atual >= 5:
-        print("O comando atual funciona nesta maquina.")
-    elif melhor[1] >= 5:
-        print(f"O atual falhou, mas '{melhor[0]}' entregou {melhor[1]:.0f} frames.")
-        print("Essa variante deve ir para o capture.py.")
+    if current >= 5:
+        print("The current command works on this machine.")
+    elif best[1] >= 5:
+        print(f"The current one failed, but '{best[0]}' delivered {best[1]:.0f} frames.")
+        print("That variant should go into capture.py.")
     else:
-        print("NENHUMA variante entregou frames.")
-        print("Confira primeiro se a camera responde no IP do .env:")
+        print("NO variant delivered frames.")
+        print("First check that the camera answers on the IP in .env:")
         print("  powershell Test-NetConnection <ip> -Port 554")
 
 
