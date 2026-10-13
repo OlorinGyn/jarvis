@@ -1006,3 +1006,58 @@ Owner walking out at home with someone who never shows a face still waits for
 the Owner's choice (R42); zones and a health watch are only proposals; and
 after one more session the decided work runs out — the next page is the
 Owner's to write.
+
+## Issue #15 — The Signature at the Door
+
+`v2026.10.12.4` · 12 Oct 2026, night
+
+**Panel 1.** Warm cream, indoors. The old door from issue #14, labelled
+`jarvis_vigilancia.bat`, its MOVED sign gathering dust. The beaver listens at
+it with a stethoscope; silence. Behind him, the door to `jarvis_headless.bat`
+stands open.
+DEV: One release, and nobody knocked. The startup task never used it; the
+shortcut points at `jarvis.bat`.
+SFX: CLUNK — the old door comes off its hinges.
+
+**Panel 2.** Dark red. The stone gate of issue #1, the blue shield marked SAC.
+On the road, a figure in a Python costume — a green snake suit with a zip
+down the back — and no wax seal. Behind it, a crate labelled `winget` lies
+broken open.
+CAPTION: When the official Python fails to install, uv quietly brings its own.
+BOSS (the costume): I RAN YESTERDAY! THE GATE KNOWS ME!
+DEV: Until the day it doesn't — that's how 9 October started.
+
+**Panel 3.** The beaver builds a small booth with a magnifying glass on a
+stand, labelled `check_python.ps1`. Two roads lead to it: one marked
+`install.bat`, one marked `production.ps1`.
+DEV: One booth, two roads. The rule lives in one place.
+ARCHITECT (off panel): Like moving shared code into a library instead of
+copying it twice.
+
+**Panel 4.** At the booth, two small grey figures without seals — `jarvis.exe`
+and `pytest.exe` — are turned back; a tall figure with a gold wax seal stamped
+PSF is waved through.
+J.A.R.V.I.S.: `ERROR: C:\JARVIS\.venv\Scripts\jarvis.exe is not the signed python.org build (signature: NotSigned).`
+J.A.R.V.I.S.: `python.exe is signed by the Python Software Foundation.`
+
+**Panel 5.** Night, deep blue. The owl, lantern raised, walks the road the
+booth cannot see: before it, the costume has already fallen at the gate, and
+the old sign there reads only "could not install the dependencies". The owl
+nails a new sign under it: WinError 4551? → INSTALL 1.2.
+ARCHITECT: Your booth catches the costume the gate still lets through. When the
+gate already stops it, the traveller never reaches the booth — so the gate gets
+a signpost too.
+
+**Panel 6.** The M900 at night, two drones hovering. A parcel marked
+`v2026.10.12.4` passes through the booth on the production road; the stamp
+glows green.
+J.A.R.V.I.S.: `pythonw.exe is signed by the Python Software Foundation.`
+J.A.R.V.I.S.: `Production is running v2026.10.12.4.`
+CAPTION: Ten seconds of pause; both cameras back three seconds later.
+
+**Closing card.** Abilities: **The Seal Booth** (R7, `check_python.ps1`) ·
+**The Signpost at the Gate** (the installer's `uv sync` message). Bosses
+defeated: **The Python in Costume** (R7) · **The Old Door** (the shim).
+Lurking: the decided work is done. The next page is blank, and only the Owner
+can write on it — zones, a health watch, or the second person who never shows
+a face (R42).

@@ -208,7 +208,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 15 | 12/10/2026 | `v2026.10.11.6..e7df623`, developer session 13 — backlog 25 (a)–(f), R41 | **one code fix** (`5224983`): a held person with no face was silenced by a dog message of the same event, and got nothing when the clip failed to assemble; 160 tests pass; R42 (a decision for the user) and R43 opened; release `v2026.10.12` (13.15) |
 | 16 | 12/10/2026 | `v2026.10.12..a53aa84`, developer session 14 — R44, backlog 26 and 27, R43 | no release code fixed; `.gitignore` now covers R43's temporary file; R44 replayed on six dog-alone clips (no box relabelled); 174 tests pass; R45 opened (low); release `v2026.10.12.2` (13.17) |
 | 17 | 12/10/2026 | `v2026.10.12.2..f4489a0`, developer session 15 — R10's file names and the tools' text, R45 | no code fixed; 176 tests pass; the new `check_doc_refs.py` exits 0 after rewording three historical lines; `.gitignore`'s last Portuguese comments translated; R10 and R45 closed; release `v2026.10.12.3`, deployed at 21:20: 477 events, 55 face and 205 dog sightings, 6 reports read before and after; cameras ok 3 s after the start (13.18) |
-| 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4` (13.19) |
+| 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4`, deployed at 21:36: 478 events, 55 face and 206 dog sightings, 6 reports read before and after; `Sync`'s new check passed on `pythonw.exe`; about 9 s stopped, cameras ok 3 s after the start (13.19) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1084,7 +1084,8 @@ short-circuits before reading the subject of an unsigned file's `$null`
 certificate. The `.ps1` files are LF in the working copy and in the index;
 PowerShell reads either, and the `.bat` files keep CRLF on disk as review 17
 recorded. The deploy of `v2026.10.12.4` runs `Sync` end to end, the one path
-the developer could not exercise; its result is in 13.2's row.
+the developer could not exercise: it printed `pythonw.exe is signed by the
+Python Software Foundation.` and the update went on (13.2's row).
 
 **Fixed in the review (one message).** R7 has two halves. When Smart App
 Control already blocks `uv`'s own Python, `uv sync` itself fails (`Failed to
@@ -1144,4 +1145,4 @@ of `CONTEXT.md`.
 | D15 | developer | high | 12/10 20:46–21:08 | session 15: R10's file names and the tools' text, `check_doc_refs.py`, R45 (176 tests) | 42% → 49%: R10 6, R45 1, HANDOFF under 1 | 6% → 7% | 70k → ≈175k tokens, a new conversation |
 | A23 | architect | ultracode | 12/10 21:08–21:25 | review 17, HANDOFF integrated, `check_doc_refs.py` to 0, PYTHON 32–34, raid log 14, release and deploy `v2026.10.12.3`, developer 16 planned | 51% → 60% | 7% → 8% | 68k → 205k tokens, a new conversation |
 | D16 | developer | high | 12/10 night | session 16: the shim removed, R7 (`tools/check_python.ps1`) | 60% → 61% | 8% → 9% | ≈81k tokens at the end, a new conversation |
-| A24 | architect | ultracode | 12/10 21:28– | review 18, HANDOFF integrated, PYTHON 35, raid log 15, release and deploy `v2026.10.12.4`; no plan left to hand over | 62% → | 9% → | 68k → |
+| A24 | architect | ultracode | 12/10 21:28–21:40 | review 18, one installer message, HANDOFF integrated, PYTHON 35, raid log 15, release and deploy `v2026.10.12.4`; no plan left to hand over | 62% → 68% | 9% → 9% | 68k → 165k tokens, a new conversation |

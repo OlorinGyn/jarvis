@@ -134,7 +134,8 @@ recommends (b).
 
 ## 3. Next sessions
 
-**Review 18's cycle is done** (`v2026.10.12.4`): the `jarvis_vigilancia.bat`
+**Review 18's cycle is done** (`v2026.10.12.4`, deployed at 21:36, every
+file read before and after): the `jarvis_vigilancia.bat`
 shim is gone and R7 is closed — `install.bat` and `production.ps1` both check
 that the Python is the signed python.org build, through one script.
 

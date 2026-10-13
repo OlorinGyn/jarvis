@@ -1047,3 +1047,58 @@ espreita: o Dono saindo de casa com alguém que nunca mostra o rosto ainda
 espera a escolha do Dono (R42); zonas e um vigia de saúde são só propostas; e
 depois de mais uma sessão o trabalho decidido acaba — a próxima página é o
 Dono quem escreve.
+
+## Edição nº 15 — A Assinatura na Porta
+
+`v2026.10.12.4` · 12 out 2026, noite
+
+**Quadro 1.** Creme quente, interior. A porta velha da edição nº 14, com a
+placa `jarvis_vigilancia.bat`, o aviso MUDOU-SE juntando poeira. O castor
+escuta nela com um estetoscópio; silêncio. Atrás dele, a porta de
+`jarvis_headless.bat` está aberta.
+DEV: Uma versão, e ninguém bateu. A tarefa de inicialização nunca a usou; o
+atalho aponta para `jarvis.bat`.
+SFX: CLUNC — a porta velha sai das dobradiças.
+
+**Quadro 2.** Vermelho escuro. O portão de pedra da edição nº 1, o escudo
+azul marcado SAC. Na estrada, uma figura fantasiada de Python — uma roupa de
+cobra verde com um zíper nas costas — e sem selo de cera. Atrás dela, um
+caixote com a etiqueta `winget` jaz arrombado.
+LEGENDA: Quando o Python oficial não se instala, o uv traz o seu, em silêncio.
+CHEFE (a fantasia): EU RODEI ONTEM! O PORTÃO ME CONHECE!
+DEV: Até o dia em que não conhece — foi assim que o 9 de outubro começou.
+
+**Quadro 3.** O castor constrói uma pequena guarita com uma lupa num suporte,
+com a etiqueta `check_python.ps1`. Duas estradas chegam a ela: uma marcada
+`install.bat`, outra marcada `production.ps1`.
+DEV: Uma guarita, duas estradas. A regra mora num lugar só.
+ARQUITETO (fora do quadro): Como levar código comum para uma biblioteca em
+vez de copiá-lo duas vezes.
+
+**Quadro 4.** Na guarita, duas figurinhas cinzentas sem selo — `jarvis.exe` e
+`pytest.exe` — são mandadas de volta; uma figura alta com um selo de cera
+dourado carimbado PSF passa com um aceno.
+J.A.R.V.I.S.: `ERROR: C:\JARVIS\.venv\Scripts\jarvis.exe is not the signed python.org build (signature: NotSigned).`
+J.A.R.V.I.S.: `python.exe is signed by the Python Software Foundation.`
+
+**Quadro 5.** Noite, azul profundo. A coruja, de lanterna erguida, percorre a
+estrada que a guarita não enxerga: antes dela, a fantasia já caiu no portão, e
+a placa velha ali diz só "could not install the dependencies". A coruja prega
+uma placa nova embaixo: WinError 4551? → INSTALL 1.2.
+ARQUITETO: Tua guarita pega a fantasia que o portão ainda deixa passar. Quando o
+portão já a barra, o viajante nem chega à guarita — então o portão ganha uma
+placa também.
+
+**Quadro 6.** O M900 à noite, dois drones pairando. Um pacote marcado
+`v2026.10.12.4` passa pela guarita na estrada da produção; o carimbo brilha
+verde.
+J.A.R.V.I.S.: `pythonw.exe is signed by the Python Software Foundation.`
+J.A.R.V.I.S.: `Production is running v2026.10.12.4.`
+LEGENDA: Dez segundos de pausa; as duas câmeras de volta três segundos depois.
+
+**Cartão final.** Habilidades: **A Guarita do Selo** (R7, `check_python.ps1`)
+· **A Placa no Portão** (a mensagem do `uv sync` no instalador). Chefes
+derrotados: **O Python Fantasiado** (R7) · **A Porta Velha** (o atalho
+antigo). À espreita: o trabalho decidido acabou. A próxima página está em
+branco, e só o Dono pode escrevê-la — zonas, um vigia de saúde, ou a segunda
+pessoa que nunca mostra o rosto (R42).
