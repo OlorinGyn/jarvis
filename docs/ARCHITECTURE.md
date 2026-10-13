@@ -128,7 +128,8 @@ jarvis/
 │   ├── make_epub.py      joins the .md files into an EPUB for an e-reader
 │   ├── check_doc_refs.py every "<DOC> <section>" reference lands on a heading
 │   ├── make_icon.py      draws the icon (section 14)
-│   └── create_shortcut.ps1 the Desktop shortcut with the icon
+│   ├── create_shortcut.ps1 the Desktop shortcut with the icon
+│   └── check_python.ps1  is a python.exe the signed python.org build (18.7, INSTALL 1.2)
 ├── assets/               jarvis.ico and a PNG preview (generated, versioned)
 ├── docs/
 │   ├── ARCHITECTURE.md   how it works and why
@@ -143,7 +144,6 @@ jarvis/
 ├── install.bat           install on a new machine (run once)
 ├── jarvis.bat            the service and the browser (the Desktop shortcut points here)
 ├── jarvis_headless.bat   the service only: records, notifies and serves the page
-├── jarvis_vigilancia.bat its old name, calling it; removed in the next release
 ├── CLAUDE.md             working rules, read by every Claude Code session
 ├── HANDOFF.md            developer to architect, emptied after each review
 ├── README.md             introduction and links to docs/
@@ -2554,7 +2554,12 @@ powershell -ExecutionPolicy Bypass -File tools\production.ps1 -Action <action>
 **The startup task** runs `C:\JARVIS\.venv\Scripts\pythonw.exe -m jarvis
 --headless` directly: no console and no uv in the way. `pythonw.exe` there is
 the venv launcher of the signed python.org build, so Smart App Control lets it
-run (INSTALL 1.2); `Sync` refuses to finish if it is not.
+run (INSTALL 1.2); `Sync` refuses to finish if it is not. The test —
+signature `Valid` and the Python Software Foundation in the signer — lives in
+`tools/check_python.ps1`, which `install.bat` runs on `.venv\Scripts\python.exe`
+too (R7, 12/10/2026): one rule, written once. `production.ps1` finds it through
+`$PSScriptRoot`, so it is always the copy beside the `production.ps1` that is
+running, in the development folder.
 
 | Setting | Value | Why |
 |---|---|---|
@@ -2607,7 +2612,7 @@ dies silently on an invalid handle.
 1. Check the data with the **current** version. Unreadable already → refuse,
    nothing changed.
 2. Hold, stop cleanly.
-3. `git checkout --force <tag>`, `uv sync --frozen --no-dev` (since 10/10/2026: production carries no test tools, and the sync removes them if present), signature check.
+3. `git checkout --force <tag>`, `uv sync --frozen --no-dev` (since 10/10/2026: production carries no test tools, and the sync removes them if present), signature check (`tools/check_python.ps1` on `pythonw.exe`).
 4. Check the data with the **new** version.
 5. Release, start, health check: within 90 s every camera's last frame must be
    under 5 s old (`/api/status`, `frame_age`).

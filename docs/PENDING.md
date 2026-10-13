@@ -13,6 +13,11 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
+- **What comes next** (12/10/2026, after review 18). The decided work has run
+  out, so no developer session is planned (BACKLOG 3). The user chooses: R42
+  below, or a **(proposto)** backlog item — the architect would start with 1
+  (zones per camera, the biggest control over false positives) or 2 (system
+  health: a camera down at 3 a.m. warns nobody today).
 - **Backlog 25's acceptance on the M900** (BACKLOG 1): mark the user, Mirana
   and Aurora Resident, choose Home, and confirm that a recognised resident
   sends nothing, a person with no face does, and `/away` from the phone

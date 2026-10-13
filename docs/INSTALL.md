@@ -81,7 +81,17 @@ To check that the environment is on the signed Python:
 Get-AuthenticodeSignature .venv\Scripts\python.exe
 ```
 
-It must say `Valid` and `CN=Python Software Foundation`. The same rule is why
+It must say `Valid` and `CN=Python Software Foundation`. `install.bat` checks
+exactly this after `uv sync` and stops if it is not so — usually because the
+`winget` of step 3 failed and `uv` fell back to its own Python. The same check
+as a command, which `production.ps1` also uses on every deploy:
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\check_python.ps1 -Path .venv\Scripts\python.exe
+```
+
+The way out is to install the official Python by hand (above), delete `.venv`
+and run `install.bat` again. The same rule is why
 the tests run as `uv run python -m pytest`: `uv run pytest` starts an unsigned
 launcher that Smart App Control blocks (ARCHITECTURE 19.5).
 
@@ -100,7 +110,8 @@ install.bat
 2. Makes sure the Visual C++ Redistributable is there (see 1.1)
 3. Installs the official Python 3.14, for the current user only (see 1.2)
 4. `uv sync` — installs the dependencies from `uv.lock`, at the exact versions
-   that were tested, and `jarvis` itself as a package (ARCHITECTURE 3.1)
+   that were tested, and `jarvis` itself as a package (ARCHITECTURE 3.1); then
+   checks that `.venv` runs on the signed Python, and **stops** if not (1.2)
 5. Downloads the vision models (~73 MB in all, see section 3)
 6. Creates the **J.A.R.V.I.S.** shortcut on the Desktop, with the eye icon (a
    `.bat` cannot have its own icon; see ARCHITECTURE 14)
@@ -424,7 +435,8 @@ signature. It has happened three times:
 
 If the message names `python.exe` or `uv` says `Failed to spawn: python`, it is
 the second case: check the signature with `Get-AuthenticodeSignature
-.venv\Scripts\python.exe`, and if it is not the Python Software Foundation's,
+.venv\Scripts\python.exe` (or `tools\check_python.ps1`, section 1.2), and if
+it is not the Python Software Foundation's,
 install the official Python and recreate the environment
 (`Remove-Item .venv -Recurse` and `uv sync`). For any tool installed into
 `.venv`, run it as `python -m <tool>`.

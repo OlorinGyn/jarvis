@@ -1397,5 +1397,61 @@ afterwards.
 "relative to the class, not the working directory". `call other.bat %*` runs
 another batch file and comes back, passing every argument along (`%*`).
 Without `call`, cmd would jump to the other file and never return: that is
-how the old `jarvis_vigilancia.bat` hands over to `jarvis_headless.bat` in a
-single line.
+how the old `jarvis_vigilancia.bat` handed over to `jarvis_headless.bat` in a
+single line, for the one release it was kept (removed in `v2026.10.12.4`).
+
+## 35. Is this file really Python? Authenticode, and exit codes across languages (R7)
+
+**Authenticode** is Windows' code signing: the publisher signs a hash of the
+`.exe` with a certificate, and Windows can verify both that the file was not
+changed and who signed it — the same idea as a signed JAR (`jarsigner
+-verify`) or an Authenticode-signed .NET assembly. Smart App Control trusts a
+valid signature without asking Microsoft's cloud about the file's reputation,
+which is why the project insists on the python.org build (INSTALL 1.2).
+PowerShell reads a signature with one cmdlet:
+
+```powershell
+$signature = Get-AuthenticodeSignature -LiteralPath $Path
+if ($signature.Status -eq 'Valid' -and $signature.SignerCertificate.Subject -match 'Python Software Foundation') {
+```
+
+`Status` is an enum — `Valid`, `NotSigned`, `HashMismatch` (the file changed
+after signing), `UnknownError`… — and `SignerCertificate` is a .NET
+`X509Certificate2`, the very class C# uses; `Subject` is its
+`CN=Python Software Foundation, O=…` string, and `-match` is a regular
+expression test. `-and` short-circuits like `&&`, so an unsigned file, whose
+`SignerCertificate` is `$null`, never reaches `.Subject`. `-LiteralPath`
+instead of `-Path` takes the text as it is: `-Path` would treat `[` and `]`
+in a folder name as a wildcard. `uv`'s own launchers (`jarvis.exe`,
+`pytest.exe`) come back `NotSigned` — which is how the check was proved to
+fail when it should.
+
+**The exit code is the contract between the two languages.** The check is
+one script, `tools/check_python.ps1`, that ends in `exit 0` or `exit 1`, and
+two callers read that number in their own way:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\check_python.ps1" -Path "%~dp0.venv\Scripts\python.exe"
+if errorlevel 1 (
+```
+
+From `cmd`, `powershell -File` makes the script's `exit 1` the process's exit
+code, which cmd calls `errorlevel`. `if errorlevel 1` means "1 **or more**",
+not "exactly 1" — an old quirk that happens to be what you want here.
+`-ExecutionPolicy Bypass` lets an unsigned `.ps1` run for this one call
+without changing the machine's policy.
+
+```powershell
+& (Join-Path $PSScriptRoot 'check_python.ps1') -Path (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') | Out-Host
+if ($LASTEXITCODE) { throw '...' }
+```
+
+Inside PowerShell, `&` runs the script in the same process, and its `exit 1`
+ends only that script and sets `$LASTEXITCODE` — like reading
+`Process.ExitCode` in C# and throwing when it is not zero. `$PSScriptRoot` is
+the folder of the script that is running, Java's "relative to the class"; so
+`production.ps1` always finds the `check_python.ps1` that sits beside it.
+`| Out-Host` sends what the script prints to the screen instead of returning
+it as the expression's value. Writing the rule once and calling it from both
+places is the same reason a C# solution moves shared code into a library
+instead of copying it into two projects.

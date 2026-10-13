@@ -208,6 +208,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 15 | 12/10/2026 | `v2026.10.11.6..e7df623`, developer session 13 — backlog 25 (a)–(f), R41 | **one code fix** (`5224983`): a held person with no face was silenced by a dog message of the same event, and got nothing when the clip failed to assemble; 160 tests pass; R42 (a decision for the user) and R43 opened; release `v2026.10.12` (13.15) |
 | 16 | 12/10/2026 | `v2026.10.12..a53aa84`, developer session 14 — R44, backlog 26 and 27, R43 | no release code fixed; `.gitignore` now covers R43's temporary file; R44 replayed on six dog-alone clips (no box relabelled); 174 tests pass; R45 opened (low); release `v2026.10.12.2` (13.17) |
 | 17 | 12/10/2026 | `v2026.10.12.2..f4489a0`, developer session 15 — R10's file names and the tools' text, R45 | no code fixed; 176 tests pass; the new `check_doc_refs.py` exits 0 after rewording three historical lines; `.gitignore`'s last Portuguese comments translated; R10 and R45 closed; release `v2026.10.12.3`, deployed at 21:20: 477 events, 55 face and 205 dog sightings, 6 reports read before and after; cameras ok 3 s after the start (13.18) |
+| 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4` (13.19) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -274,6 +275,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R35 | medium | Aurora curled on the mat slips through R18 as `person` | closed without change: the five boxes a 1.5 ratio would drop were all people (ARCHITECTURE 21); rare cases go to bad-detection reports |
 | ✓ | R10 | **high** | Everything except the conversation in English | done: the code and the program's text by 10/10, every document's text on 12/10 by the architect (R33), the file names and the last two tools' text in `f855a9e` and `aa6e243`; the old `--sem-janela` and `--janela` flags stay as aliases (13.18 below) |
 | ✓ | R45 | low | A merge finds its sightings by reading every one, once per entry merged | done `351bc23`: one pass per save with an `{old: new}` map; a batch of 5 reads each sighting once instead of 5 times (ARCHITECTURE 17.16; 13.17 below) |
+| ✓ | R7 | low | `install.bat` does not check that the Python is signed | done `e426c8b`: `tools/check_python.ps1`, run by `install.bat` after `uv sync` and by `production.ps1` on every deploy (ARCHITECTURE 18.7, INSTALL 1.2; 13.19 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1063,6 +1065,39 @@ test copy is the exception, accepted. `check_doc_refs.py` joins every review
 that touches `docs/` (PROCESS 3.1). Its limit: it checks only references that
 name their document — "13.16 below" or a bare "section 11" are not checked.
 
+### 13.19 Review 18 — developer session 16 (12/10/2026)
+
+The shim removed and R7, reviewed whole (`v2026.10.12.3..9866a9b`, two code
+commits, five files). No Python changed: 176 tests pass, no data format
+touched, so `check_data` was not needed.
+
+**R7, checked where it runs.** `tools/check_python.ps1` was run against
+production's own `.venv` in the exact pattern `Sync` uses — `&`, `| Out-Host`,
+then `$LASTEXITCODE` — under `$ErrorActionPreference = 'Stop'` and with
+`$LASTEXITCODE` preset to 99, so a stale value could not pass for a fresh
+one: `pythonw.exe` and `python.exe` pass and reset it to 0; `jarvis.exe`
+(`NotSigned`) and a missing file throw. `$PSScriptRoot` inside `Sync` is
+`production.ps1`'s own folder — the development folder, the same one `$DevDir`
+comes from — so the caller and the check always come from the same commit;
+the update and the rollback both reach it through `SwitchTo`. `-and`
+short-circuits before reading the subject of an unsigned file's `$null`
+certificate. The `.ps1` files are LF in the working copy and in the index;
+PowerShell reads either, and the `.bat` files keep CRLF on disk as review 17
+recorded. The deploy of `v2026.10.12.4` runs `Sync` end to end, the one path
+the developer could not exercise; its result is in 13.2's row.
+
+**Fixed in the review (one message).** R7 has two halves. When Smart App
+Control already blocks `uv`'s own Python, `uv sync` itself fails (`Failed to
+spawn: python`, `WinError 4551`) and the new check after it never runs; the
+installer then said only "could not install the dependencies". It now names
+those two errors and INSTALL 1.2. The block was run in `cmd` with errorlevel 1
+and stops as before; `install.bat` keeps CRLF.
+
+**The shim.** No file outside `docs/` names `jarvis_vigilancia.bat`; CONTEXT 9,
+ARCHITECTURE 3's tree and PYTHON 34 updated, while the raid log and 13.18
+keep it as history. R7 is closed; nothing opened. **The decided work has run
+out**: the next cycle waits for the user (`PENDING.md`).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1108,3 +1143,5 @@ of `CONTEXT.md`.
 | A22 | architect | ultracode | 12/10 20:07–20:50 | the user's question, clear or compact: "clear, not compact" and `PENDING.md`; review 16, release and deploy `v2026.10.12.2`, raid log 13; CONTEXT split into CONTEXT, PROCESS and BACKLOG (the developer's resume ~10.3k → ~8.0k tokens, the architect's ~11.1k); developer 15 planned and started | 12% → 40%, shared with developer 14 until 20:17 (22% at its end): about 17 points for this session | 2% → 6% | 72k → 280k tokens, a new conversation |
 | D15 | developer | high | 12/10 20:46–21:08 | session 15: R10's file names and the tools' text, `check_doc_refs.py`, R45 (176 tests) | 42% → 49%: R10 6, R45 1, HANDOFF under 1 | 6% → 7% | 70k → ≈175k tokens, a new conversation |
 | A23 | architect | ultracode | 12/10 21:08–21:25 | review 17, HANDOFF integrated, `check_doc_refs.py` to 0, PYTHON 32–34, raid log 14, release and deploy `v2026.10.12.3`, developer 16 planned | 51% → 60% | 7% → 8% | 68k → 205k tokens, a new conversation |
+| D16 | developer | high | 12/10 night | session 16: the shim removed, R7 (`tools/check_python.ps1`) | 60% → 61% | 8% → 9% | ≈81k tokens at the end, a new conversation |
+| A24 | architect | ultracode | 12/10 21:28– | review 18, HANDOFF integrated, PYTHON 35, raid log 15, release and deploy `v2026.10.12.4`; no plan left to hand over | 62% → | 9% → | 68k → |

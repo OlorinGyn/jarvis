@@ -43,6 +43,8 @@ uv sync
 if errorlevel 1 (
     echo.
     echo ERROR: could not install the dependencies.
+    echo If the message above says WinError 4551 or Failed to spawn: python,
+    echo Smart App Control blocked an unsigned Python: docs\INSTALL.md section 1.2.
     pause
     exit /b 1
 )

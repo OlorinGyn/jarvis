@@ -114,7 +114,6 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a **second named person** to test that the right one still wins (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
-| R7 | low | `install.bat` does not check that the Python is signed | partly: `production.ps1` checks it (HISTORY 13.4) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
 
@@ -135,36 +134,13 @@ recommends (b).
 
 ## 3. Next sessions
 
-**Review 17's cycle is done** (`v2026.10.12.3`, deployed at 21:20, every
-file read before and after): R10 and R45 closed — every
-file name, tool and launcher is in English, and a merge batch reads each
-sighting once.
+**Review 18's cycle is done** (`v2026.10.12.4`): the `jarvis_vigilancia.bat`
+shim is gone and R7 is closed — `install.bat` and `production.ps1` both check
+that the Python is the signed python.org build, through one script.
 
-**Developer 16 (planned 12/10, night):** in this order —
-
-1. **Delete `jarvis_vigilancia.bat`**, the shim developer 15 left for one
-   release (it shipped in `v2026.10.12.3`). Nothing on the M900 calls it:
-   the startup task runs `pythonw -m jarvis --headless` and the Desktop
-   shortcut points at `jarvis.bat`. Check that no file in the repository names
-   it except `docs/` (the architect updates those).
-2. **R7** (low, text in `HISTORY.md` 13.4): `install.bat` checks, after
-   `uv sync`, that `.venv\Scripts\python.exe` is signed by the Python
-   Software Foundation, and stops with a clear message pointing at INSTALL 1.2
-   when it is not. The same test as `production.ps1`'s
-   (`Get-AuthenticodeSignature`, line 128: status `Valid` and the PSF in the
-   subject); whether the `.bat` runs it as one PowerShell line or both call a
-   small shared script is the developer's choice. **Acceptance:** the check
-   passes on this folder's `.venv` (`python.exe` is `Valid`, PSF — checked by
-   the architect), and fails on an unsigned file: `uv` writes unsigned
-   launchers into `.venv\Scripts` (`jarvis.exe` and `pytest.exe` are
-   `NotSigned`; ARCHITECTURE 19.5), so point it at one of those to prove the
-   failure path.
-   Do not run `install.bat` end to end: it installs software and writes a
-   Desktop shortcut.
-
-**Not planned:** R42 waits for the user's choice and R30 (b) for a second
-named person. R14 stays open until a measurement says live encoding matters
-(backlog 4, proposto); R12 is an operating rule, not code; R9 needs the
-development PC. Every other open backlog item is **(proposto)** — 1 (zones),
-2 (system health) and the rest of section 1. **After developer 16 the decided
-work runs out**: the next cycle needs the user to choose.
+**No developer session is planned.** The decided work has run out; the next
+cycle needs the user to choose (`PENDING.md`). What is open: R42 waits for
+the user's choice and R30 (b) for a second named person. R14 stays open until
+a measurement says live encoding matters (backlog 4, proposto); R12 is an
+operating rule, not code; R9 needs the development PC. Every open backlog item
+is **(proposto)** — 1 (zones), 2 (system health) and the rest of section 1.

@@ -182,6 +182,7 @@ tools/
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
   check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
   make_icon.py, create_shortcut.ps1   the icon and the desktop shortcut
+  check_python.ps1  is this python.exe the signed python.org build? (install.bat, production.ps1)
 assets/           jarvis.ico and a PNG preview (generated, but versioned)
 docs/             ARCHITECTURE, INSTALL, PYTHON; this file, PROCESS, BACKLOG, PENDING, HISTORY
 docs/raidlog/     the comic script of each release, English and Portuguese (PROCESS 6)
@@ -191,7 +192,6 @@ HANDOFF.md        developer → architect notes; empty between deliveries
 install.bat       install on a new machine
 jarvis.bat        start the service and open the browser
 jarvis_headless.bat service only, no browser (--headless)
-jarvis_vigilancia.bat its old name, calls jarvis_headless.bat; removed in the next release
 ```
 
 Structure explained in ARCHITECTURE 3. Not versioned: `.env` (credentials),
