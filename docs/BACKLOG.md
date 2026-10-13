@@ -135,7 +135,8 @@ recommends (b).
 
 ## 3. Next sessions
 
-**Review 17's cycle is done** (`v2026.10.12.3`): R10 and R45 closed — every
+**Review 17's cycle is done** (`v2026.10.12.3`, deployed at 21:20, every
+file read before and after): R10 and R45 closed — every
 file name, tool and launcher is in English, and a merge batch reads each
 sighting once.
 
