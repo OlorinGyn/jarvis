@@ -125,8 +125,8 @@ function Sync {
         uv sync --frozen --no-dev
         if ($LASTEXITCODE) { throw 'uv sync failed' }
     } finally { Pop-Location }
-    $signature = Get-AuthenticodeSignature (Join-Path $ProdDir '.venv\Scripts\pythonw.exe')
-    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Python Software Foundation') {
+    & (Join-Path $PSScriptRoot 'check_python.ps1') -Path (Join-Path $ProdDir '.venv\Scripts\pythonw.exe') | Out-Host
+    if ($LASTEXITCODE) {
         throw 'The production Python is not the signed python.org build; Smart App Control may block it. See INSTALL 1.2.'
     }
 }

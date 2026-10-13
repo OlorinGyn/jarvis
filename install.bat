@@ -46,6 +46,15 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\check_python.ps1" -Path "%~dp0.venv\Scripts\python.exe"
+if errorlevel 1 (
+    echo.
+    echo uv is using a Python that is not the official one, usually because
+    echo step 3 failed. Install it by hand, recreate .venv and run this
+    echo script again: docs\INSTALL.md section 1.2.
+    pause
+    exit /b 1
+)
 
 echo [5/7] Downloading vision models ^(~73 MB^)...
 uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      models ready')"
