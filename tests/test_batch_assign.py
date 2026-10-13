@@ -125,3 +125,37 @@ def test_faces_are_assigned_the_same_way(client):
     assert answer["joined"] == ids
     assert len(faces.Gallery().by_name("Gustavo")["embeddings"]) == 2
     assert client.post("/api/persons/report", json={"ids": ids}, headers=HEADER).json()["gone"] == ids
+
+
+def test_a_batch_reads_each_sighting_file_once(gallery, client, monkeypatch):
+    ids = unnamed(gallery, 5)
+    sighting(gallery, gallery.by_name("Aurora")["id"], "09-00-00")
+    reads = {}
+    original = faces.Path.read_text
+
+    def counting(path, *args, **kwargs):
+        if path.suffix == ".json" and path.name != "gallery.json":
+            reads[path.name] = reads.get(path.name, 0) + 1
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(faces.Path, "read_text", counting)
+    aurora = gallery.by_name("Aurora")["id"]
+    answer = client.post("/api/dogs/assign", json={"ids": ids, "to": aurora}, headers=HEADER).json()
+    assert answer["joined"] == ids
+    assert reads and set(reads.values()) == {1}
+    monkeypatch.undo()
+    assert len(dogs.appearances(aurora, gallery.path.parent)) == 6
+
+
+def test_a_merge_chain_points_every_sighting_at_the_last_entry(tmp_path):
+    people = faces.Gallery(tmp_path / "faces" / "gallery.json")
+    first, second, third = (people.add([[0.1] * 128], "t.jpg") for _ in range(3))
+    folder = tmp_path / "faces" / "2026-10-12"
+    folder.mkdir(parents=True)
+    for person_id in (first, second, third):
+        (folder / f"{person_id}.json").write_text(json.dumps({"person_id": person_id}), encoding="utf-8")
+    people._merge(people.get(first), people.get(second))
+    people._merge(people.get(second), people.get(third))
+    people.save()
+    stored = {json.loads(p.read_text(encoding="utf-8"))["person_id"] for p in folder.glob("*.json")}
+    assert stored == {third}

@@ -350,6 +350,7 @@ class Gallery:
         self.load()
 
     def load(self):
+        self.repoints = {}
         try:
             data = json.loads(self.path.read_text(encoding="utf-8-sig"))
             self.people = data.get("people", [])
@@ -357,6 +358,10 @@ class Gallery:
             self.people = []
 
     def save(self):
+        """Write the gallery, after pointing the sightings of every merged entry at its target."""
+        if self.repoints:
+            _repoint_sightings(self.path.parent, self.repoints, self.sighting_key)
+            self.repoints = {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps({"people": self.people}, indent=2),
                              encoding="utf-8")
@@ -739,7 +744,9 @@ class Gallery:
         for waiting in source.get("pending") or []:
             self._take(target, waiting["embedding"], waiting.get("view"))
         self.people.remove(source)
-        _repoint_sightings(self.path.parent, source["id"], target["id"], self.sighting_key)
+        self.repoints = {old: target["id"] if new == source["id"] else new
+                         for old, new in self.repoints.items()}
+        self.repoints[source["id"]] = target["id"]
 
     def label(self, person_id):
         person = self.get(person_id)
@@ -748,15 +755,15 @@ class Gallery:
         return person["name"] or "Unknown"
 
 
-def _repoint_sightings(folder, old_id, new_id, key="person_id"):
-    """Sightings store a person_id, so a merge rewrites the ones that pointed at old_id."""
+def _repoint_sightings(folder, moves, key="person_id"):
+    """Sightings store a person_id, so merges rewrite the ones whose id moved, in one pass."""
     for path in Path(folder).glob("*/*.json"):
         try:
             sighting = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
-        if sighting.get(key) == old_id:
-            sighting[key] = new_id
+        if sighting.get(key) in moves:
+            sighting[key] = moves[sighting[key]]
             path.write_text(json.dumps(sighting, indent=2), encoding="utf-8")
 
 
