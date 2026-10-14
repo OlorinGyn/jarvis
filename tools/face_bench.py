@@ -8,9 +8,11 @@ twelve head-tops of review 21 are labelled "not a face". Reported per
 pipeline: how many head-tops it accepts as a face; leave-one-out over the
 named views against the Chosen of both, with each probe's exact copies left
 out, as sure right, sure wrong, maybe and none at the pipeline's thresholds,
-today's way (all 146 views against all 80 Chosen) and clean (the 134 faces
-against the Chosen without the five head-tops); the right answers each
-threshold allows before the first wrong one; how far apart the two people
+today's way (all 146 views against all 80 Chosen), clean (the 134 faces
+against the Chosen without the five head-tops) and the 22 views of the seven
+unnamed entries, all Izabel by the user's word, against the same clean
+Chosen; the right answers each threshold allows before the first wrong one,
+on the clean faces and on those plus the 22; how far apart the two people
 sit; and the cost per face and the size of the models. The candidates'
 models are kept in models/bench, taken from their authors' releases; a
 pipeline whose model is missing there is skipped. See BACKLOG 2, R49.
@@ -33,10 +35,10 @@ from jarvis import ROOT, faces
 DEFAULT_FACES = ROOT / "backups" / "r49_faces_20261014"
 BENCH_DIR = ROOT / "models" / "bench"
 IZABEL_TOPS = ("c58c97", "e18912", "b3f8b9", "69f368", "1bbfa1", "860372", "eedcf9")
+UNNAMED_IZABEL = ("p_a8ef5acd", "p_385283de", "p_4e2d9f32", "p_6c76506e", "p_5bc580f7", "p_d26b745a",
+                  "p_c5ed26cc")
 HEAD_TOPS = IZABEL_TOPS + ("55edf5", "e5bf9c", "80936d", "1f8419", "dbc1b0")
 SWEEP = tuple(round(0.20 + 0.025 * step, 3) for step in range(17))
-ARCFACE_POINTS = np.array([[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366],
-                           [41.5493, 92.3655], [70.7299, 92.2041]], np.float32)
 FRAME_SIZE = (960, 540)
 TIMING_RUNS = 20
 
@@ -55,10 +57,15 @@ class View:
 
 
 def load_views(face_dir):
-    """Every Chosen and Waiting view of the named people, in gallery order."""
+    """Every Chosen and Waiting view of the named people, then the unnamed views the user named Izabel."""
     data = json.loads((face_dir / "gallery.json").read_text(encoding="utf-8-sig"))
     found = []
     for person in data["people"]:
+        if person["id"] in UNNAMED_IZABEL:
+            for embedding, view in zip(person["embeddings"], person["views"]):
+                found.append(View("Izabel", "unnamed",
+                                  face_dir / "views" / Path(view.replace("\\", "/")).name, embedding))
+            continue
         if not person["name"]:
             continue
         name = person["name"].split()[0]
@@ -179,10 +186,9 @@ class Scrfd:
                  "points": points[i].astype(np.float32)} for i in np.array(kept).ravel()]
 
 
-def arcface_crop(image, points, size=112):
-    """The 112px crop ArcFace expects, by a similarity transform of the five landmarks."""
-    matrix, _ = cv2.estimateAffinePartial2D(points, ARCFACE_POINTS * (size / 112), method=cv2.LMEDS)
-    return cv2.warpAffine(image, matrix, (size, size), borderValue=0.0)
+def arcface_crop(image, face):
+    """The 112px crop ArcFace expects: OpenCV's least-squares alignment of the five landmarks."""
+    return faces.align_crop(image, face["box"], face["points"])
 
 
 class Landmark3D:
@@ -255,7 +261,7 @@ class Buffalo:
                 "norm": float(np.linalg.norm(embedding))}
 
     def embed(self, image, face):
-        crop = arcface_crop(image, face["points"])
+        crop = arcface_crop(image, face)
         self.recogniser.setInput(cv2.dnn.blobFromImage(crop, 1 / 127.5, (112, 112),
                                                        (127.5, 127.5, 127.5), swapRB=True))
         return self.recogniser.forward().ravel().astype(np.float32)
@@ -300,7 +306,7 @@ class AdaFace:
         return {**result, "accepted": True}
 
     def embed(self, image, face):
-        crop = arcface_crop(image, face["points"])
+        crop = arcface_crop(image, face)
         scale, mean, rgb = self.pixels
         self.recogniser.setInput(cv2.dnn.blobFromImage(crop, scale, (112, 112), mean, swapRB=rgb))
         return self.recogniser.forward().ravel().astype(np.float32)
@@ -323,6 +329,15 @@ class ArcFace(AdaFace):
 
     def __init__(self, detector="yunet", min_norm=None, name=None, score=0.2, size=640):
         super().__init__(detector, min_norm, name or f"{detector}+arcface", score, size)
+
+
+class Glint(ArcFace):
+    """antelopev2's ArcFace R100, trained on Glint360K; its SCRFD-10G is buffalo_l's, byte for byte."""
+
+    model = BENCH_DIR / "antelopev2" / "glintr100.onnx"
+
+    def __init__(self, detector="scrfd", min_norm=None, name=None, score=0.2, size=320):
+        super().__init__(detector, min_norm, name or f"scrfd at {size}+glint r100", score, size)
 
 
 def outcome(scores, label, match, learn):
@@ -428,12 +443,15 @@ def run(pipeline, views):
             result["unit"] = unit(result["embedding"])
         read.append(result)
     head_tops = [r for r in read if r["view"].head_top]
-    today = leave_one_out(read, [r for r in read if r["view"].place == "chosen" and r["accepted"]],
+    named = [r for r in read if r["view"].place != "unnamed"]
+    unnamed = [r for r in read if r["view"].place == "unnamed"]
+    today = leave_one_out(named, [r for r in read if r["view"].place == "chosen" and r["accepted"]],
                           pipeline.match, pipeline.learn)
     clean_refs = [r for r in read if r["view"].place == "chosen" and r["accepted"]
                   and not r["view"].head_top]
-    clean = leave_one_out([r for r in read if not r["view"].head_top], clean_refs,
+    clean = leave_one_out([r for r in named if not r["view"].head_top], clean_refs,
                           pipeline.match, pipeline.learn)
+    extra = leave_one_out(unnamed, clean_refs, pipeline.match, pipeline.learn)
     tops_learned = []
     for r in head_tops:
         if r["accepted"]:
@@ -445,9 +463,10 @@ def run(pipeline, views):
         "name": pipeline.name, "match": pipeline.match, "learn": pipeline.learn,
         "head-tops accepted": sum(r["accepted"] for r in head_tops),
         "head-tops learned": sum(score >= pipeline.learn for score in tops_learned),
-        "faces": sum(not r["view"].head_top for r in read),
-        "faces rejected": sum(not r["accepted"] for r in read if not r["view"].head_top),
-        "today": today[0], "clean": clean[0], "sweep": sweep(clean[1]),
+        "faces": sum(not r["view"].head_top for r in named),
+        "faces rejected": sum(not r["accepted"] for r in named if not r["view"].head_top),
+        "today": today[0], "clean": clean[0], "unnamed": extra[0],
+        "sweep": sweep(clean[1]), "sweep with unnamed": sweep(clean[1] + extra[1]),
         "separation": separation(read),
         "detect ms": timing[0] if timing else None, "embed ms": timing[1] if timing else None,
         "size MB": size,
@@ -462,14 +481,15 @@ def show(report):
     print(f"head-tops accepted as a face: {report['head-tops accepted']} of {len(HEAD_TOPS)}; "
           f"learned sure against clean Chosen: {report['head-tops learned']}; "
           f"real faces rejected: {report['faces rejected']} of {report['faces']}")
-    for key in ("today", "clean"):
+    for key in ("today", "clean", "unnamed"):
         counts = report[key]
-        print(f"  {key:5}: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
-    zero = next(((t, r) for t, r, w in report["sweep"] if w == 0), None)
-    print("  clean sweep (threshold right/wrong): "
-          + "  ".join(f"{t:.3f} {r}/{w}" for t, r, w in report["sweep"]))
-    if zero:
-        print(f"  first threshold with no wrong answer: {zero[0]:.3f}, right {zero[1]}")
+        print(f"  {key:7}: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+    for key in ("sweep", "sweep with unnamed"):
+        zero = next(((t, r) for t, r, w in report[key] if w == 0), None)
+        print(f"  clean {key} (threshold right/wrong): "
+              + "  ".join(f"{t:.3f} {r}/{w}" for t, r, w in report[key]))
+        if zero:
+            print(f"    first threshold with no wrong answer: {zero[0]:.3f}, right {zero[1]}")
     s = report["separation"]
     print(f"  separation: within median {s['within median']:.3f} (5% {s['within 5%']:.3f}), "
           f"cross median {s['cross median']:.3f}, cross max {s['cross max']:.3f}; "
@@ -492,6 +512,7 @@ PIPELINES = {
     "scrfd320+arcface": lambda: ArcFace(detector="scrfd", size=320, name="scrfd at 320+arcface"),
     "scrfd320+arcface-0.5": lambda: ArcFace(detector="scrfd", size=320, score=0.5,
                                             name="scrfd at 320, score >= 0.5, +arcface"),
+    "scrfd320+glint": Glint,
     "yunet+magface": MagFace,
     "scrfd+magface": lambda: MagFace(detector="scrfd"),
 }

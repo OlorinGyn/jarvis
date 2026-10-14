@@ -94,6 +94,13 @@ def _recogniser():
     return cv2.FaceRecognizerSF.create(str(RECOGNISER_MODEL), "")
 
 
+def align_crop(image, box, points):
+    """The 112px crop ArcFace expects: OpenCV's least-squares fit of five landmarks onto its template."""
+    row = np.concatenate([np.asarray(box, np.float32).ravel()[:4],
+                          np.asarray(points, np.float32).ravel(), [1.0]]).astype(np.float32)
+    return _recogniser().alignCrop(image, row)
+
+
 def cosine(a, b):
     """Similarity of two embeddings: 1.0 identical, 0.0 unrelated."""
     a, b = np.asarray(a, np.float32).ravel(), np.asarray(b, np.float32).ravel()
