@@ -28,18 +28,26 @@ grows, decisions are being postponed.
   (`http://192.168.0.18:8765`).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
-- **Misfiled dog views** (R53, 14/10): on Dogs, Aurora — Chosen 5
-  (`89848c`, Mirana at the door) and 6 (`7221b7`, unclear: check it),
-  Waiting 5 (`d6bb2c`, Mirana) and 24 (`f530c0`, a man); Mirana — Chosen 33
-  (`6b3d84`, brown fur: check it), Waiting 22 (`6f8002`, dark clothing), 25
-  (`557fa0`, shoes and a hand), 26 (`108df8`, someone in red) and 29
-  (`cc29b3`, Aurora). Positions as listed on 14/10 at 12:30; **all nine still
-  there at review 24** (14/10, 15:45). **The
-  once-only settle waits for these too**: it would put the Waiting ones into
-  Chosen first. Done on the faces side: the seven head-tops deleted and the
-  unnamed entries named (the user, 14/10). Gustavo's own five head-tops in
-  his Chosen stay (they match Izabel at 0.29 at most); deleting them is
-  optional.
+- **Misfiled dog views** (R53, 14/10): thirteen, all still in production
+  at review 25 (14/10, 17:30). Positions as the page shows them from
+  `v2026.10.14.3` on — Chosen in stored order, **Waiting newest first** (the
+  photo names start with the six characters given):
+  - **Aurora** — Chosen 5 (`89848c`, both dogs at the door) and 6
+    (`7221b7`, a person with a bag); Waiting 11 (`f530c0`, a man), 19
+    (`257e9a`, both dogs), 28 (`282a53`, both dogs) and 30 (`d6bb2c`,
+    Mirana) — of 34, so 28 and 30 are behind "Show 10 more".
+  - **Mirana** — Chosen 31 (`6b3d84`, brown fur in sunlight: unclear, check
+    it) and 37 (`583bd4`, both dogs); Waiting 19 (`cc29b3`, both dogs), 22
+    (`108df8`, someone in red), 23 (`557fa0`, shoes and a hand), 26
+    (`6f8002`, dark clothing) and 46 (`554245`, both dogs) — of 47, so 46
+    is behind "Show 23 more".
+  `257e9a`, `282a53`, `583bd4` and `554245` were found by developer 23's
+  bench: each is the same picture as a sighting of the two dogs together. R53 step 2 migrates them to the new model as they are, so
+  deleting them still matters, before or after. **The once-only settle waits
+  for these too**: it would put the Waiting ones into Chosen first. Done on
+  the faces side: the seven head-tops deleted and the unnamed entries named
+  (the user, 14/10). Gustavo's own five head-tops in his Chosen stay (they
+  match Izabel at 0.29 at most); deleting them is optional.
 - **`v2026.10.14` on the M900**: the next person events should name Gustavo
   and Izabel more often, sometimes as "probably" (R51); a face message that
   names the wrong person goes to the architect. Read in review 24: 6 face
@@ -51,6 +59,16 @@ grows, decisions are being postponed.
   sliders with the explanation beside them; Settings → Notifications puts
   Telegram beside the table on a wide screen. A note to the architect if a
   slider's ends, or anything on the phone, reads wrong.
+- **`v2026.10.14.3` on the phone and the M900** (R42 (b), backlog 37, 38 and
+  32 for faces): in Home, leaving with someone whose face the camera does
+  not see sends "2 people seen, 1 face found, best view" — the picture may
+  show only you (R56); People and Dogs show two columns on the phone and
+  long lists 24 at a time, Waiting newest first; each detection slider has a
+  tick at its default; Settings → Detection → "Face recognition: when a name
+  is sure" shows production's table (77 of 80 sure at 0.30, 66 at 0.40, no
+  wrong answer) — **choosing a threshold is the user's**, and the table is
+  optimistic until R55 (ARCHITECTURE 10.15). A "hidden person" message for a
+  scene with only residents and dogs goes to the architect, with its time.
 
 ## Decided, not yet done
 
@@ -90,4 +108,7 @@ The requests of 13/10/2026 (detection sensitivity, probable residents in
 Home, `/on` and `/off`, the photos piling up, the 40 views managing
 themselves, the "maybe" threshold) were answered by the user the same evening
 and are backlog 28–32 and R46. The questions of 14/10 at 12:55 were answered
-the same day: R42 (b) and backlog 34's Off-asks-first.
+the same day: R42 (b) and backlog 34's Off-asks-first. R42 (b) is built
+(`v2026.10.14.3`); R53 step 2's model, DINOv2-small, was the architect's
+choice in review 25 — Apache-2.0, nothing for the user to weigh — and the
+user may still prefer MobileNet's 12 ms (ARCHITECTURE 20).

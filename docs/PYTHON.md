@@ -1989,3 +1989,126 @@ gave the honest 0.551. It is the rule behind every fair test of a model: never
 test on what it was trained on — in machine learning, the split between a
 training set and a test set; "leave-one-out" when each item in turn is the
 test and all the others the reference (PYTHON 40 used it for the face bench).
+
+## 43. Functions passed as values, a thread's keyword arguments, every cosine at once, embeddings against histograms, and a list drawn in pages (developer 23)
+
+From one delivery: R42 (b), backlog 32 for faces, R53 step 1, backlog 37
+and 38 (ARCHITECTURE 7.14, 10.15, 17.17, 20, 22.3).
+
+**A function as an argument, and `*extra` (R42 (b)).** Three messages — the
+side view, the best view, the hidden person — answer to the same rules: the
+`faceless_person` switch, then the camera's cooldown. Instead of copying the
+rules three times, `_faceless` takes the function that sends the message:
+
+```python
+def _faceless(camera, started_at, image, held, notified, settings, message, *extra):
+    if not modes.allowed("faceless_person", settings):
+        return 0
+    ...
+    return int(bool(message(camera, started_at, image, *extra, settings=settings)))
+
+_faceless(camera, started_at, side, held, notified, settings, side_face)
+_faceless(camera, started_at, best, held, notified, settings, hidden_person, people, len(found))
+```
+
+`side_face` without parentheses is the function itself, not a call: in
+Python a function is an ordinary value, like a C# `Func<...>` or delegate,
+or a Java `BiFunction` / method reference (`Notify::sideFace`). `*extra`
+collects any further positional arguments into a tuple — C#'s `params
+object[]`, Java's `Object... extra` — and `*extra` in the call spreads them
+back out, so `hidden_person` gets its two numbers and `side_face` gets none.
+`int(bool(x))` turns "sent or not" into 1 or 0 for the count.
+
+**A thread's keyword arguments.** `threading.Thread(target=_assemble,
+args=(...), kwargs={"people": self.most_people})` runs
+`_assemble(*args, **kwargs)` in the new thread. `**` spreads a dict into
+named arguments, as `*` spreads a tuple into positional ones. Passing the new
+value by name, not as the eleventh position, means no existing caller or
+test has to count positions — like a C# lambda `() => Assemble(..., people:
+n)` with a named argument. `self.most_people` is read **now**, when the
+thread is created, so a new event starting meanwhile cannot change it.
+
+**Every cosine at once, and leaving yourself out (backlog 32).** The
+accuracy table matches each of 80 views against the other 79. Two loops in
+Python would be 6,400 slow calls. numpy does it as one matrix product:
+
+```python
+matrix = rows / np.linalg.norm(rows, axis=1, keepdims=True)
+similar = matrix @ matrix.T
+scores = np.where(similar[probe] >= COPY_SIMILARITY, -1.0, similar[probe])
+top = int(np.argmax(scores))
+```
+
+Dividing each row by its length makes it a unit vector, and the dot product
+of two unit vectors **is** their cosine; `@` is matrix multiplication, so
+`similar[i, j]` is the cosine of views i and j — the whole 80 × 80 table in
+one call into compiled code. `keepdims=True` keeps the lengths as an 80 × 1
+column so the division applies row by row (broadcasting, PYTHON 38).
+`np.where(condition, a, b)` is an element-wise `condition ? a : b`: the
+probe's own entry (cosine 1.0 with itself) and its exact copies become −1,
+so `argmax` can never pick them. That is leave-one-out without building 80
+smaller galleries.
+
+**Learned embeddings against histograms (R53).** A colour histogram counts
+how many pixels fall in each band of tone and hue: it knows *how much black*,
+nothing about *what shape*. Dark shoes and a black dog have similar counts.
+A network trained on millions of images turns a picture into a vector — 384
+numbers for DINOv2-small — where pictures that look alike, in shape and
+texture as well as colour, land close together; the distance is
+`1 − cosine`, as for faces. How the network was trained decides what "alike"
+means. MobileNet was trained to *classify* ImageNet's 1,000 classes, 120 of
+them dog breeds, so its features are taught to put every dog of one breed
+together. DINOv2 was trained without labels, to recognise two crops of the
+same image as the same and others as different — closer to "which dog is
+this", which is why review 25 chose it for two dogs of one breed.
+
+**Exporting to ONNX once, and OpenCV's two engines.** PyTorch is not
+installed in the program's environment (CONTEXT 3), so a model is converted
+once, in a throwaway environment, with `torch.onnx.export`: it runs the
+model on an example input, records every operation, and writes the graph and
+the weights into one `.onnx` file — a portable format, like compiling to
+bytecode that another runtime executes. `cv2.dnn.readNetFromONNX` then runs
+it. OpenCV 5 has a new graph engine and keeps the old one;
+`readNetFromONNX(path, engine=cv2.dnn.ENGINE_CLASSIC)` picks the old one,
+which was the only one that ran CLIP. The check that an export is faithful:
+the same fixed random input through PyTorch and through `cv2.dnn`, and a
+cosine of 1.0 between the two outputs.
+
+**A tick on a slider — `<datalist>` (backlog 38).**
+
+```html
+<datalist id="slider-default"><option></option></datalist>
+<input type="range" name="confidence_person" list="slider-default">
+```
+
+A `<datalist>` is a list of suggested values; an input names it with `list`.
+On a text input it becomes an autocomplete menu; on a range input the
+browser draws a tick at each value. One list serves the three sliders, and
+`showDetection` sets its option to the middle step.
+
+**A list drawn in pages, with a closure (backlog 37).**
+
+```javascript
+function paged(container, items, render, shown, key) {
+  let count = Math.min(items.length, Math.max(PAGE_STEP, shown.get(key) || 0));
+  container.replaceChildren(...items.slice(0, count).map((item, index) => render(item, index)));
+  ...
+  more.addEventListener("click", () => {
+    const next = Math.min(items.length, count + PAGE_STEP);
+    more.before(...items.slice(count, next).map((item, index) => render(item, count + index)));
+    count = next;
+    shown.set(key, count);
+  });
+}
+```
+
+The click handler is a **closure**: it keeps `count`, `items` and `more`
+alive after `paged` has returned, and each call of `paged` has its own — as a
+C# lambda captures a local variable, or a Java lambda an effectively-final
+one (Java would need a one-element array or an `AtomicInteger` to change
+`count`; JavaScript and C# let the closure assign it). `more.before(...nodes)`
+inserts the new cards just before the button, so the 24 already drawn stay
+as they are — no flicker, no lost scroll position. `shown` is a `Map` that
+outlives each redraw, so a list the user opened stays open when naming a
+photo reloads it; `shown.get(key) || 0` reads 0 for a key never set, as
+`dict.get(key, 0)` would in Python.

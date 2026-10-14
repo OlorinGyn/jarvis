@@ -108,6 +108,10 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+38. **Done 14/10 (`03cde0e`, `v2026.10.14.3`, ARCHITECTURE 7.14).** **The default marked on each slider** (decided, UX, review 24). Backlog 35's sliders showed no mark where the default sits, so a slider moved and moved back could not be put on the default by eye. A `<datalist>` with one option at `slider_steps / 2`, named by each slider's `list` attribute, makes the browser draw a tick there; nothing else changes. Built in developer session 23; seen at 375 px with the thumb moved away.
+
+37. **(a) and (b) done 14/10 (`b8a731b`, `v2026.10.14.3`, ARCHITECTURE 17.17).** **People and Dogs hold many photos gracefully** (decided, UX; the user, 14/10/2026: some households will never open the page, so the screens must cope with a great many photos, "and perhaps clean themselves now and then"). Designed in review 24 from production's counts on 14/10 (13.25): a person's Chosen (40) and Waiting (`MAX_PENDING` 100) are bounded by backlog 28, unnamed dogs by R27 (`MAX_UNNAMED` 60, 44 that day, about 7 new a day), **unnamed faces by nothing**; the sighting photos grow about 2.7 MB a day for faces and dogs together, next to ~300 MB of clips. The Dogs tab at 375 px was one column of 335 px cards, 46 of them about 9,100 px tall. The layout: (a) every `.people-grid` takes two columns under 480 px; (b) any list of photos that can pass 24 shows the newest 24 and a "Show 24 more (N left)" button — the unnamed groups, a person's or dog's Waiting, "Days they were seen" — while Chosen shows whole, headings keep the full count, the server keeps sending whole lists; (c) checked at 375 px and on the desktop with production's 46 dogs. Built in developer session 23, with Waiting shown newest first. Measured: 9,163 → 8,591 px; review 25 found the card's height, not the columns, makes the page long — backlog 39. **The self-cleaning part** deletes the user's data: the user's decision on the policy in `PENDING.md`.
+
 36. **Done 14/10 (`6295d57`, `v2026.10.14.2`, ARCHITECTURE 22.4).** **Notifications: the Telegram card beside "What reaches the phone"** (decided by the user 14/10/2026). Two columns where the screen is wide enough, one under the other on a phone — the user opens the page from the phone's browser too (PROCESS 1, UX). Built in developer session 22 with CSS only: a 3fr / `minmax(300px, 2fr)` grid, one column under 860 px.
 
 35. **Done 14/10 (`87a84fd`, `v2026.10.14.2`, ARCHITECTURE 7.14).** **Detection sensitivity as a slider, not numbers** (decided by the user 14/10/2026: "the sensitivity cannot be numeric — a kind of slider where the middle is our default value, and the number goes down to the left and up to the right, proportionally"). Each of backlog 31's three minimums became a slider with no number on it: the middle is the default, the left end the lowest allowed minimum (0.20), the right end the highest (0.90), each half linear, so the middle is always the default whatever its value. The ends say in words what they do — left: more detections, more false alarms; right: fewer, stricter. `config.json` keeps storing the number, so nothing on disk changed. **The explanation stays, moved to where it belongs** (the user, the same day: "the explanation on the numbers screen was perfect; I want to know how the sliders work in the background"): what the minimum is, lower finds more and more false ones, a change reaches the cameras within seconds without a restart, what this does not fix (a person bending over), and a "how it works" part — the minimum confidence underneath, the middle being the default, the ends 0.20 and 0.90, each half in proportion, each slider's current value and default in that text, not on the control. Built in developer session 22: the mapping in `settings.py` with `SLIDER_STEPS` = 1000, tested both ways.
@@ -225,6 +229,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); the unnamed entries checked as a possible third person — the user: all are Izabel, and InsightFace if it is the best; no release; developer 21 planned with R49 step 2 (13.23) |
 | 23 | 14/10/2026 | `706883b..70d3fce`, developer session 21 — R49 step 2: SCRFD + ArcFace R50, the migrated gallery, models before the stop | **one code fix** (`d07c09e`): `FetchModels` aborted on a tag without `downloads.py` instead of skipping it; 240 tests pass; the scan and the stored photos embed alike (0.97–0.99); R48 and R49 closed, R51 and R52 opened; **release `v2026.10.14`** (R49, backlog 28 and 31), deployed at 12:07: 955 events, 202 face and 393 dog sightings, 18 reports read before and after; the models fetched before the stop; 173 of 173 views migrated in about 23 s; about 36 s stopped, cameras ok 3 s after the start; the migration's line is not in the log (R52). The once-only settle waits for the user (13.24) |
 | 24 | 14/10/2026 | `70d3fce..099d547`, developer session 22 — backlog 34, 35, 36, R52, R51, R30 (b) | no code fixed; 269 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1280 px (Off asks, On does not; no horizontal scroll); the slider's round trip checked for six defaults; `filelock` has no binary; R30, R51 and R52 closed, R54 opened (a watch: no stranger measured); backlog 37 designed from production's counts, 38 added; **release `v2026.10.14.2`**, deployed at 15:50: 976 events, 206 face and 412 dog sightings, 18 reports read before and after; `filelock` installed by `uv sync`; no migration ran (the hash unchanged), no lock file left; about 10 s stopped, cameras ok 3 s after the start (13.25) |
+| 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55 and R56 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3`** (13.26) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -298,6 +303,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`: the side view as a picture (ARCHITECTURE 10.12); (b) done `fe0853b`, `v2026.10.14.2`: `MIN_EYE_SPREAD` 0.38 → 0.30, measured on both residents under ArcFace (ARCHITECTURE 10.12; 13.25 below) |
 | ✓ | R51 | medium | A clip's face is matched by its heaviest view, not its best | done `734efa4`, `v2026.10.14.2`: every view matched, the best decides and is learned; sure 11 → 12, none 1 → 0, nothing wrong (ARCHITECTURE 10.3; 13.25 below) |
 | ✓ | R52 | low | The gallery migration runs before the log file and before the port is held | done `50c836e`, `v2026.10.14.2`: a `filelock` around the migration, its line after `log.to_file()` (ARCHITECTURE 10.14; 13.25 below) |
+| ✓ | R42 | **high** | In Home, a resident's face plus a second person who never shows a face sends nothing | (b), the user's decision of 14/10: done `747042b`, `v2026.10.14.3`: YOLO's most people at once against the distinct faces found; the best view goes out as `faceless_person` (ARCHITECTURE 22.3; 13.26 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1586,6 +1592,92 @@ reports), `filelock` 4.1.2 installed, the signed `pythonw.exe` checked; no
 migration ran, since `gallery.json` is unchanged, and no `.lock` is left in
 `faces/`. About 10 s stopped; both cameras' last frame 0.1 s old right after.
 Raid log 18.
+
+### 13.26 Review 25 — developer session 23 (14/10/2026)
+
+Developer 23 reviewed whole (`18b268c..72e9527`: five code commits and the
+HANDOFF, 13 files, +1,120 −36, of which `tools/dog_bench.py` 356 and tests
+184). 284 tests pass (269 before); no comments in `src/` and `tools/`;
+`check_data` reads every file; `check_doc_refs` exits 0. **No code fix**,
+R42 closed, R55 and R56 opened, backlog 39 added, R53 step 2 decided,
+**release `v2026.10.14.3`**.
+
+**R42 (b), read against the user's rule.** The count is taken where it
+should be: `_consider_view` sees the subjects `detect` returns, after NMS
+(0.45), `drop_duplicates` and the static-scenery suppression, so a split
+detection or a suppressed shape does not count; the maximum is per frame,
+reset in `_start`, and read when the assembly thread is created. The
+condition in `after_scan` asks for **every** face silenced — a face that
+reached the phone, or an unknown face, accounts for the scene — and `found`
+holds distinct people, since `_scan_clip` skips a second group matching a
+person already seen. `_faceless` moved the side view's and best view's rules
+without changing them: their tests pass untouched. What the user accepted
+with "if it errs, it errs", now written down (ARCHITECTURE 22.3): a dog
+relabelled by R44 or R46, or called a person by YOLO, costs one message; and
+**two residents leaving together with only one face seen** send one too — the
+system cannot tell that scene from a stranger's. The one weakness is the
+picture: the best single view, so the phone may show the resident alone
+under "2 people seen" — **R56**.
+
+**Backlog 32 for faces.** The threshold reaches all four places it should
+— the case, the words, learning in the scan and gathering on naming — and
+nowhere else decides "probably" (the page only shows what the scan wrote).
+`learn_threshold()` reads `config.json` once per scan, per naming and per
+notification; `load()` and `learn_threshold` each fall back to 0.40 on a bad
+value; `_clean` refuses anything outside 0.30–0.60. The table is honest
+about strangers and says so on the page; it is **not** honest about near
+copies: leave-one-out removes cosine ≥ 0.9999, but the views of one event are
+consecutive frames of one face, and they vouch for each other. Production's
+table has no wrong answer from 0.30 to 0.60, while the two residents' closest
+pair is 0.313 (ARCHITECTURE 10.14): the low end of the table is exactly where
+a leave-one-**event**-out could differ. Views do not record their event, so
+**R55** records it and makes the table — this one and the dogs' to come —
+leave the whole event out.
+
+**R53 step 1, run again.** DINOv2 and MobileNet on the M900: 103/103 by day
+and 46/46 at night for both, 123 and 12.8 ms a crop, every person crop at
+the 95th percentile of right answers or beyond — the developer's numbers.
+The bench's labels and its copy detection (the 16×16 grey thumbnail found the
+four gallery views that are two-dog sighting crops) were read in the code.
+**The choice for step 2 is DINOv2-small** (ARCHITECTURE 20): tied on every
+measurement; its features are trained without labels to tell images apart,
+where MobileNet's pooled layer is trained to put a breed into one class — the
+wrong prior for two dogs of one breed in some other house; its licence covers
+the weights; and ~150 ms is below today's GrabCut. The plan is BACKLOG 3.
+
+**The page, at phone and desktop width.** The test copy at 375 px: the Dogs
+tab two columns (171.5 px each), no horizontal scroll (`scrollWidth` 375);
+tapping two photos brings up the selection bar at the bottom with a name
+field, Save, Bad detection and Clear; Settings → Detection's new panel fits
+(the table 301 px of 301) and, with no named views, shows thirteen rows of
+0/0 under "Name at least two photos". At 1024 px: Detection's two panels side
+by side, Dogs five columns. **Two UX decisions (backlog 39):** an unnamed
+card at 375 px is 309 px tall, its caption 137 px of it — the name, a name
+form and "Bad detection" — which the selection bar already does for one photo
+or many, so on a phone the card keeps only its photo and name; and the
+accuracy table is hidden while nothing is measured.
+
+**Closed: R42.** Its text as it was open:
+
+**R42 — In Home, a resident's face hides a second person with no face
+(medium, the user's decision).** The faceless message goes only when the scan
+found no face at all. If the user walks out with someone whose face is never
+seen, the scan finds the user's face (silenced in Home) and nothing is sent —
+against the user's own rule that a stranger in the dark must reach the phone.
+The scan cannot tell one person from two by faces; YOLO can, by counting
+person boxes in the same frame. Options: (a) accept the corner; (b) when the
+person was held, every face found was silenced, and YOLO saw more people at
+once than distinct faces were found, send the best view as
+`faceless_person`. (b) costs a counter in `EventRecorder` and, when YOLO
+counts a dog as a second person (R18), one extra message. **Decided by the
+user, 14/10/2026: (b).** "If it errs, it errs": someone hiding beside a
+resident must reach the phone, so a person the system cannot account for
+always wins over silence in Home (CONTEXT 3).
+
+**Documentation.** ARCHITECTURE 7.14, 8.4, 10.2, 10.15 (new), 17.17 (new),
+19.2, 20, 22.2 and 22.3; CONTEXT 3, 9 and 10; PYTHON 43; BACKLOG 1, 2 and 3;
+PENDING; HISTORY 8; `.claude/launch.json` added so the built-in browser
+starts the test copy by name.
 
 ## 14.3 Usage log
 

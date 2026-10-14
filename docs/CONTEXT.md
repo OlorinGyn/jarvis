@@ -129,7 +129,8 @@ a rollback still reads the old one (ARCHITECTURE 19.1).
 14/10/2026). A face not known, or a person YOLO saw beside known faces whose
 own face never showed, is notified even when a resident is in the scene:
 "if it errs, it errs" — one extra message is better than someone hiding
-beside the user going unannounced (R42 (b)).
+beside the user going unannounced (R42 (b), built in `v2026.10.14.3`:
+YOLO's count of people at once against the faces found, ARCHITECTURE 22.3).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -203,6 +204,7 @@ tools/
   replay.py       why each frame of a video was kept or dropped (ARCHITECTURE 12.10)
   face_tuning.py, dog_tuning.py, dog_crops.py   measure thresholds; crop past dog events
   face_bench.py   candidate face pipelines on a copy of faces/ (R49; models in models/bench)
+  dog_bench.py    dog descriptors against learned embeddings on a copy of dogs/ (R53; models in models/bench/dogs)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -265,6 +267,7 @@ uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
+uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
@@ -291,10 +294,11 @@ Tuning constants: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`, `SEGMENT_SECONDS`,
 defaults since backlog 31 — the live minimums are in Settings → Detection,
 ARCHITECTURE 7.14), `motion.py` (`MIN_AREA`,
 `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py` (`MATCH_THRESHOLD`,
-`LEARN_THRESHOLD`, `SAME_FACE_THRESHOLD`, `IDENTITY_SCORE`, `MAX_NOSE_OFFSET`,
+`LEARN_THRESHOLD` — since backlog 32 only the default of the user's sure
+threshold, ARCHITECTURE 10.15 — `SURE_SWEEP`, `COPY_SIMILARITY`, `SAME_FACE_THRESHOLD`, `IDENTITY_SCORE`, `MAX_NOSE_OFFSET`,
 `MIN_EYE_SPREAD`, `MIN_VIEWS_FOR_NEW`, `LANDMARK_SIZE`, `LANDMARK_SCORE`),
 `settings.py` (`CONFIDENCE_RANGE`, `SLIDER_STEPS`: the detection sliders,
-ARCHITECTURE 7.14), `notify.py` (`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`,
+ARCHITECTURE 7.14; `FACE_SURE_RANGE`, 10.15), `app.js` (`PAGE_STEP`, 17.17), `notify.py` (`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`,
 `STALE_SECONDS`, `REMINDER_SECONDS`).
 
 ---

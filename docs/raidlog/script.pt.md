@@ -1297,3 +1297,79 @@ Conta Deslizante** (backlog 35) · **Lado a Lado** (backlog 36) · **A Melhor
 Vista** (R51) · **Olhos para Baixo** (R30 b) · **A Gaveta com Cadeado** (R52).
 À espreita: o estranho que ninguém mediu (R54); os rostos sem nome sem
 limite (backlog 37, decisão do Dono).
+
+## Edição #19 — Duas Pessoas, Um Rosto
+
+`v2026.10.14.3` · 14 out 2026, noite
+
+**Quadro 1.** Azul-noite, a porta da Front. Duas silhuetas saem juntas. Uma
+vira o rosto para a câmera e uma etiqueta verde aparece sobre ela: "Gustavo
+— resident, silent". A outra continua de costas: etiqueta nenhuma. A Front
+paira no alto, olho arregalado.
+CHEFÃO (balão preto, letras vermelhas): UM ROSTO. UM MORADOR. NADA A DIZER.
+LEGENDA: Até hoje, no modo Home, um rosto silenciado cobria a cena inteira.
+
+**Quadro 2.** O castor diante de um placar de duas colunas. À esquerda, "o
+YOLO viu de uma vez": dois bonequinhos num só quadro. À direita, "rostos
+encontrados": um rosto. Ele risca um ">" de giz entre as duas.
+DEV: Eu conto pessoas num quadro só, nunca somando o evento inteiro. Duas
+de uma vez, um rosto, todo rosto silenciado: a melhor vista vai para o
+celular.
+J.A.R.V.I.S.: `Front 14:02:11: 2 people seen, 1 face found, best view`
+
+**Quadro 3.** O mesmo placar; um cachorro passa trotando e uma etiqueta
+"person" escorrega para cima dele por engano. O placar agora diz 2 contra 1.
+O DONO (dourado, de fora do quadro): Se errar, errou.
+LEGENDA: Um cachorro tomado por pessoa custa uma mensagem a mais. Dois
+moradores com só um rosto visto também. Aceito.
+
+**Quadro 4.** A coruja ergue a foto que foi para o celular: só o morador
+nela, sorrindo. Ela franze a testa e prende um cartão ao lado: "R56".
+ARQUITETA: A mensagem diz duas pessoas e a foto mostra uma. Da próxima vez,
+mande o quadro em que elas foram contadas.
+
+**Quadro 5.** Creme quente. Um mostrador na parede escrito "sure", o
+ponteiro em 0.40, e ao lado um placar: "0.30 — 77 de 80 certos, 0 errados …
+0.40 — 66 … 0.60 — 4". O ponteiro está solto, esperando ser ajustado.
+LEGENDA: O limiar de certeza agora é do Dono, escolhido numa tabela medida
+nas fotos que o próprio Dono nomeou.
+
+**Quadro 6.** A coruja levanta o placar e encontra, atrás de cada foto, a
+gêmea do mesmo clipe, soprando a resposta para ela.
+ARQUITETA: Cada vista é testada contra todas as outras — inclusive os
+quadros do próprio evento. Uma garante a outra. A tabela é boazinha demais
+na ponta de baixo.
+Ela prende "R55" na moldura do placar.
+
+**Quadro 7.** Uma bancada de laboratório. Quatro lentes em suportes olham a
+mesma galeria de fotos de cachorro: uma lente-roda-de-cores escrita
+"histogram" e três lentes de vidro escritas "DINOv2", "CLIP", "MobileNet".
+Pela lente de cores, os sapatos escuros de um homem levam a etiqueta
+"Mirana". Pela DINOv2 e pela MobileNet, os sapatos levam "?" — longe dos
+dois cachorros.
+DEV: Histograma conta cores, então tudo que é preto vira a Mirana. As redes
+enxergam forma. Duas delas acertaram todo cachorro, de dia e de noite.
+
+**Quadro 8.** A coruja pesa a DINOv2 e a MobileNet numa balança: empate
+perfeito. Ela solta um cartãozinho no prato da DINOv2 — "dois labradores,
+alguma outra casa" — e a balança pende.
+ARQUITETA: A MobileNet aprendeu a pôr uma raça inteira numa caixa só. A
+DINOv2 aprendeu a distinguir imagens. Para uma casa com dois cachorros da
+mesma raça, é ela.
+
+**Quadro 9.** Uma tela de celular, 375 px, fotos de cachorro em duas
+colunas, um botão embaixo: "Show 10 more (10 left)". Sob cada régua nas
+Configurações, um tracinho discreto no meio.
+LEGENDA: Duas colunas no celular, listas longas de vinte e quatro em vinte e
+quatro, e um tracinho onde mora cada padrão.
+
+**Quadro 10.** O M900. Um pacote escrito `v2026.10.14.3` entra.
+J.A.R.V.I.S.: `Production is running v2026.10.14.3.`
+
+**Cartão final.** Habilidades: **A Contagem de Cabeças** (R42 b) · **O
+Mostrador do Dono** (backlog 32, rostos) · **Vinte e Quatro por Vez**
+(backlog 37) · **O Tracinho** (backlog 38) · **A Bancada de Lentes** (R53
+passo 1). À espreita: a foto que mostra a pessoa errada (R56); as gêmeas que
+garantem uma à outra (R55); treze fotos de cachorro no lugar errado
+esperando o Dono. A seguir: a lente nova entra, e cada cachorro da galeria é
+visto de novo (R53 passo 2).

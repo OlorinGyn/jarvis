@@ -52,8 +52,11 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **34.** Analysis On and Off from the page header; Off asks first, On is one click (decided 14/10, `8828e5c`, review 24, `v2026.10.14.2`) | ARCHITECTURE 22.7 |
 | ✓ | **35.** Detection sensitivity as sliders, the default in the middle, the explanation beside them (decided 14/10, `87a84fd`, review 24, `v2026.10.14.2`) | ARCHITECTURE 7.14 |
 | ✓ | **36.** Notifications: the Telegram card beside "What reaches the phone" (decided 14/10, `6295d57`, review 24, `v2026.10.14.2`) | ARCHITECTURE 22.4 |
+| ✓ | **37 (a, b).** People and Dogs on a phone: two columns, long lists 24 at a time, Waiting newest first (decided, UX, `b8a731b`, review 25, `v2026.10.14.3`); the self-cleaning part waits for the user (`PENDING.md`) | ARCHITECTURE 17.17 |
+| ✓ | **38.** The default marked on each slider (decided, UX, `03cde0e`, review 25, `v2026.10.14.3`) | ARCHITECTURE 7.14 |
+| ✓ | **32, for faces.** The sure threshold chosen from measured accuracy (decided 13/10, `9fc5592`, review 25, `v2026.10.14.3`); the dogs' half waits for R53 step 2 | ARCHITECTURE 10.15 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34, 35 and 36, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–38 and 32, in `PENDING.md`.
 
 ### Decided on 13/10/2026, to build
 
@@ -85,42 +88,31 @@ taken in production that evening.
     between the named, not with strangers — the unnamed column is the only
     hint, and the page says so. A lower sure threshold also means more views
     learned on their own (28).
+    **The faces' half is done** (`9fc5592`, `v2026.10.14.3`, ARCHITECTURE
+    10.15): production's table has no wrong answer from 0.30 to 0.60, which
+    is optimistic until R55 leaves each view's whole event out. **The dogs'
+    half** comes after R53 step 2, on the new model's distances, with R55's
+    leave-one-event-out.
 
 ### Decided on 14/10/2026, to build
 
-Items 34, 35 and 36 are done (above, review 24); their full text is in
+Items 34–38 are done (above, reviews 24 and 25); their full text is in
 `HISTORY.md` 8.
 
-37. **People and Dogs hold many photos gracefully** (decided, UX; the user,
-    14/10/2026: some households will never open the page, so the screens
-    must cope with a great many photos, "and perhaps clean themselves now
-    and then"). **Designed in review 24** from production's counts on 14/10
-    (HISTORY 13.25). What grows, and what is already bounded: a person's
-    Chosen (40) and Waiting (`MAX_PENDING` 100) are bounded by backlog 28;
-    unnamed dogs by R27 (`MAX_UNNAMED` 60, 44 today, 1 view each, ~7 a day);
-    **unnamed faces have no bound at all**; the sighting photos in
-    `faces/<day>/` and `dogs/<day>/` grow about 2.7 MB a day together, next
-    to ~300 MB of clips. What a phone shows today: the Dogs tab at 375 px is
-    one column of 335 px cards, 46 of them make a page about 9,100 px tall.
-    **The layout (decided, UX — the architect's, PROCESS 1):**
-    (a) every `.people-grid` takes two columns under 480 px, named cards
-    included, as the "Looks like" groups already do (`style.css`);
-    (b) any list of photos that can pass 24 shows the newest 24 and a
-    "Show 24 more (N left)" button under it — the unnamed groups on People
-    and Dogs, a person's or dog's Waiting, "Days they were seen" — while
-    Chosen (at most 40) shows whole; the heading keeps the full count, and
-    images stay `loading="lazy"`; the server keeps sending whole lists (at
-    most a few hundred small items), so this is the page's work only;
-    (c) checked at 375 px and on the desktop with production's 46 dogs. **The
-    self-cleaning part** deletes the user's data, so it is the user's
-    decision on the policy proposed in `PENDING.md`: unnamed faces bounded
-    as unnamed dogs already are.
-38. **The default marked on each slider** (decided, UX, review 24). Backlog
-    35's sliders show no mark where the default sits, so a slider moved and
-    moved back cannot be put on the default by eye. A `<datalist>` with one
-    option at `slider_steps / 2`, named by the slider's `list` attribute,
-    makes the browser draw a tick there; nothing else changes. Check it at
-    375 px.
+39. **On a phone, an unnamed card is its photo and its name** (decided, UX,
+    review 25). At 375 px an unnamed card is 309 px tall, and 137 px of it
+    are the name, a name form and "Bad detection" — while tapping the photo
+    already selects it, and the selection bar at the bottom names, assigns
+    or reports one photo or many (ARCHITECTURE 17.16). Under 480 px:
+    (a) unnamed cards on People and Dogs drop their own name form, their
+    "Belongs to…" and their "Bad detection" — CSS only, the desktop keeps
+    them; the hint above the unnamed list says "Tap photos to select them,
+    then name or report them below" on a phone; (b) the accuracy table of
+    Settings → Detection (backlog 32) is hidden while nothing is measured
+    (`views` 0), leaving its one sentence, on every width. Check at 375 px
+    with production's 46 dogs (as developer 23 did) that naming one photo
+    and reporting one still take two taps, and give the Dogs tab's height
+    before and after.
 
 ### Critical
 
@@ -207,14 +199,16 @@ proposes one, the answer is already here.
 
 The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
-model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24.
+model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
+in review 25.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R53 | **high — the user's report, 14/10** | The two dogs are told apart by colour histograms, which overlap: Mirana among Aurora's views, a person among Mirana's | open (below) |
+| R53 | **high — the user's report, 14/10** | The two dogs are told apart by colour histograms, which overlap: Mirana among Aurora's views, a person among Mirana's | step 1 done (`bed651d`); step 2 decided: DINOv2-small; developer 24 |
+| R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | open (below) |
+| R56 | low | The hidden-person message shows the best single view, which may be the resident alone | open (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
-| R42 | **high — decided 14/10: (b)** | In Home, a resident's face plus a second person who never shows a face sends nothing | decided: count people with YOLO; developer 23 |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
@@ -222,35 +216,92 @@ model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24.
 **R53 — The dogs' identity rests on colour histograms, which overlap (high,
 the user's report, review 23).** The user sees Mirana among Aurora's views and
 a person among Mirana's. A contact sheet of production's galleries on 14/10
-shows it: Mirana in Aurora's Chosen (5) and Waiting (5), a man in Aurora's
-Waiting (24), shoes and a hand, someone in red, dark clothing and Aurora in
-Mirana's Waiting (25, 26, 22, 29) — the user deletes them (`PENDING.md`). By
-leave-one-out with `dogs.distance`, 6 of Aurora's 40 chosen views and 5 of
-Mirana's sit closer to the other dog than to their own; at night both are
-grey, and a crop holding both dogs, or a person's dark shoes, describes as
-whichever colour its fur mask caught. **Step 1, as R49's:** once the labels
-are clean, a bench on a copy of `dogs/` — today's descriptor against learned
-image embeddings that run through `cv2.dnn`, exported to ONNX once if needed
-as AdaFace was (ARCHITECTURE 10.14): for instance DINOv2-small, a CLIP image
-encoder, a MobileNet's last pooled layer. Per candidate: leave-one-out by
-lighting, right and wrong over a threshold sweep, how far a person crop or a
-crop of both dogs lands from each dog, cost on the M900, size and licence.
-Nothing in the program changes in step 1.
+shows it, and by leave-one-out with `dogs.distance` 6 of Aurora's 40 chosen
+views and 5 of Mirana's sit closer to the other dog than to their own; at
+night both are grey, and a crop holding both dogs, or a person's dark shoes,
+describes as whichever colour its fur mask caught. **Step 1 is done**
+(`bed651d`, ARCHITECTURE 20): on a copy of production's `dogs/`, DINOv2-small
+and MobileNetV3-Large name every view right by day and at night (103/103,
+46/46) and no person crop at the threshold that names 90 %, where the
+histogram is wrong 2 / 3 times and names all five person crops. **Step 2,
+decided in review 25: DINOv2-small** — tied with MobileNet on every
+measurement, trained without labels to tell images apart rather than to put
+a breed into one class, Apache-2.0 weights, ~150 ms a crop against today's
+GrabCut. What step 2 must do:
 
-**R42 — In Home, a resident's face hides a second person with no face
-(medium, the user's decision).** The faceless message goes only when the scan
-found no face at all. If the user walks out with someone whose face is never
-seen, the scan finds the user's face (silenced in Home) and nothing is sent —
-against the user's own rule that a stranger in the dark must reach the phone.
-The scan cannot tell one person from two by faces; YOLO can, by counting
-person boxes in the same frame. Options: (a) accept the corner; (b) when the
-person was held, every face found was silenced, and YOLO saw more people at
-once than distinct faces were found, send the best view as
-`faceless_person`. (b) costs a counter in `EventRecorder` and, when YOLO
-counts a dog as a second person (R18), one extra message. **Decided by the
-user, 14/10/2026: (b).** "If it errs, it errs": someone hiding beside a
-resident must reach the phone, so a person the system cannot account for
-always wins over silence in Home (CONTEXT 3).
+1. **The model, downloadable by production.** `downloads.py` fetches it once
+   with a pinned SHA-256, as it does the face models (ARCHITECTURE 10.2). The
+   candidate source is Hugging Face's `onnx-community/dinov2-small`
+   (`onnx/model.onnx`, a conversion of `facebook/dinov2-small`): keep it only
+   if `cv2.dnn` runs it and its `pooler_output` matches the developer's own
+   export in `models/bench/dogs/` at cosine ≥ 0.9999 on every bench crop. If
+   no downloadable file passes, **stop and report**: publishing our own
+   export anywhere is the user's decision.
+2. **The descriptor.** The stored crop, as `describe` cuts it today (the box
+   plus `MARGIN`), padded square with black, 224 px, RGB, ImageNet's mean and
+   standard deviation — exactly what the bench embedded; no GrabCut. The
+   infrared flag stays (`is_infrared`), and day is still never compared with
+   night. **Two `cv2.dnn.Net` objects**: `identify` runs in the analysis loop
+   for the first message and `record` in the assembly thread, and a `Net`
+   must never run in two threads at once (`people.load_background_model`).
+3. **Distance and thresholds.** `distance` becomes 1 − cosine within one
+   lighting, `None` across; `DogGallery.distances` the same as one matrix
+   product (PYTHON 43). The thresholds come from the bench, not from today's:
+   sure no higher than the distance that names 90 % of the views in either
+   lighting (0.337 by day, 0.363 at night), probable at least 0.05 under the
+   nearest person crop (0.449); the ratios to the second dog measured on the
+   bench — wrong answers and two-dog crops named per ratio — and reported.
+   `match`, the "Looks like" guess, R29's gathering and backlog 28's
+   `replaced_view` all follow `distance`; check each.
+4. **The migration, as the faces' (ARCHITECTURE 10.14).** A new file,
+   `dogs/gallery_dinov2_small.json` with `model` and `source` (`file`,
+   `sha1`); `dogs/gallery.json` **never written** again, so a rollback reads
+   it as it was; every chosen and waiting view embedded again from its photo
+   in `dogs/views/`, keeping ids, names, favourites, residents and
+   thumbnails (the sightings point by `dog_id`); a backup copy first; the
+   `FileLock`; its line in the log after `log.to_file()`; run again only when
+   the old file's SHA-1 changes. A dog report taken before the switch holds
+   histograms: Undo must embed the entry again from its copied photos, as
+   faces' `put_back` does with `refit` — today a dog entry is returned as it
+   is, which would put 41 numbers into a gallery of 384.
+5. **Everything that reads dogs.** `check_data` reads both files;
+   `tools/dog_tuning.py`, `dog_crops.py`, `settle_waiting.py` and
+   `dog_bench.py` (its histogram baseline) keep working.
+6. **Measured for the HANDOFF:** the migration on a copy of production's
+   `dogs/` (views kept, any dropped, seconds); `identify`'s cost in the live
+   loop with one and two dogs on the M900; the thresholds and the sweep they
+   came from; that the thirteen misfiled views (`PENDING.md`) are still found
+   by the new model — closer to the other dog, or to no dog.
+
+**R55 — The accuracy tables leave out only exact copies (medium, review
+25).** Backlog 32's table, and R53's bench, leave each view out with its exact
+copies (cosine ≥ 0.9999 for faces), but the views of one event are
+consecutive frames of the same face or dog, and they vouch for each other: a
+probe's twin from its own event is still among the references. Production's
+face table has no wrong answer from 0.30 to 0.60, and the two residents'
+closest pair is 0.313 (ARCHITECTURE 10.14), so the low end, where the user
+would lower the threshold, is where a leave-one-**event**-out could differ.
+Views do not record their event; sightings do (`clip`). **Then:** record
+each view's event, additively and keyed by the view's photo — for instance
+`view_events: {"<12hex>.jpg": "Front/2026-10-14/12-00-00"}` in the entry —
+so no move by an older version can misalign it; recover the event of the
+views stored before, by matching each view photo to its sighting crop (the
+16×16 grey thumbnail of `dog_bench.py` found such pairs); and make
+`faces.accuracy`, and the dogs' table to come, leave out every reference of
+the probe's event. Views whose event cannot be recovered fall back to
+today's rule and are counted on the page. Measure on production's galleries
+the table before and after.
+
+**R56 — The hidden person's picture is the best single view (low, review
+25).** R42 (b)'s message says "2 people seen, 1 face found, best view", and
+the picture is the event's best view — chosen by one person's confidence ×
+height, so it may be the resident alone, and the user may dismiss the
+message that exists for the person not in it. **Then:** when
+`most_people` rises, keep that frame, with the person boxes drawn as the
+thumbnail's are (ARCHITECTURE 8.5), as an optional `HH-MM-SS.people.jpg`
+beside the event — sharing the base name so the archive moves it (19.2) —
+and send it instead of the best view for the hidden-person message only.
+Additive; `check_data` and the archive's companions list learn the new file.
 
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
@@ -288,42 +339,45 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 24 is done, with a release:** developer 22's backlog 34, 35 and 36,
-R52, R51 and R30 (b), as `v2026.10.14.2` (HISTORY 13.25). R30, R51 and R52
-are closed; R54 is a watch; backlog 37 is designed and 38 added.
+**Review 25 is done, with a release:** developer 23's R42 (b), backlog 37
+(a, b) and 38, R53 step 1 and backlog 32 for faces, as `v2026.10.14.3`
+(HISTORY 13.26). R42 is closed; R53 step 2 is decided (DINOv2-small); R55
+and R56 are open; backlog 39 is added.
 
-**Developer 23: R42 (b), backlog 37's layout and 38, R53 step 1, then
-backlog 32 for faces.**
+**Developer 24: R53 step 2, then backlog 39, then R56.**
 
-1. **R42 (b)** (section 2), decided by the user: a counter of how many people
-   YOLO saw at once in the held person's frames, compared with the distinct
-   faces the scan found; when every face found was silenced and YOLO saw
-   more people, the best view goes out as `faceless_person`. Tests for the
-   hidden-person case and for a dog counted as a person (R18). The counter
-   belongs to the event, so check what `clips/` stores: a new optional field
-   in the event's JSON is fine, anything else is not (CLAUDE.md).
-2. **Backlog 37's layout, (a) and (b), and backlog 38** (section 1): page
-   work only. Check at 375 px and on the desktop with production's numbers —
-   46 dogs: move the test copy's own `dogs/` aside, copy production's in for
-   the check, and put the test copy's back after; only read `C:\JARVIS`.
-3. **R53 step 1** (section 2): the bench on a copy of production's `dogs/`.
-   **The user has not deleted the misfiled views yet** (checked 14/10 in
-   review 24: all nine are still there), so the bench labels the views listed
-   in `PENDING.md` as "not this dog" itself, and never deletes them. Export
-   a candidate to ONNX once in a throwaway environment if needed, as AdaFace
-   was (ARCHITECTURE 10.14); nothing in the program changes in step 1.
-4. **Backlog 32 for faces only**, if the session has room: the face labels
-   are clean since 14/10; the dogs' half waits for R53's model.
+1. **R53 step 2** (section 2, its six points), the session's core: the
+   DINOv2-small descriptor in `dogs.py`, downloaded by `downloads.py`, with
+   the migration to `dogs/gallery_dinov2_small.json` and dog reports' Undo
+   embedding again. **Stop and report** if no downloadable ONNX file passes
+   point 1's check — do not copy a model to production by hand. The
+   migration is not additive in the gallery, so it is a new file: an older
+   version must still read `dogs/gallery.json` as it was (CLAUDE.md); run
+   `tools/check_data.py` before every commit that touches it, and run the
+   migration on a copy of production's `dogs/` (only read `C:\JARVIS`), as
+   developer 21 did for the faces.
+2. **Backlog 39** (section 1): CSS and one hint on a phone; the empty
+   accuracy table hidden. Check at 375 px with production's 46 dogs (move
+   the test copy's `dogs/` aside, copy production's in, put the test copy's
+   back after), and give the Dogs tab's height before and after.
+3. **R56**, if the session has room (section 2): the frame where the people
+   were counted, kept as `HH-MM-SS.people.jpg` and sent for the hidden-person
+   message only.
 
-**HANDOFF:** R42 (b) as built and its tests; 37 and 38 checked at 375 px,
-with the Dogs tab's page height before and after; R53's table per candidate
-(right and wrong by lighting over a threshold sweep, a person crop's and a
-two-dog crop's distance to each dog, cost on the M900, size, licence). If the
-session runs short, stop after a coherent commit and say what is left.
+**HANDOFF:** R53 step 2 as built — the model's source and SHA-256, the check
+against the local export, the thresholds and the sweep they came from, the
+migration measured on the copy (views kept, dropped, seconds), `identify`'s
+cost in the live loop with one and two dogs, where the thirteen misfiled views
+land; backlog 39's heights at 375 px; R56 if done. If the session runs short,
+stop after a coherent commit and say what is left.
+
+**Then, not planned yet:** backlog 32 for dogs, on the new model's distances,
+with R55's leave-one-event-out for both tables — R55 first, since the dogs'
+table should not be born optimistic.
 
 **Waits for the user:** the policy for unnamed faces (backlog 37,
-`PENDING.md`); the misfiled dog views, before the once-only settle of
-backlog 28; the checks on the M900 (`PENDING.md`).
+`PENDING.md`); the misfiled dog views, now thirteen, before the once-only
+settle of backlog 28; the checks on the M900 (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R14, R12 and R9 as before. Every
 other open backlog item is **(proposto)**.

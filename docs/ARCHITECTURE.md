@@ -1107,6 +1107,13 @@ confidently as a real dog, so moving the dog slider right cuts real dogs first. 
 lower person value feeds R44's and R46's memories with more boxes, which
 lengthens R47's chain.
 
+**The default, marked (backlog 38, 14/10/2026).** A slider moved and moved
+back could not be put on the default by eye. One `<datalist id="slider-default">`
+in the form holds a single `<option>`, set to `slider_steps / 2` by
+`showDetection`, and each slider names it in its `list` attribute; the
+browser draws a tick under the track there (PYTHON 43). At the default the
+thumb covers the tick, as it should.
+
 ---
 
 ## 8. The recording layer — `clips.py`
@@ -1183,7 +1190,10 @@ The `.json` exists so the Recordings tab **never has to open a video**:
 ```
 
 `labels` accumulates everything that appeared during the event, not only on
-the first frame.
+the first frame. `most_people`, **optional since 14/10/2026** and written
+only when a person was seen, is the most person boxes YOLO kept in one
+analysis frame of the event — what the face scan's count is weighed against
+(22.3, R42 (b)).
 
 One JSON per clip is deliberately simple and inspectable — the next step is
 SQLite, once there is search by person and period (backlog 13).
@@ -1336,7 +1346,7 @@ is dropped and counted: the scan's log line ends with "N without landmarks".
 | Threshold | Value | Why (10.14) |
 |---|---|---|
 | `MATCH_THRESHOLD` | 0.30 | the first round value above the last wrong answer of the sweep |
-| `LEARN_THRESHOLD` | 0.40 | 0.09 above the closest pair of two different people (0.313) |
+| `LEARN_THRESHOLD` | 0.40 | 0.09 above the closest pair of two different people (0.313); since backlog 32 only the default of the user's sure threshold (10.15) |
 | `SAME_FACE_THRESHOLD` | 0.35 | above that pair too; about as many groups per clip as SFace at 0.40 |
 
 YuNet and SFace come from `opencv/opencv_zoo`; SCRFD and ArcFace from
@@ -1881,6 +1891,62 @@ the other person, in the developer's check and again in review 23's. Sure matche
 Gustavo's daytime clip has 4 of 39 views at ≥ 0.40 (dense sampling, review
 23), and the scan recorded him "probably", at 0.349 — the group's heaviest
 view, not its best (0.421). Since R51 the best view decides (10.3).
+
+### 10.15 The sure threshold is the user's (backlog 32, 14/10/2026)
+
+**What the user asked** (13/10): with a measurement they set the threshold;
+without one, the "probably" stays as it is. So Settings → Detection has a
+panel, "Face recognition: when a name is sure", with a table measured on the
+user's own named photos and a radio button per row.
+
+**What the threshold decides — four places.** It is stored as the optional
+`face_sure_threshold` in `config.json` (0.30–0.60, `FACE_SURE_RANGE`; the low
+end is `MATCH_THRESHOLD`, below which nothing is a match at all), and
+`faces.learn_threshold(values=None)` returns it, or `LEARN_THRESHOLD`, now
+`settings.DEFAULTS["face_sure_threshold"]`, when it is absent or invalid:
+
+1. `notify.person_case`: a resident at or above it is `resident_person`,
+   below it `probable_resident_person` (22.2);
+2. `notify._who`: "Gustavo recognized" or "probably Gustavo";
+3. `_scan_clip`: a match at or above it **teaches** the gallery that view
+   (`reinforce`), read once per scan;
+4. `Gallery._absorb`: naming a person **merges** every unnamed entry that
+   reaches it — and a merge cannot be undone (backlog 9).
+
+So a lower threshold names more and learns more on its own, and gathers more
+when naming. The panel says so.
+
+**The table — `faces.accuracy(gallery, thresholds)`.** Leave-one-out over the
+named people's **Chosen** embeddings, as matching uses them: the rows are
+normalised and one matrix product gives every pair's cosine (PYTHON 43); each
+probe's own row and its exact copies — cosine ≥ `COPY_SIMILARITY` 0.9999 —
+are masked out, and the best remaining reference decides the name, as
+`Gallery.match`'s max over views does. Per threshold of `SURE_SWEEP` (0.300
+to 0.600 by 0.025), plus the current value: how many views would be named
+for sure, how many to the right person and how many to the wrong one, and how
+many views of unnamed entries would cross it toward someone named.
+`GET /api/accuracy/faces` answers the table with `current`, `default` and
+`range`; the choice is saved through `POST /api/settings`, validated by
+`_clean` and rounded to three decimals.
+
+**Production's table on 14/10** (developer 23, read-only on
+`C:\JARVIS\faces`): 80 Chosen views of the two residents, no unnamed entry,
+**no wrong answer at any threshold**:
+
+| Threshold | 0.30 | 0.35 | 0.40 (default) | 0.45 | 0.50 | 0.55 | 0.60 |
+|---|---|---|---|---|---|---|---|
+| Named for sure, of 80 | 77 | 73 | 66 | 39 | 23 | 12 | 4 |
+
+**What it cannot measure, and why it is optimistic.** A stranger has no name,
+so the table shows confusion between the people the user named, never with
+strangers; the Unnamed column is the only hint, and the page says so. And
+only exact copies are left out: the views of one event are consecutive
+frames of the same face, not copies, so a probe's twin from its own event is
+still among the references and makes the match look surer than a new event
+would. The closest pair of the two residents is 0.313 (10.14) — a threshold
+near 0.30 is where a leave-one-**event**-out could find wrong answers this
+table cannot. Views do not record their event; R55 (BACKLOG 2) is that
+measurement.
 
 ---
 
@@ -2853,6 +2919,39 @@ instead of five times. Bounding the scan by the entry's `first_seen` would
 not be safe: `tools/dog_crops.py` gives today's entries sightings of older
 days.
 
+### 17.17 Many photos on a phone (backlog 37, 14/10/2026)
+
+The user's concern: some households will never open the page, so People and
+Dogs must cope with a great many photos. What is bounded and what is not is
+in BACKLOG 1, item 37; this is the layout.
+
+- **Two columns on a phone.** Under 480 px every `.people-grid` takes two
+  columns — named cards, a person's Chosen and Waiting — as the "Looks like"
+  groups already did.
+- **24 at a time.** `paged(container, items, render, shown, key)` in `app.js`
+  draws the first 24 (`PAGE_STEP`) and a button "Show 24 more (N left)"
+  spanning the grid; a press appends the next ones **before** the button
+  (`Element.before`, PYTHON 43), so nothing already drawn is drawn again. It
+  pages each unnamed group, a person's or dog's Waiting and "Days they were
+  seen". How far a list was opened is kept per tab in a `Map` (keys
+  `group:<title>`, `waiting:<id>`, `days:<id>`), so naming one photo, which
+  reloads the list, does not fold it back. Chosen, at most 40, is drawn
+  whole; headings keep the full count; the server still sends whole lists.
+- **Waiting, newest first.** It is stored oldest first (views are appended),
+  and the page now reverses it; each tile keeps its stored index for its ↑
+  and × requests.
+
+**Measured with production's 46 dogs** (developer 23, at 375 px): the Dogs
+tab 9,163 → 8,591 px; named cards one → two per row; Aurora's page, 34
+waiting, 6,390 px with 24 shown, 7,201 with all; no horizontal scroll;
+desktop unchanged at five columns. **The gain is small, and the reason is
+the card**: none of today's three unnamed groups (18, 10 and 16 dogs) passes
+24, and an unnamed card is 309 px tall at 172 px wide — a 170 px photo, then
+the name, a name form and "Bad detection" stacked (review 25, on the test
+copy). On a phone the selection bar at the bottom (17.16) already does what
+the card's form and button do, for one photo or many: backlog 39 (decided,
+UX) drops them from the card on a phone.
+
 ---
 
 ## 18. Production and test (designed and built 09/10/2026)
@@ -3150,7 +3249,7 @@ the old one, which stays untouched for a rollback (10.14).
 |---|---|---|---|
 | `clips/<cam>/<day>/HH-MM-SS.mp4` | `clips._concat` | the user, the face scan, `tools/check_clips.py` | the camera's own H.264, never re-encoded (8.1) |
 | `clips/<cam>/<day>/HH-MM-SS.jpg` | `EventRecorder._start` | Records, web, notification | first frame with the subject, boxes drawn (8.5) |
-| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026** |
+| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026**; `most_people` **optional since 14/10/2026** (8.4) |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
@@ -3163,7 +3262,7 @@ the old one, which stays untouched for a rollback (10.14).
 | `reports/<kind>/<stem>.json` + `.jpg` | `reports._write` | Settings → Bad-detection reports, `check_data`, each review | **since 11/10/2026** (section 21): `kind`, `verdict`, `source`, `reported_at`, `label`, `camera`, `at`, `time`, `clip`, `score`, `box`, `crop`; a gallery report adds `entry` and `sightings`, an event report `event`. **Optional since 11/10 (R38, R37):** `entry` holds the whole gallery entry (older reports: only `id`, `first_seen`, `embeddings`), `sighting_files`, `actually` |
 | `reports/<kind>/<stem>/` | `reports._keep_copies` | Undo | **since 11/10/2026 (R38)**: copies of the entry's view photos (`<12hex>.jpg`) and of its sightings' crops (`HH-MM-SS_<id>.jpg`); absent in older reports |
 | `devices.json` | `web` (pairing) | the write guard | **since 11/10/2026 (R34)**: each paired device's token SHA-256 hash, label and last use |
-| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10); `notify_mode` and `notify_modes` **since 12/10/2026** (22.2), written whole once this version saves any setting; `notify_labels` is still read, to build the default switches. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10); `notify_mode` and `notify_modes` **since 12/10/2026** (22.2), written whole once this version saves any setting; `face_sure_threshold` **since 14/10/2026** (10.15), absent until the user saves one; `notify_labels` is still read, to build the default switches. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
 | `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
 | `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
 | `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |
@@ -3273,6 +3372,64 @@ crops to events recorded before the feature (~21 s per event on the M900).
 
 **Dogs gather their look-alikes (R29, 11/10/2026).** Naming or merging a dog re-examines every unnamed crop against the dog's updated views with the *sure* rule only, same lighting only, repeating until nothing joins; past recordings show the dog's current name from `dog_id` instead of the words frozen when they were recorded.
 
+**Colour histograms against learned embeddings (R53 step 1, 14/10/2026).**
+The user saw Mirana among Aurora's views and a person among Mirana's. A
+histogram counts colours, so at night, when both dogs are grey, and on
+anything dark — shoes, clothing — it says whichever dog its fur mask caught.
+`tools/dog_bench.py` compares today's descriptor with three learned image
+embeddings on `backups/r53_dogs_20261014`, a copy of production's `dogs/`
+(only read). Nothing in the program changed.
+
+- **Labels, nothing deleted.** Of the nine views `PENDING.md` lists as
+  misfiled, five are a person, two hold both dogs, one is Mirana filed under
+  Aurora, one (`6b3d84`) is left out as unclear. Eleven sighting crops of
+  scenes where the two dogs' boxes overlap are the two-dog probes; four of
+  them are also gallery views — the same picture saved twice, found by a
+  16×16 grey thumbnail — so those four views hold both dogs too. In all:
+  Aurora 40 day / 28 night, Mirana 63 / 18, 13 two-dog crops, 5 person crops.
+- **Leave-one-out per lighting**, as the program never compares day with
+  night: each view against every other, its exact and near-exact copies left
+  out; the nearest dog's name, and a threshold sweep.
+- **The candidates**, each exported once to ONNX in a throwaway environment
+  (PyTorch 2.14.1 CPU, as AdaFace was, 10.14) into `models/bench/dogs/`, and
+  checked through `cv2.dnn` against PyTorch's output (cosine 1.0): the stored
+  crop padded square with black, 224 px, RGB, each model's mean and standard
+  deviation; distance = 1 − cosine. CLIP fails on OpenCV 5's new graph
+  engine and runs only with `engine=cv2.dnn.ENGINE_CLASSIC` (PYTHON 43).
+
+| Candidate | Nearest dog right, day / night | Wrong when naming 90 % (day / night) | Person crops named a dog there | Two-dog crops named | ms per crop, M900 | MB | Licence |
+|---|---|---|---|---|---|---|---|
+| Histogram, today | 98/103 / 42/46 | 2 / 3 | 5 of 5 | 12 of 13 | ~1,200 (GrabCut) | — | ours |
+| **DINOv2-small** (the CLS token) | **103/103 / 46/46** | 0 / 0 | 0 of 5 | 9 of 13 | 123–171 | 88 | Apache-2.0, code and weights |
+| CLIP ViT-B/32 image encoder | 100/103 / 42/46 | 2 / 2 | 0 of 5 | 10 of 13 | ~102 | 352 | MIT |
+| MobileNetV3-Large, pooled | **103/103 / 46/46** | 0 / 0 | 0 of 5 | 7 of 13 | **12** | **12** | BSD-3 code; weights trained on ImageNet |
+
+Review 25 ran DINOv2 and MobileNet again on the M900 and got the same
+numbers (123 and 12.8 ms). Where a person crop lands is the telling part:
+under the histogram, inside the right answers (their 12th to 87th
+percentile) — the user's report; under DINOv2 and MobileNet, at the 95th
+percentile or beyond. At the threshold that names 90 % of the views (DINOv2
+0.337 by day, 0.363 at night; MobileNet 0.287 and 0.344) no person crop is
+named, and the nearest one sits about 0.11 further. A two-dog crop is named
+the dog that fills more of it, by every candidate: arguably right, but the
+second dog is missed.
+
+**What the bench cannot say.** The leave-one-out is optimistic: views of one
+event are different frames, so a view's own event may still be among the
+references, and a leave-one-event-out needs each view's clip, which views do
+not record (R55). And the two dogs are white and black. A household with two
+dogs of one colour, or of one breed, is where the choice matters most, and
+nothing here measures it.
+
+**The choice for step 2 (review 25): DINOv2-small.** It ties MobileNet on
+everything measured. It wins on what was not: DINOv2 is trained without
+labels to tell images apart, while MobileNet's pooled layer is trained to
+put every dog of a breed into one ImageNet class — ImageNet has 120 dog
+breeds — which is the opposite of what two Labradors in one house need
+(CONTEXT 3: each household teaches its own dogs). Its licence covers the
+weights, with nothing for the user to weigh. Its cost, ~150 ms per crop,
+is below today's GrabCut. BACKLOG 2, R53, holds the plan.
+
 ---
 
 ## 21. Bad-detection reports — `reports.py` (11/10/2026)
@@ -3322,11 +3479,11 @@ sighting it returns, so the notifier needs no second read of the gallery.
 
 | Case | When |
 |---|---|
-| `resident_person` | a face matched **for sure** (score ≥ `LEARN_THRESHOLD`) to a person marked Resident |
-| `probable_resident_person` | a face matched as "probably …" (score under `LEARN_THRESHOLD`) to a person marked Resident — since backlog 30 |
+| `resident_person` | a face matched **for sure** (score ≥ the sure threshold, 0.40 unless the user chose another, 10.15) to a person marked Resident |
+| `probable_resident_person` | a face matched as "probably …" (score under the sure threshold) to a person marked Resident — since backlog 30 |
 | `known_person` | any other named face, sure or "probably …" |
 | `unknown_face` | a face with no name |
-| `faceless_person` | a person with no recognisable face: the side-view or best-view message |
+| `faceless_person` | a person with no recognisable face: the side-view or best-view message; since R42 (b), also a person hiding beside silenced faces (22.3) |
 | `resident_dog` | a dog matched for sure to a dog marked Resident |
 | `probable_resident_dog` | a "probably <name>" of a dog marked Resident — since backlog 30 |
 | `other_dog` | any other dog: another name, "probably" another, unidentified |
@@ -3408,9 +3565,37 @@ no face. And a held person whose clip could not be assembled (no segments)
 got no message at all, since the assembly returned before the scan; it now
 sends the best view. Both were reproduced by a test first.
 
-**Known corner (R42, waits for the user).** In Home, if the scan finds a
-resident's face and a second person in the same clip never shows a face,
-nothing is sent: the faceless message only goes when no face was found at all.
+**Someone hiding beside a resident (R42 (b), 14/10/2026).** Until then, in
+Home, if the scan found a resident's face and a second person never showed
+one, nothing was sent: the faceless message went only when no face was found
+at all. The scan cannot tell one person from two by faces; YOLO can, by
+counting person boxes in one frame. The user's rule: "if it errs, it errs" —
+someone the system cannot account for always wins over silence (CONTEXT 3).
+
+- `EventRecorder._consider_view` keeps `most_people`, the most person boxes
+  in one analysis frame of the event — **at once, never summed** over the
+  event, so two people passing one after the other count as one. It is
+  reset in `_start`, written to the event's JSON (8.4) and handed to
+  `_assemble` and `after_scan` as `people=`.
+- `after_scan` sends the event's best view as `faceless_person` when the
+  scan found faces, the person was **held**, **every** face found was
+  silenced by its case, `people` is greater than the faces found, and a best
+  view exists. Text: "Front 14:02:11: 2 people seen, 1 face found, best
+  view" (`notify.hidden_person`). The faces found are distinct people:
+  `_scan_clip` skips a second group that matches a person already seen.
+- One helper, `_faceless`, now holds the faceless rules for the side view,
+  the best view and the hidden person alike: the `faceless_person` switch;
+  then, when the person was held and nothing of the event went out, the
+  camera's cooldown, as a first message; otherwise only after a sent event.
+- **What it costs, accepted by the user:** anything YOLO keeps as a person
+  counts — a dog relabelled by R44 or R46 (7.12, 7.13), or YOLO calling a dog
+  a person (R18) — and costs one extra message. So do two residents leaving
+  together with one face seen: the system cannot tell that from a stranger.
+  Two boxes on one body are what NMS (0.45) and `drop_duplicates` remove
+  before anything is counted.
+- **The picture is the best single view**, chosen by confidence × height,
+  not the frame where the people were counted: the phone may show only the
+  resident under "2 people seen". R56 (BACKLOG 2) keeps that frame instead.
 
 ### 22.4 Notifications, the first part of Settings
 

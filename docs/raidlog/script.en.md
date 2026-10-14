@@ -1251,3 +1251,76 @@ Sliding Bead** (backlog 35) · **Side by Side** (backlog 36) · **The Best
 View** (R51) · **Eyes Looking Down** (R30 b) · **The Padlocked Drawer** (R52).
 Lurking: the stranger nobody has measured (R54); the unnamed faces with no
 limit (backlog 37, the Owner's call).
+
+## Issue #19 — Two People, One Face
+
+`v2026.10.14.3` · 14 Oct 2026, evening
+
+**Panel 1.** Night-blue, the doorway at the Front. Two silhouettes walk out
+together. One turns its face to the camera and a green tag pops over it:
+"Gustavo — resident, silent". The other keeps its back turned: no tag at all.
+Front hovers above, eye wide.
+BOSS (black balloon, red letters): ONE FACE. ONE RESIDENT. NOTHING TO SAY.
+CAPTION: Until today, in Home, one silenced face covered the whole scene.
+
+**Panel 2.** The beaver at a tally board with two columns. Left, "YOLO saw
+at once": two little stick figures in one frame. Right, "faces found": one
+face. He chalks a ">" between them.
+DEV: I count people in one frame, never over the whole event. Two at once,
+one face, every face silenced: the best view goes out.
+J.A.R.V.I.S.: `Front 14:02:11: 2 people seen, 1 face found, best view`
+
+**Panel 3.** The same tally board; a dog trots past it and a "person" tag
+slips onto it by mistake. The board now reads 2 against 1.
+THE OWNER (gold, from off panel): If it errs, it errs.
+CAPTION: A dog taken for a person costs one extra message. So do two
+residents with only one face seen. Accepted.
+
+**Panel 4.** The owl holds up the photo that went to the phone: only the
+resident in it, smiling. She frowns and pins a card beside it: "R56".
+ARCHITECT: The message says two people and the picture shows one. Next
+time, send the frame where they were counted.
+
+**Panel 5.** Warm cream. A dial on the wall labelled "sure", its needle at
+0.40, and beside it a scoreboard: "0.30 — 77 of 80 sure, 0 wrong … 0.40 —
+66 … 0.60 — 4". The needle is loose, waiting to be set.
+CAPTION: The sure threshold is the Owner's now, chosen from a table measured
+on the photos the Owner named.
+
+**Panel 6.** The owl lifts the scoreboard and finds, behind each photo, its
+twin from the same clip, whispering the answer to it.
+ARCHITECT: Each view is tested against all the others — including its own
+event's frames. They vouch for each other. The table is too kind at the low
+end.
+She pins "R55" on the scoreboard's frame.
+
+**Panel 7.** A lab bench. Four lenses on stands look at the same gallery of
+dog photos: a colour-wheel lens marked "histogram", and three glass lenses
+marked "DINOv2", "CLIP", "MobileNet". Through the colour-wheel lens, a man's
+dark shoes are tagged "Mirana". Through DINOv2 and MobileNet the shoes are
+tagged "?" — far from both dogs.
+DEV: Histograms count colours, so anything black is Mirana. The networks see
+shape. Two of them got every dog right, day and night.
+
+**Panel 8.** The owl weighs DINOv2 and MobileNet on a balance: dead level.
+She drops a small card on DINOv2's pan — "two Labradors, some other house" —
+and it tips.
+ARCHITECT: MobileNet was taught to put a whole breed in one box. DINOv2 was
+taught to tell pictures apart. For a house with two dogs of one breed, that
+is the one.
+
+**Panel 9.** A phone screen, 375 px, dog photos in two columns, a button at
+the bottom: "Show 10 more (10 left)". Under each slider in Settings, a faint
+tick in the middle.
+CAPTION: Two columns on a phone, long lists twenty-four at a time, and a
+tick where each default sits.
+
+**Panel 10.** The M900. A parcel marked `v2026.10.14.3` goes in.
+J.A.R.V.I.S.: `Production is running v2026.10.14.3.`
+
+**Closing card.** Abilities: **The Head Count** (R42 b) · **The Owner's
+Dial** (backlog 32, faces) · **Twenty-Four at a Time** (backlog 37) · **The
+Tick** (backlog 38) · **The Lens Bench** (R53 step 1). Lurking: the picture
+that shows the wrong person (R56); the twins that vouch for each other
+(R55); thirteen misfiled dog photos waiting for the Owner. Next: the new
+lens goes in, and every dog in the gallery is seen again (R53 step 2).
