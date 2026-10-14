@@ -285,6 +285,8 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R45 | low | A merge finds its sightings by reading every one, once per entry merged | done `351bc23`: one pass per save with an `{old: new}` map; a batch of 5 reads each sighting once instead of 5 times (ARCHITECTURE 17.16; 13.17 below) |
 | ✓ | R7 | low | `install.bat` does not check that the Python is signed | done `e426c8b`: `tools/check_python.ps1`, run by `install.bat` after `uv sync` and by `production.ps1` on every deploy (ARCHITECTURE 18.7, INSTALL 1.2; 13.19 below) |
 | ✓ | R46 | **high** | A person who moves while bent over is still filed as a dog: R44 caught 9 of 32 boxes | done `0a514c3`: a dog box that takes the place of a person who vanished from the same run is that person, and relabelled boxes renew the memory (ARCHITECTURE 7.13; 13.20 below) |
+| ✓ | R48 | **high** | The 40-view rule lets a wrong-person view in first | closed in review 23: under ArcFace no wrong-person view reaches `LEARN_THRESHOLD` (closest pair 0.313 against 0.40), so backlog 28 shipped with R49 in `v2026.10.14`; the seven misfiled views still wait for the user before the once-only tool runs (13.24) |
+| ✓ | R49 | **highest** | The top or the back of a head passes as a face and draws wrong "sure" matches | done `94f4fbc`, `v2026.10.14`: SCRFD + ArcFace R50 and a migrated gallery; a head-top still passes as a face, but matches no one else (ARCHITECTURE 10.14; HISTORY 13.24) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1385,6 +1387,75 @@ probes and OpenCV's alignment, keeps R50 unless R100 is clearly better, and
 then makes the switch and the migration. The migration writes a new gallery
 file, so that an automatic rollback to `v2026.10.13` still reads the old one
 (BACKLOG 3).
+
+### 13.24 Review 23 — developer session 21 (14/10/2026)
+
+R49 step 2 reviewed whole (`706883b..70d3fce`, two code commits, 13 files of
+code, tools and tests, +568 −147). 240 tests pass (234 before); no comments
+in `src/` and `tools/`; `check_doc_refs` exits 0. **One code fix**
+(`d07c09e`), two recommendations opened, **release `v2026.10.14`**.
+
+**The code, read against the plan.** The six points are done as planned,
+with one deliberate change the HANDOFF argues well: SCRFD runs on the square
+`context_crop` saves (2.2 × the face) rather than on `_refine`'s region, so
+the migration and the scan embed the same framing. Checked on four real
+clips: the same face embedded from the frame and from its saved 300 px JPEG
+gives cosine 0.97–0.99 (median per clip), so the bench's numbers, taken on
+the photos, hold for the scan. Lock order is right: `refit` takes
+`_SCAN_LOCK` and releases it before `put_back` takes `_GALLERY_LOCK`, the
+order a scan uses. Undo copies the report's photos back before `put_back`
+embeds them. `Gallery.save` keeps the header, so `source` survives; a dog
+gallery writes no `model`. Every reader of the face gallery follows
+`GALLERY_FILE`; `rebuild_faces.py` moves the whole `faces/` aside as before,
+`gallery.json` included — a rollback after a rebuild finds no gallery, as
+before this release. `SAME_FACE_THRESHOLD` 0.35 and `LEARN_THRESHOLD` 0.40
+are both above the closest cross pair. Two corners left as they are: a
+report from before the switch whose views have no photo would come back with
+no embeddings (production has no face report), and the SCRFD detection
+nearest the face's centre could, in a square holding two faces where SCRFD
+misses the right one, be the neighbour's.
+
+**The fix: `FetchModels` aborted instead of skipping.** The HANDOFF says an
+old tag was "skipped". In the script's own context it threw: under
+`$ErrorActionPreference = 'Stop'`, Windows PowerShell 5.1 turns the redirected
+stderr of `git show` into a terminating error. Reproduced with the function in
+a script with the same preamble; fixed as `CurrentVersion` already does it,
+and probed again against `v2026.10.13` (skipped) and `HEAD` (runs, "nothing
+to fetch"). Nothing would have broken, but a manual update back to a release
+from before R49 was impossible (ARCHITECTURE 18.7, PYTHON 41).
+
+**What the review measured.** Production's `faces/` copied and migrated
+again: 173 of 173 views kept, 31.8 s with production and a second
+measurement running. Four clips scanned densely against it: no view's best
+named match was the other person. Nine of Gustavo's views matched an unnamed
+entry best, `p_62e42af6`, at up to 0.391: four views from 11:05 today, a
+bearded man with a headset — by the contact sheet, Gustavo himself, unnamed
+because SFace did not know him with it (`PENDING.md`). The scan recorded his
+daytime clip as "probably Gustavo" at 0.349, its heaviest view, while its
+best view scores 0.421: **R51**. The migration runs before `log.to_file()`
+and before the port is held, so production's log never gets its line, and a
+second launch in those ~25 s migrates too: **R52**.
+
+**Backlog 28 read again (R48).** On the bench and on the four clips, no
+wrong-person view reaches 0.40; the closest pair is 0.313. The mechanism R48
+was about — a wrong "sure" match entering a full Chosen first — did not occur
+under ArcFace, so 28 ships with R49 and R48 closes. What remains is data: the
+seven head-tops of Izabel already in Gustavo's Waiting. Settled under ArcFace
+on the migrated copy, 6 of them still enter his Chosen, because the rule
+never asks whose a view is; with the seven deleted first, none does. The
+once-only tool waits for the user (`PENDING.md`). The five head-tops of
+Gustavo in his Chosen match Izabel at 0.29 at most, under `MATCH_THRESHOLD`.
+
+**The `alignCrop` question** (HANDOFF 6). SFace's 37 MB stay loaded only for
+OpenCV's alignment. Kept: it is the library's own least-squares fit,
+pixel-identical to insightface's on all 146 views (13.23), and OpenCV's
+`estimateAffinePartial2D` offers only RANSAC and LMEDS. Size is not a
+criterion (PROCESS 5.2).
+
+**Documentation.** ARCHITECTURE 10.2 (rewritten), 10.3, 10.4, 10.5, 10.14
+(step 2: R100, the migration, the cost), 12.8, 17.14, 18.7, 19.1, 19.2, 19.4,
+the tree; CONTEXT 3, 9 and 10; INSTALL 3; PYTHON 41; BACKLOG 1, 2 and 3;
+PENDING.
 
 ## 14.3 Usage log
 

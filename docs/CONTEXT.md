@@ -118,9 +118,12 @@ not additive. "No new dependency" was PROCESS 5's bias, not a reason.
 SCRFD detector and ArcFace recogniser beat every other candidate on this
 house's photos. The user's answer was "if it is the best, we use it". That
 accepts InsightFace's licence for its models, "for non-commercial research
-purposes only", for a private home system. Which of its recognisers is
-measured first: R50 from `buffalo_l` or R100 from `antelopev2`, both in the
-author's release.
+purposes only", for a private home system. **Switched, 14/10/2026
+(`v2026.10.14`):** YuNet still finds the faces; SCRFD places the points and
+ArcFace R50 from `buffalo_l` recognises. R100 from `antelopev2` was measured
+and is not better here — it needs a higher threshold before nothing is wrong,
+and is twice as slow (ARCHITECTURE 10.14). The gallery moved to a new file so
+a rollback still reads the old one (ARCHITECTURE 19.1).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -172,7 +175,8 @@ src/jarvis/
   motion.py       layer 1: MOG2 + temporal confirmation
   people.py       layer 2: YOLO through cv2.dnn, people and animals
   clips.py        layer 3: events, lossless assembly, metadata, the held person
-  faces.py        layer 4: YuNet + SFace, the gallery, naming
+  faces.py        layer 4: YuNet, SCRFD + ArcFace, the gallery and its migration, naming
+  downloads.py    the face models' files, fetched once; standard library only (production.ps1 runs it)
   dogs.py         the dog gallery: crops, appearance descriptor, matching
   archive.py      layer 5: moves to the external drive, deletes only there when full
   settings.py     settings editable from the page (config.json)
@@ -214,7 +218,7 @@ jarvis_headless.bat service only, no browser (--headless)
 ```
 
 Structure explained in ARCHITECTURE 3. Not versioned: `.env` (credentials),
-`config.json` (Telegram token, PIN), `models/` (~73 MB, downloaded on
+`config.json` (Telegram token, PIN), `models/` (~255 MB, downloaded on
 demand), `clips/`, `faces/`, `dogs/`, `reports/`, `devices.json`, `backups/`
 (copies the tools make before touching data), `logs/` and `HOLD`.
 
@@ -281,7 +285,8 @@ Tuning constants: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`, `SEGMENT_SECONDS`,
 defaults since backlog 31 — the live minimums are in Settings → Detection,
 ARCHITECTURE 7.14), `motion.py` (`MIN_AREA`,
 `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py` (`MATCH_THRESHOLD`,
-`LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`), `notify.py`
+`LEARN_THRESHOLD`, `SAME_FACE_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`,
+`LANDMARK_SIZE`, `LANDMARK_SCORE`), `notify.py`
 (`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`, `STALE_SECONDS`, `REMINDER_SECONDS`).
 
 ---

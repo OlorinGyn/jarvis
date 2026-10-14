@@ -65,7 +65,7 @@ The face is one more layer, run afterwards, on the clip (section 10).
                 ▼                  │
          ┌───────────┐             │
          │ faces.py  │  YuNet +    │──► notify.py (faces, side or best view)
-         │ dogs.py   │  SFace;     │
+         │ dogs.py   │  ArcFace;   │
          └─────┬─────┘  GrabCut    │
                │ galleries         │
                ▼                   ▼
@@ -156,12 +156,13 @@ jarvis/
 ├── .env                  the cameras' IPs and credentials
 ├── config.json           settings, the Telegram token, the PIN (each machine its own)
 ├── devices.json          paired devices (17.12)
-├── models/               ONNX of YOLO, YuNet and SFace (~73 MB, downloaded)
+├── models/               ONNX of YOLO and the face models (~255 MB, downloaded; 10.2)
 ├── clips/                recordings
 │   ├── _buffer/          rolling segments per camera, deleted on their own
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
 ├── faces/                faces and the gallery
-│   ├── gallery.json      known and unknown people
+│   ├── gallery_arcface_w600k_r50.json   known and unknown people (10.14)
+│   ├── gallery.json      the same under SFace, kept for a rollback
 │   ├── views/            one crop per stored view
 │   └── 2026-09-28/21-42-00_a1b2c3.{jpg,json}
 ├── dogs/                 the same for dogs (section 20)
@@ -693,7 +694,7 @@ person overlaps a lot, and before, one of the two would have been dropped.
 |---|---|
 | Detect that there is a dog | Works (COCO class 16) |
 | Know *which* dog | The household's dogs, by the look of their fur, once the user names some views (section 20); the face layer cannot do it (10.8) |
-| Know *which* person | The face layer, YuNet + SFace (section 10) |
+| Know *which* person | The face layer, YuNet + SCRFD + ArcFace (section 10) |
 
 ### 7.4 A design decision: the whole frame, not a crop
 
@@ -1265,37 +1266,47 @@ that assembles it (8.3). Gains:
 The cost is that the face appears on People, and a person's name reaches the
 phone, some seconds after the event (22.3).
 
-### 10.2 YuNet and SFace
+### 10.2 YuNet finds, SCRFD places the points, ArcFace recognises
 
-They are good CPU models, and OpenCV already has both built in — a real
-convenience, not a merit of dependency counting:
+Since R49 step 2 (14/10/2026, 10.14). Until then YuNet's own five points fed
+SFace, and the head-tops YuNet takes for faces drew wrong "sure" matches.
 
 | Role | Model | Size |
 |---|---|---|
-| Detect the face | `cv2.FaceDetectorYN` (YuNet) | 227 KB |
-| Make the embedding | `cv2.FaceRecognizerSF` (SFace) | 37 MB |
+| Find faces in the frame, and the `is_frontal` gate (10.9) | `cv2.FaceDetectorYN` (YuNet) | 227 KB |
+| Place the five points, in the square around each face | InsightFace's SCRFD-10G (`det_10g.onnx`), through `cv2.dnn` | 17 MB |
+| Align them onto the 112×112 template | `cv2.FaceRecognizerSF.alignCrop` (SFace's object, its model loaded only for this) | 37 MB |
+| Make the embedding | ArcFace R50 (`w600k_r50.onnx`), through `cv2.dnn` | 167 MB |
 
-The `.onnx` files are downloaded from the official `opencv/opencv_zoo`
-repository into `models/`, which is not versioned. `alignCrop()` returns the
-aligned 112×112 crop — exactly what SFace expects — using the 5 facial points
-YuNet returns with the box.
+For each frontal face, `embed(frame, box)` cuts **the same square
+`context_crop` saves as the view's photo** (`_square`, 2.2 × the face, kept
+inside the frame) and hands it to `embed_view`: SCRFD runs at 320
+(`LANDMARK_SIZE`, score ≥ 0.2 `LANDMARK_SCORE`), the detection nearest the
+face's centre gives the five points, `alignCrop` fits them by least squares,
+and ArcFace returns **512 numbers**. Comparison is by cosine; embeddings of
+different lengths compare as 0.0. The scan and the stored photo embed alike:
+on four real clips the same face from the frame and from its saved 300 px
+JPEG gave cosine 0.97–0.99 (median). A face SCRFD does not find in its square
+is dropped and counted: the scan's log line ends with "N without landmarks".
 
-The embedding has **128 dimensions**. Comparison is by cosine.
+| Threshold | Value | Why (10.14) |
+|---|---|---|
+| `MATCH_THRESHOLD` | 0.30 | the first round value above the last wrong answer of the sweep |
+| `LEARN_THRESHOLD` | 0.40 | 0.09 above the closest pair of two different people (0.313) |
+| `SAME_FACE_THRESHOLD` | 0.35 | above that pair too; about as many groups per clip as SFace at 0.40 |
 
-Measured on sharp faces:
-
-| Comparison | Similarity |
-|---|---|
-| The same face | **1.000** |
-| Different faces | **0.045** |
-
-`MATCH_THRESHOLD = 0.363` is the value OpenCV's documentation recommends for
-SFace with cosine.
+YuNet and SFace come from `opencv/opencv_zoo`; SCRFD and ArcFace from
+InsightFace's `buffalo_l.zip` release (289 MB), of which `downloads.py` keeps
+the two files in `models/buffalo_l/` and deletes the zip. `downloads.py` uses
+the standard library only and imports nothing from `jarvis`, so
+`production.ps1` can run it from the release it is about to deploy (18.7).
+InsightFace's models are "for non-commercial research purposes only" — the
+user accepted it for this house (CONTEXT 3).
 
 ### 10.3 One face per person per event
 
 A clip has dozens of frames of the same person. `_group()` joins the
-observations by the embeddings' own similarity (`SAME_FACE_THRESHOLD = 0.40`)
+observations by the embeddings' own similarity (`SAME_FACE_THRESHOLD = 0.35`)
 and keeps, of each group, the **best** view — the one with the largest
 `width × score`, since a larger, more confident face gives a better
 embedding.
@@ -1312,7 +1323,7 @@ The result: an event with one person gives one sighting, not thirty.
 The goal of People: **name a person once and have them recognised on their
 own from then on.**
 
-`faces/gallery.json` keeps the people, each with a list of embeddings (the
+`faces/gallery_arcface_w600k_r50.json` (10.14) keeps the people, each with a list of embeddings (the
 reference "views"). Each sighting becomes a `.jpg` + `.json` pair in
 `faces/<date>/` that points at the person by `person_id`. The name is resolved
 when shown, so naming a person renames **all** their sightings, past and
@@ -1334,9 +1345,9 @@ causes:
 | Moment | What happens |
 |---|---|
 | A new face that matches nobody | Becomes an unknown **only if it appeared in 2+ frames** of the clip (`MIN_VIEWS_FOR_NEW`), already with up to 4 views |
-| A face that matches (≥ `MATCH_THRESHOLD` 0.363) | The sighting gets that person. Above `LEARN_THRESHOLD` (0.45) the view is **learned** |
+| A face that matches (≥ `MATCH_THRESHOLD` 0.30) | The sighting gets that person. Above `LEARN_THRESHOLD` (0.40) the view is **learned** |
 | It matches a named person and an unknown one | The **named** one wins: the name is what the user asked the system to learn |
-| The user names a card | `rename()` gives the name and **absorbs** every similar unknown (≥ 0.45) |
+| The user names a card | `rename()` gives the name and **absorbs** every similar unknown (≥ `LEARN_THRESHOLD`) |
 | The user gives a name that already exists | The two people **become one**, adding up their views — the page warns first |
 
 Absorbing and merging (`_merge`) move the views to the named person and
@@ -1350,12 +1361,13 @@ Measured on the same set of clips with the new pipeline: **3 people**. Naming
 one card of the older lady absorbed her other identity and put the name on 3
 cards; naming one card of the user named the other camera's too.
 
-`LEARN_THRESHOLD` is higher than the matching one on purpose: OpenCV's 0.363
-holds for sharp 112 px faces. With 40 px faces, a similarity of 0.37 can be
-chance, and **learning** from chance would contaminate everyone's reference
-from then on. Showing a wrong name can be corrected; learning wrong spreads.
-For the same reason a match below 0.45 is announced as "probably <name>"
-(R5), and only a sure match counts as a resident (22.2).
+`LEARN_THRESHOLD` is higher than the matching one on purpose. With 40 px
+faces a weak similarity can be chance, and **learning** from chance would
+contaminate everyone's reference from then on. Showing a wrong name can be
+corrected; learning wrong spreads. For the same reason a match below
+`LEARN_THRESHOLD` is announced as "probably <name>" (R5), and only a sure
+match counts as a resident (22.2). Under SFace the two were 0.363, OpenCV's
+value for sharp faces, and 0.45; under ArcFace 0.30 and 0.40 (10.2).
 
 **Two instances of the gallery.** The web and the clip-scanning thread each
 have their own `Gallery`. If one saved the copy it loaded earlier, it would
@@ -1375,7 +1387,7 @@ Tested on the real night clip, where YOLO detects the person at 0.92:
 | Measure | Value |
 |---|---|
 | The face YuNet finds | **44 px wide** |
-| The width SFace wants | ~112 px |
+| The width the recogniser wants | ~112 px |
 
 The face is detected, but an embedding taken from 44 px is unreliable. The
 solution was not to drop it but to **mark** it:
@@ -1423,7 +1435,7 @@ to an existing name, and rename on the person's page (17.9, 17.10).
 
 ### 10.8 Animals: why this layer cannot do it
 
-SFace is trained only on human faces. A dog has no face YuNet can detect, and
+The face recogniser is trained only on human faces. A dog has no face YuNet can detect, and
 even if it had, the embedding would mean nothing.
 
 Telling *which* dog needs another layer, on the **whole body** and not the
@@ -1482,7 +1494,7 @@ event.
 The fix: `load_background_model()` loads a **second copy** of the network
 (~40 MB more memory), used only off the main loop. And `scan_clip()` runs
 under `_SCAN_LOCK`: each event assembles its clip in its own thread, and two
-events in a row would also fight over YuNet and SFace, which are shared. The
+events in a row would also fight over the face networks, which are shared. The
 scans queue up, which also avoids two heavy scans at once on the M900's CPU.
 
 Tested with the main loop running inferences while 4 scans ran in parallel:
@@ -1572,7 +1584,7 @@ instead of 137, with 6 % fewer frontal face frames on 455 test frames — a face
 is seen in many frames of an event, so the loss per event is smaller. Outside
 events the scan no longer halves live analysis.
 
-### 10.14 Stronger face models, measured (R49 step 1, 14/10/2026)
+### 10.14 Stronger face models, measured and switched (R49, 14/10/2026)
 
 **Why.** YuNet takes the top or the back of a head for a face, `is_frontal`
 passes it, and under SFace those views drew wrong "sure" matches (R49). The
@@ -1663,7 +1675,8 @@ only). YuNet and SFace are MIT and Apache-2.0.
 **Filling `models/bench`** (ignored by git, about 1.7 GB with the downloads):
 `buffalo_l.zip` from
 `github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip`,
-unzipped into `models/bench/buffalo_l/`; `meanshape_68.pkl` from the
+unzipped into `models/bench/buffalo_l/`; `antelopev2.zip` (361 MB) from the
+same release into `models/bench/antelopev2/`; `meanshape_68.pkl` from the
 insightface repository (`python-package/insightface/data/objects/`); AdaFace
 IR-101 from `huggingface.co/minchul/cvlface_adaface_ir101_webface12m` and
 MagFace iResNet50 from its README's Google Drive link, each exported once to
@@ -1671,6 +1684,81 @@ ONNX in a throwaway venv with PyTorch 2.14 CPU (`torch.onnx.export`,
 `dynamo=False`, opset 17, strict weight loading) as
 `models/bench/adaface_ir101_webface12m.onnx` and
 `models/bench/magface/magface_iresnet50.onnx`.
+
+**Step 2: R100 measured, R50 kept (developer 21, 14/10/2026).** The bench
+gained `antelopev2`'s ArcFace R100, trained on Glint360K
+(`scrfd320+glint`); its SCRFD is buffalo_l's file byte for byte, so only the
+recogniser differs. Every ArcFace, AdaFace and MagFace pipeline now aligns
+with `alignCrop`. The seven unnamed entries, 22 views of Izabel by the user's
+word, are probes and never references; the second sweep adds them to the
+clean 134.
+
+| SCRFD at 320 + | Clean 134: no wrong from → right | Clean + 22: no wrong from → right | The 22 at 0.30 / 0.40: sure / maybe / none | Closest cross pair | Embed ms | MB |
+|---|---|---|---|---|---|---|
+| **ArcFace R50** (`w600k_r50`) | **0.275 → 125** | **0.275 → 144 of 156** | 8 / 10 / 4, nothing wrong | **0.313** | **70** | 182 |
+| ArcFace R100 (`glintr100`) | 0.350 → 114 | 0.350 → 126 of 156 | 8 / 11 / 3; two maybe wrong on the clean set at 0.30 | 0.562 | 129 | 265 |
+| stored SFace, before | 0.375 → 110 | 0.425 → 103 of 156 | 0 / 4 / 16, 2 maybe wrong | 0.498 | — | 37 |
+
+The rule was R100 only if clearly more right at zero wrong; it is the other
+way round, and R100 is twice as slow. **R50 it is.** The sweep on clean + 22:
+0.25 gives 151 right and 1 wrong, 0.275 144 / 0, 0.30 139 / 0, 0.40 97 / 0.
+Hence `MATCH_THRESHOLD` 0.30 and `LEARN_THRESHOLD` 0.40 (10.2) — with no
+stranger in the data, erring towards fewer sure matches.
+
+**The migration: a new file, so a rollback still reads the old one.** The
+embeddings go from 128 to 512 numbers — not additive (19.1). So the gallery
+moved to a new file, `faces/gallery_arcface_w600k_r50.json` (`GALLERY_FILE`,
+the model's name in the file name and in a `model` field), and
+`faces/gallery.json` (`LEGACY_GALLERY_FILE`) is **never written** by this
+version: `v2026.10.13`, restored by an automatic rollback, finds it as it
+was. `migrate_gallery()` runs in `cameras.main()`, after the `HOLD` and
+already-running checks and before the web and the cameras:
+
+1. It copies both files to `backups/faces_arcface_w600k_r50_<stamp>/`.
+2. `refit_entry` embeds every chosen and waiting view again from its photo
+   in `faces/views/`, keeping ids (so the sightings in `faces/<day>/` still
+   point right), names, favourites, residents and thumbnails.
+3. A view with no photo, or where SCRFD finds no face, leaves the new file;
+   its photo stays on disk. A person left with no chosen view gets waiting
+   ones moved up. An unnamed entry left with nothing is dropped; a named one
+   is kept, even empty, so its name survives.
+4. It writes through `<file>.part` and a rename, with `"source": {"file",
+   "sha1"}` of `gallery.json`. `Gallery.save` keeps every top-level key
+   besides `people`, so `source` survives every later save.
+
+It runs again only when `gallery.json`'s SHA-1 changes, which only an older
+version can do — after a rollback. Then **the most recently used gallery
+wins**: what the user did on the old version is kept, and the replaced new
+file, with whatever the new version learned before the rollback, is in the
+backup. Merging the two is not attempted: the old file cannot say which of
+its differences are new. What a rollback loses: views and unnamed entries
+the new version learned (their sightings then read "?"), and photos of views
+deleted on the new version (the old file still lists them: a broken image).
+Nothing becomes unreadable.
+
+A bad-detection report taken before the switch holds 128-number embeddings:
+Undo restores its photos first, and `put_back` embeds the entry again from
+them (`refit`; a dog entry is returned as it is). `refit` runs **before**
+`_GALLERY_LOCK` is taken, because a scan holds `_SCAN_LOCK` and then takes
+the gallery lock — the opposite order would deadlock (PYTHON 41).
+
+**Measured on the M900.** A copy of production's `faces/` on 14/10: 10
+entries, 173 views, 173 kept, nothing dropped, 24 s with production running
+beside (32 s in review 23, with another measurement running too). The test
+copy's `gallery.json`, from 29/09, before views had photos, kept none of its
+25 views: the two named people stay, empty, and the five unnamed entries go.
+**Any installation with views that have no photo loses those views** — the
+development PC's may be one.
+
+**What the scan costs** (`scan_clip` on four production clips, dense over the
+whole clip, old code against new): 52.4 → 66.6 s for 110 face views, 13.9 →
+17.7, 27.9 → 32.0 and 11.6 → 12.8 s — about +0.13 s per face view (SCRFD 57
+ms and ArcFace 70 ms against SFace's ~15), +8 % to +27 % a clip, 0 faces
+without landmarks. **What it recognises there:** no view's best named match was
+the other person, in the developer's check and again in review 23's. Sure matches are rarer on clips than on the stored views:
+Gustavo's daytime clip has 4 of 39 views at ≥ 0.40 (dense sampling, review
+23), and the scan recorded him "probably", at 0.349 — the group's heaviest
+view, not its best (0.421; R51).
 
 ---
 
@@ -1929,8 +2017,8 @@ saved as `HH-MM-SS.alert.jpg`; if nothing was sent, it is deleted. The name
 matters: see 19.2.
 
 **Wording (R5).** The face message says `X recognized` only when the match is
-at least `LEARN_THRESHOLD` (0.45) — the bar the gallery already trusts to learn
-from (10.4). Between `MATCH_THRESHOLD` (0.363) and 0.45 it says `probably X`;
+at least `LEARN_THRESHOLD` (0.40) — the bar the gallery already trusts to learn
+from (10.4). Between `MATCH_THRESHOLD` (0.30) and 0.40 it says `probably X`;
 no name, `unknown face`. Messages are in English since 09/10/2026 (CLAUDE.md).
 
 **`notify_prefix`** in `config.json`, empty by default, is put in front of every
@@ -2590,9 +2678,9 @@ Pairing with the PIN makes the server set a cookie — `HttpOnly` (no script can
 
 The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the views the user moved down (up to 100), which recognise nobody — until backlog 28 (13/10) also the views seen after Chosen was full. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping a waiting photo the user did not ask to drop. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
 
-**The 40 manage themselves (backlog 28, 13/10/2026).** A view from a sure match, or brought by naming or merging, enters Chosen while it holds fewer than 40. Once full, `faces.replaced_view` decides: the candidate is the chosen view whose nearest twin is closest — never the favourite; the new view replaces it only when its own nearest chosen view (the candidate included) is farther than that pair, and is otherwise discarded. Ties go to the older view. So the closest pair in Chosen can only grow: a face's identical pairs (cosine 1.00, from repeated scans of one clip) are the first to go. Faces measure `1 - cosine`, dogs `dogs.distance`; for dogs the candidates are the chosen views of the **same lighting** when there is one, so a day view replaces a day view, and a view with no same-lighting twin counts as infinitely different — the first night view of a dog seen only by day enters, and the only night view is never replaced by a day one. A view that leaves goes into `Gallery.dropped`, and `save()` deletes its photo **after** writing `gallery.json`: a failed write leaves an unused photo, never a view without one. `load()` empties `dropped`, like `repoints`. 0.6 ms per face view, 0.5 ms per dog view. `tools/settle_waiting.py [--dry-run]` passes the queues older versions left through the same rule once, oldest first, and empties them; a real run refuses while this folder's J.A.R.V.I.S. answers on its port, and first copies `faces/` and `dogs/` to `backups/waiting_<date-time>/`.
+**The 40 manage themselves (backlog 28, 13/10/2026).** A view from a sure match, or brought by naming or merging, enters Chosen while it holds fewer than 40. Once full, `faces.replaced_view` decides: the candidate is the chosen view whose nearest twin is closest — never the favourite; the new view replaces it only when its own nearest chosen view (the candidate included) is farther than that pair, and is otherwise discarded. Ties go to the older view. So the closest pair in Chosen can only grow: a face's identical pairs (cosine 1.00, from repeated scans of one clip) are the first to go. Faces measure `1 - cosine`, dogs `dogs.distance`; for dogs the candidates are the chosen views of the **same lighting** when there is one, so a day view replaces a day view, and a view with no same-lighting twin counts as infinitely different — the first night view of a dog seen only by day enters, and the only night view is never replaced by a day one. A view that leaves goes into `Gallery.dropped`, and `save()` deletes its photo **after** writing the gallery file: a failed write leaves an unused photo, never a view without one. `load()` empties `dropped`, like `repoints`. 0.6 ms per face view, 0.5 ms per dog view. `tools/settle_waiting.py [--dry-run]` passes the queues older versions left through the same rule once, oldest first, and empties them; a real run refuses while this folder's J.A.R.V.I.S. answers on its port, and first copies `faces/` and `dogs/` to `backups/waiting_<date-time>/`.
 
-**What the rule cannot tell (review 20, R48).** The rule keeps what is most different, and a view of the **wrong person** is, by nature, the most different. Production's queues on 13/10 held 7 faces of Izabel in Gustavo's Waiting, learned by "sure" matches (cosine 0.475–0.509, above `LEARN_THRESHOLD` 0.45) through dark, head-down views of him; while they waited they recognised nobody, but the once-only tool would have put 6 of them into his Chosen. No measure of the embeddings separates them from his genuine views (HISTORY 13.21), so the tool was not run and the release waits for the user (`BACKLOG.md` 2, R48).
+**What the rule cannot tell (review 20, R48).** The rule keeps what is most different, and a view of the **wrong person** is, by nature, the most different. Production's queues on 13/10 held 7 faces of Izabel in Gustavo's Waiting, learned by "sure" matches (cosine 0.475–0.509, above `LEARN_THRESHOLD` 0.45) through dark, head-down views of him; while they waited they recognised nobody, but the once-only tool would have put 6 of them into his Chosen. No measure of the embeddings separates them from his genuine views (HISTORY 13.21), so the tool was not run and the release waited for the user (`BACKLOG.md` 2, R48). **Read again under ArcFace (review 23):** no wrong-person view reached `LEARN_THRESHOLD` on the bench or on real clips — the closest pair of the two people is 0.313, against 0.40 — so the rule shipped with R49. The seven views already misfiled in Gustavo's Waiting stay misfiled: settled under ArcFace, 6 of them still enter his Chosen, because the rule never asks whose a view is. The once-only tool waits until the user deletes them (`PENDING.md`).
 
 ### 17.15 Quiet disconnects (R32, 11/10/2026)
 
@@ -2812,6 +2900,23 @@ middle of an update, on half-switched code. `main()` therefore refuses to start
 while `C:\JARVIS\HOLD` exists. `update` creates it before stopping and
 `start` removes it; `stop` leaves it in place, which is what "stop" should mean.
 
+**Models before the stop (R49, 14/10/2026).** A release that needs new
+models must not wait on the network while production is stopped. After the
+"before" data check, `FetchModels` reads `src/jarvis/downloads.py` **from the
+target tag** with `git show`, writes it to `%TEMP%` and runs it with
+production's current Python against `C:\JARVIS\models`; it fails the update
+before anything changed if the download fails, and skips a tag that has no
+such file. Review 23 found that skip broken: under `$ErrorActionPreference =
+'Stop'`, Windows PowerShell 5.1 turns a redirected stderr line of a native
+command into a terminating error, so `git show` of a missing path threw
+instead of reaching `$LASTEXITCODE` — an update to `v2026.10.13` would have
+aborted. It now lowers the preference around the call, as `CurrentVersion`
+already did (`d07c09e`; PYTHON 41). **A gap in the guarantee above:** the
+first start of a release that migrates the gallery spends about 25 s in
+`migrate_gallery()` before the web answers, and a second launch in that
+window (the 5-minute trigger) passes the already-running check and migrates
+too (R52).
+
 **Two ways production starts, and they do not look the same** (seen on the
 first night, 09/10/2026):
 
@@ -2912,7 +3017,9 @@ memory away.
 So changes to anything below are **additive**: new optional fields, new files.
 A field is never renamed, removed or given a new meaning. If a change cannot be
 additive, the developer stops and tells the user before writing it, and ships a
-migration with it (CLAUDE.md).
+migration with it (CLAUDE.md). **The precedent, 14/10/2026:** new face
+embeddings could not be additive, so they went into a **new file** built from
+the old one, which stays untouched for a rollback (10.14).
 
 ### 19.2 What is on disk
 
@@ -2925,7 +3032,8 @@ migration with it (CLAUDE.md).
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
-| `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
+| `faces/gallery_arcface_w600k_r50.json` | `Gallery.save`, `migrate_gallery` | People, the face scan | **since 14/10/2026** (10.14): `gallery.json`'s schema with 512 floats per embedding, plus `model` and `source` (`file`, `sha1`) at the top |
+| `faces/gallery.json` | `Gallery.save` until `v2026.10.13`; **never written since** | `v2026.10.13` after a rollback, `migrate_gallery`, `check_data` | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
 | `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per chosen or waiting view; a view that leaves is deleted after the save (17.14) |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
@@ -2960,8 +3068,9 @@ unchanged (no BOM).
 
 ### 19.4 `tools/check_data.py`
 
-Reads every event, face sighting, the gallery and `config.json` **with the
-current code**, the way the program reads them (including `web._event`, what
+Reads every event, face sighting, both face galleries — `gallery.json` at
+128 numbers and the current model's file at 512, each when present — and
+`config.json` **with the current code**, the way the program reads them (including `web._event`, what
 the page shows), plus the archive folder if one is configured and reachable.
 Exit code 1 if any file cannot be read.
 

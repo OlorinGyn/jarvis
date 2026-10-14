@@ -47,7 +47,8 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **27.** Notifications as the first part of Settings (decided 12/10, `v2026.10.12.2`) | ARCHITECTURE 22.4 |
 | ✓ | **29.** `/on` and `/off` from the bot; Off never stored (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.7 |
 | ✓ | **30.** Home silences a probable resident: two cases of their own (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.2 |
-| ✓ | **31.** Detection sensitivity per label in Settings (decided 13/10, `45aa0e5`, review 21); **not released** — on `master` with 28, which waits for R48 | ARCHITECTURE 7.14 |
+| ✓ | **31.** Detection sensitivity per label in Settings (decided 13/10, `45aa0e5`, review 21, `v2026.10.14`) | ARCHITECTURE 7.14 |
+| ✓ | **28.** The 40 views manage themselves (decided 13/10, `6345a7d`, `47a2e6a`, review 20; released with R49 in `v2026.10.14`, review 23). The once-only `settle_waiting.py` waits until the user deletes the seven head-tops of Izabel in Gustavo's Waiting (`PENDING.md`) | ARCHITECTURE 17.14 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29 and 30, in `PENDING.md`.
 
@@ -57,28 +58,6 @@ Asked by the user on the evening of 13/10, with the answers to the
 architect's questions the same evening; the measurements behind them were
 taken in production that evening.
 
-28. **The 40 views manage themselves** (decided). A view from a sure match,
-    or brought by naming or merging, enters Chosen while it holds fewer than
-    40. Once full, it enters only if it makes the 40 more varied: it replaces
-    the chosen view whose nearest twin is closest, when the new view is
-    farther from its own nearest chosen view than that pair is — never the
-    favourite — and otherwise it is discarded with its photo. Waiting stops
-    growing. Faces compare by cosine (higher is closer), dogs by
-    `dogs.distance` (lower is closer, `None` between day and infrared: only
-    the same lighting is compared, and a view with no same-lighting twin
-    counts as different). **Why this rule and not "drop near-copies":** a
-    face's waiting views are not near-copies (median cosine to the nearest
-    chosen view 0.48 for the user, 0.44 for Izabel) while the chosen 40 hold
-    identical pairs (1.00); a dog's waiting views are closer to the chosen
-    (median distance 0.25 Aurora, 0.22 Mirana) than the chosen are to each
-    other (0.34, 0.26). **Once, on production:** the existing Waiting queues
-    (30, 35, 28 and 31 views) pass through the same rule and what is left is
-    **deleted — the user chose this on 13/10 knowing it**. A tool with
-    `--dry-run` that copies `faces/` and `dogs/` to `backups/` first; the
-    architect runs it after the deploy. No format change: `pending` stays
-    readable, and empties. **Built** (`6345a7d`, `47a2e6a`) and reviewed
-    (review 20), **not released**: the rule lets a wrong-person view in first
-    — R48 waits for the user.
 32. **The "maybe" threshold, chosen from measured accuracy** (decided; the
     user: with a metric they set the threshold, without one the maybe stays
     as it is). Settings shows, for faces and for dogs, a table measured on
@@ -93,7 +72,10 @@ taken in production that evening.
     their label; at 0.45 at least 8 of 146 are wrong, and the table means
     something only on clean labels, with each view's exact copies left out of
     its own test; and review 21 found that those wrong views are not faces
-    at all, but the top of a head (R49). Even so, 12 unnamed
+    at all, but the top of a head (R49). **Since `v2026.10.14` the model is
+    ArcFace** (thresholds 0.30 / 0.40): the table is computed on it, and
+    means something once the labels are clean — the twelve head-tops deleted
+    and the seven unnamed entries of Izabel named (`PENDING.md`). Even so, 12 unnamed
     face views fall between 0.363 and 0.45; dogs at today's thresholds are
     right in 31 of 33 probable matches, the 2 wrong ones at night. **What it
     cannot measure:** a stranger has no name, so the table shows confusion
@@ -184,12 +166,14 @@ proposes one, the answer is already here.
 
 ## 2. Recommendations, open
 
-The closed ones, with their commits and texts: `HISTORY.md` 13.4.
+The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
+not used**, so that it is never read as the name of ArcFace R50, the face
+model; R48 and R49 closed in review 23.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | decided 14/10: InsightFace's SCRFD + ArcFace; step 2, the switch and the migration, is developer 21 (section 3) |
-| R48 | **high — decided 14/10** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | decided: backlog 28 waits for R49; 31 waits with it |
+| R51 | medium | A clip's face is matched by its heaviest view, not its best: a clip with sure views can be recorded "probably" | open (below) |
+| R52 | low | The gallery migration runs before the log file and before the port is held | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
@@ -197,67 +181,44 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
 
-**R49 — The top or the back of a head passes as a face (high, review 21,
-14/10/2026).** R48's seven "faces of Izabel" are not faces: the contact sheet
-shows the top or the back of her head, bent down or turned away, and five
-views in Gustavo's Chosen are the same of him — 15, 16, 18, 19 and 31 on
-the page, files `55edf5`, `e5bf9c`, `80936d`, `1f8419` and `dbc1b0`. YuNet
-scored them 0.61–0.89 and placed landmarks that `is_frontal` (ARCHITECTURE
-10) accepts: it checks that a face is not turned sideways, not that there is
-a face. The top of one head looks like the top of another, so each of the
-seven matched one of those five, at 0.475–0.509. **The recogniser itself
-tells the two people apart:** between Gustavo's and Izabel's 40 chosen views
-the median similarity is 0.05 and the highest 0.42, under `LEARN_THRESHOLD`;
-each person's views sit at about 0.5 from their own mean and 0.1 from the
-other's. Leave-one-out on the 146 kept faces, those five left out of the
-references: 101 sure and right, **0 wrong**, 45 unrecognised — against 111,
-7 and 28 today. **No measure tried tells a head-top from a face:** YuNet's
-score, the eye-to-mouth height over the eye spread and the embedding's
-length all overlap between the two. What is left to try: a face-quality
-measure, a recogniser made for poor faces, or the user removing them by
-hand. A different recogniser means new embeddings for every gallery — not
-additive, the user's decision. **The user's decision, 14/10/2026:** R49
-comes before everything else, and if much better models exist they will be
-used, with a migration of every gallery (CONTEXT 3). Step 1 is developer
-20's measurement (section 3); step 2, the switch and the migration, is
-planned with its numbers. The user may delete the twelve views now: the
-measurement uses a copy taken before (`backups/r49_faces_20261014/`).
-**Step 1, measured (developer 20, review 22, 14/10/2026; ARCHITECTURE
-10.14).** No model tells a head-top from a face. But InsightFace's SCRFD-10G
-detector, fed the view at 320, and its ArcFace R50 recogniser, aligned on
-SCRFD's points, separate the two named people far better: nothing wrong from
-0.275 with 125 of 134 faces right, against 110 from 0.375 for today's stored
-SFace embeddings. Every head-top's best match is its owner, highest to the
-other person 0.29. **The user's answers, 14/10:** the seven unnamed entries,
-the long-haired woman included, are all Izabel. ArcFace finds her in 18 of
-those 22 views with nothing wrong, where SFace finds at most 5 and puts two
-on Gustavo. And "if it is the best, we use it", which accepts InsightFace's
-non-commercial research licence (CONTEXT 3).
+**R51 — A clip's face is matched by its heaviest view, not its best
+(medium, review 23).** `_group` keeps, for each face in a clip, the view with
+the largest width × YuNet score, and `_scan_clip` matches only that view: its
+score is the sighting's, decides "recognized" or "probably", and decides
+whether anything is learned. Under ArcFace that view is often not the best
+match. Gustavo's daytime clip `Back/2026-10-12/15-44-28`, scanned densely: 39
+views on him, the heaviest at 0.349 — "probably Gustavo" — while his best
+view scores 0.421 and 4 views pass 0.40. In Home it changes nothing (a
+probable resident is silent too, ARCHITECTURE 22.2); in Away it is the
+wording; and fewer views are learned, so Chosen renews more slowly (backlog
+28). **What to measure before changing it:** the score of the best view, of
+the second best and of the median of the three best, against the heaviest's,
+on the four clips of developer 21 and on clips of both residents by day and
+by night (`faces/<day>/*.json` names the clips), with each one's rate of
+wrong best matches. A best-of-N score rises for a stranger too — the more
+views, the likelier one crosses 0.30 — and no stranger has been measured, so
+the choice that adds right answers with the least lift for one-off views
+wins; the HANDOFF carries the table.
 
-**R48 — The 40-view rule lets a wrong-person view in first (high, the
-user's decision, review 20).** Backlog 28 keeps what is most different, and a
-face of the wrong person is the most different of all. Production's queues
-show it is not rare: 7 of the 31 views in Gustavo's Waiting are Izabel's,
-learned by "sure" matches (0.475–0.509 against `LEARN_THRESHOLD` 0.45)
-through dark, head-down views of him. Settled as is, 6 enter his Chosen; with
-the 7 deleted first, the settled galleries recognise 132 of the 146 kept faces
-rightly against 120 today, with 9 wrong against 7 (HISTORY 13.21). No measure
-on the embeddings tells the seven apart, so a guard in code cannot be written
-from today's data. Options: **(a)** the user deletes the 7 from Gustavo's
-Waiting (`PENDING.md`), then the architect releases 28 and runs the tool;
-from then on a wrong sure match enters Chosen instead of waiting, and the
-user sees it on the person's page; **(b)** as (a), and 28 changes so that past
-40 only the user's naming and merging use the rule — a view a scan learns on
-its own is deleted — until backlog 32 sets a sure threshold the user trusts;
-**(c)** hold 28 until 32 is done. The architect recommends **(b)**: Waiting
-stops growing as the user asked, no wrong match can enter a full Chosen, and
-the user's own naming, which is right by definition, still renews the 40.
-**Review 21:** the wrong views are head-tops (R49), and nothing stops a new
-one being learned "sure" through another head-top of the person, so (b)
-still holds until R49 is fixed. **Decided by the user, 14/10/2026:** "no
-reason to change the screen's behaviour without doing R49" — backlog 28 is
-not released before R49; the rule is read again then, with the new model's
-numbers.
+**R52 — The gallery migration runs before the log file and before the port is
+held (low, review 23).** `cameras.main()` calls `migrate_gallery()` before
+`web.start()` and before `log.to_file()`. Two consequences. (1) Production
+runs under `pythonw.exe`, with no console, so the migration's line — views
+kept, "no face", entries dropped, the backup folder — is written nowhere:
+the one record of a non-additive change to the user's data is lost. (2) The
+port is what keeps a second copy out (ARCHITECTURE 18.8), and for the ~25 s
+of the migration it is not held: the 5-minute task trigger, or a click on
+`jarvis.bat`, passes the already-running check and migrates too. The second
+copy's write replaces the first's file with an equivalent one and then exits
+at `web.start()`, so at worst what the first copy learned or the user did in
+those seconds is lost; a collision of the two `.part` writes needs both to
+finish within milliseconds of each other. **Fix:** log the result after
+`log.to_file()`, and serialise the migration across processes —
+`filelock`'s `FileLock` beside the gallery (pure Python, well regarded,
+released by the operating system if the process dies; PROCESS 5.2), so the
+second copy waits, finds the hash unchanged and does nothing. A test with two
+threads standing in for two processes is enough for the lock; the log line is
+read in `logs/jarvis.log` on the test copy.
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -289,89 +250,34 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 22 is done, without a release:** developer 20's measurement of R49,
-step 1 (ARCHITECTURE 10.14, HISTORY 13.23). Backlog 28 and 31 still sit on
-`master` and wait for R49. Production stays on `v2026.10.13`. The next
-release carries R49, 28 and 31.
+**Review 23 is done, with a release:** developer 21's R49 step 2 — SCRFD and
+ArcFace R50, the gallery migration, the models fetched before the stop — with
+backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
 
-**Developer 21 (planned 14/10): R49 step 2, the switch to InsightFace and
-the migration of every gallery.** This is the user's decision: InsightFace's
-models if they are the best, with their licence accepted (CONTEXT 3). Read
-ARCHITECTURE 10.14 and HISTORY 13.23 first. Not released after this session:
-review 23 reads backlog 28's rule again with the new numbers before R49, 28
-and 31 ship together.
+**Developer 22 (planned 14/10): R52, R51, then R30 (b).**
 
-1. **The best InsightFace recogniser, measured first.** Add `antelopev2`
-   to `face_bench.py`. It comes from the same author's release,
-   `github.com/deepinsight/insightface/releases/download/v0.7/antelopev2.zip`,
-   361 MB, and holds the same SCRFD-10G and the R100 recogniser trained on
-   Glint360K (`glintr100.onnx`). Run R100 next to R50 (`w600k_r50` from
-   `buffalo_l`), both on SCRFD at 320. Two changes to the bench first:
-   - **Labels:** the seven unnamed entries in the backup are all Izabel (the
-     user, 14/10). They are `p_a8ef5acd`, `p_385283de`, `p_4e2d9f32`,
-     `p_6c76506e`, `p_5bc580f7`, `p_d26b745a` and `p_c5ed26cc`. Their 22
-     views join the probes as Izabel's, the hardest ones she has.
-   - **Alignment:** `arcface_crop` gives way to
-     `FaceRecognizerSF.alignCrop`, fed SCRFD's points in YuNet's 15-number
-     row. It is insightface's least-squares fit, pixel for pixel; LMEDS was
-     not.
+1. **R52 first** (section 2): the migration's line into `logs/jarvis.log`,
+   and `filelock` around `migrate_gallery`. A new dependency: check that
+   `filelock` is pure Python (no `.pyd`), as PROCESS 5.3 asks of anything
+   new on the M900.
+2. **R51** (section 2): the table first, the change only if it wins. Use
+   `tools/face_tuning.py` or a script in the scratchpad; production's clips
+   are readable from `C:\JARVIS\clips` without copying them all.
+3. **R30 (b)** (HISTORY 13.12): with ArcFace, measure whether the frontal
+   gate can be loosened. `is_frontal` rejects faces turned more than
+   `MAX_NOSE_OFFSET` 0.35 or with an eye spread under `MIN_EYE_SPREAD` 0.38;
+   on both residents' clips, score the three-quarter faces it rejects against
+   the person's own Chosen, and loosen only as far as the right person still
+   wins, with nothing wrong. `face_tuning.py` already prints both measures per
+   face. Report the gain in faces per clip, and the cost (each face now costs
+   ~0.13 s more, ARCHITECTURE 10.14).
 
-   The rule: R100 only if it gets clearly more right at zero wrong on the
-   clean set plus the 22, and only if its scan cost on the M900 is
-   acceptable (point 5). Otherwise R50, which is twice as fast. The table
-   goes in the HANDOFF.
-2. **The pipeline in `faces.py`.** Detection on the frame stays YuNet. For
-   each YuNet face, SCRFD at 320 runs on the full-size region around it,
-   where `_refine` runs today, and gives the five points. The chosen ArcFace
-   embeds after `alignCrop`. SCRFD's decoding moves from the bench into the
-   program. Today's `is_frontal` gate on YuNet's row stays unless a
-   measurement says otherwise. A face SCRFD does not find in the region is
-   dropped, and counted in the scan's log line. The networks are shared
-   objects, behind `_SCAN_LOCK` as today.
-3. **Thresholds, from measurement.** `MATCH_THRESHOLD`, `LEARN_THRESHOLD`
-   and `SAME_FACE_THRESHOLD` (the grouping within a clip) take the chosen
-   model's values, from the bench's sweep. The HANDOFF gives the numbers
-   behind each. The developer's starting point was sure 0.40 and maybe 0.30
-   for R50. With no stranger in the data, err towards fewer sure matches.
-4. **The migration — the hard part. A rollback must keep working.**
-   `production.ps1` rolls back to `v2026.10.13` on its own if the new
-   version fails. So the old version must still find a `gallery.json` it
-   reads. The new version therefore writes its gallery to a **new file**
-   next to it, built once from `gallery.json` by embedding every view again
-   from its 300 px photo, and leaves `gallery.json` as it was. Production
-   has 106 chosen and 67 waiting views on 14/10, every one with its photo.
-   - Ids stay the same, so the sightings in `faces/<day>/` still point
-     right.
-   - A view where SCRFD finds no face is decided by measurement and
-     reported.
-   - The galleries are copied to `backups/` first.
-   - The new file carries the model's name, so that a later change of model
-     is detected the same way.
-   - `check_data.py` reads both files. Every tool that reads the gallery
-     follows `GALLERY_FILE`. Embeddings of different lengths are never
-     compared, because `np.dot` raises.
-   - If writing a new file is wrong for a reason the developer finds, stop
-     and say so in the HANDOFF. The rule is the user's: generated files
-     never break.
-5. **Cost.** Time `scan_clip` before and after on three real person clips
-   from production's `clips/`, through this copy. Report seconds per clip
-   and per face.
-6. **The models in production.** `ensure_models` fetches the zip from the
-   release, keeps the two files it needs and deletes the zip. A deploy must
-   never wait on the network: the models are on disk before production
-   stops. One way is a stdlib-only script that `production.ps1` runs from
-   the target tag before `StopService`. The developer chooses, and says
-   which in the HANDOFF.
+**HANDOFF:** R51's table and the choice; R30 (b)'s per-limit table; the log
+line as written by the test copy. If the session runs short, stop after a
+coherent commit and say what is left.
 
-**HANDOFF:** the R50/R100 table and the choice; the thresholds; the
-migration's behaviour on the backup copy and on a copy of production's
-`faces/`; the scan's cost; and what review 23 should look at hardest.
-If the session runs short, stop after a coherent commit and say what is
-left.
+**Waits for the user:** R42; backlog 32 can be built now but means something
+once the labels are clean (`PENDING.md`); the once-only settle of backlog 28.
 
-**Waits for the user:** R42; backlog 32 waits for R49
-(its table means something only on clean labels and on the final model).
-
-**Not planned:** R30 (b) joins a later session — with a new detector it is
-measured again anyway; R47 is a watch. R14, R12 and R9 as before. Every other
-open backlog item is **(proposto)**.
+**Not planned:** R47 is a watch. R14, R12 and R9 as before. Every other open
+backlog item is **(proposto)**.

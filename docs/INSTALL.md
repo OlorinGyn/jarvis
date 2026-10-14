@@ -180,11 +180,19 @@ not be versioned:
 |---|---|---|
 | `models/yolo11s.onnx` | 36 MB | ultralytics/assets (official release) |
 | `models/face_detection_yunet_2023mar.onnx` | 227 KB | opencv/opencv_zoo |
-| `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo |
+| `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo (only its alignment is used since 14/10/2026) |
+| `models/buffalo_l/det_10g.onnx` and `w600k_r50.onnx` | 182 MB | InsightFace's `buffalo_l.zip` release (289 MB, about 13 s on the M900; the zip is deleted) |
 
 The models are downloaded by `people.ensure_model()` and
 `faces.ensure_models()` the first time each layer runs. `install.bat` does it
 ahead of time so the first event does not wait for the download.
+
+**The first start of `v2026.10.14` or later on a machine with a face gallery**
+builds `faces/gallery_arcface_w600k_r50.json` from `faces/gallery.json`,
+embedding every stored view again from its photo — about 25 s for 173 views
+on the M900 — before the page answers. `gallery.json` is left as it was, and
+both are copied to `backups/` first (ARCHITECTURE 10.14). A view with no
+photo cannot be embedded again and is left out.
 
 ## 4. Configuring the cameras
 

@@ -1772,3 +1772,83 @@ overridden getter. `PIPELINES` maps each name to a **factory**, either the
 class itself or a `lambda` that calls it with arguments, so a model is loaded
 only when its pipeline is picked — a `Map<String, Supplier<Pipeline>>`.
 
+
+## 41. A migration that survives a rollback: zip members, atomic writes, a hash, and lock order (R49)
+
+R49 step 2 changed every face embedding from SFace's 128 numbers to ArcFace's
+512. Vectors from two networks live in **different spaces**: even at the same
+length, a cosine between them would mean nothing. So every stored view is
+embedded again from its photo, and `cosine` returns 0.0 for two lengths
+instead of letting `np.dot` raise. The interesting part is how the new file is
+built so that the old version still works after a rollback (ARCHITECTURE
+10.14). Five small tools do it.
+
+**One member of a zip, without extracting the rest.** InsightFace ships
+`buffalo_l.zip` (289 MB, five models); the program needs two:
+
+```python
+with zipfile.ZipFile(archive) as bundle:
+    for name in missing:
+        partial = folder / f"{name}.part"
+        partial.write_bytes(bundle.read(name))
+        partial.replace(folder / name)
+```
+
+`ZipFile.read(name)` decompresses only that member — Java's
+`ZipFile.getInputStream(entry)`. The `with` closes the archive even on an
+exception, so the `finally: archive.unlink(...)` around it can delete it.
+
+**Write beside, then rename.** `partial.replace(target)` is `os.replace`: on
+the same volume it is an atomic rename, so a reader sees the old file or the
+new one, never half of one — .NET's `File.Replace`, Java's
+`Files.move(..., ATOMIC_MOVE)`. A crash mid-write leaves a stray `.part`, not
+a truncated gallery.
+
+**`collections.Counter`**, a `dict` whose missing keys read as 0, is the
+migration's tally:
+
+```python
+tally = Counter()
+tally["no face"] += 1
+```
+
+No `tally.get("no face", 0) + 1`, and no `defaultdict(int)` to declare.
+
+**A hash as a change detector between two programs.** The new file records
+`hashlib.sha1(gallery_json_bytes).hexdigest()` of the file it was built from.
+The new version never writes `gallery.json`, so a different hash at start can
+only mean an older version ran meanwhile — a rollback — and the migration runs
+again. Comparing timestamps would be fragile (a copy changes them); comparing
+content by hash is not. SHA-1 is fine here: nobody attacks this file; it only
+has to notice a change.
+
+**Lock order.** A scan takes `_SCAN_LOCK` (the networks) and, inside, the
+gallery's `_GALLERY_LOCK`. Undoing an old report must embed photos (needs
+`_SCAN_LOCK`) and then write the gallery (needs `_GALLERY_LOCK`). If it took
+the gallery lock first and then waited for the scan lock, while a scan held
+the scan lock and waited for the gallery lock, both would wait forever — the
+classic deadlock, same as two Java `synchronized` blocks in opposite orders.
+So `put_back` calls `refit` **before** it takes `_GALLERY_LOCK`: every thread
+takes the two locks in the same order, or not at the same time.
+
+**PowerShell: reading a file from another version, and a 5.1 trap.**
+`git show v2026.10.14:src/jarvis/downloads.py` prints a file as it is in that
+tag, without checking anything out; `production.ps1` runs it before stopping
+production. A native program's exit code is in `$LASTEXITCODE`, not in
+`$?`'s exceptions. The trap, found in review 23: with
+`$ErrorActionPreference = 'Stop'` at the top of the script, Windows
+PowerShell 5.1 wraps each line a native command writes to a **redirected**
+stderr (`2>$null`, `2>&1`) in an error record — and `Stop` makes that record
+throw. So `git show` of a missing path threw before the
+`if ($LASTEXITCODE)` line could run:
+
+```powershell
+$previous = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$source = git -C $ProdDir show "${Version}:src/jarvis/downloads.py" 2>$null
+$found = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $previous
+```
+
+`CurrentVersion`, in the same script, already did this; the M900 runs 5.1,
+the PowerShell Windows ships.
