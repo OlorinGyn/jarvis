@@ -181,14 +181,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 21, covers
-up to `865eb7f`** (developer 19's handoff; no release); the next starts from
+The table of every review is `HISTORY.md` 13.2. **The last review, 22, covers
+up to `706883b`** (developer 20's handoff; no release); the next starts from
 the commit after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.22, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.23.
+`HISTORY.md` 13.3 to 13.23, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.24.
 
 ---
 

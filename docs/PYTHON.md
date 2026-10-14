@@ -1684,3 +1684,91 @@ label added there is editable here with no second list.
 `True + True` is 2. Java and C# keep `boolean` and `int` apart, so the second
 test has no equivalent there.
 
+## 40. A face pipeline in four steps, and how to compare two models fairly (R49)
+
+`tools/face_bench.py` (ARCHITECTURE 10.14) runs other people's networks by
+hand, so it shows what OpenCV's `FaceDetectorYN` and `FaceRecognizerSF` had
+been doing out of sight.
+
+**Detector, landmarks, alignment, embedding.** A detector (YuNet, SCRFD)
+gives a box and five points: the eyes, the nose tip and the mouth corners. A
+recogniser (SFace, ArcFace) does not take the box. It takes a 112×112 crop in
+which those five points land on fixed spots, a template, so that every face
+it sees is posed the same way. The step between is a **similarity
+transform**, a rotation plus one scale plus a shift, fitted from the five
+detected points to the five template points. The bench does it this way:
+
+```python
+matrix, _ = cv2.estimateAffinePartial2D(points, ARCFACE_POINTS * (size / 112), method=cv2.LMEDS)
+return cv2.warpAffine(image, matrix, (size, size), borderValue=0.0)
+```
+
+LMEDS is a robust fit that may throw away a point it judges an outlier, and
+on 19 of 146 views it did. With five points and no real outliers, plain least
+squares is the right fit, and OpenCV already has one: SFace's
+`FaceRecognizerSF.alignCrop` aligns onto ArcFace's own template, so it serves
+any recogniser trained on that template. Given SCRFD's points in YuNet's row
+layout — the box, ten coordinates and the score, 15 numbers — it gave
+exactly the crop insightface makes, pixel for pixel. The switch uses it.
+Better points mean a
+better-aligned crop, which is why changing only the detector moved ArcFace
+from 36 right answers to 125. The final step, the **embedding**, is the
+recogniser's output: 128 numbers for SFace, 512 for ArcFace, compared by
+cosine.
+
+**Decoding a detector's raw output** (`Scrfd.detect`). OpenCV wraps YuNet's
+decoding; SCRFD comes as a bare ONNX graph, so the tool does it. The network
+looks at the image through three grids, one cell every 8, 16 and 32 pixels,
+with two anchors per cell. For each anchor it outputs a score, four distances
+from the cell centre to the box edges, and ten offsets to the landmarks:
+
+```python
+grid = np.stack(np.mgrid[:side, :side][::-1], axis=-1).reshape(-1, 2)
+centres = np.repeat(grid * stride, 2, axis=0)
+box = [cx - d0, cy - d1, cx + d2, cy + d3]
+```
+
+`np.mgrid` builds two arrays of row and column indices, the same as two
+nested `for` loops written as data. `[::-1]` swaps them to (x, y), and
+`np.repeat(..., 2, axis=0)` writes each centre twice, once per anchor. The
+anchors whose score clears the threshold become boxes. Non-maximum
+suppression (`cv2.dnn.NMSBoxes`) then keeps, among boxes that overlap, only
+the most confident. In Java terms it is a stream over every grid cell,
+filtered by score and then deduplicated.
+
+**ONNX export.** AdaFace and MagFace ship as PyTorch weights.
+`torch.onnx.export` runs the network once on a sample input, records every
+operation it performs, and writes that graph to a file. `cv2.dnn` then runs
+the file with no PyTorch at all. It is like compiling a C# project to a DLL
+that another program loads without the compiler. The export ran once, in a
+throwaway environment, and only the `.onnx` file stayed.
+
+**Comparing models with different scales.** Each model's cosines live on
+their own scale: SFace calls 0.45 "sure", while ArcFace puts two different
+people at 0.31 at most. A single shared threshold would favour whichever
+model happens to score high. So the bench uses **leave-one-out**: each view
+is matched against all the others, with itself and its exact copies left
+out, as if it were a new photo. It then **sweeps** the threshold and reports
+the first threshold at which nothing is wrong, together with how many are
+right there. "0.275 → 125" against "0.375 → 110" compares the two models at
+equal safety, each on its own scale. It is a cross-validation, the same idea
+as holding out test data in any classifier.
+
+**An embedding's length as quality.** Cosine ignores a vector's length, so
+a recogniser's raw output is free to carry it. AdaFace and MagFace are
+trained so that the length grows with how recognisable the face is. A
+head-top should come out short. It did not: lengths of 14–21 on head-tops
+against 14–21 on faces (AdaFace), 20–31 against 20–28 (MagFace), and 10–21
+against 9.5–21 for ArcFace, which makes no such promise. The idea is sound, but this house's
+head-tops look enough like faces to the networks.
+
+**Data that a subclass overrides.** `ArcFace(AdaFace)` and `MagFace(AdaFace)`
+change only class attributes: `model = BENCH_DIR / ...` and
+`pixels = (scale, mean, rgb)`. `self.model` inside `AdaFace.__init__` reads the
+subclass's value, because Python looks an attribute up on the object's own
+class first. Java's static fields are not looked up that way: a static read
+through `this` resolves at compile time. The nearest Java equivalent is an
+overridden getter. `PIPELINES` maps each name to a **factory**, either the
+class itself or a `lambda` that calls it with arguments, so a model is loaded
+only when its pipeline is picked — a `Map<String, Supplier<Pipeline>>`.
+

@@ -121,6 +121,7 @@ jarvis/
 │   ├── check_data.py     reads every file on disk with the current code (19.4)
 │   ├── replay.py         why each frame of a video was kept or dropped (12.10)
 │   ├── face_tuning.py, dog_tuning.py   measure the matching thresholds
+│   ├── face_bench.py     candidate face pipelines on a copy of faces/ (10.14)
 │   ├── dog_crops.py      crops past dog events into the dog gallery (20)
 │   ├── diagnose.py       variants of the capture command; --local without a camera
 │   ├── probe_rtsp.py     raw RTSP (DESCRIBE → SETUP → PLAY)
@@ -1570,6 +1571,104 @@ the full 1080p frame, where the alignment needs the detail: 45 ms per frame
 instead of 137, with 6 % fewer frontal face frames on 455 test frames — a face
 is seen in many frames of an event, so the loss per event is smaller. Outside
 events the scan no longer halves live analysis.
+
+### 10.14 Stronger face models, measured (R49 step 1, 14/10/2026)
+
+**Why.** YuNet takes the top or the back of a head for a face, `is_frontal`
+passes it, and under SFace those views drew wrong "sure" matches (R49). The
+user allowed much better models, with a migration of every gallery
+(CONTEXT 3). Step 1 only measures: nothing in the program changed.
+
+**The tool.** `tools/face_bench.py` reads a copy of production's `faces/`
+(`backups/r49_faces_20261014`: Gustavo and Izabel, 146 views, twelve of them
+head-tops labelled by hand) and runs each candidate pipeline over every
+300 px view — what a migration would embed again. Per pipeline: head-tops
+accepted as a face; leave-one-out against both people's Chosen, each probe's
+exact copies (same JPEG bytes or same embedding) left out, **today** (146
+probes against all 80 Chosen) and **clean** (134 faces against the 75 Chosen
+that are faces); a threshold sweep 0.20–0.60 with the first threshold at
+which nothing is wrong; how far apart the two people sit; cost on the M900
+and model size. Every model runs through `cv2.dnn` — no new dependency.
+`--pipelines` picks some, `--json` saves every number; a pipeline whose model
+is missing from `models/bench` is skipped.
+
+| Pipeline, on the 300 px views | Head-tops accepted | Faces rejected | Clean: no wrong from → right, of 134 | Closest cross pair | Detect / embed ms | MB |
+|---|---|---|---|---|---|---|
+| stored: YuNet + SFace on the clip, today | 12 | 0 | 0.375 → 110 | 0.498 | — | 37 |
+| YuNet + `is_frontal` + SFace again | 0 | 95 | 0.200 → 38 | 0.288 | 30 / 15 | 37 |
+| **SCRFD-10G at 320 + ArcFace R50** (from buffalo_l) | 12 | 0 | **0.275 → 125** | 0.313 | 53 / 67 | 182 |
+| buffalo_l whole: SCRFD at 640, score ≥ 0.5, 3D pose | 2 | 27 | 0.200 → 106 | 0.276 | 220 / 130 | 319 |
+| YuNet + ArcFace R50 | 12 | 3 | 0.475 → 36 | 0.478 | 26 / 68 | 167 |
+| SCRFD + SFace | 12 | 0 | 0.550 → 22 | 0.538 | 233 / 15 | 265 |
+| AdaFace IR-101, on YuNet / on SCRFD | 12 | 3 / 0 | 0.475 → 34 / 0.500 → 44 | 0.597 / 0.505 | 26 or 204 / 125 | 249–265 |
+| MagFace iResNet50, on YuNet / on SCRFD | 12 | 3 / 0 | never / 0.600 → 32 | 0.760 / 0.640 | 26 or 204 / 68 | 167–183 |
+
+The tool prints every row, eleven pipelines and the stored baseline, which
+reproduces review 21's 111 / 7 / 28.
+
+**What it shows.**
+
+1. **No candidate tells a head-top from a face.** SCRFD's score is the best
+   cue and still overlaps (head-tops 0.22–0.65: at ≥ 0.5 it keeps 2 of 12
+   and loses 27 of 134 faces). The 3D landmark model fits a face pose onto
+   the top of a head (11 of 12 at pitch ≥ −20°). The embedding's length,
+   AdaFace's and MagFace's quality cue, overlaps for all three recognisers.
+   CR-FIQA has no licence in its repository and was not used.
+2. **Under ArcFace a head-top stops being dangerous** — on these two people.
+   Every head-top's best match is its owner; the highest to the other person
+   is 0.29. "Today", head-tops kept among the references, has 0 sure wrong
+   against SFace's 7.
+3. **The recogniser that wins is ArcFace aligned on SCRFD's landmarks.**
+   Both are needed: ArcFace on YuNet's points gets 36, SFace on SCRFD's 22.
+   Better points give a better-aligned crop. SCRFD fed the 300 px view at
+   320 beats 640.
+4. **AdaFace and MagFace are worse here**, with each one's better colour
+   order; AdaFace's export matched PyTorch at cosine 1.0.
+5. **Today's gate cannot run again on the views.** YuNet + `is_frontal`
+   rejects 95 of 134 faces on the 300 px JPEG that passed on the clip. Any
+   gate in a migration must be measured on the views.
+
+**The review's two findings** (HISTORY 13.23). **Alignment:** the tool maps
+the five points with `cv2.estimateAffinePartial2D` and LMEDS, which may drop
+a point as an outlier; insightface fits all five by least squares. OpenCV's
+own `FaceRecognizerSF.alignCrop`, given SCRFD's points in YuNet's row layout,
+is that least-squares fit onto the same 112 px template — pixel-identical to
+it on all 146 views. LMEDS differs on 19 views, cosine as low as 0.57, though
+the totals barely move (sure right 88 → 89 at 0.40). The switch uses
+`alignCrop`. **Only two people:** the gallery's seven unnamed entries, 22
+views, all match Izabel best under ArcFace, up to 0.546. Three of them, 11
+views, show a woman with long loose hair. If she is someone else, ArcFace at
+a 0.40 sure threshold would learn 2 of her views as Izabel (0.546 and 0.469)
+where SFace at 0.45 learns none (0.372 at most), though SFace calls two of
+them "probably Gustavo" (0.405, 0.385). If she is Izabel, ArcFace recognises
+her where SFace cannot. Named as her own person, both models give all 11 of
+her views to her. The user's answer is in `PENDING.md`.
+
+**Cost.** The scan embeds every frontal face of every sampled frame — up to
+360 frames a clip, 300 of them dense where a person was seen (12.9). About
+120 ms a face instead of 20 makes a long person event's scan seconds longer.
+It runs off the live path (10.1) and pauses while a camera records, but step
+2 measures it on real clips.
+
+**Licences**, the user's to weigh. InsightFace's code is MIT; its pretrained
+models, buffalo_l included, are "for non-commercial research purposes only",
+and since 24/11/2025 its README sends licensing of its open recognition
+models to recognition-oss-pack@insightface.ai (read 14/10/2026). AdaFace's
+code is MIT and its weights were trained on WebFace12M (research only).
+MagFace's code is Apache-2.0 and its weights were trained on MS1MV2 (research
+only). YuNet and SFace are MIT and Apache-2.0.
+
+**Filling `models/bench`** (ignored by git, about 1.7 GB with the downloads):
+`buffalo_l.zip` from
+`github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip`,
+unzipped into `models/bench/buffalo_l/`; `meanshape_68.pkl` from the
+insightface repository (`python-package/insightface/data/objects/`); AdaFace
+IR-101 from `huggingface.co/minchul/cvlface_adaface_ir101_webface12m` and
+MagFace iResNet50 from its README's Google Drive link, each exported once to
+ONNX in a throwaway venv with PyTorch 2.14 CPU (`torch.onnx.export`,
+`dynamo=False`, opset 17, strict weight loading) as
+`models/bench/adaface_ir101_webface12m.onnx` and
+`models/bench/magface/magface_iresnet50.onnx`.
 
 ---
 

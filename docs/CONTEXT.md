@@ -71,7 +71,10 @@ dependencies. Measured 09/10/2026 on the same blob, CPU against CPU:
 `cv2.dnn` 37.8 ms, `onnxruntime` 34.6 ms, identical output — another ONNX
 runtime would buy nothing; the real loss was GPU to CPU, which the M900 cannot
 undo (ARCHITECTURE 7.11). The low dependency count that followed is **not a
-merit of the project** (`PROCESS.md` 5).
+merit of the project** (`PROCESS.md` 5). On 14/10/2026 PyTorch 2.14 CPU
+imported under Smart App Control on the M900, in a throwaway environment used
+once to export two face models to ONNX (ARCHITECTURE 10.14). The program
+still does not need it: `cv2.dnn` ran every model measured.
 
 **The official signed Python, not the one `uv` downloads.** Smart App Control
 lets an unsigned Python run only while Microsoft's cloud gives it a good
@@ -182,6 +185,7 @@ tools/
   check_data.py   reads every file on disk with the current code (ARCHITECTURE 19)
   replay.py       why each frame of a video was kept or dropped (ARCHITECTURE 12.10)
   face_tuning.py, dog_tuning.py, dog_crops.py   measure thresholds; crop past dog events
+  face_bench.py   candidate face pipelines on a copy of faces/ (R49; models in models/bench)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -243,6 +247,7 @@ powershell Test-NetConnection <ip> -Port 554            does the camera answer o
 uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
+uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg

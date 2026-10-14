@@ -216,6 +216,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 19 | 13/10/2026 | `v2026.10.12.4..594fbc6`, developer session 17 — R46, backlog 30 and 29 | no code fixed; R46 replayed on `15-00-17` (no dog left) and on two true dogs with a person (nothing relabelled); 208 tests pass, `check_data` reads every file; R46 closed, R47 opened (low, a watch); release `v2026.10.13`, deployed at 22:22: 913 events, 200 face and 363 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start, `/api/status` says `"analysis": "On"` (13.20) |
 | 20 | 13–14/10/2026 | `v2026.10.13..212179e`, developer session 18 — backlog 28 | no code fixed: the rule does what item 28 says; 216 tests pass, `check_data` reads every file. **Not released**: on a copy of production's galleries the rule would have put 6 of Izabel's faces, misfiled in Gustavo's Waiting by wrong "sure" matches, into his Chosen; the once-only tool was not run and R48 waits for the user (13.21) |
 | 21 | 14/10/2026 | `0f68445..865eb7f`, developer session 19 — backlog 31 | no code fixed; 234 tests pass, `check_data` reads every file; at the defaults the detector decides as before on R46's three clips, replayed old against new. **Not released**: 31 waits on `master` with 28. The user's objection to R48 led to its cause: the seven wrong views and five of Gustavo's references are the top of a head, not a face — R49 (13.22) |
+| 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); a possible third person in the unnamed entries would be learned as Izabel by ArcFace at 0.40 — two questions to the user; no release, no developer planned (13.23) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1312,6 +1313,68 @@ old one logged as a bias (PROCESS 5.3). Production's `faces/` was copied to
 now and the measurement keeps them; developer 20 is planned with R49's
 measurement (BACKLOG 3).
 
+### 13.23 Review 22 — developer session 20 (14/10/2026)
+
+R49 step 1 reviewed whole (`865eb7f..706883b`, one code commit: the new
+`tools/face_bench.py`, 523 lines; nothing in `src/`). 234 tests pass; no
+comments in `src/` and `tools/`; `check_doc_refs` exits 0. **No code fixed,
+no release.** The measurement and its table are in ARCHITECTURE 10.14.
+
+**The code, read against insightface's own.** `Scrfd.detect` matches
+insightface's `scrfd.py`: input scaled by 1/128 around 127.5 in RGB, anchor
+centres from `np.mgrid` with each centre repeated once per anchor, boxes and
+landmarks as distances from the centre times the stride, NMS at 0.4. Two
+differences are too small to matter. It divides by the float scale where
+insightface divides by the rounded one, and OpenCV's NMS measures areas
+without insightface's +1. The 3D landmark model's pose follows
+`landmark.py`. Its `z` is not rescaled by the inverse transform, which does
+not matter: only the first two rows of the fitted 3×4 matrix give the
+rotation. The colour orders and normalisations of ArcFace, AdaFace and
+MagFace match their authors' loaders. The leave-one-out could have favoured
+the stored embeddings, which skip a reference with the same embedding as
+the probe while a re-embedded pipeline skips only the same bytes. It does
+not: no two views share an embedding without sharing their bytes, and no
+two different photos are above 0.99. The stored baseline reproduces review
+21's 111 / 7 / 9 / 0 / 19.
+
+**Alignment, measured.** `arcface_crop` fits the five points with
+`estimateAffinePartial2D` and LMEDS. Least squares (Umeyama), which is what
+insightface's scikit-image call computes, was run on SCRFD-at-320's points.
+Its totals barely move: zero-wrong 0.275 → 125 both, sure right at 0.40 88
+→ 89. But 19 of the 146 embeddings differ, with a cosine as low as 0.57.
+LMEDS drops points it judges outliers. OpenCV's own
+`FaceRecognizerSF.alignCrop`, fed SCRFD's points in YuNet's 15-number row,
+gives the least-squares crop pixel for pixel on all 146 views: same
+template, no transform written by hand. Step 2 uses it.
+
+**Only two people, checked against a third.** The developer flagged it: the
+separation is measured on Gustavo and Izabel alone. The backup holds seven
+unnamed entries, 22 views. Under ArcFace every one matches Izabel best, up
+to 0.546. Under SFace, today's matcher, they split between Izabel (up to
+0.400) and Gustavo (up to 0.405). A contact sheet shows two kinds. Three
+entries, 11 views, are a woman with long loose hair, sometimes with glasses.
+Two entries show grey hair tied back and a red top, like Izabel's photos,
+and two are unclear. If the long-haired woman is someone else, ArcFace at a
+0.40 sure threshold would learn two of her views as Izabel (0.546, 0.469),
+and six more would be "probably Izabel" at 0.30. SFace at 0.45 learns none,
+since 0.372 is her highest to Izabel. At 0.363 it calls two of them
+"probably Gustavo" and up to three "probably Izabel". Named as her own person, both models give all 11 of her
+views to her: her other views beat Izabel's every time. If she is Izabel,
+ArcFace recognises her where SFace cannot. The architect cannot tell from
+the pictures, and the answer decides whether 0.40 is safe. It went to the
+user (`PENDING.md`).
+
+**The licence, checked.** InsightFace's README, read 14/10/2026, confirms
+the developer's quote. The code is MIT. The training data and the models
+trained on it are "for non-commercial research purposes only". An update
+dated 2025-11-24 sends licensing of the open recognition models, buffalo_l
+named, to recognition-oss-pack@insightface.ai. That is the user's call too.
+
+**Documentation.** ARCHITECTURE 10.14 (new) and the file tree; CONTEXT 3
+(PyTorch imported under Smart App Control, not needed), 9 and 10; PYTHON 40;
+BACKLOG 2 (R49) and 3 (step 2's frame); PENDING. No developer session
+planned: step 2 waits for the user's two answers.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1366,3 +1429,5 @@ of `CONTEXT.md`.
 | A27 | architect | ultracode | 13/10 22:36 – 14/10 10:15 | review 20: production's galleries copied and settled, three recognition measurements, contact sheets of 146 faces, R48; HANDOFF integrated, PYTHON 38; no release; developer 19 planned. The connection dropped overnight mid-measurement and the session resumed in the morning | 42% → unknown at the drop; 0% → 7% in the new window | 15% → 17% | 91k → about 230k tokens, a new conversation |
 | D19 | developer | high | 14/10 morning | session 19: backlog 31 — three minimums in Settings, read without a restart (234 tests) | 7% → 14% | 17% → 18% | 125k tokens at the end, a new conversation |
 | A28 | architect | ultracode | 14/10 10:05–10:40 | two questions from the user (where the work stands, the decisions waiting), then review 21: three clips replayed old against new, the user's objection to R48 measured — cross-person similarity, a contact sheet, leave-one-out without the five head-tops, three quality cues — R49; the EPUB list; the user's answer: R49 first, better models allowed — CONTEXT 3 reopened, production's faces copied, developer 20 planned | 14% → 25% (the questions before the review cost under a point) | 18% → 19% | 84k → 208k tokens, the conversation the user opened this morning |
+| D20 | developer | high | 14/10 morning | session 20: R49 step 1 — `tools/face_bench.py`, eleven pipelines measured, AdaFace and MagFace exported to ONNX once | 25% → 35% | 19% → 21% | 188k tokens at the end, a new conversation |
+| A29 | architect | ultracode | 14/10 11:05–11:20 | review 22: `face_bench.py` read against insightface's code, the baseline and SCRFD + ArcFace run again, the alignment measured three ways, the unnamed entries matched and a contact sheet, the licence read; HANDOFF integrated, ARCHITECTURE 10.14, PYTHON 40; no release, two questions to the user | 38% → 47% at the commit | 21% → 22% | 97k → 220k tokens, a new conversation |

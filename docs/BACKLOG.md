@@ -188,7 +188,7 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | open (below): developer 20 measures stronger models |
+| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | step 1 measured (review 22): SCRFD + ArcFace R50 leads on two people; step 2 waits for two answers from the user (`PENDING.md`) |
 | R48 | **high — decided 14/10** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | decided: backlog 28 waits for R49; 31 waits with it |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
@@ -222,6 +222,17 @@ used, with a migration of every gallery (CONTEXT 3). Step 1 is developer
 20's measurement (section 3); step 2, the switch and the migration, is
 planned with its numbers. The user may delete the twelve views now: the
 measurement uses a copy taken before (`backups/r49_faces_20261014/`).
+**Step 1, measured (developer 20, review 22, 14/10/2026; ARCHITECTURE
+10.14).** No model tells a head-top from a face. But InsightFace's SCRFD-10G
+detector, fed the view at 320, and its ArcFace R50 recogniser, aligned on
+SCRFD's points, separate the two named people far better: nothing wrong from
+0.275 with 125 of 134 faces right, against 110 from 0.375 for today's stored
+SFace embeddings. Every head-top's best match is its owner, highest to the
+other person 0.29. Two things stand between this and the switch, both the
+user's: whether the woman with long loose hair in three unnamed entries is
+Izabel — if she is not, ArcFace at a 0.40 sure threshold would learn two of
+her views as Izabel — and buffalo_l's licence, "non-commercial research
+purposes only".
 
 **R48 — The 40-view rule lets a wrong-person view in first (high, the
 user's decision, review 20).** Backlog 28 keeps what is most different, and a
@@ -278,56 +289,48 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 21 is done, without a release:** backlog 31 is reviewed and sits on
-`master` with 28, and 28 waits for R49 (the user, 14/10). Production stays
-on `v2026.10.13`; the next release carries R49, 28 and 31.
+**Review 22 is done, without a release:** developer 20's measurement of R49,
+step 1 (ARCHITECTURE 10.14, HISTORY 13.23). Backlog 28 and 31 still sit on
+`master` and wait for R49. Production stays on `v2026.10.13`. The next
+release carries R49, 28 and 31.
 
-**Developer 20 (planned 14/10): R49, step 1 — measure; change nothing in
-production.** The user's decision: R49 comes before everything, and much
-better models will be used if they exist, even with new embeddings for every
-gallery (CONTEXT 3). Read HISTORY 13.21 and 13.22 first.
+**Next: R49 step 2 — the switch and its migration.** It is planned once the
+user answers two questions (`PENDING.md`): who the woman with long loose
+hair in three unnamed entries is, and whether buffalo_l's licence is
+acceptable. If the user says no to the licence, the next plan is a different
+one, made with them. What step 2 must hold, as review 22 left it:
 
-- **The data.** `backups/r49_faces_20261014/`, a copy of production's
-  `faces/` taken by the architect on 14/10 before the user deletes anything:
-  `gallery.json` with Gustavo (40 Chosen, 31 Waiting) and Izabel (40, 35),
-  and the photos in `views/`. A view's label is its person, except **the
-  twelve head-tops, labelled "not a face"**: in Gustavo's Waiting the files
-  starting `c58c97`, `e18912`, `b3f8b9`, `69f368`, `1bbfa1`, `860372` and
-  `eedcf9` (the top of Izabel's head), in his Chosen `55edf5`, `e5bf9c`,
-  `80936d`, `1f8419` and `dbc1b0` (the top of his). Each view is a context
-  crop of 300 px with the face about 136 px wide — what a migration would
-  embed again.
-- **A benchmark tool,** `tools/face_bench.py`, kept in the repository. For
-  each candidate pipeline, detect and embed every view, then report:
-  (1) how many of the twelve head-tops it accepts as a face; (2) leave-one-out
-  over the named views — each against the Chosen of both, its own exact
-  copies left out — as sure right, sure wrong and none at the pipeline's own
-  threshold, plus the closest cross-person pair against each person's own
-  spread; (3) the cost per face on the M900 and the model's size. The
-  baseline, YuNet + SFace with today's `is_frontal`, must reproduce review
-  21's 111 / 7 / 28.
-- **Candidates, the well-regarded first** (PROCESS 5): (1) InsightFace's
-  `buffalo_l` — the SCRFD-10G detector, the ArcFace R50 recogniser, and its
-  3D landmark model, whose head pitch sees the "head down" that `is_frontal`
-  cannot. Its pretrained models are licensed for non-commercial research:
-  a home system is non-commercial, but say it plainly in the HANDOFF.
-  (2) AdaFace (CVPR 2022), made for poor faces; the length of its embedding
-  before normalisation is a quality cue — a head-top should come out short.
-  A trustworthy ONNX export or a one-off export; check its licence. (3) A
-  face-quality model (CR-FIQA, MagFace) only if (1) and (2) still accept
-  head-tops. Models only from their authors' releases. Run them with
-  `cv2.dnn` when it loads them; otherwise `onnxruntime`, a new compiled
-  dependency — check that it runs under Smart App Control (PROCESS 2.1)
-  before building on it.
-- **Not this session:** any change to `faces.py`, the galleries or the page.
-  The switch and its migration — every gallery embedded again from its
-  views, every older file still readable — are step 2, planned in the review
-  with the user's choice.
-- **HANDOFF:** the table per candidate, each licence, and the
-  recommendation.
+- **The pipeline.** Detection on the frame stays YuNet, 30 ms a frame.
+  SCRFD-10G at 320 runs on the region around each YuNet face, as `_refine`
+  does today, and gives the five points. `FaceRecognizerSF.alignCrop`, given
+  those points in YuNet's row layout, aligns them; it is pixel-identical to
+  insightface's least-squares fit, where the bench's LMEDS was not. ArcFace
+  R50 (`w600k_r50`) embeds, 512 numbers. The 3D landmark model stays out: it
+  did not help and is 137 MB. Today's `is_frontal` keeps working on the
+  frame. Whether it should read SCRFD's points instead is a measurement for
+  that session.
+- **Thresholds.** `MATCH_THRESHOLD`, `LEARN_THRESHOLD` and
+  `SAME_FACE_THRESHOLD` (the grouping within a clip) are all SFace's
+  numbers. ArcFace's come from `face_bench.py`'s sweep on the views labelled
+  with the user's answer. The developer's starting point was sure 0.40 and
+  maybe 0.30.
+- **The migration.** Every view of every gallery is embedded again from its
+  300 px photo. In production every embedding has its photo: 106 chosen and
+  67 waiting on 14/10, with none missing. `gallery.json` gains a model
+  marker, an optional key. An older 128-number file is migrated before use
+  and never compared with a 512-number one, because `np.dot` of the two
+  raises. A view where SCRFD finds no face is the case to decide, measured.
+  The galleries are copied to `backups/` first, and `check_data.py` reads
+  both formats.
+- **The models.** They come from the author's release: `buffalo_l.zip`,
+  281 MB, of which two files are kept, 182 MB. They are downloaded before
+  production stops, so that a deploy does not wait on the network.
+- **Cost.** The clip scan is timed before and after on real person clips.
+- **Then** backlog 28's rule is read again with the new numbers, as the user
+  decided for R48, and after it backlog 32.
 
-**Waits for the user:** R42; backlog 32 waits for R49 (its table means
-something only on clean labels and on the final model).
+**Waits for the user:** R49's two questions; R42; backlog 32 waits for R49
+(its table means something only on clean labels and on the final model).
 
 **Not planned:** R30 (b) joins a later session — with a new detector it is
 measured again anyway; R47 is a watch. R14, R12 and R9 as before. Every other
