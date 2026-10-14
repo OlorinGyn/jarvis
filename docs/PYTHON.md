@@ -1455,3 +1455,111 @@ the folder of the script that is running, Java's "relative to the class"; so
 it as the expression's value. Writing the rule once and calling it from both
 places is the same reason a C# solution moves shared code into a library
 instead of copying it into two projects.
+
+## 36. A module as a singleton, and a clock only one module sees (backlog 29)
+
+`analysis.py` holds the On/Off switch with no class at all:
+
+```python
+_lock = threading.Lock()
+_on = True
+_changed = time.monotonic()
+
+
+def set_on(wanted):
+    global _on, _changed
+    with _lock:
+        if _on == bool(wanted):
+            return False
+        _on = bool(wanted)
+        _changed = time.monotonic()
+    return True
+```
+
+**A module is imported once per process.** The first `import` runs the file
+and keeps the module object in `sys.modules`; every later `import analysis`,
+from any file, gets that same object. So its globals are one per process —
+what a C# `static class` or a Java class with `static` fields is, without
+writing the class. `cameras.py`, `bot.py` and `web.py` all read the same
+`_on`.
+
+**`global` is needed to assign, not to read.** Inside a function, assigning
+`_on = …` would create a new local variable, as a C# local would hide a
+field; `global _on, _changed` says "the module's". `is_on()` only reads, so it
+needs nothing.
+
+**The lock guards check-then-set**, not the read. Two threads calling
+`set_on(False)` at once could both see `_on` true and both answer "changed";
+under the lock only one does. Reading `_on` alone needs no lock: rebinding a
+name is atomic under the GIL, so a reader sees the old value or the new one,
+never half of it.
+
+**A restart, inside a test.** `importlib.reload(analysis)` runs the file again
+inside the same module object: `_on = True` executes again, exactly what a
+new process does. That is how `test_a_restart_starts_on` proves Off is never
+kept.
+
+**A fake clock for one module.** The reminder fires after 3 hours; no test
+waits that long. The test replaces the name `time` *inside* `analysis` (and
+`clips`) with an object that only has `monotonic()`:
+
+```python
+class Clock:
+    def __init__(self, now=1000.0):
+        self.now = now
+
+    def monotonic(self):
+        return self.now
+
+found = Clock()
+monkeypatch.setattr(analysis, "time", found)
+found.now += 3 * 3600
+```
+
+`analysis.time.monotonic()` now reads `found.now`, which the test moves by
+hand. Only those two modules see it: pytest, `threading` and everything else
+keep the real `time`, which `monkeypatch.setattr(time, "monotonic", …)` would
+have replaced for all of them. In C# the code would have to be written for it
+— an `ISystemClock` or .NET 8's `TimeProvider` injected in the constructor;
+Python lets the test swap the module's reference afterwards, and duck typing
+means `Clock` needs no interface, only the one method that is called.
+`monkeypatch` puts the real `time` back when the test ends.
+
+**Helpers from another test file.** `test_on_off.py` reuses the fake Telegram
+of `test_bot.py` with `from test_bot import Telegram`. That works because
+pytest, in its default "prepend" import mode, puts each test file's folder at
+the front of `sys.path` — so `tests/` is importable as if it were a package.
+
+## 37. Greedy one-to-one matching (R46)
+
+Each vanished person may turn **one** dog box into a person. With two dog
+boxes and one vanished person, the more confident box wins:
+
+```python
+replaced = {}
+dogs = sorted((d for d in raw if d[2] == DOG_CLASS), key=lambda d: d[1], reverse=True)
+for box, _, _ in dogs:
+    best = max(vanished, key=lambda person: iou(box, person), default=None)
+    if best is not None and iou(box, best) >= REPLACED_PERSON_IOU:
+        replaced[tuple(box)] = best
+        vanished.remove(best)
+```
+
+- `sorted(…, key=…, reverse=True)` is LINQ's `OrderByDescending`; `d[1]` is
+  the confidence in a `(box, confidence, class_id)` tuple.
+- `max(…, key=…, default=None)` is `MaxBy` that answers `None` for an empty
+  list instead of raising — once every vanished person is claimed, the
+  remaining dog boxes simply find nothing.
+- `vanished.remove(best)` removes the first element **equal** to `best`,
+  like `List<T>.Remove`: a claimed person is not offered to the next box.
+- `tuple(box)` as the key: a list can change, so Python refuses it as a
+  dictionary key (it is not hashable); a tuple cannot change and can be one —
+  the same reason a C# dictionary key should be an immutable record. The loop
+  later asks `tuple(box) in replaced`.
+
+**Greedy, not optimal.** Taking the best box first and never revisiting is
+the cheap cousin of the **Hungarian algorithm**, which finds the pairing with
+the best total over every box and person at once — what ByteTrack and
+similar trackers use, through `scipy.optimize.linear_sum_assignment`. With
+the one or two boxes a camera sees here, both give the same answer, and the
+greedy one needs nothing installed.

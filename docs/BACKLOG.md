@@ -45,8 +45,10 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **25.** Residents, notification cases and the Home/Away/Silent modes, the Notifications tab, commands from the phone (decided 12/10, `v2026.10.12`) | ARCHITECTURE 22 |
 | ✓ | **26.** Select many unnamed photos, name or report them at once (decided 12/10, `v2026.10.12.2`) | ARCHITECTURE 17.16 |
 | ✓ | **27.** Notifications as the first part of Settings (decided 12/10, `v2026.10.12.2`) | ARCHITECTURE 22.4 |
+| ✓ | **29.** `/on` and `/off` from the bot; Off never stored (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.7 |
+| ✓ | **30.** Home silences a probable resident: two cases of their own (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.2 |
 
-**Waiting for the user's check on the M900:** items 25 and 3, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29 and 30, in `PENDING.md`.
 
 ### Decided on 13/10/2026, to build
 
@@ -74,23 +76,6 @@ taken in production that evening.
     `--dry-run` that copies `faces/` and `dogs/` to `backups/` first; the
     architect runs it after the deploy. No format change: `pending` stays
     readable, and empties.
-29. **On and Off from the bot** (decided). `/off`: J.A.R.V.I.S. stops
-    processing images — no motion, no YOLO, no events, no recordings, no face
-    scan, no messages — while capture keeps running, so Live and every other
-    screen work normally. `/on` resumes. **It always starts On**: Off is not
-    stored, so a restart, a crash or the 5-minute task bring it back On — Off
-    is an occasional state. Every screen of the page shows On or Off; `/mode`
-    and the command list show it too; while Off, the bot sends a reminder
-    every 3 hours. Obeyed only from `notify_chat`, like the other commands.
-    An event open at `/off` ends as if the motion had stopped.
-30. **Home silences a probable resident** (decided; the user: "I have not
-    seen a wrong maybe"). Two new cases, `probable_resident_person` (a face
-    matched as probable to a Resident) and `probable_resident_dog`, which
-    today fall under `known_person` and `other_dog`; defaults on in Away, off
-    in Home and Silent. It changes ARCHITECTURE 22.2's default, not its rule:
-    the switch undoes it with one tap. Additive in `config.json`
-    (`modes.normalised` fills the new cases). Measured 13/10: 72 of 134 named
-    face sightings were probable (the user 25, Izabel 47).
 31. **Detection sensitivity** (decided). In Settings, per label — person,
     dog, other animals — YOLO's minimum confidence (today `CONFIDENCE` 0.35
     and `ANIMAL_CONFIDENCE` 0.45), stored in `config.json` (additive) and
@@ -175,7 +160,7 @@ Nest, from the architect's knowledge up to mid-2026:
 | Gap | Here |
 |---|---|
 | Zones per camera: ignore an area, or alert only when something enters it | 1 |
-| Tracking: the label comes from the object's history, not one frame | 7, and R46 |
+| Tracking: the label comes from the object's history, not one frame | 7; R44 and R46 cover the bend |
 | Per-object filters: minimum score, size, ratio, the median score over the track | 31 |
 | A warning when a camera goes down | 2 |
 | A timeline and a review of alerts | 11 |
@@ -201,7 +186,7 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R46 | **high** | A person who moves while bent over is still filed as a dog: R44 caught 9 of 32 boxes | open (below) |
+| R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
@@ -221,50 +206,47 @@ once than distinct faces were found, send the best view as
 counts a dog as a second person (R18), one extra message. The architect
 recommends (b).
 
-**R46 — A person who moves while bent over is still filed as a dog (high,
-13/10/2026).** 12 dog reports since the deploy of 12/10: 7 a person bending
-or crouching, 3 objects (a helmet, a cloth, clothing on a back), 2 animals at
-night. `replay.py --prime` on five of them (`Front/2026-10-13/15-00-17`,
-`15-09-58`, `15-19-17`, `14-46-29`, `Back/2026-10-13/11-23-48`): 23 boxes
-still kept as `dog`, 9 relabelled by R44. The cause, read in the trace of
-`15-00-17`: the woman cleaning moves while bent, the box shifts 50–100 px
-between YOLO runs, so its IoU with her last person box falls to 0.40–0.50,
-under `SAME_PERSON_IOU` = 0.5; and a relabelled box does not renew
-`recent_people`, so a long bend outlives the 2 s memory. YOLO is as sure as
-of a real dog (0.47–0.86 here; HISTORY 13.16: 0.62–0.81 against a median of
-0.68), so no score threshold separates them. **Fix:** keep the person's
-identity across frames — a relabelled box renews the memory, and a moving box
-is matched (against where the person's box is heading, or by chaining) — or
-tracking proper (backlog 7; a well-regarded pure-Python tracker is preferred
-to writing one, PROCESS 5). **Acceptance:** the five clips above lose most of
-their `dog` boxes; the twelve true-dog clips of HISTORY 13.16 (six with a
-person, six alone) keep theirs, none relabelled; tests for a moving bend and
-for a dog at a person's feet.
+**R47 — R46's chain has no end (low, a watch, 13/10/2026).** Every
+relabelled box renews both memories (ARCHITECTURE 7.13), so a real dog that
+takes the place of a person who vanished — someone stepping out of view right
+over a dog — stays a person while YOLO keeps seeing it within 0.3 of its last
+box: the event says person, no dog crop is kept, and in Home a faceless-person
+message goes out. None of the true-dog boxes in twelve clips did, and a cap
+would cut the long bends R46 exists for. **Trigger:** a "not a person" report
+whose `replay.py` trace shows "took the place of a person who vanished".
+**Then:** bound the chain — for instance, a relabelled box renews the memory
+only within some seconds of the last real person box, measured on R46's
+bends (HISTORY 13.20).
 
 ---
 
 ## 3. Next sessions
 
-**Review 18's cycle is done** (`v2026.10.12.4`, deployed 12/10 at 21:36).
-On 13/10 the user decided backlog 28–32, and the architect opened R46 from
-the day's reports (sections 1 and 2 above).
+**Review 19's cycle is done** (`v2026.10.13`): R46, backlog 30 and 29.
 
-**Developer 17 (planned 13/10, night):** in this order —
+**Developer 18 (planned 13/10, night):** backlog 28 alone — it touches the
+user's files, so it gets its own review, and the architect runs its tool on
+production after that deploy. In this order:
 
-1. **R46** (high): the bent person who moves. Measure first with
-   `replay.py --prime` on the five clips in R46, then fix, then measure
-   again; the acceptance is in R46.
-2. **Backlog 30**: the two probable-resident cases. Small; tests beside
-   `tests/test_modes_web.py`.
-3. **Backlog 29**: `/on` and `/off`. Capture never stops; analysis does.
-   Tests for: Off drops frames before motion, an open event ends, a restart
-   starts On, the 3-hour reminder (with the clock patched in the test,
-   `monkeypatch`, PYTHON 33).
+1. **The rule in both galleries** (faces and dogs), as item 28 says: a view
+   from a sure match, from naming or from merging enters Chosen while it holds
+   fewer than 40; once full, it replaces the chosen view whose nearest twin is
+   closest only when it is farther from its own nearest chosen view than that
+   pair is — never the favourite — and otherwise it is discarded with its
+   photo. Dogs compare only the same lighting. Waiting stops growing;
+   `pending` stays readable and empties. Under the gallery's lock, like every
+   write (R43).
+2. **The once-only tool** for the queues already there (30, 35, 28 and 31
+   views in production): `--dry-run` first, which writes nothing and prints,
+   per person and dog, how many waiting views would enter and how many would
+   be deleted; a real run copies `faces/` and `dogs/` to `backups/` before
+   touching anything. Tried on the test copy's data.
+3. **Tests**: the full gallery's replacement (the closest pair loses one, the
+   favourite never), the discard with its photo, the dogs' lighting, a merge
+   past 40, the tool's dry run changing nothing; `check_data` on the result.
 
-**Developer 18 (next):** backlog 28 with its once-only tool (run by the
-architect on production), then 32 and 31 — 28 touches the user's files, so it
-gets its own review.
+**Developer 19 (next):** backlog 32, then 31.
 
 **Not planned:** R42 waits for the user's choice; R30 (b) can now be measured
-with Izabel and joins a later session. R14, R12 and R9 as before. Every other
-open backlog item is **(proposto)**.
+with Izabel and joins a later session; R47 is a watch. R14, R12 and R9 as
+before. Every other open backlog item is **(proposto)**.

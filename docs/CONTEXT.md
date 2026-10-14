@@ -162,7 +162,8 @@ src/jarvis/
   settings.py     settings editable from the page (config.json)
   notify.py       Telegram messages: thumbnail, face, cooldowns, the cases
   modes.py        notification cases, the Home/Away/Silent modes and their switches
-  bot.py          commands from the phone: long polling, switches the mode only
+  bot.py          commands from the phone: long polling, switches the mode and On/Off only
+  analysis.py     analysis On or Off, in memory only: /on and /off (ARCHITECTURE 22.7)
   reports.py      bad-detection reports and their Undo
   devices.py      paired devices for the write guard
   log.py          logging: console, crash hooks, logs/jarvis.log for the service
@@ -253,10 +254,11 @@ the user asks** ("gere o epub", decided 10/10/2026): only the user reads it.
 
 Tuning constants: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`, `SEGMENT_SECONDS`,
 `SOCKET_TIMEOUT_SECONDS`), `people.py` (`MIN_INTERVAL`,
-`MIN_PERSON_HEIGHT_FRACTION`, `ANIMAL_CONFIDENCE`), `motion.py` (`MIN_AREA`,
+`MIN_PERSON_HEIGHT_FRACTION`, `ANIMAL_CONFIDENCE`, `SAME_PERSON_IOU`,
+`REPLACED_PERSON_IOU`), `motion.py` (`MIN_AREA`,
 `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py` (`MATCH_THRESHOLD`,
 `LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`), `notify.py`
-(`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`, `STALE_SECONDS`).
+(`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`, `STALE_SECONDS`, `REMINDER_SECONDS`).
 
 ---
 

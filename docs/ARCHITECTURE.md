@@ -107,6 +107,7 @@ jarvis/
 │   ├── notify.py         Telegram messages (section 12)
 │   ├── modes.py          the notification cases and modes (section 22)
 │   ├── bot.py            commands from the phone (22.5)
+│   ├── analysis.py       analysis On or Off, the bot's /on and /off (22.7)
 │   ├── reports.py        bad-detection reports (section 21)
 │   ├── devices.py        paired devices for the write guard (17.12)
 │   ├── settings.py       config.json, settings that change while running
@@ -939,6 +940,68 @@ reports) and a bend with no person seen in the 2 s before (one); they wait for
 more reports. **The risk it takes:** a dog walking into the very box a person
 left less than 2 s earlier, at a similar size, would be called a person; 0 of
 309 true-dog boxes did.
+
+### 7.13 A dog box that takes a vanished person's place (R46, 13/10/2026)
+
+R44 was not enough. Of the 12 dog reports after its deploy, 7 were a person
+bending or crouching; replayed, five of them still kept dog boxes. The trace
+of `Front/2026-10-13/15-00-17` showed why: a woman cleaning **moves while
+bent**. The box changes shape — tall to wide — and drifts 50–100 px between
+YOLO runs, so the first `dog` box has IoU 0.35–0.47 with her last person box,
+under `SAME_PERSON_IOU`; and a relabelled box did not renew `recent_people`,
+so a bend longer than 2 s became a dog again.
+
+**What tells it from a dog at someone's feet:** in the same YOLO run, **the
+person box is gone** — the dog box replaced it. A real dog beside a person
+sits next to a person box that is still there. So `SubjectDetector` also keeps
+`last_people`, the person boxes of the last run that saw any, with its time
+(`last_people_seen`). Each run, before the loop, `_people_replaced_by_dogs`:
+
+1. takes the **vanished** people: last run's person boxes, if that run was
+   less than `RECENT_PERSON_SECONDS` ago, that no person box of this run
+   continues (IoU ≥ `REPLACED_PERSON_IOU` = 0.3);
+2. goes through this run's `dog` boxes, the most confident first; each one
+   claims the vanished person it overlaps most, if their IoU is ≥ 0.3, and a
+   claimed person is not offered again — **one dog box per vanished
+   person** (PYTHON 37).
+
+A claimed dog box becomes a person exactly as in 7.12: after the animal
+threshold, before the person rules. `_why_a_person` tries R44's reason first
+("the person's box from a moment ago"), then the new one, which `replay.py`
+prints as "took the place of a person who vanished". `_remember_people` puts
+every relabelled box into both memories, so **a long bend renews itself**
+for as long as YOLO keeps seeing it.
+
+Measured by the developer with `--prime`, counting kept boxes per YOLO run:
+
+| Clips | dog boxes before → after | relabelled before → after (R44 + R46) |
+|---|---|---|
+| The five R46 bends | 13 → 2 | 9 → 16 + 4 |
+| Six true dogs with a person (HISTORY 13.16) | 202 → 202 | 0 → 0 |
+| Six dogs alone (HISTORY 13.17) | 59 → 59 | 0 → 0 |
+
+Review 19 replayed `15-00-17` with `replay.py` itself: 555 frames with a
+subject, every one a person, no dog; 9 boxes relabelled, 7 by R44 and 2 by
+R46. And two of the true dogs with a person, `Front/2026-10-11/16-20-00` and
+`Back/2026-10-12/12-40-35`: 99 and 164 dog frames, nothing relabelled
+(HISTORY 13.20). The two dog boxes left (`14-46-29`, `Back 11-23-48`)
+have no person before them — the objects of R46's count, which wait for more
+reports.
+
+**Not a tracking library, yet.** Tracking proper is backlog 7, still
+(proposto). The well-regarded trackers — norfair, supervision's ByteTrack —
+need scipy, a large compiled dependency never tried under Smart App Control
+(PROCESS 5: be wary of large binaries, not of dependencies). If backlog 7 is
+decided, a tracker replaces 7.12 and 7.13 both.
+
+**The risk it takes: the chain has no end** (R47). A real dog that takes the
+place of a person who vanished — someone stepping out of view right over a
+dog, with IoU ≥ 0.3 — stays a person while YOLO keeps finding it within 0.3
+of its last box, since every relabelled box renews the memory. The event
+would say person, the dog crop would not be kept, and in Home a "person with
+no recognisable face" message would go out. None of the true-dog boxes of
+the twelve clips above did. A relabelled box later dropped by a person rule
+(too short, the mat) renews the memory too.
 
 ---
 
@@ -2237,7 +2300,7 @@ changed since. This is the current state.
 | `/` | the page |
 | `/static/...`, `/icon.png` | CSS, JavaScript, icon |
 | `/api/cameras` | camera names; empty while they are still starting |
-| `/api/status` | `cameras`, `started` (when this server started), `frame_age` (seconds since each camera's last frame, `null` if none ever arrived) |
+| `/api/status` | `cameras`, `started` (when this server started), `frame_age` (seconds since each camera's last frame, `null` if none ever arrived); later `version` (12.10), `analysed_per_minute` and `analysis`, `"On"` or `"Off"` (22.7) |
 | `/api/days` | days with recordings, newest first |
 | `/api/events?day=YYYY-MM-DD` | `{day, events}`; without `day`, today |
 | `/thumbnail/<cam>/<day>/<HH-MM-SS>.jpg` | an event thumbnail, same checks as before (17.6) |
@@ -2753,7 +2816,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, moves between Chosen and Waiting, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, moves between Chosen and Waiting, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALL 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -2851,31 +2914,44 @@ the target a resident when either side was one (`Gallery._merge`). The grid
 card shows a "Resident" badge. The face scan copies the flag into each
 sighting it returns, so the notifier needs no second read of the gallery.
 
-### 22.2 Seven cases, three modes
+### 22.2 Nine cases, three modes
 
 `modes.py` holds the rules as data. Each message belongs to one **case**:
 
 | Case | When |
 |---|---|
 | `resident_person` | a face matched **for sure** (score ≥ `LEARN_THRESHOLD`) to a person marked Resident |
-| `known_person` | any other named face, and any "probably …" match — even of a resident |
+| `probable_resident_person` | a face matched as "probably …" (score under `LEARN_THRESHOLD`) to a person marked Resident — since backlog 30 |
+| `known_person` | any other named face, sure or "probably …" |
 | `unknown_face` | a face with no name |
 | `faceless_person` | a person with no recognisable face: the side-view or best-view message |
 | `resident_dog` | a dog matched for sure to a dog marked Resident |
-| `other_dog` | any other dog: probable, another name, unidentified |
+| `probable_resident_dog` | a "probably <name>" of a dog marked Resident — since backlog 30 |
+| `other_dog` | any other dog: another name, "probably" another, unidentified |
 | `other_animal` | cats, birds and every other animal label |
 
-Only a sure match counts as a resident, on purpose: a stranger who looks a
-little like the user gets "probably Gustavo", and that must never be silenced.
-If the dog matching fails, the dog is `other_dog`, never the resident.
+**Only a sure match is the resident.** A stranger who looks a little like the
+user gets "probably Gustavo", so on 12/10 every "probably …" went to
+`known_person` and was never silenced. **Since backlog 30 (13/10/2026) a
+probable resident has a case of its own**, so whether it is silenced is the
+user's switch and not a rule in the code. The user's reason: "I have not seen
+a wrong maybe", and in Home most of the residents' messages were probable —
+measured on 13/10, 72 of 134 named face sightings (the user 25, Izabel 47).
+The rule is the same; the default changed, and one tap undoes it. If the dog
+matching fails, the dog is `other_dog`, never the resident.
+
+`notify.person_case` makes the person's choice from the face scan's
+sighting; `dogs.identify` returns, with each dog's words, `"sure"` or
+`"probable"` when the dog matched is a Resident and `None` otherwise, and
+`clips.DOG_CASES` turns that into the case.
 
 One **mode** is active — **Home**, **Away** or **Silent** — and each mode has
 its own switch per case, all editable. The defaults:
 
 | | Away | Home | Silent |
 |---|---|---|---|
-| Person cases | all on | all on except `resident_person` | off |
-| `resident_dog` | from `notify_labels` | off | off |
+| Person cases | all on | all on except `resident_person` and `probable_resident_person` | off |
+| `resident_dog`, `probable_resident_dog` | from `notify_labels` | off | off |
 | `other_dog` | from `notify_labels` | from `notify_labels` | off |
 | `other_animal` | from `notify_labels` | from `notify_labels` | off |
 
@@ -2888,7 +2964,12 @@ Stored as two optional keys in `config.json`: `notify_mode` and
 `notify_modes` (`{mode: {case: bool}}`). `settings.load()` always returns both
 whole — `modes.normalised` fills every missing mode and case from the
 defaults and drops anything it does not know — so an older `config.json`
-behaves exactly as before: Away with today's switches.
+behaves exactly as before: Away with today's switches. A case added later
+starts at its own default: production's file, written before backlog 30,
+gets both probable cases off in Home, the person one on in Away and the dog
+one off there (its `notify_labels` is `["person"]`). Someone who had turned
+`known_person` off in Away would now get probable residents there, from the
+new case's default; production had not.
 
 ### 22.3 The timing rule: a person waits for the face scan
 
@@ -2957,12 +3038,13 @@ port is opened** on the M900.
 
 | Command | Does |
 |---|---|
+| `/on`, `/off` | switches analysis On or Off (22.7) and says what that means |
 | `/home`, `/away`, `/silent` | makes that mode active and answers with what it sends |
-| `/mode` | shows the active mode, with one tap button per mode |
-| any other `/command` | the list of commands |
+| `/mode` | shows the active mode, with one tap button per mode, and "Analysis: On" or "Off" |
+| any other `/command` | the list of commands, and the same On or Off |
 
 `setMyCommands` lists them in Telegram's "/" menu, once per token. The bot
-changes the mode and **nothing else**. Only the configured `notify_chat` is
+changes the mode and analysis On or Off, and **nothing else**. Only the configured `notify_chat` is
 obeyed; a message from any other chat is logged ("ignored a message from chat
 N") and its taps answered empty. A command older than 120 s is ignored, so a
 restart does not replay yesterday's `/away` (Telegram keeps unread updates for
@@ -2993,3 +3075,44 @@ answers with 409 "the views changed: the page was refreshed", and the page
 reloads the person. Without the field the move behaves as before. Checked on
 production's galleries: every stored view has a page URL, so the name the
 page sends always matches a stored one (PYTHON 28).
+
+### 22.7 Analysis On and Off — `analysis.py` (backlog 29, 13/10/2026)
+
+The user asked to switch J.A.R.V.I.S. off from the phone for a while without
+stopping the cameras. `/off` stops everything after capture: motion, YOLO,
+events, recordings, the face scan and messages. Capture keeps running, so
+Live and every other screen work as before, and the rolling buffer keeps
+being written and cleaned (5.5). `/on` resumes.
+
+**Held in memory only, on purpose.** `analysis.py` is a module with one flag
+and four functions — `is_on`, `set_on` (returns whether the state changed),
+`off_for` (seconds Off) and `describe` ("On" or "Off") — and no file. So
+every start begins On: a restart, a crash, the production task's trigger
+every 5 minutes (18.7). Off is an occasional state; an Off that survived a
+reboot would be a camera system recording nothing with nobody noticing. A
+module's globals exist once per process — the C# static class (PYTHON 36).
+
+**What `Core.step` does while Off.** It still reads every camera's frame —
+Live depends on it — but skips motion and YOLO and calls
+`recorder.update(frame, [])`. The recorder is told nothing was seen, so an
+event open at `/off` ends after `POST_SECONDS` exactly as if the motion had
+stopped, and then **finishes as any event does**: clip assembled, face scan,
+its follow-up messages. That is the decision's "ends as if the motion had
+stopped" read literally: `/off` stops what would start, not what was already
+on its way. The per-minute count of analysed frames stops (12.10).
+`_switch_analysis` follows the flag once per step: it logs "Analysis On" or
+"Analysis Off", clears the subjects drawn on Live, and on the way back On
+gives each camera a **fresh `MotionDetector`** — the old background is
+minutes or hours stale, so motion relearns it, blind for `WARMUP_FRAMES` as
+at start (6.4).
+
+**The reminder.** While Off, the bot's poller sends the configured chat
+"Analysis has been Off for N h: nothing is recorded or sent. /on resumes
+it." every `REMINDER_SECONDS` = 3 h, counted from the moment it went Off. It
+is checked before each long poll, so it leaves within a minute of the mark.
+Each mark gets one attempt: a reminder lost to a network failure waits for
+the next one. Only `notify_chat` can switch analysis, as with the modes.
+
+**On the page.** `/api/status` carries `analysis`, and the header shows "On"
+in green or a red "Off" badge on every screen, refreshed by the 5-second
+health check (17.8).

@@ -181,14 +181,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 18, covers
-up to the `v2026.10.12.4` release commit**; the next starts from the commit
+The table of every review is `HISTORY.md` 13.2. **The last review, 19, covers
+up to the `v2026.10.13` release commit**; the next starts from the commit
 after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.19, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.20.
+`HISTORY.md` 13.3 to 13.20, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.21.
 
 ---
 
@@ -330,3 +330,4 @@ review and commits.
 | 13 | `v2026.10.12.2` | The Owner Is Not a Dog / O Dono Não É Cachorro | written |
 | 14 | `v2026.10.12.3` | Every Name in English / Todo Nome em Inglês | written |
 | 15 | `v2026.10.12.4` | The Signature at the Door / A Assinatura na Porta | written |
+| 16 | `v2026.10.13` | The Off Switch / O Botão de Desligar | written |

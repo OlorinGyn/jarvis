@@ -19,6 +19,11 @@ grows, decisions are being postponed.
   backlog 30. Not yet confirmed: that a person with no face does reach the
   phone in Home, and that `/away` from the phone changes the mode the page
   shows.
+- **Backlog 29 and 30 on the M900** (`v2026.10.13`): `/off` from the phone —
+  the header shows a red Off, nothing is recorded, a reminder comes after
+  3 h — then `/on`; and in Home, a "probably Gustavo" or "probably Izabel"
+  no longer reaches the phone. One reading to confirm: an event already open
+  at `/off` still finishes and sends its follow-ups (ARCHITECTURE 22.7).
 - **Backlog 3's acceptance**: open the page from a phone
   (`http://192.168.0.18:8765`).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed

@@ -108,6 +108,10 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+30. **Done 13/10 (`v2026.10.13`, ARCHITECTURE 22.2).** **Home silences a probable resident** (decided by the user 13/10/2026: "I have not seen a wrong maybe"). Two new cases, `probable_resident_person` (a face matched as probable to a Resident) and `probable_resident_dog`, which until then fell under `known_person` and `other_dog`; defaults on in Away, off in Home and Silent. It changes ARCHITECTURE 22.2's default, not its rule: the switch undoes it with one tap. Additive in `config.json` (`modes.normalised` fills the new cases). Measured 13/10: 72 of 134 named face sightings were probable (the user 25, Izabel 47). Built in developer session 17 (`cfa286a`): `notify.person_case` and `dogs.identify` say how sure a resident is; tests in `tests/test_probable_resident.py`.
+
+29. **Done 13/10 (`v2026.10.13`, ARCHITECTURE 22.7).** **On and Off from the bot** (decided by the user 13/10/2026). `/off`: J.A.R.V.I.S. stops processing images — no motion, no YOLO, no events, no recordings, no face scan, no messages — while capture keeps running, so Live and every other screen work normally. `/on` resumes. **It always starts On**: Off is not stored, so a restart, a crash or the 5-minute task bring it back On — Off is an occasional state. Every screen of the page shows On or Off; `/mode` and the command list show it too; while Off, the bot sends a reminder every 3 hours. Obeyed only from `notify_chat`, like the other commands. An event open at `/off` ends as if the motion had stopped. Built in developer session 17 (`589cc13`): `analysis.py`, `Core._switch_analysis`, the poller's `_remind`; tests in `tests/test_on_off.py`. The event open at `/off` finishes its pipeline — clip, face scan, follow-ups — as any event that ends because motion stopped.
+
 26. **Done 12/10 (`v2026.10.12.2`, ARCHITECTURE 17.16).** **Select many unnamed crops and name them at once** (decided by the user 12/10/2026: in Unnamed dogs, select several photos and assign them to an animal, instead of "Belongs to…" one by one; the design is the architect's, as the user asked).
     - **(a) A grid with selection, not a table.** The user tells the dogs apart by the photo, so the photos stay large; a table would shrink them to row icons. The photo-app pattern: tap a photo to select it (a check mark and a frame), shift-click selects a range on a computer, Clear. Works by touch on a phone.
     - **(b) Grouped by the system's guess.** The unnamed crops are shown in groups by what the matcher thinks now — "Looks like Aurora (12)", "Looks like Mirana (8)", "No guess (5)" — from the same `dogs.match` the messages use (sure or probable), newest first inside each group, each group with "Select all". Usually most of a group is the right dog: select it, untick the wrong ones, assign. A hint, never an automatic name.
@@ -209,6 +213,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 16 | 12/10/2026 | `v2026.10.12..a53aa84`, developer session 14 — R44, backlog 26 and 27, R43 | no release code fixed; `.gitignore` now covers R43's temporary file; R44 replayed on six dog-alone clips (no box relabelled); 174 tests pass; R45 opened (low); release `v2026.10.12.2` (13.17) |
 | 17 | 12/10/2026 | `v2026.10.12.2..f4489a0`, developer session 15 — R10's file names and the tools' text, R45 | no code fixed; 176 tests pass; the new `check_doc_refs.py` exits 0 after rewording three historical lines; `.gitignore`'s last Portuguese comments translated; R10 and R45 closed; release `v2026.10.12.3`, deployed at 21:20: 477 events, 55 face and 205 dog sightings, 6 reports read before and after; cameras ok 3 s after the start (13.18) |
 | 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4`, deployed at 21:36: 478 events, 55 face and 206 dog sightings, 6 reports read before and after; `Sync`'s new check passed on `pythonw.exe`; about 9 s stopped, cameras ok 3 s after the start (13.19) |
+| 19 | 13/10/2026 | `v2026.10.12.4..594fbc6`, developer session 17 — R46, backlog 30 and 29 | no code fixed; R46 replayed on `15-00-17` (no dog left) and on two true dogs with a person (nothing relabelled); 208 tests pass, `check_data` reads every file; R46 closed, R47 opened (low, a watch); release `v2026.10.13` (13.20) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -276,6 +281,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R10 | **high** | Everything except the conversation in English | done: the code and the program's text by 10/10, every document's text on 12/10 by the architect (R33), the file names and the last two tools' text in `f855a9e` and `aa6e243`; the old `--sem-janela` and `--janela` flags stay as aliases (13.18 below) |
 | ✓ | R45 | low | A merge finds its sightings by reading every one, once per entry merged | done `351bc23`: one pass per save with an `{old: new}` map; a batch of 5 reads each sighting once instead of 5 times (ARCHITECTURE 17.16; 13.17 below) |
 | ✓ | R7 | low | `install.bat` does not check that the Python is signed | done `e426c8b`: `tools/check_python.ps1`, run by `install.bat` after `uv sync` and by `production.ps1` on every deploy (ARCHITECTURE 18.7, INSTALL 1.2; 13.19 below) |
+| ✓ | R46 | **high** | A person who moves while bent over is still filed as a dog: R44 caught 9 of 32 boxes | done `0a514c3`: a dog box that takes the place of a person who vanished from the same run is that person, and relabelled boxes renew the memory (ARCHITECTURE 7.13; 13.20 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1098,6 +1104,68 @@ and stops as before; `install.bat` keeps CRLF.
 ARCHITECTURE 3's tree and PYTHON 34 updated, while the raid log and 13.18
 keep it as history. R7 is closed; nothing opened. **The decided work has run
 out**: the next cycle waits for the user (`PENDING.md`).
+
+### 13.20 Review 19 — developer session 17 (13/10/2026)
+
+R46, backlog 30 and backlog 29, reviewed whole (`v2026.10.12.4..594fbc6`,
+three code commits, 17 files, +544 −53). 208 tests pass (176 before);
+`check_data` reads every file; no comments in `src/` and `tools/`. No code
+fixed.
+
+**R46, checked on the clips.** `replay.py --prime` itself, not the
+developer's counting script, on `Front/2026-10-13/15-00-17`: 555 frames with
+a subject, all person, no dog; 9 boxes relabelled, 7 by R44 ("the person's
+box from a moment ago") and 2 by the new rule ("took the place of a person
+who vanished"). On two of HISTORY 13.16's true dogs with a person,
+`Front/2026-10-11/16-20-00` and `Back/2026-10-12/12-40-35`: 99 and 164 dog
+frames, not one box relabelled by either rule. The developer's numbers for
+all twelve true-dog clips: unchanged.
+
+**The rule, read for what it risks.** The greedy match is one dog box per
+vanished person, the most confident first, and only dog boxes are offered; a
+dog box under `ANIMAL_CONFIDENCE` can claim a person and is still dropped, as
+before. What the developer flagged is real: **every relabelled box renews
+both memories, so the chain has no end** — a real dog that took a vanished
+person's place would stay a person while YOLO keeps seeing it within 0.3 of
+its last box, and a relabelled box dropped afterwards (too short, the mat)
+renews it too. In Home that means a "person with no recognisable face"
+message for a dog. None of the true-dog boxes did. A cap on the chain would
+cut the long bends R46 exists for, so nothing changes without evidence:
+**R47 (low, a watch)** — a "not a person" report whose replay shows "took the
+place of a person who vanished" is the trigger to bound the chain (for
+instance by time since the last real person box). The reports list in
+Settings is where it would show.
+
+**Why not a tracker.** The developer chose ~40 lines over norfair or
+supervision: both need scipy, a large compiled dependency never tried under
+Smart App Control. That is PROCESS 5's narrower rule, not the old bias;
+backlog 7 stays (proposto) and would replace 7.12 and 7.13 if decided.
+
+**Backlog 30.** `modes.defaults` adds both probable cases off in Home and
+Silent; `normalised` fills them into a stored file. Production's
+`config.json`, read for this review: Home is active, `notify_labels` is
+`["person"]`, Away has `known_person` on. After the deploy: Home silences a
+probable resident person (the user's request), Away sends it, and the
+probable resident dog is off in both, like every dog case there.
+`dogs.identify` now reads the gallery entry for any certainty — `match`
+gives `dog_id` only with a certainty, so an unidentified dog stays
+`other_dog`.
+
+**Backlog 29.** `Core.step` reads every frame and skips motion and YOLO while
+Off; the page's header is refreshed by the 5-second health check on every
+screen; `set_on`'s lock covers check-then-set. Two readings of the decision,
+both kept: the event open at `/off` **finishes its pipeline** (clip, face
+scan, follow-ups), which is what "ends as if the motion had stopped" means
+for any event; and the reminder has **one attempt per 3-hour mark** —
+`_reply` logs a failure and does not raise, so a reminder lost to the network
+waits for the next mark (the handoff said it would go when the network came
+back; ARCHITECTURE 22.7 says what the code does). Retrying on every poll
+would spam the log while Telegram refuses.
+
+**Documentation.** ARCHITECTURE 7.13 (new), 22.2 (nine cases), 22.5,
+22.7 (new), the file tree, `/api/status` and 19.5's count; CONTEXT 9 and 10;
+PYTHON 36 and 37. R46 closed, R47 opened. The plan goes on: developer 18,
+backlog 28 then 32 and 31 (`BACKLOG.md` 3).
 
 ## 14.3 Usage log
 
