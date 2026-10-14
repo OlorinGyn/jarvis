@@ -271,21 +271,22 @@ def current_words(sighting, gallery):
 
 
 def identify(frame, boxes, gallery=None):
-    """(words, resident) for every dog box of a frame, for a message. Never raises.
+    """(words, certainty) for every dog box of a frame, for a message. Never raises.
 
-    Only a sure match of a dog marked Resident counts as the resident: a
-    "probably <name>" is never silenced.
+    certainty is "sure" or "probable" when the dog matched is marked
+    Resident, else None.
     """
     try:
         gallery = gallery or DogGallery()
         found = []
         for box in boxes:
             result = match(describe(frame, box)[0], gallery)
-            dog = gallery.get(result["dog_id"]) if result["certainty"] == "sure" else None
-            found.append((wording(result, gallery), bool(dog and dog.get("resident"))))
+            dog = gallery.get(result["dog_id"])
+            resident = result["certainty"] if dog and dog.get("resident") else None
+            found.append((wording(result, gallery), resident))
     except Exception as problem:
         logger.warning("  dog matching failed: %s", problem)
-        return [("dog", False)]
+        return [("dog", None)]
     return list(dict.fromkeys(found))
 
 

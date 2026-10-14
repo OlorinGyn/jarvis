@@ -37,6 +37,7 @@ MAX_SECONDS = 60.0
 THUMB_WIDTH = 480
 ASSEMBLY_DELAY = SEGMENT_SECONDS + 2.0
 PERSON_GAP_SECONDS = 2.0
+DOG_CASES = {"sure": "resident_dog", "probable": "probable_resident_dog"}
 
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
@@ -137,8 +138,8 @@ def _message_parts(frame, subjects, labels):
             parts.append(("person", None))
         elif label == "dog":
             boxes = [(s.x, s.y, s.w, s.h) for s in subjects if s.label == "dog"]
-            found = dogs.identify(frame, boxes) if boxes else [("dog", False)]
-            parts += [(words, "resident_dog" if resident else "other_dog") for words, resident in found]
+            found = dogs.identify(frame, boxes) if boxes else [("dog", None)]
+            parts += [(words, DOG_CASES.get(resident, "other_dog")) for words, resident in found]
         else:
             parts.append((label, "other_animal"))
     return parts

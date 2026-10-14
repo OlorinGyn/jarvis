@@ -16,12 +16,12 @@ HOME = {**SETTINGS, "notify_mode": "home"}
 START = datetime(2026, 10, 10, 12, 0, 0)
 
 EXPECTED = {
-    "away": {"resident_person": True, "known_person": True, "unknown_face": True,
-             "faceless_person": True, "resident_dog": False, "other_dog": False,
-             "other_animal": False},
-    "home": {"resident_person": False, "known_person": True, "unknown_face": True,
-             "faceless_person": True, "resident_dog": False, "other_dog": False,
-             "other_animal": False},
+    "away": {"resident_person": True, "probable_resident_person": True, "known_person": True,
+             "unknown_face": True, "faceless_person": True, "resident_dog": False,
+             "probable_resident_dog": False, "other_dog": False, "other_animal": False},
+    "home": {"resident_person": False, "probable_resident_person": False, "known_person": True,
+             "unknown_face": True, "faceless_person": True, "resident_dog": False,
+             "probable_resident_dog": False, "other_dog": False, "other_animal": False},
     "silent": {case: False for case in modes.CASES},
 }
 
@@ -132,17 +132,17 @@ def test_away_names_the_person_at_once(sent):
 
 def test_only_a_sure_resident_is_the_resident_case():
     assert notify.person_case(face("p_1", "Ana", 0.6, resident=True)) == "resident_person"
-    assert notify.person_case(face("p_1", "Ana", 0.40, resident=True)) == "known_person"
+    assert notify.person_case(face("p_1", "Ana", 0.40, resident=True)) == "probable_resident_person"
     assert notify.person_case(face("p_1", "Ana", 0.6)) == "known_person"
     assert notify.person_case(face("p_1")) == "unknown_face"
 
 
-def test_in_home_a_resident_face_is_silent_and_a_probable_one_is_not(sent):
+def test_in_home_a_resident_face_is_silent_and_a_probable_one_too(sent):
     found = [face("p_1", "Gustavo", 0.6, True), face("p_2", "Gustavo", 0.40, True),
-             face("p_3"), face("p_4", "Ana", 0.6)]
+             face("p_3"), face("p_4", "Ana", 0.6), face("p_5", "Ana", 0.40)]
     assert notify.faces_seen("Front", START, found, HOME) == 3
-    assert sent == ["Front 12:00:00: probably Gustavo", "Front 12:00:00: unknown face",
-                    "Front 12:00:00: Ana recognized"]
+    assert sent == ["Front 12:00:00: unknown face", "Front 12:00:00: Ana recognized",
+                    "Front 12:00:00: probably Ana"]
 
 
 def test_silent_sends_no_face():
@@ -239,7 +239,7 @@ def frame():
 
 def recorder(tmp_path, monkeypatch, values):
     monkeypatch.setattr(notify, "load", lambda: values)
-    monkeypatch.setattr(dogs, "identify", lambda frame, boxes: [("Aurora", True)])
+    monkeypatch.setattr(dogs, "identify", lambda frame, boxes: [("Aurora", "sure")])
     return clips.EventRecorder(Camera(), tmp_path)
 
 

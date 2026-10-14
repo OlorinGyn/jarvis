@@ -248,15 +248,16 @@ def best_view(camera, started_at, image, settings=None):
 
 
 def person_case(sighting):
-    """Which switch a face answers to: a sure resident, another name or a weak match, or unknown.
+    """Which switch a face answers to: a resident, sure or probable, another name, or unknown.
 
-    Only a sure match is a resident, so a weak match of a stranger to someone
-    who lives here is never silenced.
+    A weak match to a resident has a case of its own, so whether it is
+    silenced is the user's switch and not a rule in the code.
     """
     if not sighting.get("name"):
         return "unknown_face"
-    if sighting.get("resident") and sighting.get("score", 0) >= LEARN_THRESHOLD:
-        return "resident_person"
+    if sighting.get("resident"):
+        sure = sighting.get("score", 0) >= LEARN_THRESHOLD
+        return "resident_person" if sure else "probable_resident_person"
     return "known_person"
 
 
