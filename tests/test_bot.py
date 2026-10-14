@@ -106,7 +106,7 @@ def test_an_old_command_waiting_since_yesterday_is_not_obeyed(poller, telegram, 
 def test_anything_else_gets_the_help_and_plain_text_nothing(poller, telegram):
     arrive(telegram, message(42, "/start", 1), message(42, "hello", 2))
     poller.poll_once()
-    assert [s["text"] for s in telegram.sent()] == [bot.HELP]
+    assert [s["text"] for s in telegram.sent()] == [f"{bot.HELP} Analysis: On."]
 
 
 def test_the_commands_are_listed_once_per_token(poller, telegram):

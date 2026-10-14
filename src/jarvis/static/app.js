@@ -10,6 +10,7 @@ const nextButton = document.getElementById("next");
 const cameraGrid = document.getElementById("cameras");
 const connectionBanner = document.getElementById("connection");
 const versionLabel = document.getElementById("version");
+const analysisLabel = document.getElementById("analysis");
 
 let daysWithRecordings = [];
 let cameras = [];
@@ -221,6 +222,8 @@ async function checkHealth() {
     cameras = status.cameras;
     serverStarted = status.started;
     versionLabel.textContent = status.version || "";
+    analysisLabel.textContent = status.analysis || "";
+    analysisLabel.classList.toggle("off", status.analysis === "Off");
   }
   if (changed) {
     stopLive();

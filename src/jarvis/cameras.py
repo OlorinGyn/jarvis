@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, bot, faces, log, web
+from jarvis import ROOT, analysis, bot, faces, log, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -179,20 +179,27 @@ class Core:
         self.per_minute = {}
         self.rate_started = self.last_prune
         self.scan_seen = False
+        self.analysing = True
 
     def step(self):
-        """One pass over every camera. True when at least one frame was new."""
+        """One pass over every camera. True when at least one frame was new.
+
+        While analysis is Off a frame goes no further than the recorder, told
+        nothing was seen, so an open event ends as if the motion had stopped.
+        """
         fresh = False
+        analysing = self._switch_analysis()
         for cam in self.streams:
             frame = cam.read()
             if frame is None:
                 continue
             fresh = True
 
-            motion_boxes = cam.motion.detect(frame)
-            subjects = cam.subjects.detect(frame, motion_boxes)
-
-            self.analysed[cam.label] += 1
+            subjects = []
+            if analysing:
+                motion_boxes = cam.motion.detect(frame)
+                subjects = cam.subjects.detect(frame, motion_boxes)
+                self.analysed[cam.label] += 1
             saved = cam.recorder.update(frame, subjects)
             if saved:
                 names = ", ".join(saved["labels"]) or "?"
@@ -211,6 +218,18 @@ class Core:
             logger.info("  archive: %d moved, %d deleted from the external drive",
                         done["moved"]["moved"], done["freed"]["removed"])
         return fresh
+
+    def _switch_analysis(self):
+        """Follow the On/Off switch; coming back On, motion relearns the background it missed."""
+        wanted = analysis.is_on()
+        if wanted != self.analysing:
+            self.analysing = wanted
+            logger.info("Analysis %s", analysis.describe())
+            for cam in self.streams:
+                cam.subjects.subjects = []
+                if wanted:
+                    cam.motion = MotionDetector()
+        return wanted
 
     def _tally(self, now):
         """Every minute, how many frames each camera analysed; logged when a face scan ran."""

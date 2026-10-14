@@ -1,4 +1,4 @@
-"""Commands from the phone: the Telegram bot switches the notification mode, and nothing else.
+"""Commands from the phone: the Telegram bot switches the notification mode and analysis On or Off.
 
 A thread asks Telegram for new messages with getUpdates long polling: an
 outgoing connection like sending, so no port is opened on this machine.
@@ -6,7 +6,8 @@ Only the configured chat is obeyed; anything else is ignored and logged.
 Find chat reads the chats this poller saw, because two readers of the same
 bot steal each other's messages, and Telegram answers 409 to the second.
 Network trouble is logged once and retried, slower each time; capture
-never waits on it. See docs/HISTORY.md section 8, backlog 25 (f).
+never waits on it. While analysis is Off the poller reminds the chat every
+REMINDER_SECONDS. See docs/HISTORY.md section 8, backlogs 25 (f) and 29.
 """
 
 import json
@@ -16,7 +17,7 @@ import time
 
 import requests
 
-from . import modes, settings
+from . import analysis, modes, settings
 from .notify import API, _redact
 
 LONG_POLL_SECONDS = 50
@@ -25,13 +26,17 @@ FIRST_BACKOFF = 5
 MAX_BACKOFF = 300
 CONFLICT_BACKOFF = 120
 STALE_SECONDS = 120
+REMINDER_SECONDS = 3 * 3600
 COMMANDS = [
+    ("on", "Analyse the cameras again"),
+    ("off", "Stop analysing: no events, recordings or messages; Live keeps working"),
     ("home", "Home mode: leave out the people and dogs who live here"),
     ("away", "Away mode: send every person"),
     ("silent", "Silent mode: send nothing"),
     ("mode", "Show the current mode"),
 ]
-HELP = "Commands: /home, /away, /silent switch the mode; /mode shows it."
+HELP = ("Commands: /on and /off switch analysis; /home, /away, /silent switch the mode; "
+        "/mode shows both.")
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +77,7 @@ class Poller:
         self.chats = {}
         self.commands_for = None
         self.trouble = ""
+        self.reminders = 0
         self.backoff = FIRST_BACKOFF
         self.stopping = threading.Event()
         self.thread = None
@@ -110,6 +116,7 @@ class Poller:
             return
         if self.commands_for != token:
             self._register_commands(token)
+        self._remind(token, values)
         fields = {"timeout": LONG_POLL_SECONDS,
                   "allowed_updates": json.dumps(["message", "callback_query"])}
         if self.offset is not None:
@@ -135,6 +142,19 @@ class Poller:
             except Exception as problem:
                 logger.warning("Telegram commands: an update could not be handled: %s",
                                _redact(str(problem), token))
+
+    def _remind(self, token, values):
+        """Tell the configured chat, every REMINDER_SECONDS while Off, that nothing is analysed."""
+        chat = (values.get("notify_chat") or "").strip()
+        due = int(analysis.off_for() // REMINDER_SECONDS)
+        if due <= self.reminders or not chat:
+            self.reminders = min(self.reminders, due)
+            return
+        self.reminders = due
+        hours = due * REMINDER_SECONDS // 3600
+        logger.info("Telegram commands: reminded that analysis is Off for %d h", hours)
+        self._reply(token, chat, f"Analysis has been Off for {hours} h: nothing is recorded "
+                                 "or sent. /on resumes it.")
 
     def _wait_after(self, problem, seconds=None):
         """Log a problem once, not on every retry, and wait longer each time it repeats."""
@@ -175,12 +195,29 @@ class Poller:
     def _obey(self, command, token, chat, values):
         if command in modes.MODES:
             self._switch(command, token, chat)
+        elif command in ("on", "off"):
+            self._power(command == "on", token, chat)
         elif command == "mode":
             current = modes.mode_of(values)
-            self._reply(token, chat, f"Current mode: {modes.describe(current, values)}",
+            self._reply(token, chat, f"Current mode: {modes.describe(current, values)} "
+                                     f"Analysis: {analysis.describe()}.",
                         _keyboard(current))
         elif command:
-            self._reply(token, chat, HELP)
+            self._reply(token, chat, f"{HELP} Analysis: {analysis.describe()}.")
+
+    def _power(self, wanted, token, chat):
+        """Switch analysis On or Off and say what it means."""
+        changed = analysis.set_on(wanted)
+        if changed:
+            logger.info("Telegram commands: analysis %s from the phone", analysis.describe())
+        if wanted:
+            text = "Analysis On." if changed else "Analysis was already On."
+        else:
+            text = ("Analysis Off: no events, recordings or messages until /on. Live keeps "
+                    f"working, and a reminder comes every {REMINDER_SECONDS // 3600} h.")
+            if not changed:
+                text = "Analysis was already Off. /on resumes it."
+        self._reply(token, chat, text)
 
     def _tapped(self, callback, token, chat, values):
         data = callback.get("data") or ""

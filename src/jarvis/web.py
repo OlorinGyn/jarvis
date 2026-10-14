@@ -29,7 +29,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from jarvis import ROOT, archive, bot, devices, dogs, faces, modes, notify, reports, settings
+from jarvis import ROOT, analysis, archive, bot, devices, dogs, faces, modes, notify, reports, settings
 from jarvis.capture import NO_WINDOW
 from jarvis.clips import CLIP_DIR, available_days, list_clips
 
@@ -254,7 +254,7 @@ def status():
     ages = _core.frame_ages() if _core is not None else {}
     per_minute = _core.per_minute if _core is not None else {}
     return {"cameras": cameras(), "started": _started, "version": _version,
-            "analysed_per_minute": per_minute,
+            "analysis": analysis.describe(), "analysed_per_minute": per_minute,
             "frame_age": {k: (round(v, 1) if v is not None else None) for k, v in ages.items()}}
 
 
