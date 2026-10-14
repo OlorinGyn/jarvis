@@ -184,3 +184,19 @@ def test_past_sightings_follow_the_current_name(two_dogs):
     assert dogs.current_words(renamed, dogs.DogGallery(two_dogs.path)) == "Light one"
     probable = {"dog_id": "d_00000000", "certainty": "probable", "match": "Dark one"}
     assert dogs.current_words(probable, two_dogs) == "probably Dark one"
+
+
+def test_the_distance_matrix_is_distance_for_every_pair():
+    rng = np.random.default_rng(23)
+    views = []
+    for infrared in (False, True, False, True):
+        tones = rng.dirichlet(np.ones(dogs.TONE_BINS)).tolist()
+        colour = ([0.0] * (dogs.HUE_BINS + dogs.SATURATION_BINS) if infrared
+                  else rng.dirichlet(np.ones(dogs.HUE_BINS)).tolist() + rng.dirichlet(np.ones(dogs.SATURATION_BINS)).tolist())
+        views.append([1.0 if infrared else 0.0] + tones + colour)
+    views.append([0.0] * dogs.DESCRIPTOR_SIZE)
+    matrix = dogs.DogGallery.distances(None, views)
+    for a, first in enumerate(views):
+        for b, second in enumerate(views):
+            expected = dogs.distance(first, second) if a != b else 0.0
+            assert (np.isinf(matrix[a][b]) if expected is None else matrix[a][b] == pytest.approx(expected))

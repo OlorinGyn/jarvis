@@ -114,12 +114,16 @@ class DogGallery(faces.Gallery):
 
         So the farthest-point selection always keeps both lightings when a dog has both.
         """
-        size = len(embeddings)
-        matrix = np.zeros((size, size))
-        for a in range(size):
-            for b in range(a + 1, size):
-                found = distance(embeddings[a], embeddings[b])
-                matrix[a, b] = matrix[b, a] = np.inf if found is None else found
+        x = np.asarray(embeddings, np.float64).reshape(len(embeddings), DESCRIPTOR_SIZE)
+        tone_end = 1 + TONE_BINS
+        hue_end = tone_end + HUE_BINS
+        tone = _bhattacharyya_matrix(x[:, 1:tone_end])
+        colour = (tone + _bhattacharyya_matrix(x[:, tone_end:hue_end])
+                  + _bhattacharyya_matrix(x[:, hue_end:])) / 3
+        infrared = x[:, 0] != 0
+        matrix = np.where(infrared[:, None], tone, colour)
+        matrix[infrared[:, None] != infrared[None, :]] = np.inf
+        np.fill_diagonal(matrix, 0.0)
         return matrix
 
     def label(self, dog_id):
@@ -200,6 +204,16 @@ def _bhattacharyya(a, b):
         return 1.0
     coefficient = float(np.sum(np.sqrt(a * b)))
     return float(np.sqrt(max(1.0 - coefficient, 0.0)))
+
+
+def _bhattacharyya_matrix(histograms):
+    """_bhattacharyya between every pair of rows at once."""
+    roots = np.sqrt(np.clip(histograms, 0.0, None))
+    matrix = np.sqrt(np.clip(1.0 - roots @ roots.T, 0.0, None))
+    empty = histograms.sum(axis=1) <= 0
+    matrix[empty, :] = 1.0
+    matrix[:, empty] = 1.0
+    return matrix
 
 
 def distance(first, second):
