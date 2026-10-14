@@ -1226,3 +1226,74 @@ LEGENDA: O primeiro pedido da próxima edição.
 (backlog 31). Chefes derrotados: **O Topo da Cabeça** (R49). À espreita: a
 vista mais pesada que não é a melhor (R51); uma segunda cópia que entra
 enquanto a gaveta está sendo enchida (R52).
+
+## Edição #18 — O Botão, a Régua e a Tranca
+
+`v2026.10.14.2` · 14 out 2026, tarde
+
+**Quadro 1.** Creme quente. O balão dourado do Dono, da última página, ainda
+paira no alto. O castor, de pé no cabeçalho da página, parafusa um botão de
+verdade onde antes ficava a etiquetinha "On".
+DEV: Você pediu para ligar e desligar aqui. Desligar pergunta antes. Ligar
+é um toque.
+Um pequeno diálogo flutua ao lado do botão: "Switch analysis Off? Nothing is
+recorded or sent…"
+
+**Quadro 2.** Uma parede com três caixinhas de número — 0.35, 0.45, 0.45 —
+sendo desparafusadas. No lugar, três trilhos compridos com uma conta
+deslizante cada, a conta parada bem no meio. Sob a ponta esquerda: "More
+detections, more false alarms". Sob a direita: "Fewer, stricter".
+O DONO (dourado, de fora do quadro): Sem números. O meio é o nosso padrão.
+
+**Quadro 3.** Close num trilho, aberto como um diagrama: dois trechos retos
+de inclinações diferentes que se encontram na conta do meio, um curto
+descendo até 0.20, um longo subindo até 0.90. O castor conta entalhes
+minúsculos.
+DEV: Mil entalhes, para que uma conta que ninguém mexeu devolva exatamente o
+número que mostrava.
+
+**Quadro 4.** Um corredor comprido de fotos de um mesmo rosto, quarenta
+delas, umas nítidas e grandes, outras pequenas. O método antigo apontava a
+maior; agora uma lanterna varre todas e para numa foto menor que brilha
+"0.42 — certeza".
+LEGENDA: Quem decide é a melhor vista, não a maior. Um clipe passou de
+"provavelmente" para "certeza".
+
+**Quadro 5.** Uma porta com catraca marcada "portão frontal". Uma mulher
+olhando para o celular, olhos encurtados pela perspectiva, batia nela; o
+castor abaixa uma barra um entalhe, de 0.38 para 0.30, e ela passa. A outra
+barra, a do nariz, fica onde estava.
+DEV: Baixe a barra do nariz e entra a pessoa errada. Esta só deixa passar
+quem olha para baixo.
+
+**Quadro 6.** O arquivo da edição 17, a gaveta pela metade. Dois
+J.A.R.V.I.S. idênticos chegam juntos; o primeiro pendura um cadeado na
+gaveta (`.lock`), o segundo espera num banco, depois abre, vê o trabalho
+feito e vai embora.
+LEGENDA: Uma cópia migra. A outra espera, não acha nada a fazer, e sai.
+Agora a linha está no log.
+
+**Quadro 7.** Azul-noite. A coruja à mesa com duas fotos dos moradores e uma
+moldura vazia com um ponto de interrogação. Ela escreve um cartão: "R54 —
+vigiar".
+ARQUITETA: As duas mudanças foram medidas nas duas pessoas que moram aqui.
+Um estranho agora tem mais chances de parecer um deles. Ninguém mediu um
+estranho, porque nenhum veio ainda.
+
+**Quadro 8.** A coruja diante de uma janela do tamanho de um celular, 375 px
+de largura, rolando uma coluna comprida de fotos de cães que escorre para
+fora do quadro.
+ARQUITETA: Quarenta e seis cães, nove mil pixels. Duas colunas, e vinte e
+quatro de cada vez.
+
+**Quadro 9.** O M900. Um pacote marcado `v2026.10.14.2` entra.
+J.A.R.V.I.S.: `Production is running v2026.10.14.2.`
+LEGENDA: Uns dez segundos sem câmeras; as duas de volta três segundos depois
+da partida. 976 eventos, 206 rostos e 412 avistamentos de cães lidos antes e
+depois.
+
+**Cartão final.** Habilidades: **O Botão do Cabeçalho** (backlog 34) · **A
+Conta Deslizante** (backlog 35) · **Lado a Lado** (backlog 36) · **A Melhor
+Vista** (R51) · **Olhos para Baixo** (R30 b) · **A Gaveta com Cadeado** (R52).
+À espreita: o estranho que ninguém mediu (R54); os rostos sem nome sem
+limite (backlog 37, decisão do Dono).

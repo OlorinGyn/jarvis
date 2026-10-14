@@ -1185,3 +1185,69 @@ Keep Themselves** (backlog 28) · **The Sensitivity Dials** (backlog 31).
 Bosses defeated: **The Crown of the Head** (R49). Lurking: the heaviest view
 that is not the best (R51); a second copy that slips in while the drawer is
 being filled (R52).
+
+## Issue #18 — The Switch, the Slider and the Lock
+
+`v2026.10.14.2` · 14 Oct 2026, afternoon
+
+**Panel 1.** Warm cream. The Owner's gold balloon from the last page still
+hangs at the top. The beaver stands on the page's header and screws a real
+button where the little "On" label used to be.
+DEV: You asked to switch it here. Off asks first. On is one tap.
+A small dialog floats beside the button: "Switch analysis Off? Nothing is
+recorded or sent…"
+
+**Panel 2.** A wall of three number boxes — 0.35, 0.45, 0.45 — being
+unscrewed. In their place, three long rails with a sliding bead each, the
+bead resting at the exact middle. Under the left end: "More detections, more
+false alarms". Under the right: "Fewer, stricter".
+THE OWNER (gold, from off panel): No numbers. The middle is our default.
+
+**Panel 3.** Close on one rail, cut open like a diagram: two straight pieces
+of different slope meeting at the middle bead, a short one down to 0.20, a
+long one up to 0.90. The beaver counts tiny notches.
+DEV: A thousand notches, so a bead nobody touched gives back exactly the
+number it showed.
+
+**Panel 4.** A long hallway of photos of one face, forty of them, some sharp
+and large, some small. The old method pointed at the biggest; now a lantern
+sweeps every one and stops on a smaller photo that glows "0.42 — sure".
+CAPTION: The best view decides, not the biggest. One clip went from
+"probably" to "sure".
+
+**Panel 5.** A doorway with a turnstile marked "frontal gate". A woman
+looking down at her phone, eyes foreshortened, used to bounce off it; the
+beaver lowers one bar a notch, from 0.38 to 0.30, and she passes. A second
+bar, the nose bar, stays where it was.
+DEV: Lower the nose bar and the wrong person gets in. This one only lets in
+people looking down.
+
+**Panel 6.** The filing cabinet of issue 17, its drawer half full. Two
+identical J.A.R.V.I.S. figures arrive at once; the first hangs a padlock on
+the drawer (`.lock`), the second waits on a bench, then opens it, sees the
+work done, and leaves.
+CAPTION: One copy migrates. The other waits, finds nothing to do, and goes.
+The line is in the log now.
+
+**Panel 7.** Night-blue. The owl at her desk with two photos of residents
+and an empty frame with a question mark. She writes a card: "R54 — watch".
+ARCHITECT: Both changes were measured on the two people who live here. A
+stranger has more chances now to look like one of them. Nobody has measured
+a stranger, because none has come yet.
+
+**Panel 8.** The owl at a phone-sized window, 375 px wide, scrolling a long
+column of dog photos that runs off the bottom of the panel.
+ARCHITECT: Forty-six dogs, nine thousand pixels. Two columns, and twenty-four
+at a time.
+
+**Panel 9.** The M900. A parcel marked `v2026.10.14.2` goes in.
+J.A.R.V.I.S.: `Production is running v2026.10.14.2.`
+CAPTION: About ten seconds without cameras; both back three seconds after
+the start. 976 events, 206 faces and 412 dog sightings read before and
+after.
+
+**Closing card.** Abilities: **The Header Switch** (backlog 34) · **The
+Sliding Bead** (backlog 35) · **Side by Side** (backlog 36) · **The Best
+View** (R51) · **Eyes Looking Down** (R30 b) · **The Padlocked Drawer** (R52).
+Lurking: the stranger nobody has measured (R54); the unnamed faces with no
+limit (backlog 37, the Owner's call).
