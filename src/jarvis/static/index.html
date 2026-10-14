@@ -193,16 +193,17 @@
         <h2>Detection sensitivity</h2>
         <p class="hint">How sure YOLO must be before motion counts as a person or an animal. Slide left and it finds more, and more false ones; slide right and it is stricter and misses more. A change reaches the cameras within seconds, without a restart.</p>
         <div class="sensitivity">
+          <datalist id="slider-default"><option></option></datalist>
           <label for="slider-confidence_person">Person</label>
-          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_person" name="confidence_person"><span>Fewer, stricter</span></div>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_person" name="confidence_person" list="slider-default"><span>Fewer, stricter</span></div>
         </div>
         <div class="sensitivity">
           <label for="slider-confidence_dog">Dog</label>
-          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_dog" name="confidence_dog"><span>Fewer, stricter</span></div>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_dog" name="confidence_dog" list="slider-default"><span>Fewer, stricter</span></div>
         </div>
         <div class="sensitivity">
           <label for="slider-confidence_animal">Other animals (cat, bird, horse, sheep, cow)</label>
-          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_animal" name="confidence_animal"><span>Fewer, stricter</span></div>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_animal" name="confidence_animal" list="slider-default"><span>Fewer, stricter</span></div>
         </div>
         <div class="how">
           <h3>How the sliders work</h3>

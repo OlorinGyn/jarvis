@@ -1007,6 +1007,7 @@ function showDetection(values) {
   const [low, high] = values.confidence_range;
   detectionForm.querySelector(".confidence-low").textContent = low.toFixed(2);
   detectionForm.querySelector(".confidence-high").textContent = high.toFixed(2);
+  document.querySelector("#slider-default option").value = values.slider_steps / 2;
   const now = document.getElementById("confidence-now");
   now.replaceChildren();
   for (const key of CONFIDENCE_KEYS) {
