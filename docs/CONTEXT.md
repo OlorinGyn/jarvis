@@ -242,11 +242,13 @@ uv run python tools/check_doc_refs.py                   every "<DOC> <section>" 
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
 ```
 
-**The documentation EPUB.** `tools/make_epub.py` joins every `.md` of the
-project into one EPUB, `docs/epub/JARVIS - Documentation.epub`, one chapter
-per document, so the cross-references stay a tap away on the reader. New
-documents join on their own (the `ORDER` list sets the known ones' order;
-anything else goes at the end). The `.md` files are never changed, EPUBs are not versioned, and the
+**The documentation EPUB.** `tools/make_epub.py` joins **only
+`docs/ARCHITECTURE.md` and `docs/PYTHON.md`** — the user's choice, 14/10/2026:
+how the program works and what it teaches; the process, the backlog, the
+history and what Claude exchanges stay out — into one EPUB,
+`docs/epub/JARVIS - Documentation.epub`, one chapter per document, so the
+cross-references stay a tap away on the reader. `ORDER` is the list of what
+goes in: a new document joins only when the user asks. The `.md` files are never changed, EPUBs are not versioned, and the
 script checks at the end that the count of tables and code blocks matches the
 sources, including tables nested in list items. It needs pandoc
 (`winget install --id JohnMacFarlane.Pandoc -e`, found even off the PATH;
@@ -256,8 +258,10 @@ the user asks** ("gere o epub", decided 10/10/2026): only the user reads it.
 
 Tuning constants: `capture.py` (`ANALYSIS_FPS`, `HWACCEL`, `SEGMENT_SECONDS`,
 `SOCKET_TIMEOUT_SECONDS`), `people.py` (`MIN_INTERVAL`,
-`MIN_PERSON_HEIGHT_FRACTION`, `ANIMAL_CONFIDENCE`, `SAME_PERSON_IOU`,
-`REPLACED_PERSON_IOU`), `motion.py` (`MIN_AREA`,
+`MIN_PERSON_HEIGHT_FRACTION`, `SAME_PERSON_IOU`, `REPLACED_PERSON_IOU`,
+`SETTINGS_REFRESH_SECONDS`; `CONFIDENCE` and `ANIMAL_CONFIDENCE` are only the
+defaults since backlog 31 — the live minimums are in Settings → Detection,
+ARCHITECTURE 7.14), `motion.py` (`MIN_AREA`,
 `CONFIRM_FRAMES`, `LIGHTING_CORRELATION`), `faces.py` (`MATCH_THRESHOLD`,
 `LEARN_THRESHOLD`, `IDENTITY_SCORE`, `MIN_VIEWS_FOR_NEW`), `notify.py`
 (`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`, `STALE_SECONDS`, `REMINDER_SECONDS`).

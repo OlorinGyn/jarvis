@@ -1,4 +1,4 @@
-"""Build one EPUB from every markdown file in the project.
+"""Build one EPUB from the documents the user reads: ARCHITECTURE and PYTHON.
 
 Usage: uv run python tools/make_epub.py
 
@@ -21,8 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "docs" / "epub" / "JARVIS - Documentation.epub"
 CSS = ROOT / "tools" / "epub.css"
 
-ORDER = ["README.md", "docs/CONTEXT.md", "docs/ARCHITECTURE.md",
-         "docs/INSTALL.md", "docs/PYTHON.md", "CLAUDE.md"]
+ORDER = ["docs/ARCHITECTURE.md", "docs/PYTHON.md"]
 
 
 def find_pandoc():
@@ -43,20 +42,8 @@ def find_pandoc():
 
 
 def gather_documents():
-    """Every .md in the project, preferred ones first, new ones after."""
-    every = sorted(
-        p for p in list(ROOT.glob("*.md")) + list((ROOT / "docs").glob("*.md"))
-        if "epub" not in p.parts)
-
-    ordered = []
-    for name in ORDER:
-        path = ROOT / name
-        if path.exists():
-            ordered.append(path)
-    for path in every:
-        if path not in ordered:
-            ordered.append(path)
-    return ordered
+    """The documents in ORDER, the user's list (14/10/2026); nothing else goes in."""
+    return [ROOT / name for name in ORDER if (ROOT / name).exists()]
 
 
 def verify(epub, documents):
