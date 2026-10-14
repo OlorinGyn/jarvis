@@ -658,9 +658,10 @@ That is: `person`, `bird`, `cat`, `dog`, `horse`, `sheep`, `cow`. Bear,
 elephant and zebra exist in COCO and were left out as implausible here —
 including them would only create exotic false positives.
 
-Animals use a higher confidence threshold (`ANIMAL_CONFIDENCE = 0.45` against
-`CONFIDENCE = 0.35`), because scene objects are mistaken for animals more
-easily than for people.
+Animals use a higher confidence threshold by default (0.45 against 0.35 for
+a person), because scene objects are mistaken for animals more easily than
+for people. Since backlog 31 the three minimums — person, dog, the other
+animals — are set in Settings → Detection (7.14).
 
 **Observed on 30/09/2026, still not handled:** events labelled `cat`, `cow`,
 `sheep` and `bird` in a house with a dog and people. Most likely YOLO
@@ -922,7 +923,7 @@ box inside a big one, with a low IoU.
 So `SubjectDetector` keeps `recent_people`: every `person` box YOLO returned in
 the last `RECENT_PERSON_SECONDS` = 2.0, with its time — as YOLO gave it, before
 any person rule. A `dog` box (`DOG_CLASS` = 16) that passed
-`ANIMAL_CONFIDENCE` and has IoU ≥ `SAME_PERSON_IOU` = 0.5 with one of them
+the dog minimum (7.14) and has IoU ≥ `SAME_PERSON_IOU` = 0.5 with one of them
 **becomes a `person`**, and then meets the person rules like any other
 (minimum height, the mat, 7.9). The order matters: the relabel comes after the
 animal threshold, so a weak dog box is still dropped instead of becoming a new
@@ -1003,6 +1004,62 @@ would say person, the dog crop would not be kept, and in Home a "person with
 no recognisable face" message would go out. None of the true-dog boxes of
 the twelve clips above did. A relabelled box later dropped by a person rule
 (too short, the mat) renews the memory too.
+
+### 7.14 How sure YOLO must be, per label (backlog 31, 14/10/2026)
+
+The user's request: set YOLO's minimum confidence in Settings, apart for a
+person, a dog and the other animals, without a restart. **Settings →
+Detection** holds three numbers, kept in `config.json` as new optional keys:
+
+| Key | Default | Applies to |
+|---|---|---|
+| `confidence_person` | 0.35 | `person` |
+| `confidence_dog` | 0.45 | `dog` |
+| `confidence_animal` | 0.45 | `bird`, `cat`, `horse`, `sheep`, `cow` |
+
+The defaults are the old `CONFIDENCE` and `ANIMAL_CONFIDENCE`, which now take
+their values from `settings.DEFAULTS` — one place for the numbers — and an
+older `config.json` reads them. The range is `CONFIDENCE_RANGE` = 0.20–0.90.
+The page refuses anything outside it with a 400 that names the key and
+stores the value rounded to two decimals; `settings.load()` replaces a stored
+value outside it — a hand edit, a string, `true` — by its default, so a bad
+value never breaks a read, and `check_data` reports it as a warning. The page
+reads the range and the defaults from `/api/settings`, so the numbers live
+only in `settings.py`. The fields step by 0.05 from 0.20.
+
+**How the detector uses them.** YOLO runs once with the lowest of the three
+as its floor — the network's own cut and the NMS's — and each box is then
+held to its own label's minimum; a box under it is dropped as "person below
+confidence" or "animal below confidence" in `replay.py`'s trace. A lower floor
+is safe because greedy NMS (PYTHON 17.4) suppresses a box only in favour of a
+stronger one: adding weaker boxes never removes a stronger box. The minimums
+come **before** R44's and R46's relabelling (7.12, 7.13): a `dog` box is
+judged by the dog minimum, as YOLO named it, so a bend called dog at 0.40 is
+still dropped at the default 0.45, as before. Judging a relabelled box by the
+person minimum instead would change today's output.
+
+**Without a restart.** Each camera's `SubjectDetector` takes `load_settings`
+(by default `settings.load`) and calls it again when its copy is older than
+`SETTINGS_REFRESH_SECONDS` = 2.0 of the monotonic clock — not the replay's
+`now` — and only when there is motion to judge. A read costs 0.23 ms on the
+M900. Asking again, rather than being told, also catches a hand edit of
+`config.json` (PYTHON 39).
+
+**At the defaults nothing changes.** Review 21 replayed R46's three clips
+(`Front/2026-10-13/15-00-17`, `Front/2026-10-11/16-20-00`,
+`Back/2026-10-12/12-40-35`) with the detector before and after: the same
+decisions and the same totals on every frame. Only the order of the reasons
+on three lines differs, because the below-confidence drops are now written
+first.
+
+**What it leaves alone.** The face scan's bodies (`person_boxes`, 10) and
+`tools/dog_crops.py` keep the default numbers: they are not live detection.
+`replay.py` reads the settings of the folder it runs in, so a replay follows
+what is set now, not what was set when the clip was recorded. And the page
+says what no number fixes: a person bending over is called `dog` as
+confidently as a real dog, so raising the dog value cuts real dogs first. A
+lower person value feeds R44's and R46's memories with more boxes, which
+lengthens R47's chain.
 
 ---
 
@@ -1860,7 +1917,8 @@ optional `now`, so `MIN_INTERVAL` and the static spots follow the video's
 clock instead of the wall clock. The reasons are the clearest list of what each
 layer filters: too small, few changed pixels, lighting change, not confirmed
 (n/3), whole frame changed, warming up; animal below confidence, person too
-short, no motion overlap, duplicate, static spot. `--prime` teaches MOG2 the
+short, no motion overlap, duplicate, static spot; since backlog 31 also
+person below confidence (7.14). `--prime` teaches MOG2 the
 background from the first 6 s first, because a fresh MOG2 is blind for 6 s —
 exactly where an event's pre-roll ends. The primed background already holds
 whatever was in the scene, which production's long-learned one would not:
@@ -3024,8 +3082,8 @@ nothing is sent: the faceless message only goes when no face was found at all.
 ### 22.4 Notifications, the first part of Settings
 
 **Since backlog 27 (12/10/2026, the user's)** Notifications is not a tab of its
-own: Settings has a sub-navigation — Notifications · Other devices · Archive ·
-Bad-detection reports — and each part is shown as `#settings/<part>`; no part,
+own: Settings has a sub-navigation — Notifications · Detection (7.14, since
+backlog 31) · Other devices · Archive · Bad-detection reports — and each part is shown as `#settings/<part>`; no part,
 or an unknown one, shows Notifications. An old `#notifications` link is
 replaced by `#settings/notifications` with `location.replace`, which adds no
 history entry, so Back does not bounce. The reports list is read only when its

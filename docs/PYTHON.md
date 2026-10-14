@@ -777,9 +777,15 @@ confident and discards those that overlap it beyond `NMS_THRESHOLD`. It
 returns only the indices that survived:
 
 ```python
-keep = cv2.dnn.NMSBoxes(boxes, scores, CONFIDENCE, NMS_THRESHOLD)
+keep = cv2.dnn.NMSBoxes(boxes, scores, floor, NMS_THRESHOLD)
 return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
 ```
+
+The suppression is *greedy*: boxes are taken from the most confident down,
+and a box is discarded only when a box already kept overlaps it. So adding
+weaker boxes — a lower `floor` — never removes a stronger one; that is why
+the detector can run YOLO once at the lowest of the three minimums and judge
+each label afterwards (backlog 31, ARCHITECTURE 7.14).
 
 `np.array(keep).ravel()` is there because, depending on the OpenCV version,
 `keep` comes as a flat list or as a column `[[0], [3]]`; `ravel()` flattens
@@ -1625,3 +1631,56 @@ settle_waiting = importlib.import_module("settle_waiting")
 
 after which `settle_waiting.main(["--dry-run"])` runs the tool in the test's
 process, and `monkeypatch` can replace its `web.already_running`.
+
+## 39. A function as a default argument, asking again after a while, and spreading a dict (backlog 31)
+
+**A function is a value.** `SubjectDetector(load_settings=settings.load)`:
+the default is the function itself — no parentheses — not its result.
+Production writes `SubjectDetector()` and gets the real reader; a test passes
+`lambda: dict(settings.DEFAULTS)` and never touches the machine's
+`config.json`. In Java the constructor would take a `Supplier<Settings>`, in
+C# a `Func<Settings>`, with an overload that supplies the real one; Python
+needs no overload. One catch: a default is evaluated once, when `def` runs,
+so a test that later replaces `settings.load` does not reach a detector
+built with the default. It must pass its own function, or change
+`settings.FILE`, which `load` reads at each call — what the tests do.
+
+**Asking again after a while.** Nobody tells the detector that a setting
+changed; it asks again when its copy is older than
+`SETTINGS_REFRESH_SECONDS`:
+
+```python
+def _minimums(self):
+    clock = time.monotonic()
+    if self.minimum_read is None or clock - self.minimum_read >= SETTINGS_REFRESH_SECONDS:
+        self.minimum = minimum_confidences(self.load_settings())
+        self.minimum_read = clock
+    return self.minimum
+```
+
+A cache with a time-to-live. Being told — an observer the web would call on
+save — is instant, but ties `web` to every camera thread and misses a hand
+edit of the file; asking costs a change up to 2 s late and a 0.23 ms read
+per camera every 2 s. `time.monotonic()`, not `time.time()`: it never jumps
+back when Windows corrects the clock.
+
+**Spreading one dict into another.** `**` inside a dict literal copies a
+dict's pairs into the new one, like `{...a}` in JavaScript:
+
+```python
+EDITABLE = {
+    "archive_min_free_gb": float,
+    **{key: float for key in settings.CONFIDENCE_KEYS},
+}
+```
+
+The inner part is a dict comprehension, `{key: value for ...}`, building
+`{"confidence_person": float, ...}` from the one tuple in `settings.py`: a
+label added there is editable here with no second list.
+
+**`True` is an `int`.** `confidence_valid` asks
+`isinstance(value, (int, float)) and not isinstance(value, bool)`, because
+`bool` is a subclass of `int` in Python — `isinstance(True, int)` is true and
+`True + True` is 2. Java and C# keep `boolean` and `int` apart, so the second
+test has no equivalent there.
+

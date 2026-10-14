@@ -215,6 +215,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4`, deployed at 21:36: 478 events, 55 face and 206 dog sightings, 6 reports read before and after; `Sync`'s new check passed on `pythonw.exe`; about 9 s stopped, cameras ok 3 s after the start (13.19) |
 | 19 | 13/10/2026 | `v2026.10.12.4..594fbc6`, developer session 17 — R46, backlog 30 and 29 | no code fixed; R46 replayed on `15-00-17` (no dog left) and on two true dogs with a person (nothing relabelled); 208 tests pass, `check_data` reads every file; R46 closed, R47 opened (low, a watch); release `v2026.10.13`, deployed at 22:22: 913 events, 200 face and 363 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start, `/api/status` says `"analysis": "On"` (13.20) |
 | 20 | 13–14/10/2026 | `v2026.10.13..212179e`, developer session 18 — backlog 28 | no code fixed: the rule does what item 28 says; 216 tests pass, `check_data` reads every file. **Not released**: on a copy of production's galleries the rule would have put 6 of Izabel's faces, misfiled in Gustavo's Waiting by wrong "sure" matches, into his Chosen; the once-only tool was not run and R48 waits for the user (13.21) |
+| 21 | 14/10/2026 | `0f68445..865eb7f`, developer session 19 — backlog 31 | no code fixed; 234 tests pass, `check_data` reads every file; at the defaults the detector decides as before on R46's three clips, replayed old against new. **Not released**: 31 waits on `master` with 28. The user's objection to R48 led to its cause: the seven wrong views and five of Gustavo's references are the top of a head, not a face — R49 (13.22) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1236,6 +1237,72 @@ cannot tell), 19.2, 19.5, 20, 22.6 and the file tree; CONTEXT 9 and 10;
 PYTHON 38. Developer 19 is planned with backlog 31 alone; 32 waits for R48
 (`BACKLOG.md` 3).
 
+### 13.22 Review 21 — developer session 19 (14/10/2026)
+
+Backlog 31 reviewed whole (`0f68445..865eb7f`, one code commit, 8 files of
+code and tests, +236 −16). 234 tests pass (216 before); `check_data` reads
+every file; no comments in `src/` and `tools/`; `check_doc_refs` exits 0.
+**No code fixed, no release.**
+
+**The code, read against the decision.** Three optional keys in
+`config.json`, older files read today's values, a stored value outside
+0.20–0.90 falls back to its default on read and is refused by the page with
+a 400. NaN and infinity, which Python's JSON reader accepts, fail the range
+test too. YOLO runs at the lowest minimum and each label is cut afterwards;
+greedy NMS keeps every box above a floor the same whatever the floor, so
+the boxes that reach the rules are exactly those the old code gave whenever
+the person minimum is the lowest — the defaults. The detector reads the
+settings at most every 2 s of the monotonic clock, only when there is motion;
+`settings._stored` already retries a read that meets a replace, so the new
+reader on each camera thread adds no failure. One small thing left as is:
+`check_data`'s settings line returns on the first warning, so a file with
+both an unknown key and a bad confidence shows only the confidence warning —
+both are warnings, the file is readable either way.
+
+**The developer's claim, checked on the clips.** `replay.py --prime` on R46's
+three clips, run twice — with `0f68445`'s `people.py` loaded in its place, and
+with the new one: `Front/2026-10-13/15-00-17` identical line for line (1287
+lines); `Front/2026-10-11/16-20-00` and `Back/2026-10-12/12-40-35` the same
+decisions and totals (99 and 164 dog frames), with only the order of the
+reasons swapped on three lines, because the below-confidence drops are now
+written before the others. A weak dog box no longer reaches
+`_people_replaced_by_dogs`; since dogs are matched the most confident first
+and a weak one was dropped afterwards anyway, no relabelling changes — what
+the replays show.
+
+**The user's objection to R48, and what it found.** Told that the seven
+views could not be told apart, the user answered that the two of them look
+nothing alike, and that if the software cannot separate them nothing built
+so far makes sense. Measured on production's `gallery.json`: between
+Gustavo's and Izabel's 40 chosen views the median cosine is 0.05 and the
+highest 0.42, under `LEARN_THRESHOLD`; each person's views are about 0.5 from
+their own mean and 0.1 from the other's — the recogniser separates their
+faces well. A contact sheet of the seven, of the Gustavo views they matched
+and of Izabel's chosen settled it: **the seven are the top or the back of
+Izabel's head**, and the views they matched, 15, 16, 18, 19 and 31 of
+Gustavo's Chosen, are the top of his. YuNet found a "face" in each (score
+0.61–0.89) and `is_frontal`, which tests that a face is not turned sideways,
+passed them. Leave-one-out on the 146 kept faces with those five out of the
+references: 101 sure and right, 0 wrong, 45 none, against 111, 7 and 28.
+Requiring two matching views instead of one cut errors only with many right
+answers (2 views at 0.45: 68 right, 1 wrong). No simple cue separates a
+head-top from a face on these views: YuNet's score (medians 0.82 and 0.71
+against 0.84–0.88), the eye-to-mouth height over the eye spread (1.2–2.8 on
+head-tops, 0.8–4.6 on faces) and the embedding's length (5.4–7.8 against
+4.4–10.7) all overlap. **R49 (high)** holds it; the twelve views go to the
+user in `PENDING.md`. What review 20 said — no measure on the embeddings
+tells the seven apart — stays true of those views, and was read, rightly,
+as a claim about the faces; the next explanation to the user starts from the
+pictures.
+
+**The EPUB.** The user chose its documents: ARCHITECTURE and PYTHON only.
+`tools/make_epub.py`'s `ORDER` is now that list and nothing else joins
+(CONTEXT 10).
+
+**Documentation.** ARCHITECTURE 7.1, 7.12, 7.14 (new), 12.10 and 22.4;
+CONTEXT 10; PYTHON 17.4 and 39; BACKLOG 1, 2 (R48, R49, R47) and 3; PENDING.
+No developer session planned: R48 and R49 wait for the user.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1288,3 +1355,5 @@ of `CONTEXT.md`.
 | A26 | architect | ultracode | 13/10 22:14–22:30 | review 19: three replays (one R46 clip, two true dogs), HANDOFF integrated, ARCHITECTURE 7.13 and 22.7, PYTHON 36–37, R47, raid log 16, release and deploy `v2026.10.13`; developer 18 planned and started | 23% → 32% | 13% → 14% | 92k → 205k tokens, a new conversation |
 | D18 | developer | high | 13/10 night | session 18: backlog 28 — the rule, the vectorised dog matrix, `settle_waiting.py` (216 tests) | 34% → 40% | 14% → 15% | ~163k tokens at the end, a new conversation |
 | A27 | architect | ultracode | 13/10 22:36 – 14/10 10:15 | review 20: production's galleries copied and settled, three recognition measurements, contact sheets of 146 faces, R48; HANDOFF integrated, PYTHON 38; no release; developer 19 planned. The connection dropped overnight mid-measurement and the session resumed in the morning | 42% → unknown at the drop; 0% → 7% in the new window | 15% → 17% | 91k → about 230k tokens, a new conversation |
+| D19 | developer | high | 14/10 morning | session 19: backlog 31 — three minimums in Settings, read without a restart (234 tests) | 7% → 14% | 17% → 18% | 125k tokens at the end, a new conversation |
+| A28 | architect | ultracode | 14/10 10:05–10:30 | two questions from the user (where the work stands, the decisions waiting), then review 21: three clips replayed old against new, the user's objection to R48 measured — cross-person similarity, a contact sheet, leave-one-out without the five head-tops, three quality cues — R49; the EPUB list; no release, no developer planned | 14% → 22% (the questions before the review cost under a point) | 18% → 19% | 84k → 179k tokens, the conversation the user opened this morning |

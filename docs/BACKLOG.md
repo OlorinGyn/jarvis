@@ -47,6 +47,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **27.** Notifications as the first part of Settings (decided 12/10, `v2026.10.12.2`) | ARCHITECTURE 22.4 |
 | ✓ | **29.** `/on` and `/off` from the bot; Off never stored (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.7 |
 | ✓ | **30.** Home silences a probable resident: two cases of their own (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.2 |
+| ✓ | **31.** Detection sensitivity per label in Settings (decided 13/10, `45aa0e5`, review 21); **not released** — on `master` with 28, which waits for R48 | ARCHITECTURE 7.14 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29 and 30, in `PENDING.md`.
 
@@ -78,12 +79,6 @@ taken in production that evening.
     readable, and empties. **Built** (`6345a7d`, `47a2e6a`) and reviewed
     (review 20), **not released**: the rule lets a wrong-person view in first
     — R48 waits for the user.
-31. **Detection sensitivity** (decided). In Settings, per label — person,
-    dog, other animals — YOLO's minimum confidence (today `CONFIDENCE` 0.35
-    and `ANIMAL_CONFIDENCE` 0.45), stored in `config.json` (additive) and
-    applied without a restart. The page says what it does not fix: a person
-    bending over is called `dog` as confidently as a real dog (R46), so
-    raising the dog value cuts real dogs first.
 32. **The "maybe" threshold, chosen from measured accuracy** (decided; the
     user: with a metric they set the threshold, without one the maybe stays
     as it is). Settings shows, for faces and for dogs, a table measured on
@@ -97,7 +92,8 @@ taken in production that evening.
     review 20**: 7 of Gustavo's views are Izabel's faces, counted as right by
     their label; at 0.45 at least 8 of 146 are wrong, and the table means
     something only on clean labels, with each view's exact copies left out of
-    its own test — but 12 unnamed
+    its own test; and review 21 found that those wrong views are not faces
+    at all, but the top of a head (R49). Even so, 12 unnamed
     face views fall between 0.363 and 0.45; dogs at today's thresholds are
     right in 31 of 33 probable matches, the 2 wrong ones at night. **What it
     cannot measure:** a stranger has no name, so the table shows confusion
@@ -192,13 +188,36 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R48 | **high — the user's decision** | The 40-view rule lets a wrong-person view in first; production's Waiting holds Izabel's faces as Gustavo's | open (below); holds backlog 28's release |
+| R49 | **high** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | open (below); the cause of R48 |
+| R48 | **high — the user's decision** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | open (below); holds backlog 28's release, and 31's with it |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+
+**R49 — The top or the back of a head passes as a face (high, review 21,
+14/10/2026).** R48's seven "faces of Izabel" are not faces: the contact sheet
+shows the top or the back of her head, bent down or turned away, and five
+views in Gustavo's Chosen are the same of him — 15, 16, 18, 19 and 31 on
+the page, files `55edf5`, `e5bf9c`, `80936d`, `1f8419` and `dbc1b0`. YuNet
+scored them 0.61–0.89 and placed landmarks that `is_frontal` (ARCHITECTURE
+10) accepts: it checks that a face is not turned sideways, not that there is
+a face. The top of one head looks like the top of another, so each of the
+seven matched one of those five, at 0.475–0.509. **The recogniser itself
+tells the two people apart:** between Gustavo's and Izabel's 40 chosen views
+the median similarity is 0.05 and the highest 0.42, under `LEARN_THRESHOLD`;
+each person's views sit at about 0.5 from their own mean and 0.1 from the
+other's. Leave-one-out on the 146 kept faces, those five left out of the
+references: 101 sure and right, **0 wrong**, 45 unrecognised — against 111,
+7 and 28 today. **No measure tried tells a head-top from a face:** YuNet's
+score, the eye-to-mouth height over the eye spread and the embedding's
+length all overlap between the two. What is left to try: a face-quality
+measure, a recogniser made for poor faces, or the user removing them by
+hand. A different recogniser means new embeddings for every gallery — not
+additive, the user's decision. **Now:** the user deletes the five with the
+seven (`PENDING.md`); measure before any code.
 
 **R48 — The 40-view rule lets a wrong-person view in first (high, the
 user's decision, review 20).** Backlog 28 keeps what is most different, and a
@@ -218,6 +237,9 @@ its own is deleted — until backlog 32 sets a sure threshold the user trusts;
 **(c)** hold 28 until 32 is done. The architect recommends **(b)**: Waiting
 stops growing as the user asked, no wrong match can enter a full Chosen, and
 the user's own naming, which is right by definition, still renews the 40.
+**Review 21:** the wrong views are head-tops (R49), and nothing stops a new
+one being learned "sure" through another head-top of the person, so (b)
+still holds until R49 is fixed.
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -242,29 +264,27 @@ would cut the long bends R46 exists for. **Trigger:** a "not a person" report
 whose `replay.py` trace shows "took the place of a person who vanished".
 **Then:** bound the chain — for instance, a relabelled box renews the memory
 only within some seconds of the last real person box, measured on R46's
-bends (HISTORY 13.20).
+bends (HISTORY 13.20). Since backlog 31, a person minimum set below 0.35
+feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ---
 
 ## 3. Next sessions
 
-**Review 20 is done, without a release:** backlog 28 is on `master` and
-waits for R48, so the next release carries whatever the user decides there.
-Production stays on `v2026.10.13`.
+**Review 21 is done, without a release:** backlog 31 is reviewed and sits on
+`master` with 28, which waits for R48. Production stays on `v2026.10.13`; the
+next release carries 28, as the user decides it, and 31.
 
-**Developer 19 (planned 14/10):** backlog 31 alone — detection sensitivity
-per label in Settings. It is decided and does not touch the galleries, so it
-does not wait for R48. As item 31 says: YOLO's minimum confidence for person,
-dog and other animals (today `CONFIDENCE` 0.35 and `ANIMAL_CONFIDENCE` 0.45),
-stored in `config.json` as new optional keys (older files keep today's
-values), applied without a restart, and the page says what it cannot fix —
-a person bending over is called `dog` as confidently as a real dog (R46), so
-raising the dog value cuts real dogs first. Tests for the defaults, a stored
-value, a value out of range, and the change reaching the detector without a
-restart; `check_data` on the result.
+**No developer session is planned — it waits for the user** (CLAUDE.md, stop
+and wait): R48 and R49 both touch the face galleries, and R49's way out may
+change the recogniser, which is the user's decision. **Proposed for developer
+20, once the user answers:** R48 as decided — under (b), past 40 only the
+user's naming and merging renew Chosen — and R49's measurement before any
+code: on production's kept faces with review 21's twelve head-tops labelled,
+which measure tells a head-top from a face.
 
-**Waits for the user:** R48, and with it backlog 28's release and backlog 32
-(its table means something only on clean labels).
+**Waits for the user:** R48, R49's direction, and with them backlog 28's and
+31's release and backlog 32 (its table means something only on clean labels).
 
 **Not planned:** R42 waits for the user's choice; R30 (b) can now be measured
 with Izabel and joins a later session; R47 is a watch. R14, R12 and R9 as
