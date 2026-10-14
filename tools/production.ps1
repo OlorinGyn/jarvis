@@ -120,8 +120,12 @@ function CheckData([string]$When) {
 }
 
 function FetchModels([string]$Version) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $source = git -C $ProdDir show "${Version}:src/jarvis/downloads.py" 2>$null
-    if ($LASTEXITCODE) { Say "$Version fetches no model ahead."; return }
+    $found = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $previous
+    if (-not $found) { Say "$Version fetches no model ahead."; return }
     Say "Fetching the models $Version needs, before stopping anything..."
     $script = Join-Path $env:TEMP 'jarvis_downloads.py'
     Set-Content -Path $script -Value $source -Encoding UTF8
