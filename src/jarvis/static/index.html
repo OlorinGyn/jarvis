@@ -217,6 +217,23 @@
         </div>
         <p class="result" id="detection-result"></p>
       </form>
+      <form id="sure-form" class="panel">
+        <h2>Face recognition: when a name is sure</h2>
+        <p class="hint">A face whose match reaches this threshold is named for sure; below it, down to <span class="sure-match"></span>, the message says "probably", and a probable resident has a case of its own. Sure matches also teach the gallery new views, and naming someone gathers the unnamed faces that reach it. Each row is measured now on your named photos: every Chosen view matched against all the others, its exact copies left out. Sure: how many would be named for sure; Right and Wrong: to the right person or not; Unnamed: unnamed faces that would cross it toward someone named.</p>
+        <div class="modes-wrap">
+          <table id="accuracy-table">
+            <thead><tr><th scope="col">Threshold</th><th scope="col">Sure</th><th scope="col">Right</th><th scope="col">Wrong</th><th scope="col">Unnamed</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="hint" id="accuracy-summary"></p>
+        <p class="hint">What it cannot measure: a stranger has no name, so the table shows confusion between the people you named, not with strangers. The Unnamed column is the only hint. A lower threshold names more, and learns more views on its own.</p>
+        <div class="actions">
+          <button type="submit">Save</button>
+          <button type="button" id="sure-default">Back to the default</button>
+        </div>
+        <p class="result" id="sure-result"></p>
+      </form>
     </div>
     <div class="settings" data-part="devices" hidden>
       <form id="pin-form" class="panel">

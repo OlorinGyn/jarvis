@@ -29,7 +29,7 @@ import cv2
 import numpy as np
 from filelock import FileLock
 
-from jarvis import ROOT, downloads, people
+from jarvis import ROOT, downloads, people, settings
 from jarvis.capture import NO_WINDOW, ffmpeg_exe
 
 MODEL_DIR = ROOT / "models"
@@ -57,7 +57,9 @@ REFINE_MARGIN = 1.0
 LANDMARK_VALUES = 14
 GOOD_FACE_WIDTH = 80
 MATCH_THRESHOLD = 0.30
-LEARN_THRESHOLD = 0.40
+LEARN_THRESHOLD = settings.DEFAULTS[settings.FACE_SURE_KEY]
+SURE_SWEEP = tuple(round(0.30 + 0.025 * step, 3) for step in range(13))
+COPY_SIMILARITY = 0.9999
 SAME_FACE_THRESHOLD = 0.35
 SAMPLE_EVERY = 6
 MAX_SAMPLES = 60
@@ -469,6 +471,58 @@ def _fix_cover(person):
             person["cover"] = fallback
         else:
             person.pop("cover")
+
+
+def learn_threshold(values=None):
+    """The sure threshold the user chose in Settings (backlog 32); LEARN_THRESHOLD until they choose."""
+    value = (settings.load() if values is None else values).get(settings.FACE_SURE_KEY, LEARN_THRESHOLD)
+    return value if settings.face_sure_valid(value) else LEARN_THRESHOLD
+
+
+def accuracy(gallery=None, thresholds=SURE_SWEEP):
+    """Leave-one-out over the named people's Chosen views, per sure threshold (backlog 32).
+
+    Each view is matched against every other named view, its exact copies
+    left out, as Gallery.match would: how many would be named for sure and
+    how many rightly, and how many views of unnamed entries would cross the
+    threshold toward a named person. A stranger has no name, so confusion
+    with strangers is not measured; the unnamed column is the only hint.
+    """
+    gallery = gallery or Gallery()
+    named = [p for p in gallery.people if p["name"] and p["embeddings"]]
+    owners, rows = [], []
+    for index, person in enumerate(named):
+        owners += [index] * len(person["embeddings"])
+        rows += person["embeddings"]
+    unnamed = [e for p in gallery.people if not p["name"] for e in p["embeddings"]]
+    best, right, crossing = [], [], []
+    if rows and len({len(r) for r in rows}) == 1:
+        matrix = _unit_rows(rows)
+        similar = matrix @ matrix.T
+        owners = np.asarray(owners)
+        for probe in range(len(rows)):
+            scores = np.where(similar[probe] >= COPY_SIMILARITY, -1.0, similar[probe])
+            top = int(np.argmax(scores))
+            if scores[top] < 0:
+                continue
+            best.append(float(scores[top]))
+            right.append(owners[top] == owners[probe])
+        others = [e for e in unnamed if len(e) == matrix.shape[1]]
+        if others:
+            crossing = (_unit_rows(others) @ matrix.T).max(axis=1).tolist()
+    best, right, crossing = np.asarray(best), np.asarray(right, bool), np.asarray(crossing)
+    table = []
+    for threshold in thresholds:
+        sure = best >= threshold
+        table.append({"threshold": threshold, "named": int(sure.sum()), "right": int((sure & right).sum()),
+                      "wrong": int((sure & ~right).sum()), "unnamed": int((crossing >= threshold).sum())})
+    return {"views": int(len(best)), "unnamed_views": len(unnamed), "rows": table}
+
+
+def _unit_rows(rows):
+    matrix = np.asarray(rows, np.float32)
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    return matrix / np.where(norms > 0, norms, 1.0)
 
 
 def _similarity(person, embedding):
@@ -936,6 +990,7 @@ class Gallery:
 
     def _absorb(self, person):
         """Fold in unnamed identities that clearly look like this person."""
+        sure = learn_threshold()
         merged = 0
         changed = True
         while changed:
@@ -944,7 +999,7 @@ class Gallery:
                 if other is person or other["name"]:
                     continue
                 if max((_similarity(person, e) for e in other["embeddings"]),
-                       default=0.0) >= LEARN_THRESHOLD:
+                       default=0.0) >= sure:
                     self._merge(other, person)
                     merged += 1
                     changed = True
@@ -1266,6 +1321,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
     recorded = []
 
     seen_here = set()
+    sure = learn_threshold()
     for group in sorted(_group(observations), key=lambda g: g["weight"], reverse=True):
         embedding = group["embedding"]
         reliable = group["width"] >= GOOD_FACE_WIDTH
@@ -1283,7 +1339,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
             others = [(v, c) for v, c in zip(group["views"], group["crops"]) if v is not embedding]
             person_id = gallery.add([embedding, *(v for v, _ in others[:3])], thumbnail,
                                     [group["crop"], *(c for _, c in others[:3])])
-        elif score >= LEARN_THRESHOLD:
+        elif score >= sure:
             gallery.reinforce(person_id, group["views"][matched], group["crops"][matched])
         seen_here.add(person_id)
 

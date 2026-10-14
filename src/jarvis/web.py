@@ -59,6 +59,7 @@ NAME_MAX = 60
 BATCH_MAX = 500
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
+    "face_sure_threshold": float,
     "notify_chat": str,
     "notify_prefix": str,
     "notify_labels": list,
@@ -882,6 +883,11 @@ def _clean(key, value):
         raise HTTPException(400, f"notify_mode must be one of {', '.join(modes.MODES)}")
     if key == "notify_modes":
         return _clean_modes(value)
+    if key == settings.FACE_SURE_KEY:
+        if settings.face_sure_valid(value):
+            return round(float(value), 3)
+        low, high = settings.FACE_SURE_RANGE
+        raise HTTPException(400, f"{key} must be a number from {low} to {high}")
     if key in settings.CONFIDENCE_KEYS:
         if settings.confidence_valid(value):
             return round(float(value), 2)
@@ -908,6 +914,16 @@ def _clean_modes(value):
     for mode, switches in value.items():
         current[mode].update(switches)
     return current
+
+
+@app.get("/api/accuracy/faces")
+def face_accuracy():
+    """How the sure threshold would do on the named faces, measured now, with the current choice (backlog 32)."""
+    current = faces.learn_threshold()
+    thresholds = tuple(sorted({*faces.SURE_SWEEP, current}))
+    table = faces.accuracy(faces.Gallery(), thresholds)
+    table.update(current=current, default=faces.LEARN_THRESHOLD, range=list(settings.FACE_SURE_RANGE))
+    return table
 
 
 @app.get("/api/settings")

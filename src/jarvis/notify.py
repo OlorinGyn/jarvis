@@ -19,7 +19,7 @@ from pathlib import Path
 import requests
 
 from . import modes
-from .faces import LEARN_THRESHOLD
+from .faces import learn_threshold
 from .settings import load
 
 API = "https://api.telegram.org/bot{token}/{method}"
@@ -170,14 +170,14 @@ def faces_seen(camera, started_at, sightings, settings=None):
     when = started_at.strftime("%H:%M:%S")
     wanted = []
     for sighting in sightings:
-        case = person_case(sighting)
+        case = person_case(sighting, settings)
         if modes.allowed(case, settings):
             wanted.append(sighting)
         else:
-            logger.info("Notification %s face, %s: skipped: %s mode", camera, _who(sighting),
+            logger.info("Notification %s face, %s: skipped: %s mode", camera, _who(sighting, settings),
                         modes.mode_of(settings))
     for sighting in wanted[:MAX_FACES]:
-        who = _who(sighting)
+        who = _who(sighting, settings)
         subject = f"{camera} face, {who}"
         person = sighting.get("person_id")
         if person and not _cooled_down(("face", person), settings):
@@ -208,7 +208,7 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
         sent = faces_seen(camera, started_at, found, settings)
         if held and sent:
             _claim(camera)
-        silenced = not any(modes.allowed(person_case(s), settings) for s in found)
+        silenced = not any(modes.allowed(person_case(s, settings), settings) for s in found)
         if held and silenced and people > len(found) and best:
             return sent + _faceless(camera, started_at, best, held, notified, settings,
                                     hidden_person, people, len(found))
@@ -270,7 +270,7 @@ def hidden_person(camera, started_at, image, people, faces, settings=None):
                         str(image), settings)
 
 
-def person_case(sighting):
+def person_case(sighting, settings=None):
     """Which switch a face answers to: a resident, sure or probable, another name, or unknown.
 
     A weak match to a resident has a case of its own, so whether it is
@@ -279,22 +279,23 @@ def person_case(sighting):
     if not sighting.get("name"):
         return "unknown_face"
     if sighting.get("resident"):
-        sure = sighting.get("score", 0) >= LEARN_THRESHOLD
+        sure = sighting.get("score", 0) >= learn_threshold(settings)
         return "resident_person" if sure else "probable_resident_person"
     return "known_person"
 
 
-def _who(sighting):
+def _who(sighting, settings=None):
     """Name the face, and say so when the match is too weak to be sure.
 
     A match only needs MATCH_THRESHOLD, where nothing measured was wrong; ours
     are 40-60 px faces, where a weak match can be chance. LEARN_THRESHOLD is
-    the bar the gallery already trusts to learn from (ARCHITECTURE 10.14).
+    the bar the gallery already trusts to learn from (ARCHITECTURE 10.14), as
+    the user set it in Settings (backlog 32).
     """
     name = sighting.get("name") or ""
     if not name:
         return "unknown face"
-    if sighting.get("score", 0) < LEARN_THRESHOLD:
+    if sighting.get("score", 0) < learn_threshold(settings):
         return f"probably {name}"
     return f"{name} recognized"
 

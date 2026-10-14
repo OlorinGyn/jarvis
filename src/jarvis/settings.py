@@ -20,6 +20,8 @@ REPLACE_PAUSE = 0.01
 CONFIDENCE_KEYS = ("confidence_person", "confidence_dog", "confidence_animal")
 CONFIDENCE_RANGE = (0.20, 0.90)
 SLIDER_STEPS = 1000
+FACE_SURE_KEY = "face_sure_threshold"
+FACE_SURE_RANGE = (0.30, 0.60)
 
 _LOCK = threading.RLock()
 
@@ -38,6 +40,7 @@ DEFAULTS = {
     "confidence_person": 0.35,
     "confidence_dog": 0.45,
     "confidence_animal": 0.45,
+    "face_sure_threshold": 0.40,
 }
 
 
@@ -76,7 +79,15 @@ def load():
     for key in CONFIDENCE_KEYS:
         if not confidence_valid(values[key]):
             values[key] = DEFAULTS[key]
+    if not face_sure_valid(values[FACE_SURE_KEY]):
+        values[FACE_SURE_KEY] = DEFAULTS[FACE_SURE_KEY]
     return values
+
+
+def face_sure_valid(value):
+    """True for a face sure threshold the page may set: a number inside FACE_SURE_RANGE (backlog 32)."""
+    low, high = FACE_SURE_RANGE
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
 
 
 def confidence_valid(value):

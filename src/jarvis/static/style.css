@@ -1071,3 +1071,43 @@ input[role="switch"]:focus-visible {
   margin: 4px 0 8px;
   font: inherit;
 }
+
+#accuracy-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 640px;
+}
+
+#accuracy-table th,
+#accuracy-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+#accuracy-table th[scope="col"] {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#accuracy-table tbody tr {
+  cursor: pointer;
+}
+
+#accuracy-table .active {
+  background: rgba(61, 122, 79, 0.15);
+}
+
+#accuracy-table input {
+  flex: none;
+  padding: 0;
+  margin: 0 4px 0 0;
+  vertical-align: middle;
+}
+
+#accuracy-table label {
+  white-space: nowrap;
+  cursor: pointer;
+}

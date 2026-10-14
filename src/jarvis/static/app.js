@@ -287,6 +287,7 @@ function showSettingsPart() {
   }
   loadSettings();
   if (part === "reports") loadReports();
+  if (part === "detection") loadAccuracy();
 }
 
 function showTab() {
@@ -1069,6 +1070,73 @@ detectionForm.addEventListener("submit", (submitted) => {
 
 document.getElementById("detection-defaults").addEventListener("click", () => {
   saveSettings({ ...confidenceDefaults }, detectionResult);
+});
+
+const sureForm = document.getElementById("sure-form");
+const sureResult = document.getElementById("sure-result");
+let sureDefault = null;
+
+function accuracyRow(row, current, views) {
+  const line = document.createElement("tr");
+  line.classList.toggle("active", row.threshold === current);
+  const pick = document.createElement("td");
+  const label = document.createElement("label");
+  const radio = document.createElement("input");
+  radio.type = "radio";
+  radio.name = "face_sure_threshold";
+  radio.value = row.threshold;
+  radio.checked = row.threshold === current;
+  label.append(radio, ` ${row.threshold.toFixed(3)}`);
+  pick.append(label);
+  const share = row.named ? `${Math.round((100 * row.right) / row.named)} %` : "-";
+  const cells = [`${row.named}/${views}`, share, row.wrong, row.unnamed];
+  line.append(pick, ...cells.map((value) => {
+    const cell = document.createElement("td");
+    cell.textContent = value;
+    return cell;
+  }));
+  line.addEventListener("click", (clicked) => {
+    if (clicked.target !== radio) radio.checked = true;
+  });
+  return line;
+}
+
+function showAccuracy(table) {
+  sureDefault = table.default;
+  sureForm.querySelector(".sure-match").textContent = table.range[0].toFixed(2);
+  sureForm.querySelector("tbody").replaceChildren(
+    ...table.rows.map((row) => accuracyRow(row, table.current, table.views)));
+  document.getElementById("accuracy-summary").textContent = table.views
+    ? `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}.`
+    : "Name at least two photos of someone before this can be measured.";
+}
+
+async function loadAccuracy() {
+  try {
+    showAccuracy(await getJSON("/api/accuracy/faces"));
+  } catch {
+    sureResult.textContent = "Could not measure the named faces.";
+  }
+}
+
+async function saveSure(value) {
+  try {
+    await send("/api/settings", { face_sure_threshold: value });
+    sureResult.textContent = "Saved.";
+  } catch (problem) {
+    sureResult.textContent = `Not saved: ${problem.message}`;
+  }
+  loadAccuracy();
+}
+
+sureForm.addEventListener("submit", (submitted) => {
+  submitted.preventDefault();
+  const chosen = sureForm.querySelector("input[name=face_sure_threshold]:checked");
+  if (chosen) saveSure(Number(chosen.value));
+});
+
+document.getElementById("sure-default").addEventListener("click", () => {
+  if (sureDefault !== null) saveSure(sureDefault);
 });
 
 const pinForm = document.getElementById("pin-form");
