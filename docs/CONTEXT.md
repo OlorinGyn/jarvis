@@ -125,6 +125,12 @@ and is not better here — it needs a higher threshold before nothing is wrong,
 and is twice as slow (ARCHITECTURE 10.14). The gallery moved to a new file so
 a rollback still reads the old one (ARCHITECTURE 19.1).
 
+**An unknown person always reaches the phone in Home** (the user,
+14/10/2026). A face not known, or a person YOLO saw beside known faces whose
+own face never showed, is notified even when a resident is in the scene:
+"if it errs, it errs" — one extra message is better than someone hiding
+beside the user going unannounced (R42 (b)).
+
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 

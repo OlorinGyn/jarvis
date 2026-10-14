@@ -42,8 +42,6 @@ grows, decisions are being postponed.
 - **`v2026.10.14` on the M900**: the next person events should name Gustavo
   and Izabel more often, sometimes as "probably" (R51); a face message that
   names the wrong person goes to the architect.
-- **R42**: accept the corner, or count people with YOLO (recommended)
-  (BACKLOG 2).
 
 ## Decided, not yet done
 
@@ -56,10 +54,17 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
+**Self-cleaning People and Dogs** (backlog 37, the user, 14/10): "perhaps
+clean themselves now and then". The architect proposes a policy in review 24
+— what goes (unnamed entries never seen again after some days? old
+sightings' photos?), what never goes (named people and dogs, their Chosen),
+measured on production's growth — and the user decides. The UX pass of 15:07
+also looks at People and Dogs as if they held hundreds of photos.
+
 **Asked on 14/10 at 12:55, to fill the window from 15:00** (an answer may
 reach a cleared architect: read it against this list).
-1. **R42**: (a) accept the corner, or (b) count people with YOLO
-   (recommended).
+1. ~~R42~~ answered: (b), and an unknown person always reaches the phone in
+   Home (CONTEXT 3).
 2. ~~Backlog 34~~ answered: Off asks first, On is one click (BACKLOG 1).
 3. **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
    goes down, 33 buttons on the Telegram message, 6 search and filter: the

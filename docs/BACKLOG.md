@@ -115,6 +115,14 @@ taken in production that evening.
     confidence, the middle being the default, the ends 0.20 and 0.90, each
     half in proportion, with each slider's current value and default written
     in that text, not on the control.
+37. **People and Dogs hold many photos gracefully** (decided, UX; the user,
+    14/10/2026: some households will never open the page, so the screens
+    must cope with a great many photos, "and perhaps clean themselves now
+    and then"). The layout part is the architect's (PROCESS 1): designed in
+    review 24 from production's counts and their growth per day, after the
+    UX pass — paging or loading as one scrolls, counts, grouping by day. The
+    self-cleaning part deletes the user's data, so it is the user's decision
+    on a policy the architect proposes (`PENDING.md`).
 36. **Notifications: the Telegram card beside "What reaches the phone"**
     (decided; the user, 14/10/2026). Two columns where the screen is wide
     enough, one under the other on a phone — the user opens the page from
@@ -213,7 +221,7 @@ model; R48 and R49 closed in review 23.
 | R51 | medium | A clip's face is matched by its heaviest view, not its best: a clip with sure views can be recorded "probably" | open (below) |
 | R52 | low | The gallery migration runs before the log file and before the port is held | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
-| R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
+| R42 | **high — decided 14/10: (b)** | In Home, a resident's face plus a second person who never shows a face sends nothing | decided: count people with YOLO; developer 23 |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
@@ -286,8 +294,10 @@ person boxes in the same frame. Options: (a) accept the corner; (b) when the
 person was held, every face found was silenced, and YOLO saw more people at
 once than distinct faces were found, send the best view as
 `faceless_person`. (b) costs a counter in `EventRecorder` and, when YOLO
-counts a dog as a second person (R18), one extra message. The architect
-recommends (b).
+counts a dog as a second person (R18), one extra message. **Decided by the
+user, 14/10/2026: (b).** "If it errs, it errs": someone hiding beside a
+resident must reach the phone, so a person the system cannot account for
+always wins over silence in Home (CONTEXT 3).
 
 **R47 — R46's chain has no end (low, a watch, 13/10/2026).** Every
 relabelled box renews both memories (ARCHITECTURE 7.13), so a real dog that
@@ -345,8 +355,12 @@ R51's table and the choice; R30 (b)'s per-limit table; the log
 line as written by the test copy. If the session runs short, stop after a
 coherent commit and say what is left.
 
-**Developer 23 (after review 24): R53 step 1, then backlog 32 for faces.**
-R53's bench (section 2) on a copy of production's `dogs/` taken after the
+**Developer 23 (after review 24): R42 (b), R53 step 1, then backlog 32 for
+faces.** R42 (b) first (section 2), decided by the user: a counter of how
+many people YOLO saw at once in the held person's frames, compared with the
+distinct faces the scan found; when every face found was silenced and YOLO
+saw more people, the best view goes out as `faceless_person`. Tests for the
+hidden-person case and for a dog counted as a person. Then R53's bench (section 2) on a copy of production's `dogs/` taken after the
 user's deletions — if they are not done, label the views listed in
 `PENDING.md` as "not this dog" in the bench instead. Then backlog 32's table
 for faces only: the face labels are clean since 14/10 (the head-tops
