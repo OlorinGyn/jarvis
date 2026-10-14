@@ -17,6 +17,8 @@ from . import ROOT, modes
 FILE = ROOT / "config.json"
 REPLACE_ATTEMPTS = 50
 REPLACE_PAUSE = 0.01
+CONFIDENCE_KEYS = ("confidence_person", "confidence_dog", "confidence_animal")
+CONFIDENCE_RANGE = (0.20, 0.90)
 
 _LOCK = threading.RLock()
 
@@ -32,6 +34,9 @@ DEFAULTS = {
     "notify_mode": modes.DEFAULT_MODE,
     "notify_modes": None,
     "write_pin": "",
+    "confidence_person": 0.35,
+    "confidence_dog": 0.45,
+    "confidence_animal": 0.45,
 }
 
 
@@ -67,7 +72,16 @@ def load():
             values[key] = stored[key]
     values["notify_mode"] = modes.mode_of(values)
     values["notify_modes"] = modes.normalised(values["notify_modes"], values["notify_labels"])
+    for key in CONFIDENCE_KEYS:
+        if not confidence_valid(values[key]):
+            values[key] = DEFAULTS[key]
     return values
+
+
+def confidence_valid(value):
+    """True for a detection confidence the detector accepts: a number inside CONFIDENCE_RANGE."""
+    low, high = CONFIDENCE_RANGE
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
 
 
 def save(values):

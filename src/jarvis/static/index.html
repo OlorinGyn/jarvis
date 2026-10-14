@@ -149,6 +149,7 @@
   <section id="settings" class="tab">
     <nav class="subtabs">
       <a href="#settings/notifications" data-part="notifications">Notifications</a>
+      <a href="#settings/detection" data-part="detection">Detection</a>
       <a href="#settings/devices" data-part="devices">Other devices</a>
       <a href="#settings/archive" data-part="archive">Archive</a>
       <a href="#settings/reports" data-part="reports">Bad-detection reports</a>
@@ -185,6 +186,27 @@
           <button type="button" id="send-test">Send a test</button>
         </div>
         <p class="result" id="notify-result"></p>
+      </form>
+    </div>
+    <div class="settings" data-part="detection" hidden>
+      <form id="detection-form" class="panel">
+        <h2>Detection sensitivity</h2>
+        <p class="hint">How sure YOLO must be before motion counts as a person or an animal, from <span class="confidence-low"></span> to <span class="confidence-high"></span>. Lower finds more, and more false ones; higher misses more. A change reaches the cameras within seconds, without a restart.</p>
+        <label>Person
+          <input type="number" name="confidence_person" step="0.05">
+        </label>
+        <label>Dog
+          <input type="number" name="confidence_dog" step="0.05">
+        </label>
+        <label>Other animals (cat, bird, horse, sheep, cow)
+          <input type="number" name="confidence_animal" step="0.05">
+        </label>
+        <p class="hint">What this does not fix: a person bending over is called a dog as confidently as a real dog is, so raising the dog value cuts real dogs first. Those boxes are turned back into a person by where the person just stood, not by confidence.</p>
+        <div class="actions">
+          <button type="submit">Save</button>
+          <button type="button" id="detection-defaults">Back to the defaults</button>
+        </div>
+        <p class="result" id="detection-result"></p>
       </form>
     </div>
     <div class="settings" data-part="devices" hidden>

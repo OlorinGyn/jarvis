@@ -120,6 +120,11 @@ def check_settings(problems):
         problems.append(f"{settings.FILE}: notify_modes holds values this version does not read")
     if set(values["notify_modes"]) != set(modes.MODES):
         problems.append(f"{settings.FILE}: the notification modes could not be built")
+    ignored = [key for key in settings.CONFIDENCE_KEYS
+               if key in stored and not settings.confidence_valid(stored[key])]
+    if ignored:
+        return (f"{len(stored)} key(s); warning: {ignored} outside {settings.CONFIDENCE_RANGE}, "
+                f"the defaults apply (readable, so not a failure)")
     if unknown:
         return (f"{len(stored)} key(s); warning: this version does not know {unknown} "
                 f"and would drop them on save (readable, so not a failure)")

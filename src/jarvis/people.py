@@ -14,7 +14,7 @@ from functools import lru_cache
 import cv2
 import numpy as np
 
-from jarvis import ROOT
+from jarvis import ROOT, settings
 from jarvis.geometry import Detection, iou, overlap_area
 
 MODEL_DIR = ROOT / "models"
@@ -28,8 +28,9 @@ CLASS_NAMES = {0: "person", 14: "bird", 15: "cat", 16: "dog",
                17: "horse", 18: "sheep", 19: "cow"}
 WANTED_CLASSES = tuple(CLASS_NAMES)
 
-CONFIDENCE = 0.35
-ANIMAL_CONFIDENCE = 0.45
+CONFIDENCE = settings.DEFAULTS["confidence_person"]
+ANIMAL_CONFIDENCE = settings.DEFAULTS["confidence_animal"]
+SETTINGS_REFRESH_SECONDS = 2.0
 MIN_PERSON_HEIGHT_FRACTION = 0.20
 WIDE_PERSON_RATIO = 2.0
 BOTTOM_EDGE_FRACTION = 0.03
@@ -73,8 +74,8 @@ def _letterbox(frame):
     return canvas, scale
 
 
-def _raw_detections(net, frame):
-    """Run the network and return (box, confidence, class id) triples."""
+def _raw_detections(net, frame, floor=CONFIDENCE):
+    """Run the network and return (box, confidence, class id) triples at or above floor."""
     canvas, scale = _letterbox(frame)
     blob = cv2.dnn.blobFromImage(canvas, 1 / 255.0, (IMG_SIZE, IMG_SIZE),
                                  swapRB=True, crop=False)
@@ -88,7 +89,7 @@ def _raw_detections(net, frame):
         if class_id not in CLASS_NAMES:
             continue
         confidence = float(class_scores[class_id])
-        if confidence < CONFIDENCE:
+        if confidence < floor:
             continue
         cx, cy, width, height = row[:4]
         boxes.append([int((cx - width / 2) / scale), int((cy - height / 2) / scale),
@@ -99,7 +100,7 @@ def _raw_detections(net, frame):
     if not boxes:
         return []
 
-    keep = cv2.dnn.NMSBoxes(boxes, scores, CONFIDENCE, NMS_THRESHOLD)
+    keep = cv2.dnn.NMSBoxes(boxes, scores, floor, NMS_THRESHOLD)
     return [(boxes[i], scores[i], classes[i]) for i in np.array(keep).ravel()]
 
 
@@ -119,6 +120,12 @@ def person_boxes(frame):
     """Every person YOLO sees in a frame, as (x, y, w, h). Background threads only."""
     return [box for box, _, class_id in _raw_detections(load_background_model(), frame)
             if class_id == PERSON_CLASS]
+
+
+def minimum_confidences(values):
+    """Each wanted class id's minimum confidence, from the settings: person, dog, and the other animals."""
+    labels = {PERSON_CLASS: "confidence_person", DOG_CLASS: "confidence_dog"}
+    return {class_id: values[labels.get(class_id, "confidence_animal")] for class_id in CLASS_NAMES}
 
 
 def _centre(box):
@@ -179,8 +186,11 @@ class _StaticSpot:
 class SubjectDetector:
     """Decides whether the motion on ONE camera is a person or an animal."""
 
-    def __init__(self):
+    def __init__(self, load_settings=settings.load):
         self.model = load_model()
+        self.load_settings = load_settings
+        self.minimum = minimum_confidences(settings.DEFAULTS)
+        self.minimum_read = None
         self.last_run = 0.0
         self.subjects = []
         self.static = []
@@ -189,6 +199,14 @@ class SubjectDetector:
         self.last_people = []
         self.last_people_seen = None
         self.trace = None
+
+    def _minimums(self):
+        """The minimum confidence per class, reread from the settings every SETTINGS_REFRESH_SECONDS."""
+        clock = time.monotonic()
+        if self.minimum_read is None or clock - self.minimum_read >= SETTINGS_REFRESH_SECONDS:
+            self.minimum = minimum_confidences(self.load_settings())
+            self.minimum_read = clock
+        return self.minimum
 
     def _drop(self, reason, subject):
         """Note why a detection was dropped, when someone asked for a trace."""
@@ -284,15 +302,19 @@ class SubjectDetector:
         self.last_run = now
 
         minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
-        raw = _raw_detections(self.model, frame)
+        minimum = self._minimums()
+        raw = []
+        for box, confidence, class_id in _raw_detections(self.model, frame, min(minimum.values())):
+            if confidence >= minimum[class_id]:
+                raw.append((box, confidence, class_id))
+            else:
+                kind = "person" if class_id == PERSON_CLASS else "animal"
+                self._drop(f"{kind} below confidence", Detection(*box, confidence, CLASS_NAMES[class_id]))
         replaced = self._people_replaced_by_dogs(raw, now)
         relabelled = []
         found = []
         for box, confidence, class_id in raw:
             detection = Detection(*box, confidence, CLASS_NAMES[class_id])
-            if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
-                self._drop("animal below confidence", detection)
-                continue
             reason = self._why_a_person(box, now, replaced) if class_id == DOG_CLASS else None
             if reason:
                 self._drop(reason, detection)

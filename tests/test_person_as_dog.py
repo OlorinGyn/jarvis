@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from jarvis import people
+from jarvis import people, settings
 
 FRAME = np.zeros((360, 640, 3), np.uint8)
 MOTION = [(0, 0, 640, 360)]
@@ -15,13 +15,13 @@ AT_THE_FEET = ([330, 260, 50, 40], 0.7, people.DOG_CLASS)
 @pytest.fixture
 def detector(monkeypatch):
     monkeypatch.setattr(people, "load_model", lambda: None)
-    detector = people.SubjectDetector()
+    detector = people.SubjectDetector(load_settings=lambda: dict(settings.DEFAULTS))
     detector.trace = []
     return detector
 
 
 def run(detector, monkeypatch, raw, now):
-    monkeypatch.setattr(people, "_raw_detections", lambda net, frame: raw)
+    monkeypatch.setattr(people, "_raw_detections", lambda net, frame, floor: raw)
     return detector.detect(FRAME, MOTION, now=now)
 
 

@@ -28,7 +28,8 @@ function plural(n, one, many) {
 }
 
 const TABS = ["live", "recordings", "people", "dogs", "settings"];
-const SETTINGS_PARTS = ["notifications", "devices", "archive", "reports"];
+const SETTINGS_PARTS = ["notifications", "detection", "devices", "archive", "reports"];
+const CONFIDENCE_KEYS = ["confidence_person", "confidence_dog", "confidence_animal"];
 
 function currentTab() {
   const tab = location.hash.slice(1).split("/")[0];
@@ -835,6 +836,8 @@ const notifyForm = document.getElementById("notify-form");
 const archiveForm = document.getElementById("archive-form");
 const notifyResult = document.getElementById("notify-result");
 const archiveResult = document.getElementById("archive-result");
+const detectionForm = document.getElementById("detection-form");
+const detectionResult = document.getElementById("detection-result");
 
 function gigabytes(bytes) {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
@@ -946,6 +949,21 @@ function fillSettings(values) {
   archiveForm.archive_after_days.value = values.archive_after_days;
   archiveForm.archive_min_free_gb.value = values.archive_min_free_gb;
   showArchive(values.archive);
+  showDetection(values);
+}
+
+let confidenceDefaults = {};
+
+function showDetection(values) {
+  confidenceDefaults = values.confidence_defaults;
+  const [low, high] = values.confidence_range;
+  detectionForm.querySelector(".confidence-low").textContent = low.toFixed(2);
+  detectionForm.querySelector(".confidence-high").textContent = high.toFixed(2);
+  for (const key of CONFIDENCE_KEYS) {
+    detectionForm[key].min = low;
+    detectionForm[key].max = high;
+    detectionForm[key].value = values[key].toFixed(2);
+  }
 }
 
 async function loadSettings() {
@@ -985,6 +1003,16 @@ archiveForm.addEventListener("submit", (submitted) => {
     archive_after_days: Number(archiveForm.archive_after_days.value),
     archive_min_free_gb: Number(archiveForm.archive_min_free_gb.value),
   }, archiveResult);
+});
+
+detectionForm.addEventListener("submit", (submitted) => {
+  submitted.preventDefault();
+  saveSettings(Object.fromEntries(CONFIDENCE_KEYS.map((key) => [key, Number(detectionForm[key].value)])),
+    detectionResult);
+});
+
+document.getElementById("detection-defaults").addEventListener("click", () => {
+  saveSettings({ ...confidenceDefaults }, detectionResult);
 });
 
 const pinForm = document.getElementById("pin-form");

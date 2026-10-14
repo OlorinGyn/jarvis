@@ -68,6 +68,7 @@ EDITABLE = {
     "archive_path": str,
     "archive_after_days": int,
     "archive_min_free_gb": float,
+    **{key: float for key in settings.CONFIDENCE_KEYS},
 }
 
 logger = logging.getLogger(__name__)
@@ -841,6 +842,8 @@ def _settings_view(request):
     values["notify_cases"] = [[case, modes.CASE_NAMES[case]] for case in modes.CASES]
     values["notify_mode_names"] = [[mode, modes.MODE_NAMES[mode]] for mode in modes.MODES]
     values["archive"] = jsonable_encoder(archive.summary())
+    values["confidence_range"] = list(settings.CONFIDENCE_RANGE)
+    values["confidence_defaults"] = {key: settings.DEFAULTS[key] for key in settings.CONFIDENCE_KEYS}
     return values
 
 
@@ -853,6 +856,11 @@ def _clean(key, value):
         raise HTTPException(400, f"notify_mode must be one of {', '.join(modes.MODES)}")
     if key == "notify_modes":
         return _clean_modes(value)
+    if key in settings.CONFIDENCE_KEYS:
+        if settings.confidence_valid(value):
+            return round(float(value), 2)
+        low, high = settings.CONFIDENCE_RANGE
+        raise HTTPException(400, f"{key} must be a number from {low} to {high}")
     if kind is str and isinstance(value, str):
         return value.strip()
     if kind is list and isinstance(value, list) and all(v in NOTIFY_LABELS for v in value):
