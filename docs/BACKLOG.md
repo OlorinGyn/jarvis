@@ -83,6 +83,19 @@ taken in production that evening.
     hint, and the page says so. A lower sure threshold also means more views
     learned on their own (28).
 
+### Decided on 14/10/2026, to build
+
+34. **Analysis On and Off from the page** (decided; the user, 14/10/2026,
+    during review 23: "on the screen where the status shows, it must be
+    possible to switch it on and off there too"). The header that shows On
+    or Off on every screen (ARCHITECTURE 22.7) becomes a switch, calling
+    `analysis.set_on` as `/on` and `/off` do — same flag, same log line, same
+    reminder while Off, and still never stored. A write from the network, so
+    it goes through the write guard like every other change (ARCHITECTURE
+    17.12). The architect's default, to be confirmed by the user on the
+    page: turning **Off** asks first, since it stops all recording; turning
+    On does not.
+
 ### Critical
 
 Without these the system does not do its job well.
@@ -254,9 +267,13 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 ArcFace R50, the gallery migration, the models fetched before the stop — with
 backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
 
-**Developer 22 (planned 14/10): R52, R51, then R30 (b).**
+**Developer 22 (planned 14/10): backlog 34, R52, R51, then R30 (b).**
 
-1. **R52 first** (section 2): the migration's line into `logs/jarvis.log`,
+0. **Backlog 34 first** (section 1): the user asked for it during review 23,
+   and it is small. This puts it ahead of R30 (b), which is high, on purpose:
+   R30 (b) was parked until the model changed, and the user's request is
+   live. Tests as `tests/test_on_off.py` does for the bot, plus the guard.
+1. **R52** (section 2): the migration's line into `logs/jarvis.log`,
    and `filelock` around `migrate_gallery`. A new dependency: check that
    `filelock` is pure Python (no `.pyd`), as PROCESS 5.3 asks of anything
    new on the M900.
@@ -272,7 +289,8 @@ backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
    face. Report the gain in faces per clip, and the cost (each face now costs
    ~0.13 s more, ARCHITECTURE 10.14).
 
-**HANDOFF:** R51's table and the choice; R30 (b)'s per-limit table; the log
+**HANDOFF:** backlog 34 as built (and whether Off asks first);
+R51's table and the choice; R30 (b)'s per-limit table; the log
 line as written by the test copy. If the session runs short, stop after a
 coherent commit and say what is left.
 

@@ -1127,3 +1127,61 @@ Switch** (backlog 30) · **The Off Switch** (backlog 29, `/on` and `/off`).
 Bosses defeated: **The Moving Bend** (R46). Lurking: the endless chain of
 chairs (R47, on watch); and next, the 40 views start managing themselves —
 the first time the system deletes photos on its own, by the Owner's choice.
+
+## Issue #17 — New Eyes
+
+`v2026.10.14` · 14 Oct 2026, midday
+
+**Panel 1.** Cold grey. A wall of 300 px photos. Seven of them are not faces
+at all: the crown of a head, a parting, a bun — each wearing a sticker
+"Gustavo, sure". The owl holds one up to the lantern.
+ARCHITECT: The old eyes call the top of a head a face, and then call it
+someone.
+
+**Panel 2.** A workbench of lenses. The beaver tries one after another on
+J.A.R.V.I.S.: a thin pair marked SFace, a heavy pair marked R100, a pair
+marked R50. A scoreboard behind: `R50: 0.275 → 144 of 156, nothing wrong` ·
+`R100: 0.350 → 126`.
+DEV: The heavy pair sees less here, and twice as slowly. R50 it is.
+
+**Panel 3.** Two filing cabinets side by side, one old (`gallery.json`, 128),
+one new (`gallery_arcface_w600k_r50.json`, 512). The beaver copies every
+photo from the old drawer into the new one, re-reading each; the old drawer
+is closed and padlocked, untouched.
+DEV: If the new version falls, the old one opens its own drawer, as it left
+it.
+
+**Panel 4.** The owl, magnifier over a line of PowerShell, a tiny red error
+spark leaping out of `2>$null`.
+ARCHITECT: Asked for an old release, this line was supposed to step aside.
+It threw instead. Fixed before it mattered.
+
+**Panel 5.** A gate before the house. A parcel marked `buffalo_l.zip` is
+carried in and unpacked into two boxes *before* the door closes; only then
+does the door shut for the switch.
+CAPTION: The models arrive before production stops. Nobody waits on the
+network.
+
+**Panel 6.** Night-blue interior. The seven head-top photos lie in the
+Waiting tray. A rule-machine labelled "28" reaches for them — and the owl
+puts her wing over the tray.
+ARCHITECT: The rule keeps what is most different. A view of the wrong person
+is the most different of all. These wait for the Owner's hand.
+
+**Panel 7.** The M900. A parcel marked `v2026.10.14` goes in;
+J.A.R.V.I.S. opens new eyes, one by one re-reading 173 photos.
+J.A.R.V.I.S.: `Production is running v2026.10.14.`
+CAPTION: 173 of 173 views kept. About 35 seconds without cameras; both back
+three seconds after the start.
+
+**Panel 8.** Warm cream. A gold balloon from off panel.
+THE OWNER: On the screen where the status shows, I want to switch it on and
+off too.
+CAPTION: Next issue's first request.
+
+**Closing card.** Abilities: **New Eyes** (R49: SCRFD + ArcFace R50) · **The
+Second Drawer** (a gallery migration that survives a rollback) · **The Forty
+Keep Themselves** (backlog 28) · **The Sensitivity Dials** (backlog 31).
+Bosses defeated: **The Crown of the Head** (R49). Lurking: the heaviest view
+that is not the best (R51); a second copy that slips in while the drawer is
+being filled (R52).

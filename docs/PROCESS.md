@@ -338,3 +338,4 @@ review and commits.
 | 14 | `v2026.10.12.3` | Every Name in English / Todo Nome em Inglês | written |
 | 15 | `v2026.10.12.4` | The Signature at the Door / A Assinatura na Porta | written |
 | 16 | `v2026.10.13` | The Off Switch / O Botão de Desligar | written |
+| 17 | `v2026.10.14` | New Eyes / Olhos Novos | written |

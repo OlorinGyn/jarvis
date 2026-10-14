@@ -1169,3 +1169,60 @@ do Provável** (backlog 30) · **O Botão de Desligar** (backlog 29, `/on` e
 corrente sem fim de cadeiras (R47, de vigia); e a seguir, as 40 vistas
 começam a se cuidar sozinhas — a primeira vez que o sistema apaga fotos por
 conta própria, por escolha do Dono.
+
+## Edição #17 — Olhos Novos
+
+`v2026.10.14` · 14 out 2026, meio-dia
+
+**Quadro 1.** Cinza frio. Uma parede de fotos de 300 px. Sete delas nem são
+rostos: o topo de uma cabeça, uma risca, um coque — cada uma com um adesivo
+"Gustavo, certeza". A coruja ergue uma contra a lanterna.
+ARQUITETA: Os olhos antigos chamam o topo da cabeça de rosto, e depois dão
+um nome a ele.
+
+**Quadro 2.** Uma bancada de lentes. O castor testa uma depois da outra no
+J.A.R.V.I.S.: um par fino marcado SFace, um par pesado marcado R100, um par
+marcado R50. Um placar atrás: `R50: 0.275 → 144 de 156, nada errado` ·
+`R100: 0.350 → 126`.
+DEV: O par pesado enxerga menos aqui, e na metade da velocidade. Fica o R50.
+
+**Quadro 3.** Dois arquivos lado a lado, um velho (`gallery.json`, 128), um
+novo (`gallery_arcface_w600k_r50.json`, 512). O castor copia cada foto da
+gaveta velha para a nova, relendo uma a uma; a gaveta velha fica fechada e
+com cadeado, intocada.
+DEV: Se a versão nova cair, a velha abre a própria gaveta, do jeito que a
+deixou.
+
+**Quadro 4.** A coruja, lupa sobre uma linha de PowerShell, uma faísca
+vermelha de erro saltando do `2>$null`.
+ARQUITETA: Pedida uma versão antiga, esta linha devia sair da frente. Em vez
+disso, explodiu. Consertada antes de fazer falta.
+
+**Quadro 5.** Um portão diante da casa. Um pacote marcado `buffalo_l.zip`
+entra e é desembrulhado em duas caixas *antes* de a porta fechar; só então a
+porta fecha para a troca.
+LEGENDA: Os modelos chegam antes de a produção parar. Ninguém espera pela
+rede.
+
+**Quadro 6.** Interior azul-noite. As sete fotos de topo de cabeça estão na
+bandeja de Espera. Uma máquina de regras marcada "28" estica o braço para
+elas — e a coruja cobre a bandeja com a asa.
+ARQUITETA: A regra guarda o que é mais diferente. Uma vista da pessoa errada
+é a mais diferente de todas. Estas esperam a mão do Dono.
+
+**Quadro 7.** O M900. Um pacote marcado `v2026.10.14` entra; o J.A.R.V.I.S.
+abre olhos novos, relendo 173 fotos uma a uma.
+J.A.R.V.I.S.: `Production is running v2026.10.14.`
+LEGENDA: 173 de 173 vistas mantidas. Uns 35 segundos sem câmeras; as duas de
+volta três segundos depois da partida.
+
+**Quadro 8.** Creme quente. Um balão dourado de fora do quadro.
+O DONO: Na tela onde o status aparece, quero ligar e desligar por lá também.
+LEGENDA: O primeiro pedido da próxima edição.
+
+**Cartão final.** Habilidades: **Olhos Novos** (R49: SCRFD + ArcFace R50) ·
+**A Segunda Gaveta** (uma migração da galeria que sobrevive a um rollback) ·
+**As Quarenta se Cuidam** (backlog 28) · **Os Botões de Sensibilidade**
+(backlog 31). Chefes derrotados: **O Topo da Cabeça** (R49). À espreita: a
+vista mais pesada que não é a melhor (R51); uma segunda cópia que entra
+enquanto a gaveta está sendo enchida (R52).
