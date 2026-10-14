@@ -189,7 +189,7 @@ one, it does not ignore it: it writes why, and the user decides.
 ### 3.2 Review log
 
 The table of every review is `HISTORY.md` 13.2. **The last review, 25, covers
-up to `72e9527`** (developer 23's handoff; release `v2026.10.14.3`); the next
+up to `72e9527`** (developer 23's handoff; release `v2026.10.14.3`, tagged; its first deploy rolled back on a camera outage); the next
 starts from the commit after it.
 
 ### 3.3 Each review in full
@@ -347,4 +347,4 @@ review and commits.
 | 16 | `v2026.10.13` | The Off Switch / O Botão de Desligar | written |
 | 17 | `v2026.10.14` | New Eyes / Olhos Novos | written |
 | 18 | `v2026.10.14.2` | The Switch, the Slider and the Lock / O Botão, a Régua e a Tranca | written |
-| 19 | `v2026.10.14.3` | Two People, One Face / Duas Pessoas, Um Rosto | written |
+| 19 | `v2026.10.14.3` (tagged; its first deploy rolled back) | Two People, One Face / Duas Pessoas, Um Rosto | written |

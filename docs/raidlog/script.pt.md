@@ -1363,13 +1363,17 @@ Configurações, um tracinho discreto no meio.
 LEGENDA: Duas colunas no celular, listas longas de vinte e quatro em vinte e
 quatro, e um tracinho onde mora cada padrão.
 
-**Quadro 10.** O M900. Um pacote escrito `v2026.10.14.3` entra.
-J.A.R.V.I.S.: `Production is running v2026.10.14.3.`
+**Quadro 10.** O M900. Um pacote escrito `v2026.10.14.3` entra — e nesse
+instante, lá fora, a Front e a Back caem do céu, olhos apagados. O pacote
+volta deslizando, carimbado "rolled back".
+J.A.R.V.I.S.: `Back: FAILED - Timed out.` `Front: FAILED - Timed out.`
+LEGENDA: As duas câmeras saíram da rede entre 16:32 e 16:39. Não foi a
+versão: nem ping, nem endereço, nada. E o log não disse uma palavra.
 
 **Cartão final.** Habilidades: **A Contagem de Cabeças** (R42 b) · **O
 Mostrador do Dono** (backlog 32, rostos) · **Vinte e Quatro por Vez**
 (backlog 37) · **O Tracinho** (backlog 38) · **A Bancada de Lentes** (R53
 passo 1). À espreita: a foto que mostra a pessoa errada (R56); as gêmeas que
 garantem uma à outra (R55); treze fotos de cachorro no lugar errado
-esperando o Dono. A seguir: a lente nova entra, e cada cachorro da galeria é
-visto de novo (R53 passo 2).
+esperando o Dono; um deploy que para uma casa já cega (R57). A seguir: para
+onde foram os dois drones?

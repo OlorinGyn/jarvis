@@ -1315,12 +1315,16 @@ tick in the middle.
 CAPTION: Two columns on a phone, long lists twenty-four at a time, and a
 tick where each default sits.
 
-**Panel 10.** The M900. A parcel marked `v2026.10.14.3` goes in.
-J.A.R.V.I.S.: `Production is running v2026.10.14.3.`
+**Panel 10.** The M900. A parcel marked `v2026.10.14.3` goes in — and at
+that moment, outside, Front and Back drop out of the sky, eyes dark. The
+parcel slides back out, stamped "rolled back".
+J.A.R.V.I.S.: `Back: FAILED - Timed out.` `Front: FAILED - Timed out.`
+CAPTION: Both cameras left the network between 16:32 and 16:39. Not the
+release: no ping, no address, nothing. And the log never said a word.
 
 **Closing card.** Abilities: **The Head Count** (R42 b) · **The Owner's
 Dial** (backlog 32, faces) · **Twenty-Four at a Time** (backlog 37) · **The
 Tick** (backlog 38) · **The Lens Bench** (R53 step 1). Lurking: the picture
 that shows the wrong person (R56); the twins that vouch for each other
-(R55); thirteen misfiled dog photos waiting for the Owner. Next: the new
-lens goes in, and every dog in the gallery is seen again (R53 step 2).
+(R55); thirteen misfiled dog photos waiting for the Owner; a deploy that
+stops a house already blind (R57). Next: where did the two drones go?

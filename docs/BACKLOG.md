@@ -126,7 +126,9 @@ Without these the system does not do its job well.
    separating a **mask** (ignore the area) from a **required zone** (detect
    everything, but notify only when something enters it).
 2. **System health** (proposto) — if a camera dies at 3 a.m., nothing warns.
-   There is an automatic restart, but no record of how long it was down. A
+   There is an automatic restart, but no record of how long it was down.
+   **A real case, 14/10 16:32–16:39:** both cameras left the network and the
+   log holds no line about it (HISTORY 13.26). A
    daily summary, or a "camera down" case among backlog 25's switches, would
    close it.
 
@@ -207,6 +209,7 @@ in review 25.
 | R53 | **high — the user's report, 14/10** | The two dogs are told apart by colour histograms, which overlap: Mirana among Aurora's views, a person among Mirana's | step 1 done (`bed651d`); step 2 decided: DINOv2-small; developer 24 |
 | R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | open (below) |
 | R56 | low | The hidden-person message shows the best single view, which may be the resident alone | open (below) |
+| R57 | low | `production.ps1 -Action update` stops a production whose cameras are down, and says "Running again: False" of a running service | open (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
@@ -303,6 +306,20 @@ beside the event — sharing the base name so the archive moves it (19.2) —
 and send it instead of the best view for the hidden-person message only.
 Additive; `check_data` and the archive's companions list learn the new file.
 
+**R57 — An update with the cameras already down (low, review 25).** At
+16:39 on 14/10 both cameras had left the network (HISTORY 13.26). `Update`
+reads every file and fetches the models before it stops anything, but never
+asks whether the cameras deliver frames, so it stopped production, started
+the new version, failed the health check on cameras no release could reach,
+rolled back, failed it again, and ended with "Running again: False" — while
+the service was running, only without frames. **Then:** before `Hold` and
+`StopService`, read `/api/status` once; if any camera's frame is older than
+`$FreshSeconds`, refuse with "the cameras are not delivering frames now;
+nothing was changed", unless `-Force` is given (a release that fixes capture
+must still be deployable); and let the failure messages say which part
+failed — the service not answering, or answering with cameras without frames.
+Tested by hand on the test copy with a wrong camera IP in its `.env`.
+
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
 face group and keeps the best, with `Gallery.match`'s preference — a named
@@ -339,10 +356,11 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 25 is done, with a release:** developer 23's R42 (b), backlog 37
-(a, b) and 38, R53 step 1 and backlog 32 for faces, as `v2026.10.14.3`
-(HISTORY 13.26). R42 is closed; R53 step 2 is decided (DINOv2-small); R55
-and R56 are open; backlog 39 is added.
+**Review 25 is done:** developer 23's R42 (b), backlog 37 (a, b) and 38,
+R53 step 1 and backlog 32 for faces, tagged `v2026.10.14.3` (HISTORY 13.26).
+**Its deploy rolled back** because both cameras left the network at the same
+time; the tag is deployed when they return. R42 is closed; R53 step 2 is
+decided (DINOv2-small); R55, R56 and R57 are open; backlog 39 is added.
 
 **Developer 24: R53 step 2, then backlog 39, then R56.**
 
@@ -363,6 +381,8 @@ and R56 are open; backlog 39 is added.
 3. **R56**, if the session has room (section 2): the frame where the people
    were counted, kept as `HH-MM-SS.people.jpg` and sent for the hidden-person
    message only.
+4. **R57**, if there is still room (section 2): `production.ps1` refuses an
+   update while the cameras deliver no frames, unless `-Force`.
 
 **HANDOFF:** R53 step 2 as built — the model's source and SHA-256, the check
 against the local export, the thresholds and the sweep they came from, the

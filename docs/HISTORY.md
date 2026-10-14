@@ -229,7 +229,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); the unnamed entries checked as a possible third person — the user: all are Izabel, and InsightFace if it is the best; no release; developer 21 planned with R49 step 2 (13.23) |
 | 23 | 14/10/2026 | `706883b..70d3fce`, developer session 21 — R49 step 2: SCRFD + ArcFace R50, the migrated gallery, models before the stop | **one code fix** (`d07c09e`): `FetchModels` aborted on a tag without `downloads.py` instead of skipping it; 240 tests pass; the scan and the stored photos embed alike (0.97–0.99); R48 and R49 closed, R51 and R52 opened; **release `v2026.10.14`** (R49, backlog 28 and 31), deployed at 12:07: 955 events, 202 face and 393 dog sightings, 18 reports read before and after; the models fetched before the stop; 173 of 173 views migrated in about 23 s; about 36 s stopped, cameras ok 3 s after the start; the migration's line is not in the log (R52). The once-only settle waits for the user (13.24) |
 | 24 | 14/10/2026 | `70d3fce..099d547`, developer session 22 — backlog 34, 35, 36, R52, R51, R30 (b) | no code fixed; 269 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1280 px (Off asks, On does not; no horizontal scroll); the slider's round trip checked for six defaults; `filelock` has no binary; R30, R51 and R52 closed, R54 opened (a watch: no stranger measured); backlog 37 designed from production's counts, 38 added; **release `v2026.10.14.2`**, deployed at 15:50: 976 events, 206 face and 412 dog sightings, 18 reports read before and after; `filelock` installed by `uv sync`; no migration ran (the hash unchanged), no lock file left; about 10 s stopped, cameras ok 3 s after the start (13.25) |
-| 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55 and R56 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3`** (13.26) |
+| 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55, R56 and R57 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3` tagged, its deploy rolled back on its own**: both cameras left the network between 16:32 and 16:39, nothing to do with the release; production back on `v2026.10.14.2`, running with no frames until the cameras return (13.26) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1599,8 +1599,9 @@ Developer 23 reviewed whole (`18b268c..72e9527`: five code commits and the
 HANDOFF, 13 files, +1,120 −36, of which `tools/dog_bench.py` 356 and tests
 184). 284 tests pass (269 before); no comments in `src/` and `tools/`;
 `check_data` reads every file; `check_doc_refs` exits 0. **No code fix**,
-R42 closed, R55 and R56 opened, backlog 39 added, R53 step 2 decided,
-**release `v2026.10.14.3`**.
+R42 closed, R55, R56 and R57 opened, backlog 39 added, R53 step 2
+decided, **release `v2026.10.14.3` tagged; its deploy rolled back**, for a
+reason outside the release (below).
 
 **R42 (b), read against the user's rule.** The count is taken where it
 should be: `_consider_view` sees the subjects `detect` returns, after NMS
@@ -1679,6 +1680,37 @@ always wins over silence in Home (CONTEXT 3).
 PENDING; HISTORY 8; `.claude/launch.json` added so the built-in browser
 starts the test copy by name.
 
+**The deploy, rolled back — the cameras, not the release.** `production.ps1
+-Action update` at 16:39: every file read before (977 events, 206 face and
+413 dog sightings, 18 reports), no model to fetch, the service stopped,
+`v2026.10.14.3` checked out and every file read again — then both cameras
+"FAILED - Timed out" at the start, so the health check (every camera with a
+frame under 5 s old, 90 s to get there) failed, and the script rolled back to
+`v2026.10.14.2`, where both timed out the same way. Production's last event
+was at 16:32:20, so the cameras left between 16:32 and 16:39. Read at 16:45:
+neither camera answers ping or port 554, neither is in the ARP table, and a
+sweep of 192.168.0.1–254 finds no host with RTSP open — so no new address
+either; the M900 is on `KankuroNet_5G` since 09:53 with no disconnection,
+reaches the router and the internet, and sees `KankuroNet` (2.4 GHz, the
+cameras' band) at 100 %. Both cameras gone at once points to their power or
+their side of the Wi-Fi, which only the user can look at; a push went to the
+user's phone at 16:48, and Telegram already had the script's "update FAILED;
+rolled back" message. The release does not touch capture (`capture.py` and
+`cameras.py` are unchanged in the range), and the test copy started for the
+page check, which reads `stream2` beside production as it always has
+(INSTALL 9), was stopped before production's 16:32 event. Production keeps
+running and retries each camera every 5 s (`RESTART_SECONDS`, ARCHITECTURE
+5.8), so frames come back on their own with the cameras; the same tag is
+deployed then.
+
+Two things the outage showed. **Nothing in the log** says a camera was lost:
+from 16:32 to the shutdown at 16:39 there is no line, and a running service
+whose ffmpeg restarts every 5 s writes nothing — backlog 2's gap ("if a camera
+dies at 3 a.m., nothing warns"), now with a real case for the user. And
+**`production.ps1` stopped a production whose cameras may already have been
+down**, rolled back for a fault that was not the release's, and ended with
+"Running again: False" about a service that was running: **R57**.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1739,3 +1771,5 @@ of `CONTEXT.md`.
 | A30 | architect | ultracode | 14/10 11:50–12:25 | review 23: the diff read whole, `FetchModels` fixed and probed, production's gallery migrated again, the scan-against-photo gap and the wrong-best matches measured on four clips, backlog 28 settled on the ArcFace copy; HANDOFF integrated, PYTHON 41, raid log 17; release and deploy `v2026.10.14`; the user's request recorded as backlog 34; no handover (the window at 85 %) | 67% → about 86% | 25% → 27% | 67k → about 300k tokens, a new conversation |
 | D22 | developer | high | 14/10 15:00–15:35 | session 22: backlog 34, 35, 36, R52, R51 (measured leave-clip-out), R30 (b) (measured on production's clips) (269 tests) | 0% → 24% (new window) | 28% → 31% | about 250k tokens at the end, a new conversation |
 | A31 | architect | ultracode | 14/10 15:37–16:05 | review 24: the diff read whole, the page at 375 and 1280 px in the built-in browser, the slider's round trip, production's gallery, log and misfiled dog views read, backlog 37 designed from production's counts, R54; HANDOFF integrated, PYTHON 42, raid log 18; release and deploy `v2026.10.14.2`; developer 23 planned | 26% → 41% (the measurements, the page check and backlog 37's design cost more than a plain review) | 31% → 33% | 96k → about 265k tokens, a new conversation |
+| D23 | developer | high | 14/10 afternoon | session 23: R42 (b), backlog 37 (a, b) and 38, R53 step 1 — `tools/dog_bench.py`, three models exported to ONNX once — backlog 32 for faces (284 tests) | 40% → 60% | 33% → 2% (the weekly window reset at 19:00 UTC mid-session) | 76k → about 285k tokens, a new conversation |
+| A32 | architect | ultracode | 14/10 16:20–16:55 | review 25: the diff read whole, the page at 375 and 1024 px in the built-in browser (the test copy started from the new `.claude/launch.json`), R53's bench run again for two models, production's misfiled dog views read; HANDOFF integrated, ARCHITECTURE 10.15 and 17.17, PYTHON 43, raid log 19; R53 step 2 decided, R55–R57, backlog 39; release `v2026.10.14.3` tagged and its deploy rolled back on a camera outage, diagnosed (ping, ARP, a subnet sweep, the Wi-Fi events) and pushed to the user's phone; no handover (a deploy rolled back, the window at 82 %) | 61% → 82% (the diagnosis of the outage cost about 4) | 2% → 5% | 74k → about 320k tokens, a new conversation |

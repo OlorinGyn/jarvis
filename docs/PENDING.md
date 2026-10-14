@@ -13,6 +13,13 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
+- **Both cameras off the network since 16:32–16:39 on 14/10** (HISTORY
+  13.26): no ping, no port 554, not found anywhere on 192.168.0.x, while the
+  M900, the router and the 2.4 GHz network are up. Production runs
+  `v2026.10.14.2` with no frames and retries every 5 s, so it recovers on
+  its own once the cameras are back. **The user checks the cameras' power
+  and the Tapo app.** Then the architect deploys `v2026.10.14.3` (tagged,
+  its first deploy rolled back for this reason) and checks the frames.
 - **Backlog 25's acceptance on the M900** (BACKLOG 1): in use since 13/10 —
   the user, Izabel, Mirana and Aurora are marked Resident and Home is on; the
   user's one remark (probable residents still reach the phone) became
