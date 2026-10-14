@@ -27,6 +27,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from filelock import FileLock
 
 from jarvis import ROOT, downloads, people
 from jarvis.capture import NO_WINDOW, ffmpeg_exe
@@ -1023,13 +1024,21 @@ def migrate_gallery(target=None, source=None, backup_dir=None):
     The older file stays as it was, so a version rolled back to still reads
     it. Runs when the current file is missing, or when the older file changed
     since it was built from (an older version ran meanwhile); both files are
-    copied to backup_dir first. Returns the counts, or None when there was
-    nothing to do (ARCHITECTURE 10.14).
+    copied to backup_dir first. A lock file beside the gallery makes a second
+    copy starting at the same moment wait, then find nothing to do. Returns
+    the counts, or None when there was nothing to do (ARCHITECTURE 10.14).
     """
     target = Path(target or GALLERY_FILE)
     source = Path(source or target.with_name(LEGACY_GALLERY_FILE.name))
     if not source.is_file() or source.resolve() == target.resolve():
         return None
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with FileLock(target.with_name(f"{target.name}.lock")):
+        return _migrate(target, source, backup_dir)
+
+
+def _migrate(target, source, backup_dir):
+    """migrate_gallery's work, run while it holds the lock that keeps a second copy waiting."""
     digest = hashlib.sha1(source.read_bytes()).hexdigest()
     try:
         built_from = json.loads(target.read_text(encoding="utf-8-sig")).get("source", {}).get("sha1")

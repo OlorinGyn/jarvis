@@ -349,9 +349,6 @@ def main(argv=None):
         return
 
     migrated = faces.migrate_gallery()
-    if migrated:
-        logger.info("Face gallery rebuilt for %s from %s: %s", faces.EMBEDDING_MODEL,
-                    faces.LEGACY_GALLERY_FILE.name, migrated)
 
     stop = threading.Event()
     server = web.start(port=port, on_stop=stop.set)
@@ -362,6 +359,9 @@ def main(argv=None):
         return
 
     log.to_file()
+    if migrated:
+        logger.info("Face gallery rebuilt for %s from %s: %s", faces.EMBEDDING_MODEL,
+                    faces.LEGACY_GALLERY_FILE.name, migrated)
     core = Core(start_cameras(env))
     web.attach(core)
     bot.start()

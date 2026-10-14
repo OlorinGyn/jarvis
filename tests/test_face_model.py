@@ -2,6 +2,8 @@
 
 import io
 import json
+import threading
+import time
 import zipfile
 
 import cv2
@@ -123,3 +125,61 @@ def test_the_models_come_from_the_release_and_the_zip_is_deleted(tmp_path, monke
     assert not list(tmp_path.glob("*.zip")) and not list(tmp_path.rglob("*.part"))
     asked.clear()
     assert downloads.fetch(tmp_path) == [] and asked == []
+
+
+def test_two_copies_starting_together_migrate_once(tmp_path, old_gallery, embedder, monkeypatch):
+    target = old_gallery.with_name(faces.GALLERY_FILE.name)
+    refit = faces.refit_entry
+    calls = []
+
+    def slow_refit(*args, **kwargs):
+        calls.append(threading.current_thread().name)
+        time.sleep(0.2)
+        return refit(*args, **kwargs)
+
+    monkeypatch.setattr(faces, "refit_entry", slow_refit)
+    results = {}
+
+    def start(name):
+        results[name] = faces.migrate_gallery(target, backup_dir=tmp_path / "backups")
+
+    copies = [threading.Thread(target=start, args=(name,), name=name) for name in ("first", "second")]
+    for copy in copies:
+        copy.start()
+    for copy in copies:
+        copy.join()
+    assert sorted(r is None for r in results.values()) == [False, True]
+    assert len(set(calls)) == 1
+    assert json.loads(target.read_text(encoding="utf-8"))["model"] == faces.EMBEDDING_MODEL
+
+
+class Stopped:
+    def close(self):
+        pass
+
+
+def test_the_migration_line_reaches_the_log_file(tmp_path, monkeypatch):
+    from jarvis import cameras, log, web
+    order = []
+    monkeypatch.setattr(cameras, "HOLD_FILE", tmp_path / "HOLD")
+    monkeypatch.setattr(web, "already_running", lambda port: False)
+    monkeypatch.setattr(faces, "migrate_gallery", lambda: {"people": 2, "kept": 5})
+    monkeypatch.setattr(web, "start", lambda **kwargs: object())
+    monkeypatch.setattr(log, "to_file", lambda: order.append("log file"))
+    monkeypatch.setattr(cameras, "start_cameras", lambda env: [])
+    monkeypatch.setattr(cameras, "Core", lambda streams: Stopped())
+    monkeypatch.setattr(web, "attach", lambda core: None)
+    monkeypatch.setattr(web, "stop", lambda server: None)
+    monkeypatch.setattr(cameras.bot, "start", lambda: None)
+    monkeypatch.setattr(cameras.bot, "stop", lambda: None)
+    monkeypatch.setattr(cameras, "run_headless", lambda core, stop: None)
+    original = cameras.logger.info
+
+    def noted(message, *args):
+        if message.startswith("Face gallery rebuilt"):
+            order.append("migration line")
+        original(message, *args)
+
+    monkeypatch.setattr(cameras.logger, "info", noted)
+    cameras.main(["--headless"])
+    assert order == ["log file", "migration line"]
