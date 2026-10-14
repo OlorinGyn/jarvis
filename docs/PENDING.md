@@ -60,12 +60,11 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 reach a cleared architect: read it against this list).
 1. **R42**: (a) accept the corner, or (b) count people with YOLO
    (recommended).
-2. **Backlog 34**: does switching Off ask "are you sure?" first
-   (recommended: yes)?
-3. **Which (proposto) items become work**: 1 zones per camera, 2 a warning
-   when a camera goes down, 33 "Not a dog / Not a person" buttons on the
-   Telegram message, 6 search and filter on Recordings. Each is a feature,
-   so the user's decision (PROCESS 1).
+2. ~~Backlog 34~~ answered: Off asks first, On is one click (BACKLOG 1).
+3. **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
+   goes down, 33 buttons on the Telegram message, 6 search and filter: the
+   user liked all of them and will discuss them later (14/10). Still not
+   work until then.
 
 None. The requests of 13/10/2026 (detection sensitivity, probable residents in
 Home, `/on` and `/off`, the photos piling up, the 40 views managing themselves,

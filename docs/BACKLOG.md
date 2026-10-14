@@ -92,9 +92,8 @@ taken in production that evening.
     `analysis.set_on` as `/on` and `/off` do — same flag, same log line, same
     reminder while Off, and still never stored. A write from the network, so
     it goes through the write guard like every other change (ARCHITECTURE
-    17.12). The architect's default, to be confirmed by the user on the
-    page: turning **Off** asks first, since it stops all recording; turning
-    On does not.
+    17.12). **Turning Off asks first** ("are you sure?"), since it stops all
+    recording; **turning On is one click** (the user, 14/10/2026).
 35. **Detection sensitivity as a slider, not numbers** (decided; the user,
     14/10/2026: "the sensitivity cannot be numeric — a kind of slider where
     the middle is our default value, and the number goes down to the left
