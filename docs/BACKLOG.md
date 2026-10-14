@@ -105,6 +105,17 @@ taken in production that evening.
     always the default whatever its value. The ends say in words what they
     do — left: more detections, more false alarms; right: fewer, stricter.
     `config.json` keeps storing the number, so nothing on disk changes.
+    **The explanation stays, moved to where it belongs** (the user, the same
+    day: "the explanation on the numbers screen was perfect; I want to know
+    how the sliders work in the background"). Both of today's hints keep
+    their substance — what the minimum is (how sure YOLO must be before
+    motion counts as a person or an animal), lower finds more and more false
+    ones, a change reaches the cameras within seconds without a restart, and
+    what this does not fix (a person bending over) — and gain a "how it works"
+    part that says what the slider moves underneath: the minimum
+    confidence, the middle being the default, the ends 0.20 and 0.90, each
+    half in proportion, with each slider's current value and default written
+    in that text, not on the control.
 36. **Notifications: the Telegram card beside "What reaches the phone"**
     (decided; the user, 14/10/2026). Two columns where the screen is wide
     enough, one under the other on a phone — the user opens the page from
