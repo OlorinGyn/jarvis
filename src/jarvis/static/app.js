@@ -36,6 +36,30 @@ function currentTab() {
   return TABS.includes(tab) ? tab : "live";
 }
 
+const PAGE_STEP = 24;
+
+function paged(container, items, render, shown, key) {
+  let count = Math.min(items.length, Math.max(PAGE_STEP, shown.get(key) || 0));
+  container.replaceChildren(...items.slice(0, count).map((item, index) => render(item, index)));
+  if (count >= items.length) return;
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "more";
+  const label = () => {
+    const left = items.length - count;
+    more.textContent = `Show ${Math.min(PAGE_STEP, left)} more (${left} left)`;
+  };
+  more.addEventListener("click", () => {
+    const next = Math.min(items.length, count + PAGE_STEP);
+    more.before(...items.slice(count, next).map((item, index) => render(item, count + index)));
+    count = next;
+    shown.set(key, count);
+    if (count >= items.length) more.remove(); else label();
+  });
+  label();
+  container.append(more);
+}
+
 function showNotice(parent, text) {
   const notice = document.createElement("p");
   notice.className = "empty";
@@ -372,7 +396,7 @@ function monthGrid(month, counts) {
   return box;
 }
 
-function drawCalendar(box, appearances) {
+function drawCalendar(box, appearances, shown = new Map(), key = "") {
   const counts = {};
   for (const seen of appearances) counts[seen.day] = (counts[seen.day] || 0) + 1;
   const months = [...new Set(Object.keys(counts).map((day) => day.slice(0, 7)))].sort().reverse();
@@ -380,7 +404,7 @@ function drawCalendar(box, appearances) {
     showNotice(box, "Not seen in any recording yet.");
     return;
   }
-  box.replaceChildren(...months.map((month) => monthGrid(month, counts)));
+  paged(box, months, (month) => monthGrid(month, counts), shown, key);
 }
 
 function galleryTab(section, api, kind, unnamedLabel) {
@@ -404,6 +428,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
   const selectTo = selectBar.querySelector(".select-to");
   const selectName = selectBar.querySelector(".select-name");
   const chosen = new Set();
+  const shown = new Map();
   let named = [];
   let order = [];
   let anchor = null;
@@ -575,7 +600,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
     heading.append(all);
     const grid = document.createElement("div");
     grid.className = "people-grid";
-    grid.replaceChildren(...group.entries.map(card));
+    paged(grid, group.entries, card, shown, `group:${group.title}`);
     box.append(heading, grid);
     return box;
   }
@@ -790,9 +815,10 @@ function galleryTab(section, api, kind, unnamedLabel) {
     section.querySelector(".views-count").textContent = `(${entry.views} of 40)`;
     section.querySelector(".waiting-count").textContent = entry.pending ? `(${entry.pending})` : "";
     viewsGrid.replaceChildren(...entry.view_photos.map((photo, index) => viewTile(photo, index, entry)));
-    waitingGrid.replaceChildren(...entry.pending_photos.map((photo, index) => waitingTile(photo, index, entry)));
+    const newest = entry.pending_photos.map((photo, index) => ({ photo, index })).reverse();
+    paged(waitingGrid, newest, (item) => waitingTile(item.photo, item.index, entry), shown, `waiting:${entry.id}`);
     if (entry.pending === 0) showNotice(waitingGrid, "Nothing waiting.");
-    drawCalendar(calendarBox, entry.appearances);
+    drawCalendar(calendarBox, entry.appearances, shown, `days:${entry.id}`);
   }
 
   async function loadEntry(id) {
