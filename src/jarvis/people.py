@@ -43,6 +43,7 @@ STATIC_SIZE_TOLERANCE = 0.30
 STATIC_HITS = 50
 STATIC_TTL = 600.0
 SAME_PERSON_IOU = 0.5
+REPLACED_PERSON_IOU = 0.3
 RECENT_PERSON_SECONDS = 2.0
 
 
@@ -185,6 +186,8 @@ class SubjectDetector:
         self.static = []
         self.cycle = 0
         self.recent_people = []
+        self.last_people = []
+        self.last_people_seen = None
         self.trace = None
 
     def _drop(self, reason, subject):
@@ -225,6 +228,47 @@ class SubjectDetector:
         return any(now - seen < RECENT_PERSON_SECONDS and iou(box, person) >= SAME_PERSON_IOU
                    for seen, person in self.recent_people)
 
+    def _vanished_people(self, people_now, now):
+        """The person boxes of the last run with people that no person box of this run continues."""
+        if self.last_people_seen is None or now - self.last_people_seen >= RECENT_PERSON_SECONDS:
+            return []
+        return [person for person in self.last_people
+                if not any(iou(person, box) >= REPLACED_PERSON_IOU for box in people_now)]
+
+    def _people_replaced_by_dogs(self, raw, now):
+        """Map each dog box that took the place of a vanished person to that person's box.
+
+        One dog box per vanished person, the most confident first.
+        """
+        vanished = self._vanished_people(
+            [box for box, _, class_id in raw if class_id == PERSON_CLASS], now)
+        replaced = {}
+        dogs = sorted((d for d in raw if d[2] == DOG_CLASS), key=lambda d: d[1], reverse=True)
+        for box, _, _ in dogs:
+            best = max(vanished, key=lambda person: iou(box, person), default=None)
+            if best is not None and iou(box, best) >= REPLACED_PERSON_IOU:
+                replaced[tuple(box)] = best
+                vanished.remove(best)
+        return replaced
+
+    def _why_a_person(self, box, now, replaced):
+        """Why a dog box is really a person, or None when it is a dog."""
+        if self._was_person_a_moment_ago(box, now):
+            return "the person's box from a moment ago"
+        if tuple(box) in replaced:
+            return "took the place of a person who vanished"
+        return None
+
+    def _remember_people(self, raw, relabelled, now):
+        """Keep this run's person boxes, the relabelled ones too, for the next runs."""
+        boxes = [box for box, _, class_id in raw if class_id == PERSON_CLASS] + relabelled
+        self.recent_people = [(seen, person) for seen, person in self.recent_people
+                              if now - seen < RECENT_PERSON_SECONDS]
+        self.recent_people += [(now, box) for box in boxes]
+        if boxes:
+            self.last_people = boxes
+            self.last_people_seen = now
+
     def detect(self, frame, motion_boxes, now=None):
         """Return a list of Detection in full-frame pixels.
 
@@ -241,16 +285,20 @@ class SubjectDetector:
 
         minimum_person = MIN_PERSON_HEIGHT_FRACTION * frame.shape[0]
         raw = _raw_detections(self.model, frame)
+        replaced = self._people_replaced_by_dogs(raw, now)
+        relabelled = []
         found = []
         for box, confidence, class_id in raw:
             detection = Detection(*box, confidence, CLASS_NAMES[class_id])
             if class_id != PERSON_CLASS and confidence < ANIMAL_CONFIDENCE:
                 self._drop("animal below confidence", detection)
                 continue
-            if class_id == DOG_CLASS and self._was_person_a_moment_ago(box, now):
-                self._drop("the person's box from a moment ago", detection)
+            reason = self._why_a_person(box, now, replaced) if class_id == DOG_CLASS else None
+            if reason:
+                self._drop(reason, detection)
                 class_id = PERSON_CLASS
                 detection = detection._replace(label=CLASS_NAMES[class_id])
+                relabelled.append(box)
             if class_id == PERSON_CLASS and box[3] < minimum_person:
                 self._drop("person too short", detection)
                 continue
@@ -263,9 +311,7 @@ class SubjectDetector:
                 continue
             found.append(detection)
 
-        self.recent_people = [(seen, person) for seen, person in self.recent_people
-                              if now - seen < RECENT_PERSON_SECONDS]
-        self.recent_people += [(now, box) for box, _, class_id in raw if class_id == PERSON_CLASS]
+        self._remember_people(raw, relabelled, now)
         unique = drop_duplicates(found)
         for subject in found:
             if subject not in unique:
