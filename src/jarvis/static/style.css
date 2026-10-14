@@ -791,8 +791,15 @@ input[role="switch"]:focus-visible {
   display: none;
 }
 
-#modes-panel {
-  grid-column: 1 / -1;
+.settings[data-part="notifications"] {
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .settings[data-part="notifications"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .mode-choice {
