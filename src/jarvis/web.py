@@ -259,6 +259,18 @@ def status():
             "frame_age": {k: (round(v, 1) if v is not None else None) for k, v in ages.items()}}
 
 
+@app.post("/api/analysis")
+def switch_analysis(payload: dict = Body(...)):
+    """Switch analysis On or Off from the page, as /on and /off do from the phone; never stored."""
+    wanted = payload.get("on")
+    if not isinstance(wanted, bool):
+        raise HTTPException(400, "on must be true or false")
+    changed = analysis.set_on(wanted)
+    if changed:
+        logger.info("Web: analysis %s from the page", analysis.describe())
+    return {"analysis": analysis.describe(), "changed": changed}
+
+
 @app.get("/api/days")
 def days():
     """Every day with recordings, newest first."""

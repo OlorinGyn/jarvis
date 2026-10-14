@@ -76,16 +76,31 @@ h1 {
 
 #analysis {
   margin-left: 10px;
+  background: transparent;
   color: var(--person);
+  border: 1px solid var(--person);
+  border-radius: 6px;
+  padding: 4px 10px;
+  min-height: 32px;
+  font: inherit;
   font-size: 0.8rem;
   font-weight: bold;
+  cursor: pointer;
+}
+
+#analysis:empty {
+  display: none;
+}
+
+#analysis:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 #analysis.off {
   background: var(--alarm);
+  border-color: var(--alarm);
   color: #fff;
-  padding: 2px 8px;
-  border-radius: 6px;
 }
 
 #connection:not([hidden]) + #version {

@@ -206,6 +206,27 @@ function syncLive() {
   }
 }
 
+function showAnalysis(state) {
+  analysisLabel.textContent = state || "";
+  analysisLabel.classList.toggle("off", state === "Off");
+  analysisLabel.title = state === "Off"
+    ? "Analysis is Off: nothing is recorded or sent. Click to switch it On."
+    : "Analysis is On. Click to switch it Off (or /on and /off on the bot).";
+}
+
+analysisLabel.addEventListener("click", async () => {
+  const wanted = analysisLabel.textContent === "Off";
+  if (!wanted && !confirm("Switch analysis Off? Nothing is recorded or sent until it is switched On again; Live keeps working.")) return;
+  analysisLabel.disabled = true;
+  try {
+    showAnalysis((await send("/api/analysis", { on: wanted })).analysis);
+  } catch (problem) {
+    alert(`Not done: ${problem.message}`);
+  } finally {
+    analysisLabel.disabled = false;
+  }
+});
+
 async function checkHealth() {
   let status = null;
   try {
@@ -223,8 +244,7 @@ async function checkHealth() {
     cameras = status.cameras;
     serverStarted = status.started;
     versionLabel.textContent = status.version || "";
-    analysisLabel.textContent = status.analysis || "";
-    analysisLabel.classList.toggle("off", status.analysis === "Off");
+    showAnalysis(status.analysis);
   }
   if (changed) {
     stopLive();

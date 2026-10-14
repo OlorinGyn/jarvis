@@ -1,6 +1,7 @@
 """Backlog 29: /off stops the analysis, never the capture, and /on or a restart bring it back."""
 
 import importlib
+import logging
 
 import numpy as np
 import pytest
@@ -199,3 +200,54 @@ def test_the_page_status_says_on_or_off():
     assert client.get("/api/status").json()["analysis"] == "On"
     analysis.set_on(False)
     assert client.get("/api/status").json()["analysis"] == "Off"
+
+
+HEADER = {"X-Jarvis-Request": "1"}
+
+
+@pytest.fixture
+def page(tmp_path, monkeypatch):
+    from jarvis import devices, settings
+    monkeypatch.setattr(settings, "FILE", tmp_path / "config.json")
+    monkeypatch.setattr(devices, "FILE", tmp_path / "devices.json")
+    return TestClient(web.app, client=("127.0.0.1", 50000))
+
+
+def test_off_and_on_from_the_page_switch_the_same_flag(page, caplog):
+    with caplog.at_level(logging.INFO, logger="jarvis.web"):
+        answer = page.post("/api/analysis", headers=HEADER, json={"on": False})
+    assert answer.status_code == 200
+    assert answer.json() == {"analysis": "Off", "changed": True}
+    assert not analysis.is_on()
+    assert page.get("/api/status").json()["analysis"] == "Off"
+    assert "analysis Off from the page" in caplog.text
+    again = page.post("/api/analysis", headers=HEADER, json={"on": False}).json()
+    assert again == {"analysis": "Off", "changed": False}
+    assert page.post("/api/analysis", headers=HEADER, json={"on": True}).json()["analysis"] == "On"
+    assert analysis.is_on()
+
+
+def test_switching_from_the_page_is_never_stored(page, tmp_path):
+    page.post("/api/analysis", headers=HEADER, json={"on": False})
+    assert not (tmp_path / "config.json").exists()
+
+
+def test_the_page_switch_wants_a_boolean(page):
+    for wrong in ({}, {"on": "off"}, {"on": 0}):
+        assert page.post("/api/analysis", headers=HEADER, json=wrong).status_code == 400
+    assert analysis.is_on()
+
+
+def test_the_page_switch_goes_through_the_write_guard(page):
+    assert page.post("/api/analysis", json={"on": False}).status_code == 403
+    remote = TestClient(web.app, client=("192.168.0.50", 50000))
+    assert remote.post("/api/analysis", headers=HEADER, json={"on": False}).status_code == 403
+    assert analysis.is_on()
+
+
+def test_a_reminder_comes_after_off_from_the_page(poller, clock, page):
+    found, telegram = poller
+    page.post("/api/analysis", headers=HEADER, json={"on": False})
+    clock.now += bot.REMINDER_SECONDS
+    found.poll_once()
+    assert any("Analysis has been Off" in fields["text"] for fields in telegram.sent())
