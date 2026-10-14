@@ -368,6 +368,23 @@ def _group(observations):
     return groups
 
 
+def _best_view(gallery, group):
+    """(person_id, score, index) of the group's view that matches best: a named person first, then the score.
+
+    The heaviest view is the largest and sharpest picture, not always the one
+    the recogniser knows best; scoring every view lets a clip with a sure view
+    be recorded as sure, and learn that view (R51).
+    """
+    best = None
+    for index, view in enumerate(group["views"]):
+        person_id, score = gallery.match(view)
+        person = gallery.get(person_id) if person_id is not None else None
+        key = (person_id is not None, bool(person and person["name"]), score)
+        if best is None or key > best[0]:
+            best = (key, person_id, score, index)
+    return best[1], best[2], best[3]
+
+
 def cover_of(person):
     """The person's favourite view, when it is still one of their views; else None."""
     cover = person.get("cover")
@@ -1252,7 +1269,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
     for group in sorted(_group(observations), key=lambda g: g["weight"], reverse=True):
         embedding = group["embedding"]
         reliable = group["width"] >= GOOD_FACE_WIDTH
-        person_id, score = gallery.match(embedding)
+        person_id, score, matched = _best_view(gallery, group)
         if person_id is None and group["count"] < MIN_VIEWS_FOR_NEW:
             continue
         if person_id is not None and person_id in seen_here:
@@ -1267,7 +1284,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
             person_id = gallery.add([embedding, *(v for v, _ in others[:3])], thumbnail,
                                     [group["crop"], *(c for _, c in others[:3])])
         elif score >= LEARN_THRESHOLD:
-            gallery.reinforce(person_id, embedding, group["crop"])
+            gallery.reinforce(person_id, group["views"][matched], group["crops"][matched])
         seen_here.add(person_id)
 
         sighting = {
