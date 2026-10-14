@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jarvis import faces, settings, web
+from queues import queue
 
 HEADER = {"X-Jarvis-Request": "1"}
 CROP = np.zeros((20, 20, 3), np.uint8)
@@ -27,8 +28,7 @@ def full(tmp_path, monkeypatch):
     monkeypatch.setattr(faces, "MAX_PENDING", 2)
     gallery = faces.Gallery()
     person_id = gallery.add([embedding(1), embedding(2)], "t.jpg", [CROP, CROP])
-    gallery.reinforce(person_id, embedding(3), CROP)
-    gallery.reinforce(person_id, embedding(4), CROP)
+    queue(gallery, person_id, [embedding(3), embedding(4)], CROP)
     return gallery, person_id
 
 
@@ -36,17 +36,17 @@ def shown(url):
     return url.rsplit("/", 1)[-1] if url else ""
 
 
-def test_a_delete_on_a_page_from_before_a_scan_is_refused(full):
+def test_a_delete_on_a_page_from_before_another_tab_moved_is_refused(full):
     gallery, person_id = full
     client = TestClient(web.app, client=("127.0.0.1", 50000))
     page = client.get(f"/api/persons/{person_id}").json()
     oldest = shown(page["pending_photos"][0])
-    gallery.reinforce(person_id, embedding(5), CROP)
+    gallery.remove_waiting(person_id, 0)
     answer = client.post(f"/api/persons/{person_id}/pending/0/remove", headers=HEADER,
                          json={"view": oldest})
     assert answer.status_code == 409
     assert "refreshed" in answer.json()["detail"]
-    assert len(faces.Gallery().get(person_id)["pending"]) == 2
+    assert len(faces.Gallery().get(person_id)["pending"]) == 1
 
 
 def test_each_move_goes_ahead_when_the_view_is_still_there(full):
@@ -82,6 +82,6 @@ def test_a_move_names_the_wrong_view_and_is_refused_for_each_kind(full):
 def test_the_gallery_checks_under_its_own_lock(full):
     gallery, person_id = full
     first = faces.Gallery().get(person_id)["pending"][0]["view"]
-    gallery.reinforce(person_id, embedding(5), CROP)
+    faces.Gallery().remove_waiting(person_id, 0)
     with pytest.raises(faces.ViewsChanged):
         gallery.remove_waiting(person_id, 0, expected=first.rsplit("/", 1)[-1])

@@ -295,6 +295,30 @@ def closest_pair(matrix, indices):
     return round(float(min(found)), 3) if found else None
 
 
+def replaced_view(matrix, favourite=None):
+    """Which chosen view a new one replaces once the chosen are full, or None to discard it (backlog 28).
+
+    The last row of matrix is the new view, the others the chosen ones; an
+    infinite distance means the two cannot be compared (a dog by day and by
+    night). The candidate is the chosen view whose nearest twin is closest,
+    never the favourite, among those comparable to the new view when there is
+    one. It is replaced only when the new view is farther from its own nearest
+    chosen view than that; a view with nothing comparable is the farthest.
+    """
+    matrix = np.array(matrix, dtype=np.float64)
+    count = len(matrix) - 1
+    chosen = matrix[:count, :count].copy()
+    np.fill_diagonal(chosen, np.inf)
+    nearest = chosen.min(axis=1) if count else np.array([])
+    new = matrix[count, :count]
+    candidates = [i for i in range(count) if i != favourite and np.isfinite(nearest[i])]
+    candidates = [i for i in candidates if np.isfinite(new[i])] or candidates
+    if not candidates:
+        return None
+    out = min(candidates, key=lambda i: nearest[i])
+    return out if new.min() > nearest[out] else None
+
+
 def _pool(person):
     """A person's stored views, then their queue: (embedding, view photo) pairs."""
     return (list(zip(person["embeddings"], views_of(person)))
@@ -351,6 +375,7 @@ class Gallery:
 
     def load(self):
         self.repoints = {}
+        self.dropped = []
         try:
             data = json.loads(self.path.read_text(encoding="utf-8-sig"))
             self.people = data.get("people", [])
@@ -358,13 +383,20 @@ class Gallery:
             self.people = []
 
     def save(self):
-        """Write the gallery, after pointing the sightings of every merged entry at its target."""
+        """Write the gallery, after pointing the sightings of every merged entry at its target.
+
+        Then delete the photos of the views that left it, so a failed write
+        leaves an unused photo behind, never a view without its photo.
+        """
         if self.repoints:
             _repoint_sightings(self.path.parent, self.repoints, self.sighting_key)
             self.repoints = {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps({"people": self.people}, indent=2),
                              encoding="utf-8")
+        dropped, self.dropped = self.dropped, []
+        for view in dropped:
+            self._forget_view(view)
 
     def get(self, person_id):
         return next((p for p in self.people if p["id"] == person_id), None)
@@ -415,18 +447,28 @@ class Gallery:
             path.unlink(missing_ok=True)
 
     def _take(self, person, embedding, view):
-        """Store one view, or queue it when the person already holds MAX_EMBEDDINGS."""
+        """Store one view; past MAX_EMBEDDINGS, only in place of a closer pair (replaced_view).
+
+        Returns "chosen", "replaced" or "discarded". The view that leaves is
+        deleted with its photo when the gallery is saved.
+        """
         views = views_of(person)
         if len(person["embeddings"]) < MAX_EMBEDDINGS:
             person["embeddings"].append(embedding)
             person["views"] = views + [view]
-            return
+            return "chosen"
         person["views"] = views
-        pending = person.setdefault("pending", [])
-        pending.append({"embedding": embedding, "view": view})
-        for dropped in pending[:-MAX_PENDING]:
-            self._forget_view(dropped.get("view"))
-        del pending[:-MAX_PENDING]
+        cover = cover_of(person)
+        out = replaced_view(self.distances(person["embeddings"] + [embedding]),
+                            views.index(cover) if cover else None)
+        if out is None:
+            self.dropped.append(view)
+            return "discarded"
+        person["embeddings"].pop(out)
+        self.dropped.append(views.pop(out))
+        person["embeddings"].append(embedding)
+        person["views"] = views + [view]
+        return "replaced"
 
     def add(self, embeddings, thumbnail, crops=None):
         embeddings = list(embeddings)
@@ -449,7 +491,7 @@ class Gallery:
         return person["id"]
 
     def reinforce(self, person_id, embedding, crop=None):
-        """Keep more views per person; past MAX_EMBEDDINGS they wait in a queue."""
+        """Keep one more view of a person; past MAX_EMBEDDINGS, only one that makes them more varied."""
         view = self._store_view(crop)
         with _GALLERY_LOCK:
             self.load()
@@ -552,6 +594,37 @@ class Gallery:
         """Delete the view photos of an entry that left the gallery."""
         for view in views_of(person) + [w.get("view") for w in person.get("pending") or []]:
             self._forget_view(view)
+
+    def settle_waiting(self, dry_run=False):
+        """Pass every waiting view through the rule of _take, oldest first, and empty the queues (backlog 28).
+
+        One row per entry that had a queue: how many views waited, how many of
+        them ended in Chosen, and how many chosen views they pushed out; every
+        other waiting view is discarded. With dry_run nothing is written or
+        deleted.
+        """
+        rows = []
+        with _GALLERY_LOCK:
+            self.load()
+            for person in self.people:
+                waiting = person.get("pending") or []
+                if not waiting:
+                    continue
+                before = [id(e) for e in person["embeddings"]]
+                for w in waiting:
+                    self._take(person, w["embedding"], w.get("view"))
+                person["pending"] = []
+                after = {id(e) for e in person["embeddings"]}
+                pushed_out = sum(1 for e in before if e not in after)
+                entered = len(after) - (len(before) - pushed_out)
+                rows.append({"id": person["id"], "name": person["name"], "waiting": len(waiting),
+                             "entered": entered, "discarded": len(waiting) - entered,
+                             "pushed_out": pushed_out})
+            if dry_run or not rows:
+                self.load()
+            else:
+                self.save()
+        return rows
 
     def put_back(self, entry):
         """Return an entry taken out by mistake. False when its id is already in the gallery."""
@@ -733,7 +806,7 @@ class Gallery:
         return merged
 
     def _merge(self, source, target):
-        """Move every view and sighting of source into target; overflow waits in its queue.
+        """Move every view and sighting of source into target, each through the rule of _take.
 
         The target stays a resident, and becomes one when the source was.
         """

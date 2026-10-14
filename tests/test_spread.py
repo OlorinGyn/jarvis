@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jarvis import dogs, faces, web
+from queues import queue
 
 CROP = np.zeros((40, 40, 3), np.uint8)
 HEADER = {"X-Jarvis-Request": "1"}
@@ -27,8 +28,7 @@ def crowded(tmp_path):
     rng = np.random.default_rng(7)
     gallery = faces.Gallery(tmp_path / "gallery.json")
     person_id = gallery.add(near_copies(rng, 40), "t.jpg", [CROP] * 40)
-    for embedding in varied(rng, 60):
-        gallery.reinforce(person_id, embedding, CROP)
+    queue(gallery, person_id, varied(rng, 60), CROP)
     return gallery, person_id
 
 
@@ -64,7 +64,7 @@ def test_the_favourite_photo_is_always_kept(crowded):
 def test_a_stale_proposal_is_refused(crowded):
     gallery, person_id = crowded
     proposal = gallery.spread_proposal(person_id)
-    gallery.reinforce(person_id, [0.5] * 128, CROP)
+    queue(gallery, person_id, [[0.5] * 128], CROP)
     assert not gallery.keep_spread(person_id, proposal["keep"], proposal["signature"])
     assert not gallery.keep_spread(person_id, proposal["keep"][:39], gallery.spread_proposal(person_id)["signature"])
 
@@ -85,9 +85,7 @@ def dog_view(infrared, tone):
 def test_a_dog_keeps_both_day_and_night(tmp_path):
     gallery = dogs.DogGallery(tmp_path / "gallery.json")
     dog_id = gallery.add([dog_view(False, 12)] * 40, "t.jpg")
-    for _ in range(5):
-        gallery.reinforce(dog_id, dog_view(False, 3))
-    gallery.reinforce(dog_id, dog_view(True, 12))
+    queue(gallery, dog_id, [dog_view(False, 3)] * 5 + [dog_view(True, 12)])
     proposal = gallery.spread_proposal(dog_id)
     kept = [gallery.get(dog_id)["embeddings"][i] if i < 40 else gallery.get(dog_id)["pending"][i - 40]["embedding"]
             for i in proposal["keep"]]
