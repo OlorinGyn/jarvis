@@ -974,15 +974,24 @@ function fillSettings(values) {
 
 let confidenceDefaults = {};
 
+const CONFIDENCE_NAMES = { confidence_person: "Person", confidence_dog: "Dog", confidence_animal: "Other animals" };
+
 function showDetection(values) {
   confidenceDefaults = values.confidence_defaults;
   const [low, high] = values.confidence_range;
   detectionForm.querySelector(".confidence-low").textContent = low.toFixed(2);
   detectionForm.querySelector(".confidence-high").textContent = high.toFixed(2);
+  const now = document.getElementById("confidence-now");
+  now.replaceChildren();
   for (const key of CONFIDENCE_KEYS) {
-    detectionForm[key].min = low;
-    detectionForm[key].max = high;
-    detectionForm[key].value = values[key].toFixed(2);
+    const slider = detectionForm[key];
+    slider.min = 0;
+    slider.max = values.slider_steps;
+    slider.step = 1;
+    slider.value = values.confidence_positions[key];
+    const line = document.createElement("li");
+    line.textContent = `${CONFIDENCE_NAMES[key]}: minimum ${values[key].toFixed(2)} now, default ${confidenceDefaults[key].toFixed(2)}.`;
+    now.append(line);
   }
 }
 
@@ -1027,8 +1036,8 @@ archiveForm.addEventListener("submit", (submitted) => {
 
 detectionForm.addEventListener("submit", (submitted) => {
   submitted.preventDefault();
-  saveSettings(Object.fromEntries(CONFIDENCE_KEYS.map((key) => [key, Number(detectionForm[key].value)])),
-    detectionResult);
+  saveSettings({ confidence_positions: Object.fromEntries(
+    CONFIDENCE_KEYS.map((key) => [key, Number(detectionForm[key].value)])) }, detectionResult);
 });
 
 document.getElementById("detection-defaults").addEventListener("click", () => {

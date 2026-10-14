@@ -19,6 +19,7 @@ REPLACE_ATTEMPTS = 50
 REPLACE_PAUSE = 0.01
 CONFIDENCE_KEYS = ("confidence_person", "confidence_dog", "confidence_animal")
 CONFIDENCE_RANGE = (0.20, 0.90)
+SLIDER_STEPS = 1000
 
 _LOCK = threading.RLock()
 
@@ -82,6 +83,26 @@ def confidence_valid(value):
     """True for a detection confidence the detector accepts: a number inside CONFIDENCE_RANGE."""
     low, high = CONFIDENCE_RANGE
     return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
+
+
+def slider_position(value, default):
+    """Where a minimum confidence sits on its slider: the default in the middle, each half linear to its end."""
+    low, high = CONFIDENCE_RANGE
+    middle = SLIDER_STEPS / 2
+    if value <= default:
+        share = (value - low) / (default - low) if default > low else 1.0
+        return round(share * middle)
+    share = (value - default) / (high - default) if high > default else 0.0
+    return round(middle + share * middle)
+
+
+def slider_value(position, default):
+    """The minimum confidence a slider position stands for, the inverse of slider_position."""
+    low, high = CONFIDENCE_RANGE
+    middle = SLIDER_STEPS / 2
+    if position <= middle:
+        return round(low + (default - low) * position / middle, 2)
+    return round(default + (high - default) * (position - middle) / middle, 2)
 
 
 def save(values):

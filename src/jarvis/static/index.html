@@ -191,17 +191,25 @@
     <div class="settings" data-part="detection" hidden>
       <form id="detection-form" class="panel">
         <h2>Detection sensitivity</h2>
-        <p class="hint">How sure YOLO must be before motion counts as a person or an animal, from <span class="confidence-low"></span> to <span class="confidence-high"></span>. Lower finds more, and more false ones; higher misses more. A change reaches the cameras within seconds, without a restart.</p>
-        <label>Person
-          <input type="number" name="confidence_person" step="0.05">
-        </label>
-        <label>Dog
-          <input type="number" name="confidence_dog" step="0.05">
-        </label>
-        <label>Other animals (cat, bird, horse, sheep, cow)
-          <input type="number" name="confidence_animal" step="0.05">
-        </label>
-        <p class="hint">What this does not fix: a person bending over is called a dog as confidently as a real dog is, so raising the dog value cuts real dogs first. Those boxes are turned back into a person by where the person just stood, not by confidence.</p>
+        <p class="hint">How sure YOLO must be before motion counts as a person or an animal. Slide left and it finds more, and more false ones; slide right and it is stricter and misses more. A change reaches the cameras within seconds, without a restart.</p>
+        <div class="sensitivity">
+          <label for="slider-confidence_person">Person</label>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_person" name="confidence_person"><span>Fewer, stricter</span></div>
+        </div>
+        <div class="sensitivity">
+          <label for="slider-confidence_dog">Dog</label>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_dog" name="confidence_dog"><span>Fewer, stricter</span></div>
+        </div>
+        <div class="sensitivity">
+          <label for="slider-confidence_animal">Other animals (cat, bird, horse, sheep, cow)</label>
+          <div class="slider"><span>More detections, more false alarms</span><input type="range" id="slider-confidence_animal" name="confidence_animal"><span>Fewer, stricter</span></div>
+        </div>
+        <div class="how">
+          <h3>How the sliders work</h3>
+          <p class="hint">Each slider moves YOLO's minimum confidence: the score, from 0 to 1, a box must reach before it counts. The middle is the default. The left end is <span class="confidence-low"></span> and the right end <span class="confidence-high"></span>, and each half moves in proportion between the default and its end, so the middle stays the default whatever its value.</p>
+          <ul class="hint" id="confidence-now"></ul>
+        </div>
+        <p class="hint">What this does not fix: a person bending over is called a dog as confidently as a real dog is, so moving the dog slider right cuts real dogs first. Those boxes are turned back into a person by where the person just stood, not by confidence.</p>
         <div class="actions">
           <button type="submit">Save</button>
           <button type="button" id="detection-defaults">Back to the defaults</button>

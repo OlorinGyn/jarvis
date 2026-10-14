@@ -119,3 +119,56 @@ def test_the_page_stores_a_value_rounded(client, config):
     answer = client.post("/api/settings", headers=HEADER, json={"confidence_dog": 0.6000000001})
     assert answer.status_code == 200
     assert json.loads(config.read_text(encoding="utf-8"))["confidence_dog"] == 0.6
+
+
+@pytest.mark.parametrize("key", settings.CONFIDENCE_KEYS)
+def test_the_slider_middle_is_the_default_and_the_ends_are_the_range(key):
+    default = settings.DEFAULTS[key]
+    low, high = settings.CONFIDENCE_RANGE
+    middle = settings.SLIDER_STEPS // 2
+    assert settings.slider_position(default, default) == middle
+    assert settings.slider_position(low, default) == 0
+    assert settings.slider_position(high, default) == settings.SLIDER_STEPS
+    assert settings.slider_value(middle, default) == default
+    assert settings.slider_value(0, default) == low
+    assert settings.slider_value(settings.SLIDER_STEPS, default) == high
+
+
+@pytest.mark.parametrize("key", settings.CONFIDENCE_KEYS)
+def test_each_half_of_the_slider_is_linear(key):
+    default = settings.DEFAULTS[key]
+    low, high = settings.CONFIDENCE_RANGE
+    quarter = settings.SLIDER_STEPS // 4
+    assert settings.slider_value(quarter, default) == round((low + default) / 2, 2)
+    assert settings.slider_value(3 * quarter, default) == round((default + high) / 2, 2)
+
+
+@pytest.mark.parametrize("default", [0.20, 0.35, 0.45, 0.90])
+def test_every_stored_value_survives_the_slider_both_ways(default):
+    low, high = settings.CONFIDENCE_RANGE
+    for hundredths in range(round(low * 100), round(high * 100) + 1):
+        value = hundredths / 100
+        assert settings.slider_value(settings.slider_position(value, default), default) == value
+
+
+def test_the_page_reads_positions_and_saves_them_as_numbers(client, config):
+    view = client.get("/api/settings").json()
+    middle = settings.SLIDER_STEPS // 2
+    assert view["slider_steps"] == settings.SLIDER_STEPS
+    assert view["confidence_positions"] == {key: middle for key in settings.CONFIDENCE_KEYS}
+    answer = client.post("/api/settings", headers=HEADER, json={"confidence_positions": {
+        "confidence_person": 0, "confidence_dog": settings.SLIDER_STEPS}})
+    assert answer.status_code == 200
+    stored = json.loads(config.read_text(encoding="utf-8"))
+    assert stored["confidence_person"] == 0.20 and stored["confidence_dog"] == 0.90
+    assert stored["confidence_animal"] == settings.DEFAULTS["confidence_animal"]
+    assert answer.json()["confidence_positions"]["confidence_person"] == 0
+
+
+@pytest.mark.parametrize("wrong", [
+    {"confidence_person": -1}, {"confidence_person": settings.SLIDER_STEPS + 1},
+    {"confidence_person": 0.5}, {"confidence_person": True}, {"notify_chat": 3}, [1, 2]])
+def test_the_page_cannot_save_a_position_outside_the_slider(client, config, wrong):
+    answer = client.post("/api/settings", headers=HEADER, json={"confidence_positions": wrong})
+    assert answer.status_code == 400
+    assert not config.exists()

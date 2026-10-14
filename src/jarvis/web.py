@@ -856,7 +856,21 @@ def _settings_view(request):
     values["archive"] = jsonable_encoder(archive.summary())
     values["confidence_range"] = list(settings.CONFIDENCE_RANGE)
     values["confidence_defaults"] = {key: settings.DEFAULTS[key] for key in settings.CONFIDENCE_KEYS}
+    values["confidence_positions"] = {key: settings.slider_position(values[key], settings.DEFAULTS[key])
+                                      for key in settings.CONFIDENCE_KEYS}
+    values["slider_steps"] = settings.SLIDER_STEPS
     return values
+
+
+def _from_positions(value):
+    """Slider positions from the page turned into the minimum confidences config.json stores."""
+    steps = settings.SLIDER_STEPS
+    if not isinstance(value, dict) or not all(
+            key in settings.CONFIDENCE_KEYS and isinstance(position, int)
+            and not isinstance(position, bool) and 0 <= position <= steps
+            for key, position in value.items()):
+        raise HTTPException(400, f"confidence_positions must map each minimum to a whole number from 0 to {steps}")
+    return {key: settings.slider_value(position, settings.DEFAULTS[key]) for key, position in value.items()}
 
 
 def _clean(key, value):
@@ -910,6 +924,8 @@ def write_settings(request: Request, payload: dict = Body(...)):
             if not isinstance(value, str) or not value.strip():
                 raise HTTPException(400, "invalid value for notify_token")
             changes[key] = value.strip()
+        elif key == "confidence_positions":
+            changes.update(_from_positions(value))
         elif key in EDITABLE:
             changes[key] = _clean(key, value)
         else:

@@ -1008,3 +1008,52 @@ input[role="switch"]:focus-visible {
 .settings[hidden] {
   display: none;
 }
+
+.sensitivity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+}
+
+.slider span:last-child {
+  text-align: right;
+}
+
+.panel .slider input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--person);
+}
+
+.how h3 {
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+
+.how ul {
+  padding-left: 18px;
+}
+
+@media (max-width: 520px) {
+  .slider {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .slider input[type="range"] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
