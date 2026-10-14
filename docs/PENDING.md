@@ -28,22 +28,17 @@ grows, decisions are being postponed.
   (`http://192.168.0.18:8765`).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
-- **The seven head-tops of Izabel in Gustavo's Waiting** (R48, R49): photos
-  starting `c58c97`, `e18912`, `b3f8b9`, `69f368`, `1bbfa1`, `860372` and
-  `eedcf9` (positions 11, 12, 17, 20, 21, 22 and 26 on 14/10). Since
-  `v2026.10.14` they recognise no one, but backlog 28's once-only tool would
-  put 6 of them into his Chosen, so **the architect runs it only after they
-  are deleted**. The five head-tops of Gustavo in his Chosen (15, 16, 18, 19
-  and 31: `55edf5`, `e5bf9c`, `80936d`, `1f8419`, `dbc1b0`) match Izabel at
-  0.29 at most under ArcFace; deleting them is optional. A copy of everything
-  is in `backups/r49_faces_20261014/`.
-- **Name the seven unnamed entries "Izabel"** (the user's answer, 14/10): on
-  People, naming each one Izabel merges it into her, with a warning first.
-  Backlog 32's table needs these labels clean.
-- **An unnamed entry from 11:05 on 14/10, `p_62e42af6`**: four views of a
-  bearded man with a headset; by the contact sheet, Gustavo. Nine of his
-  views on a 12/10 clip matched it best under ArcFace. Naming it Gustavo
-  merges it.
+- **Misfiled dog views** (R53, 14/10): on Dogs, Aurora — Chosen 5
+  (`89848c`, Mirana at the door) and 6 (`7221b7`, unclear: check it),
+  Waiting 5 (`d6bb2c`, Mirana) and 24 (`f530c0`, a man); Mirana — Chosen 33
+  (`6b3d84`, brown fur: check it), Waiting 22 (`6f8002`, dark clothing), 25
+  (`557fa0`, shoes and a hand), 26 (`108df8`, someone in red) and 29
+  (`cc29b3`, Aurora). Positions as listed on 14/10 at 12:30. **The
+  once-only settle waits for these too**: it would put the Waiting ones into
+  Chosen first. Done on the faces side: the seven head-tops deleted and the
+  unnamed entries named (the user, 14/10). Gustavo's own five head-tops in
+  his Chosen stay (they match Izabel at 0.29 at most); deleting them is
+  optional.
 - **`v2026.10.14` on the M900**: the next person events should name Gustavo
   and Izabel more often, sometimes as "probably" (R51); a face message that
   names the wrong person goes to the architect.
@@ -54,7 +49,8 @@ grows, decisions are being postponed.
 
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
-  architect runs it after the seven head-tops above are deleted. The EPUB's documents were chosen by the user on 14/10/2026 —
+  architect runs it after the misfiled dog views above are deleted (the
+  faces are ready since 14/10). The EPUB's documents were chosen by the user on 14/10/2026 —
 ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 10); the EPUB itself is built when the user asks.
 

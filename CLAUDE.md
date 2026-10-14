@@ -79,6 +79,7 @@ architect reviewing a developer's work. The roles do not overlap:
 | Documentation EPUB | no | generates it **only when the user asks** (CONTEXT 10) |
 | Raid log comic script (`docs/raidlog/`) | no | writes one issue per release, in both languages (PROCESS 6) |
 | Skills in `.claude/skills/` | uses them | writes and maintains them |
+| UX and responsiveness of the page (the user, 14/10/2026) | builds what is planned, checks it at 375 px too | decides it, reviews every page change at phone and desktop width (PROCESS 1) |
 
 **The developer's session is the `dev` skill** (`.claude/skills/dev/SKILL.md`):
 the user calls it with `/dev` or "Dev, ...". It holds the start, the rules per

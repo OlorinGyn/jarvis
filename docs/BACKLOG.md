@@ -95,6 +95,20 @@ taken in production that evening.
     17.12). The architect's default, to be confirmed by the user on the
     page: turning **Off** asks first, since it stops all recording; turning
     On does not.
+35. **Detection sensitivity as a slider, not numbers** (decided; the user,
+    14/10/2026: "the sensitivity cannot be numeric — a kind of slider where
+    the middle is our default value, and the number goes down to the left
+    and up to the right, proportionally"). Each of backlog 31's three
+    minimums (ARCHITECTURE 7.14) becomes a slider with no number on it: the
+    middle is the default, the left end the lowest allowed minimum (0.20),
+    the right end the highest (0.90), each half linear, so the middle is
+    always the default whatever its value. The ends say in words what they
+    do — left: more detections, more false alarms; right: fewer, stricter.
+    `config.json` keeps storing the number, so nothing on disk changes.
+36. **Notifications: the Telegram card beside "What reaches the phone"**
+    (decided; the user, 14/10/2026). Two columns where the screen is wide
+    enough, one under the other on a phone — the user opens the page from
+    the phone's browser too (PROCESS 1, UX).
 
 ### Critical
 
@@ -185,6 +199,7 @@ model; R48 and R49 closed in review 23.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
+| R53 | **high — the user's report, 14/10** | The two dogs are told apart by colour histograms, which overlap: Mirana among Aurora's views, a person among Mirana's | open (below) |
 | R51 | medium | A clip's face is matched by its heaviest view, not its best: a clip with sure views can be recorded "probably" | open (below) |
 | R52 | low | The gallery migration runs before the log file and before the port is held | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
@@ -193,6 +208,24 @@ model; R48 and R49 closed in review 23.
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+
+**R53 — The dogs' identity rests on colour histograms, which overlap (high,
+the user's report, review 23).** The user sees Mirana among Aurora's views and
+a person among Mirana's. A contact sheet of production's galleries on 14/10
+shows it: Mirana in Aurora's Chosen (5) and Waiting (5), a man in Aurora's
+Waiting (24), shoes and a hand, someone in red, dark clothing and Aurora in
+Mirana's Waiting (25, 26, 22, 29) — the user deletes them (`PENDING.md`). By
+leave-one-out with `dogs.distance`, 6 of Aurora's 40 chosen views and 5 of
+Mirana's sit closer to the other dog than to their own; at night both are
+grey, and a crop holding both dogs, or a person's dark shoes, describes as
+whichever colour its fur mask caught. **Step 1, as R49's:** once the labels
+are clean, a bench on a copy of `dogs/` — today's descriptor against learned
+image embeddings that run through `cv2.dnn`, exported to ONNX once if needed
+as AdaFace was (ARCHITECTURE 10.14): for instance DINOv2-small, a CLIP image
+encoder, a MobileNet's last pooled layer. Per candidate: leave-one-out by
+lighting, right and wrong over a threshold sweep, how far a person crop or a
+crop of both dogs lands from each dog, cost on the M900, size and licence.
+Nothing in the program changes in step 1.
 
 **R51 — A clip's face is matched by its heaviest view, not its best
 (medium, review 23).** `_group` keeps, for each face in a clip, the view with
@@ -267,12 +300,20 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 ArcFace R50, the gallery migration, the models fetched before the stop — with
 backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
 
-**Developer 22 (planned 14/10): backlog 34, R52, R51, then R30 (b).**
+**The user's instruction, 14/10:** use the whole 5-hour window that opens at
+15:00 (Brasília), cycle after cycle; the weekly limit renews at 16:00. Each
+review plans and starts the next developer session at once; the plans below
+are already written so no cycle waits.
 
-0. **Backlog 34 first** (section 1): the user asked for it during review 23,
-   and it is small. This puts it ahead of R30 (b), which is high, on purpose:
-   R30 (b) was parked until the model changed, and the user's request is
-   live. Tests as `tests/test_on_off.py` does for the bot, plus the guard.
+**Developer 22 (15:00): backlog 34 and 35, R52, R51, then R30 (b).**
+
+0. **Backlog 34, 35 and 36 first** (section 1): the user asked for both during
+   review 23, and both are small page changes. This puts them ahead of R30
+   (b), which is high, on purpose: R30 (b) was parked until the model
+   changed, and the user's requests are live. Tests as
+   `tests/test_on_off.py` does for the bot, plus the write guard; for 35,
+   the slider's mapping both ways (default in the middle, the ends at 0.20
+   and 0.90) in `tests/`.
 1. **R52** (section 2): the migration's line into `logs/jarvis.log`,
    and `filelock` around `migrate_gallery`. A new dependency: check that
    `filelock` is pure Python (no `.pyd`), as PROCESS 5.3 asks of anything
@@ -289,10 +330,18 @@ backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
    face. Report the gain in faces per clip, and the cost (each face now costs
    ~0.13 s more, ARCHITECTURE 10.14).
 
-**HANDOFF:** backlog 34 as built (and whether Off asks first);
+**HANDOFF:** backlog 34, 35 and 36 as built, each checked at 375 px wide too (and whether Off asks first);
 R51's table and the choice; R30 (b)'s per-limit table; the log
 line as written by the test copy. If the session runs short, stop after a
 coherent commit and say what is left.
+
+**Developer 23 (after review 24): R53 step 1, then backlog 32 for faces.**
+R53's bench (section 2) on a copy of production's `dogs/` taken after the
+user's deletions — if they are not done, label the views listed in
+`PENDING.md` as "not this dog" in the bench instead. Then backlog 32's table
+for faces only: the face labels are clean since 14/10 (the head-tops
+deleted, the unnamed entries named), and the dogs' half waits for R53's
+model.
 
 **Waits for the user:** R42; backlog 32 can be built now but means something
 once the labels are clean (`PENDING.md`); the once-only settle of backlog 28.

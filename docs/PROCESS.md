@@ -45,6 +45,13 @@ and tangents, but **never** skimp on explaining code or a command — they
 complained when that was cut too short. Each delivery's concepts go to
 `PYTHON.md`.
 
+**UX and responsiveness are the architect's** (the user, 14/10/2026). The
+user opens the page from a phone's browser too. Every review that touches the
+page looks at it at phone width (375 px) and on a desktop, with the built-in
+browser, and the architect decides layout and interaction changes itself:
+they enter the backlog as **(decided, UX)** with no "(proposto)" step. New
+features stay the user's decision.
+
 **Language** (the user, 09/10/2026): only the conversation with the user is
 in Portuguese. Code, identifiers, commits, documentation and every text the
 program shows are in English; the raid log scripts are in both. The table is
