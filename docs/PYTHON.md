@@ -1563,3 +1563,65 @@ the best total over every box and person at once — what ByteTrack and
 similar trackers use, through `scipy.optimize.linear_sum_assignment`. With
 the one or two boxes a camera sees here, both give the same answer, and the
 greedy one needs nothing installed.
+
+## 38. Vectorising a pairwise loop, `inf` as "cannot compare", and identity (backlog 28)
+
+**The loop that became a matrix product.** `DogGallery.distances` used to
+call `distance(a, b)` for every pair — 820 Python calls for 41 views, 36 ms.
+The Bhattacharyya coefficient of two histograms is `Σ √(aᵢ·bᵢ)`, which is a
+dot product of their square roots. Put every histogram in a row of a matrix
+`A`, and **all** the coefficients come out of one product:
+
+```python
+roots = np.sqrt(np.clip(histograms, 0.0, None))
+matrix = np.sqrt(np.clip(1.0 - roots @ roots.T, 0.0, None))
+```
+
+`@` is matrix multiplication; `roots @ roots.T` is a 41×41 table whose cell
+`[i, j]` is the dot product of rows `i` and `j`. NumPy hands it to a compiled
+BLAS routine — the C# analogue is replacing two nested `for` loops with a call
+into a native maths library. 0.5 ms instead of 36.
+
+The `if`s of the scalar version become **boolean masks** and **broadcasting**:
+
+```python
+empty = histograms.sum(axis=1) <= 0
+matrix[empty, :] = 1.0
+infrared = x[:, 0] != 0
+matrix = np.where(infrared[:, None], tone, colour)
+matrix[infrared[:, None] != infrared[None, :]] = np.inf
+```
+
+- `matrix[empty, :] = 1.0` writes every row whose mask is `True` — no loop.
+- `infrared[:, None]` turns a vector of 41 into a 41×1 column and
+  `infrared[None, :]` into a 1×41 row; comparing them **broadcasts** to a
+  41×41 table, true wherever the two views differ in lighting.
+- `np.where(cond, a, b)` picks per cell, like `cond ? a : b` over a whole
+  array.
+
+**`np.inf` as "cannot be compared".** A day view and a night view have no
+distance. Storing `inf` instead of `None` keeps the arithmetic working: `min`
+skips it naturally, `x > inf` is always false, and `np.isfinite(...)` picks the
+comparable ones. `faces.replaced_view` needs no `None` checks at all.
+
+**Identity, not equality.** `settle_waiting` counts which chosen views
+survived by `id(embedding)` — the object's identity, like `==` on references in
+Java — because two views can hold equal lists of numbers and still be different
+views. `id` is only safe while every object compared is alive, which holds
+here: the gallery and the queue keep them all until the count is done.
+
+**Delete after commit.** `save()` writes `gallery.json` first and only then
+deletes the photos of the views that left (`self.dropped`) — the order of a
+database commit followed by file cleanup. A crash in between leaves an unused
+photo, never a view whose photo is gone.
+
+**Importing a script in a test.** `tools/` is not a package, so the test puts
+it on `sys.path` and loads the script by name:
+
+```python
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+settle_waiting = importlib.import_module("settle_waiting")
+```
+
+after which `settle_waiting.main(["--dry-run"])` runs the tool in the test's
+process, and `monkeypatch` can replace its `web.already_running`.

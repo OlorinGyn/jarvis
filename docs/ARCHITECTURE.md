@@ -125,6 +125,7 @@ jarvis/
 │   ├── diagnose.py       variants of the capture command; --local without a camera
 │   ├── probe_rtsp.py     raw RTSP (DESCRIBE → SETUP → PLAY)
 │   ├── rebuild_faces.py  rebuilds faces/ from the clips
+│   ├── settle_waiting.py once: the old Waiting queues through the 40-view rule (17.14)
 │   ├── check_clips.py    image damage coming from the cameras
 │   ├── make_epub.py      joins the .md files into an EPUB for an e-reader
 │   ├── check_doc_refs.py every "<DOC> <section>" reference lands on a heading
@@ -1284,7 +1285,8 @@ Absorbing and merging (`_merge`) move the views to the named person and
 rewrite the `person_id` of the old sightings. The rewrite waits for `save()`:
 each merge records `{old id: new id}`, and the save reads the sighting files
 once for the whole operation, however many entries it merged (R45). Up to `MAX_EMBEDDINGS = 40`
-views per person; more wait in a queue the user manages (17.14).
+views per person; past that, a new view enters only in place of one of the
+two most alike, or is deleted (17.14, backlog 28).
 
 Measured on the same set of clips with the new pipeline: **3 people**. Naming
 one card of the older lady absorbed her other identity and put the name on 3
@@ -2389,12 +2391,12 @@ field and a "Belongs to…" picker, and a person page (`#people/<id>`) with
 rename, the stored views and a month calendar of their recordings. The gallery
 gained two optional keys per person: `views`, aligned by index with
 `embeddings`, holding the path of each view's face crop in `faces/views/`
-(`None` for views stored before, padded by `views_of()`), and `pending`, views
-waiting once a person holds 40 (`MAX_PENDING` 100, oldest dropped with its
-file). `Gallery._take()` is the one place that stores or queues a view —
-`add`, `reinforce` and `_merge` all go through it, and merge no longer drops
-the overflow. `remove_view()` frees a slot and pulls the oldest waiting view;
-it refuses a person's last view when nothing waits. A rename to a name that
+(`None` for views stored before, padded by `views_of()`), and `pending`, the
+Waiting views (until 13/10 the overflow past 40; since backlog 28 only what the
+user moves down, `MAX_PENDING` 100). `Gallery._take()` is the one place that
+stores a view — `add`, `reinforce` and `_merge` all go through it, and past 40
+it applies 17.14's rule. `remove_view()` frees a slot and refuses a person's
+last view. A rename to a name that
 belongs to someone else answers **409 Conflict**, which the page turns into
 "this will merge with X — continue?" and resends with `merge: true`. After a
 rollback, an older version ignores both keys and only appends embeddings, so
@@ -2427,7 +2429,11 @@ Pairing with the PIN makes the server set a cookie — `HttpOnly` (no script can
 
 "Analyse" on a person or dog with more than 40 views proposes the 40 that are most different — greedy farthest-point selection: start from one view, then always add the view farthest from everything already chosen — and on confirmation keeps them and either queues the rest or, with the second button, deletes them (R40). 0.03 s for 100 face views, 0.28 s for 140 dog views; on test data the closest pair kept went from identical to clearly different.
 
-The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the queue (up to 100) of views seen after Chosen was full, which recognise nobody. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping the oldest waiting photo as a scan does, since the user did not ask for that. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
+The user's rule: waiting photos only make sense if they can be compared with the chosen ones. A person or dog page shows two grids — **Chosen**, up to 40, the views that recognise them, and **Waiting**, the views the user moved down (up to 100), which recognise nobody — until backlog 28 (13/10) also the views seen after Chosen was full. A chosen view has ★ (favourite), × (delete) and ↓ (move to the end of Waiting); a waiting one has ↑ (move to the end of Chosen) and ×. Nothing moves on its own any more: deleting a chosen view used to pull the oldest waiting one in, and now leaves the place free — the next view a scan learns fills it, or the user moves one up. Refusals say why (R28): ↑ while Chosen holds 40, ↓ or × on the last chosen view (a person with no view matches nobody), ↓ while Waiting holds 100 — refused rather than dropping a waiting photo the user did not ask to drop. Every move keeps `embeddings` aligned with `views`, and `pending` entries carry their own embedding and photo, so a view keeps its photo wherever it goes; `_fix_cover` moves the favourite to the first chosen photo when the favourite leaves Chosen. The moves address a view by its position in the list; since 12/10 each also names the photo it was shown (R41, 22.6).
+
+**The 40 manage themselves (backlog 28, 13/10/2026).** A view from a sure match, or brought by naming or merging, enters Chosen while it holds fewer than 40. Once full, `faces.replaced_view` decides: the candidate is the chosen view whose nearest twin is closest — never the favourite; the new view replaces it only when its own nearest chosen view (the candidate included) is farther than that pair, and is otherwise discarded. Ties go to the older view. So the closest pair in Chosen can only grow: a face's identical pairs (cosine 1.00, from repeated scans of one clip) are the first to go. Faces measure `1 - cosine`, dogs `dogs.distance`; for dogs the candidates are the chosen views of the **same lighting** when there is one, so a day view replaces a day view, and a view with no same-lighting twin counts as infinitely different — the first night view of a dog seen only by day enters, and the only night view is never replaced by a day one. A view that leaves goes into `Gallery.dropped`, and `save()` deletes its photo **after** writing `gallery.json`: a failed write leaves an unused photo, never a view without one. `load()` empties `dropped`, like `repoints`. 0.6 ms per face view, 0.5 ms per dog view. `tools/settle_waiting.py [--dry-run]` passes the queues older versions left through the same rule once, oldest first, and empties them; a real run refuses while this folder's J.A.R.V.I.S. answers on its port, and first copies `faces/` and `dogs/` to `backups/waiting_<date-time>/`.
+
+**What the rule cannot tell (review 20, R48).** The rule keeps what is most different, and a view of the **wrong person** is, by nature, the most different. Production's queues on 13/10 held 7 faces of Izabel in Gustavo's Waiting, learned by "sure" matches (cosine 0.475–0.509, above `LEARN_THRESHOLD` 0.45) through dark, head-down views of him; while they waited they recognised nobody, but the once-only tool would have put 6 of them into his Chosen. No measure of the embeddings separates them from his genuine views (HISTORY 13.21), so the tool was not run and the release waits for the user (`BACKLOG.md` 2, R48).
 
 ### 17.15 Quiet disconnects (R32, 11/10/2026)
 
@@ -2762,7 +2768,7 @@ migration with it (CLAUDE.md).
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery.json` | `Gallery.save` | People, the face scan | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
 | `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
-| `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per stored or queued view |
+| `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per chosen or waiting view; a view that leaves is deleted after the save (17.14) |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
 | `reports/<kind>/<stem>.json` + `.jpg` | `reports._write` | Settings → Bad-detection reports, `check_data`, each review | **since 11/10/2026** (section 21): `kind`, `verdict`, `source`, `reported_at`, `label`, `camera`, `at`, `time`, `clip`, `score`, `box`, `crop`; a gallery report adds `entry` and `sightings`, an event report `event`. **Optional since 11/10 (R38, R37):** `entry` holds the whole gallery entry (older reports: only `id`, `first_seen`, `embeddings`), `sighting_files`, `actually` |
 | `reports/<kind>/<stem>/` | `reports._keep_copies` | Undo | **since 11/10/2026 (R38)**: copies of the entry's view photos (`<12hex>.jpg`) and of its sightings' crops (`HH-MM-SS_<id>.jpg`); absent in older reports |
@@ -2816,7 +2822,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, the queue past 40 and its cap, moves between Chosen and Waiting, merges), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALL 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -2847,6 +2853,11 @@ class attributes (`id_prefix`, `sighting_key`): the same code with different
 constants, the way a Java subclass overrides a constant. Naming never gathers
 other crops on its own (`_absorb` is off): two dogs' histograms can look alike.
 The page reuses one JavaScript factory, `galleryTab(...)`, for People and Dogs.
+`DogGallery.distances` builds every pairwise distance at once in numpy
+(backlog 28, PYTHON 38): Bhattacharyya for all pairs is one matrix product per
+histogram block, day against infrared stays infinite. 0.5 ms for 41 views
+instead of 36 ms, equal to `distance` within 1e-15 on production's 167
+descriptors.
 
 **Matching.** `dogs.distance` is the mean Bhattacharyya distance over the
 histograms (a standard measure of how much two distributions overlap), and
@@ -3067,8 +3078,8 @@ redacted from every line (R16).
 ### 22.6 A move names the photo it was shown (R41)
 
 The four view moves and the favourite address a view by its position, and a
-scan that finds Waiting full drops the oldest, shifting every position by
-one. Each move now also sends the name of the photo the page showed at that
+scan that replaces a chosen view (17.14) shifts every later position by one, as
+another tab's move does. Each move now also sends the name of the photo the page showed at that
 position (`{"view": "<name>"}`, "" for a view without a photo); the gallery
 compares it **inside its lock** and raises `ViewsChanged`, which the server
 answers with 409 "the views changed: the page was refreshed", and the page

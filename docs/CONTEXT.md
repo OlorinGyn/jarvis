@@ -179,6 +179,7 @@ tools/
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
+  settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
   check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
@@ -234,6 +235,7 @@ uv run python tools/diagnose.py --local                 test ffmpeg without a ca
 uv run python tools/probe_rtsp.py <ip> <user> <pw> stream1   raw RTSP
 powershell Test-NetConnection <ip> -Port 554            does the camera answer on that IP?
 uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
+uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading

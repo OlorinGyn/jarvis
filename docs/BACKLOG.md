@@ -75,7 +75,9 @@ taken in production that evening.
     **deleted — the user chose this on 13/10 knowing it**. A tool with
     `--dry-run` that copies `faces/` and `dogs/` to `backups/` first; the
     architect runs it after the deploy. No format change: `pending` stays
-    readable, and empties.
+    readable, and empties. **Built** (`6345a7d`, `47a2e6a`) and reviewed
+    (review 20), **not released**: the rule lets a wrong-person view in first
+    — R48 waits for the user.
 31. **Detection sensitivity** (decided). In Settings, per label — person,
     dog, other animals — YOLO's minimum confidence (today `CONFIDENCE` 0.35
     and `ANIMAL_CONFIDENCE` 0.45), stored in `config.json` (additive) and
@@ -91,7 +93,11 @@ taken in production that evening.
     unnamed photos would cross it. The user sets the sure threshold from it
     (faces `LEARN_THRESHOLD` 0.45; dogs the sure distance 0.35 and ratio
     0.6), stored in `config.json`. Measured 13/10: faces are 99.3 % right at
-    any threshold from 0.363 to 0.45 (1 error in 146 views), but 12 unnamed
+    any threshold from 0.363 to 0.45 (1 error in 146 views) — **wrong,
+    review 20**: 7 of Gustavo's views are Izabel's faces, counted as right by
+    their label; at 0.45 at least 8 of 146 are wrong, and the table means
+    something only on clean labels, with each view's exact copies left out of
+    its own test — but 12 unnamed
     face views fall between 0.363 and 0.45; dogs at today's thresholds are
     right in 31 of 33 probable matches, the 2 wrong ones at night. **What it
     cannot measure:** a stranger has no name, so the table shows confusion
@@ -186,12 +192,32 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
+| R48 | **high — the user's decision** | The 40-view rule lets a wrong-person view in first; production's Waiting holds Izabel's faces as Gustavo's | open (below); holds backlog 28's release |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+
+**R48 — The 40-view rule lets a wrong-person view in first (high, the
+user's decision, review 20).** Backlog 28 keeps what is most different, and a
+face of the wrong person is the most different of all. Production's queues
+show it is not rare: 7 of the 31 views in Gustavo's Waiting are Izabel's,
+learned by "sure" matches (0.475–0.509 against `LEARN_THRESHOLD` 0.45)
+through dark, head-down views of him. Settled as is, 6 enter his Chosen; with
+the 7 deleted first, the settled galleries recognise 132 of the 146 kept faces
+rightly against 120 today, with 9 wrong against 7 (HISTORY 13.21). No measure
+on the embeddings tells the seven apart, so a guard in code cannot be written
+from today's data. Options: **(a)** the user deletes the 7 from Gustavo's
+Waiting (`PENDING.md`), then the architect releases 28 and runs the tool;
+from then on a wrong sure match enters Chosen instead of waiting, and the
+user sees it on the person's page; **(b)** as (a), and 28 changes so that past
+40 only the user's naming and merging use the rule — a view a scan learns on
+its own is deleted — until backlog 32 sets a sure threshold the user trusts;
+**(c)** hold 28 until 32 is done. The architect recommends **(b)**: Waiting
+stops growing as the user asked, no wrong match can enter a full Chosen, and
+the user's own naming, which is right by definition, still renews the 40.
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -222,30 +248,23 @@ bends (HISTORY 13.20).
 
 ## 3. Next sessions
 
-**Review 19's cycle is done** (`v2026.10.13`): R46, backlog 30 and 29.
+**Review 20 is done, without a release:** backlog 28 is on `master` and
+waits for R48, so the next release carries whatever the user decides there.
+Production stays on `v2026.10.13`.
 
-**Developer 18 (planned 13/10, night):** backlog 28 alone — it touches the
-user's files, so it gets its own review, and the architect runs its tool on
-production after that deploy. In this order:
+**Developer 19 (planned 14/10):** backlog 31 alone — detection sensitivity
+per label in Settings. It is decided and does not touch the galleries, so it
+does not wait for R48. As item 31 says: YOLO's minimum confidence for person,
+dog and other animals (today `CONFIDENCE` 0.35 and `ANIMAL_CONFIDENCE` 0.45),
+stored in `config.json` as new optional keys (older files keep today's
+values), applied without a restart, and the page says what it cannot fix —
+a person bending over is called `dog` as confidently as a real dog (R46), so
+raising the dog value cuts real dogs first. Tests for the defaults, a stored
+value, a value out of range, and the change reaching the detector without a
+restart; `check_data` on the result.
 
-1. **The rule in both galleries** (faces and dogs), as item 28 says: a view
-   from a sure match, from naming or from merging enters Chosen while it holds
-   fewer than 40; once full, it replaces the chosen view whose nearest twin is
-   closest only when it is farther from its own nearest chosen view than that
-   pair is — never the favourite — and otherwise it is discarded with its
-   photo. Dogs compare only the same lighting. Waiting stops growing;
-   `pending` stays readable and empties. Under the gallery's lock, like every
-   write (R43).
-2. **The once-only tool** for the queues already there (30, 35, 28 and 31
-   views in production): `--dry-run` first, which writes nothing and prints,
-   per person and dog, how many waiting views would enter and how many would
-   be deleted; a real run copies `faces/` and `dogs/` to `backups/` before
-   touching anything. Tried on the test copy's data.
-3. **Tests**: the full gallery's replacement (the closest pair loses one, the
-   favourite never), the discard with its photo, the dogs' lighting, a merge
-   past 40, the tool's dry run changing nothing; `check_data` on the result.
-
-**Developer 19 (next):** backlog 32, then 31.
+**Waits for the user:** R48, and with it backlog 28's release and backlog 32
+(its table means something only on clean labels).
 
 **Not planned:** R42 waits for the user's choice; R30 (b) can now be measured
 with Izabel and joins a later session; R47 is a watch. R14, R12 and R9 as

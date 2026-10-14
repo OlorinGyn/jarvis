@@ -214,6 +214,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 17 | 12/10/2026 | `v2026.10.12.2..f4489a0`, developer session 15 — R10's file names and the tools' text, R45 | no code fixed; 176 tests pass; the new `check_doc_refs.py` exits 0 after rewording three historical lines; `.gitignore`'s last Portuguese comments translated; R10 and R45 closed; release `v2026.10.12.3`, deployed at 21:20: 477 events, 55 face and 205 dog sightings, 6 reports read before and after; cameras ok 3 s after the start (13.18) |
 | 18 | 12/10/2026 | `v2026.10.12.3..9866a9b`, developer session 16 — the `jarvis_vigilancia.bat` shim removed, R7 | no code fixed, one message added: `install.bat`'s `uv sync` failure now points at INSTALL 1.2; the signature check run against production's own `.venv` in `production.ps1`'s call pattern; 176 tests pass; R7 closed, nothing opened; release `v2026.10.12.4`, deployed at 21:36: 478 events, 55 face and 206 dog sightings, 6 reports read before and after; `Sync`'s new check passed on `pythonw.exe`; about 9 s stopped, cameras ok 3 s after the start (13.19) |
 | 19 | 13/10/2026 | `v2026.10.12.4..594fbc6`, developer session 17 — R46, backlog 30 and 29 | no code fixed; R46 replayed on `15-00-17` (no dog left) and on two true dogs with a person (nothing relabelled); 208 tests pass, `check_data` reads every file; R46 closed, R47 opened (low, a watch); release `v2026.10.13`, deployed at 22:22: 913 events, 200 face and 363 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start, `/api/status` says `"analysis": "On"` (13.20) |
+| 20 | 13–14/10/2026 | `v2026.10.13..212179e`, developer session 18 — backlog 28 | no code fixed: the rule does what item 28 says; 216 tests pass, `check_data` reads every file. **Not released**: on a copy of production's galleries the rule would have put 6 of Izabel's faces, misfiled in Gustavo's Waiting by wrong "sure" matches, into his Chosen; the once-only tool was not run and R48 waits for the user (13.21) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1167,6 +1168,74 @@ would spam the log while Telegram refuses.
 PYTHON 36 and 37. R46 closed, R47 opened. The plan goes on: developer 18,
 backlog 28 then 32 and 31 (`BACKLOG.md` 3).
 
+### 13.21 Review 20 — developer session 18 (13–14/10/2026)
+
+Backlog 28 reviewed whole (`v2026.10.13..212179e`, two code commits, 11 files
+of code and tests, +429 −86). 216 tests pass; `check_data` reads every file;
+no comments in `src/` and `tools/`; `check_doc_refs` exits 0. **No code fixed,
+no release.** The session was interrupted overnight by a dropped connection in
+the middle of the measurements below and resumed on 14/10.
+
+**The code, read against the decision.** `replaced_view` is the literal
+reading of item 28: the new view's nearest chosen view *includes* the
+candidate, so a view whose only near twin is the candidate is discarded —
+and with that reading the closest pair in Chosen can never shrink (every pair
+with the new view is farther than the old minimum). The dogs' candidate
+restriction keeps the day/night balance; a chosen view with no same-lighting
+twin is never a candidate, so a dog's only night view stays. The favourite is
+excluded by index, and `cover_of` guarantees it is in `views`. Deleting in
+`save()` after the write is safe because `load()` empties `dropped` — an
+exception half-way leaves stale entries that the next `load()` drops, so at
+worst a photo stays unused. `settle_waiting`'s `id()` count is sound: every
+object compared is alive at once (the queue holds the waiting ones), so no
+two share an id. `add()` calls `_take` outside the lock, but on a new entry
+of at most 40 views, which never drops anything. The web builds a new
+`Gallery` per request, so no instance is shared between threads.
+
+**The rule, measured on production's data.** A copy of `C:\JARVIS`'s
+`faces/` and `dogs/`, settled with the tool's own `settle_waiting`, gave the
+developer's numbers (faces 22 and 20 enter, dogs 1 and 5). The question was
+what the new 40 recognise, so every face the system kept — 146, Chosen and
+Waiting — was matched against the named Chosen views, each probe without
+itself or its exact copies:
+
+| Gallery | Sure, right | Sure, wrong | Maybe, right | Maybe, wrong | None |
+|---|---|---|---|---|---|
+| Today (`v2026.10.13`) | 111 | 7 | 9 | 0 | 19 |
+| Settled as is | 95 | 7 | 34 | 5 | 5 |
+| The 7 deleted first, then settled | 105 | 5 | 27 | 4 | 5 |
+
+The 7 wrong are not what the labels say: a contact sheet of every view
+showed **7 of the 31 views in Gustavo's Waiting are Izabel's faces** — head
+down, from above, several in her red top. Each matched Gustavo's Chosen at
+0.475–0.509, above `LEARN_THRESHOLD` 0.45, through one of five dark or
+head-down views of him (Chosen 15–19 and 31 on the page), so the scan
+learned them as his. While they waited they recognised nobody. **The rule
+lets them in first**, because a view of the wrong person is by nature the
+most different: settled as is, 6 of the 7 enter Gustavo's Chosen, and from
+then on Izabel's head-down faces match her own photos stored as Gustavo. No
+measure on the embeddings separates them from his genuine waiting views —
+similarity to the second and third nearest view and the count above 0.363
+interleave the seven with his 24 genuine waiting views — and none is closer to Izabel's
+Chosen than to his. Izabel's 75 views hold no face of Gustavo; the dogs'
+queues hold no view nearer the other dog, and the dogs' leave-one-out is the
+same before and after (24 sure right, 0 wrong; probable 31 → 35 right,
+2 wrong).
+
+**What this changes.** (1) The once-only tool was **not run**: the user
+decided to delete what is left knowing it, not to put another person's faces
+into Chosen. (2) The release is held: from a full Chosen the same wrong
+"sure" matches would now enter instead of waiting. (3) The accuracy measured
+on 13/10 for backlog 32 — "99.3 %, 1 error in 146 views" — counted those 7 as
+right, because their label says Gustavo: at 0.45 at least 8 of the 146 are
+wrong. **R48** (high, the user's decision) holds the options; the 7 views are
+in `PENDING.md` by their position on the page.
+
+**Documentation.** ARCHITECTURE 10.4, 17.10, 17.14 (the rule and what it
+cannot tell), 19.2, 19.5, 20, 22.6 and the file tree; CONTEXT 9 and 10;
+PYTHON 38. Developer 19 is planned with backlog 31 alone; 32 waits for R48
+(`BACKLOG.md` 3).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1217,3 +1286,5 @@ of `CONTEXT.md`.
 | A25 | architect | ultracode | 13/10 21:26–22:15 | the user's six requests and one idea: 18 dog reports read (a contact sheet), five reported clips replayed, the galleries' redundancy and the face and dog accuracy measured by leave-one-out; four questions answered; backlog 28–33, R46, competitors table; developer 17 planned and started | 3% → 12% (new window) | 10% → 11% | 167k → 250k tokens, review 18's conversation |
 | D17 | developer | high | 13/10 night | session 17: R46, backlog 30 and 29 (208 tests) | 12% → 21%: R46 ~4 (two 7-minute replays), backlog 30 ~2, backlog 29 ~3 | 11% → 12% | 70k → ~190k tokens, a new conversation |
 | A26 | architect | ultracode | 13/10 22:14–22:30 | review 19: three replays (one R46 clip, two true dogs), HANDOFF integrated, ARCHITECTURE 7.13 and 22.7, PYTHON 36–37, R47, raid log 16, release and deploy `v2026.10.13`; developer 18 planned and started | 23% → 32% | 13% → 14% | 92k → 205k tokens, a new conversation |
+| D18 | developer | high | 13/10 night | session 18: backlog 28 — the rule, the vectorised dog matrix, `settle_waiting.py` (216 tests) | 34% → 40% | 14% → 15% | ~163k tokens at the end, a new conversation |
+| A27 | architect | ultracode | 13/10 22:36 – 14/10 10:15 | review 20: production's galleries copied and settled, three recognition measurements, contact sheets of 146 faces, R48; HANDOFF integrated, PYTHON 38; no release; developer 19 planned. The connection dropped overnight mid-measurement and the session resumed in the morning | 42% → unknown at the drop; 0% → about 8% in the new window | 15% → 16% | 91k → about 230k tokens, a new conversation |
