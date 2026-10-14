@@ -108,6 +108,12 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+36. **Done 14/10 (`6295d57`, `v2026.10.14.2`, ARCHITECTURE 22.4).** **Notifications: the Telegram card beside "What reaches the phone"** (decided by the user 14/10/2026). Two columns where the screen is wide enough, one under the other on a phone — the user opens the page from the phone's browser too (PROCESS 1, UX). Built in developer session 22 with CSS only: a 3fr / `minmax(300px, 2fr)` grid, one column under 860 px.
+
+35. **Done 14/10 (`87a84fd`, `v2026.10.14.2`, ARCHITECTURE 7.14).** **Detection sensitivity as a slider, not numbers** (decided by the user 14/10/2026: "the sensitivity cannot be numeric — a kind of slider where the middle is our default value, and the number goes down to the left and up to the right, proportionally"). Each of backlog 31's three minimums became a slider with no number on it: the middle is the default, the left end the lowest allowed minimum (0.20), the right end the highest (0.90), each half linear, so the middle is always the default whatever its value. The ends say in words what they do — left: more detections, more false alarms; right: fewer, stricter. `config.json` keeps storing the number, so nothing on disk changed. **The explanation stays, moved to where it belongs** (the user, the same day: "the explanation on the numbers screen was perfect; I want to know how the sliders work in the background"): what the minimum is, lower finds more and more false ones, a change reaches the cameras within seconds without a restart, what this does not fix (a person bending over), and a "how it works" part — the minimum confidence underneath, the middle being the default, the ends 0.20 and 0.90, each half in proportion, each slider's current value and default in that text, not on the control. Built in developer session 22: the mapping in `settings.py` with `SLIDER_STEPS` = 1000, tested both ways.
+
+34. **Done 14/10 (`8828e5c`, `v2026.10.14.2`, ARCHITECTURE 22.7).** **Analysis On and Off from the page** (decided by the user 14/10/2026, during review 23: "on the screen where the status shows, it must be possible to switch it on and off there too"). The header that shows On or Off on every screen became a switch calling `analysis.set_on` as `/on` and `/off` do — same flag, same reminder while Off, still never stored — through the write guard like every other change. **Turning Off asks first**, since it stops all recording; **turning On is one click** (the user, 14/10/2026). Built in developer session 22: `POST /api/analysis`, `confirm()` before Off, tests in `tests/test_on_off.py`.
+
 30. **Done 13/10 (`v2026.10.13`, ARCHITECTURE 22.2).** **Home silences a probable resident** (decided by the user 13/10/2026: "I have not seen a wrong maybe"). Two new cases, `probable_resident_person` (a face matched as probable to a Resident) and `probable_resident_dog`, which until then fell under `known_person` and `other_dog`; defaults on in Away, off in Home and Silent. It changes ARCHITECTURE 22.2's default, not its rule: the switch undoes it with one tap. Additive in `config.json` (`modes.normalised` fills the new cases). Measured 13/10: 72 of 134 named face sightings were probable (the user 25, Izabel 47). Built in developer session 17 (`cfa286a`): `notify.person_case` and `dogs.identify` say how sure a resident is; tests in `tests/test_probable_resident.py`.
 
 29. **Done 13/10 (`v2026.10.13`, ARCHITECTURE 22.7).** **On and Off from the bot** (decided by the user 13/10/2026). `/off`: J.A.R.V.I.S. stops processing images — no motion, no YOLO, no events, no recordings, no face scan, no messages — while capture keeps running, so Live and every other screen work normally. `/on` resumes. **It always starts On**: Off is not stored, so a restart, a crash or the 5-minute task bring it back On — Off is an occasional state. Every screen of the page shows On or Off; `/mode` and the command list show it too; while Off, the bot sends a reminder every 3 hours. Obeyed only from `notify_chat`, like the other commands. An event open at `/off` ends as if the motion had stopped. Built in developer session 17 (`589cc13`): `analysis.py`, `Core._switch_analysis`, the poller's `_remind`; tests in `tests/test_on_off.py`. The event open at `/off` finishes its pipeline — clip, face scan, follow-ups — as any event that ends because motion stopped.
@@ -218,6 +224,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 21 | 14/10/2026 | `0f68445..865eb7f`, developer session 19 — backlog 31 | no code fixed; 234 tests pass, `check_data` reads every file; at the defaults the detector decides as before on R46's three clips, replayed old against new. **Not released**: 31 waits on `master` with 28. The user's objection to R48 led to its cause: the seven wrong views and five of Gustavo's references are the top of a head, not a face — R49 (13.22) |
 | 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); the unnamed entries checked as a possible third person — the user: all are Izabel, and InsightFace if it is the best; no release; developer 21 planned with R49 step 2 (13.23) |
 | 23 | 14/10/2026 | `706883b..70d3fce`, developer session 21 — R49 step 2: SCRFD + ArcFace R50, the migrated gallery, models before the stop | **one code fix** (`d07c09e`): `FetchModels` aborted on a tag without `downloads.py` instead of skipping it; 240 tests pass; the scan and the stored photos embed alike (0.97–0.99); R48 and R49 closed, R51 and R52 opened; **release `v2026.10.14`** (R49, backlog 28 and 31), deployed at 12:07: 955 events, 202 face and 393 dog sightings, 18 reports read before and after; the models fetched before the stop; 173 of 173 views migrated in about 23 s; about 36 s stopped, cameras ok 3 s after the start; the migration's line is not in the log (R52). The once-only settle waits for the user (13.24) |
+| 24 | 14/10/2026 | `70d3fce..099d547`, developer session 22 — backlog 34, 35, 36, R52, R51, R30 (b) | no code fixed; 269 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1280 px (Off asks, On does not; no horizontal scroll); the slider's round trip checked for six defaults; `filelock` has no binary; R30, R51 and R52 closed, R54 opened (a watch: no stranger measured); backlog 37 designed from production's counts, 38 added; **release `v2026.10.14.2`** (13.25) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -288,6 +295,9 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R46 | **high** | A person who moves while bent over is still filed as a dog: R44 caught 9 of 32 boxes | done `0a514c3`: a dog box that takes the place of a person who vanished from the same run is that person, and relabelled boxes renew the memory (ARCHITECTURE 7.13; 13.20 below) |
 | ✓ | R48 | **high** | The 40-view rule lets a wrong-person view in first | closed in review 23: under ArcFace no wrong-person view reaches `LEARN_THRESHOLD` (closest pair 0.313 against 0.40), so backlog 28 shipped with R49 in `v2026.10.14`; the seven misfiled views still wait for the user before the once-only tool runs (13.24) |
 | ✓ | R49 | **highest** | The top or the back of a head passes as a face and draws wrong "sure" matches | done `94f4fbc`, `v2026.10.14`: SCRFD + ArcFace R50 and a migrated gallery; a head-top still passes as a face, but matches no one else (ARCHITECTURE 10.14; HISTORY 13.24) |
+| ✓ | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`: the side view as a picture (ARCHITECTURE 10.12); (b) done `fe0853b`, `v2026.10.14.2`: `MIN_EYE_SPREAD` 0.38 → 0.30, measured on both residents under ArcFace (ARCHITECTURE 10.12; 13.25 below) |
+| ✓ | R51 | medium | A clip's face is matched by its heaviest view, not its best | done `734efa4`, `v2026.10.14.2`: every view matched, the best decides and is learned; sure 11 → 12, none 1 → 0, nothing wrong (ARCHITECTURE 10.3; 13.25 below) |
+| ✓ | R52 | low | The gallery migration runs before the log file and before the port is held | done `50c836e`, `v2026.10.14.2`: a `filelock` around the migration, its line after `log.to_file()` (ARCHITECTURE 10.14; 13.25 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1458,6 +1468,118 @@ criterion (PROCESS 5.2).
 the tree; CONTEXT 3, 9 and 10; INSTALL 3; PYTHON 41; BACKLOG 1, 2 and 3;
 PENDING.
 
+### 13.25 Review 24 — developer session 22 (14/10/2026)
+
+Developer 22 reviewed whole (`70d3fce..099d547`: six code commits, 14 files
+of code, tests, `pyproject.toml` and `uv.lock`, +477 −31; the range also holds
+review 23's own `d07c09e` and documents). 269 tests pass
+(240 before); no comments in `src/` and `tools/`; `check_data` reads every
+file; `check_doc_refs` exits 0. **No code fix**, three recommendations
+closed, one opened, **release `v2026.10.14.2`**.
+
+**The code, read against the plan.** Backlog 34: `POST /api/analysis` is a
+write, so `guard_writes` refuses it without the header and from an unpaired
+device, as for every other write; it calls the same `analysis.set_on` as the
+bot, so the reminder and the Core's log line follow. In the test copy, with
+`confirm` replaced, a click Off asked once and a click On asked nothing.
+Backlog 35: the mapping is in Python and the page only moves positions;
+every two-decimal value from 0.20 to 0.90 survives the round trip for
+defaults 0.20, 0.25, 0.35, 0.45, 0.50 and 0.90 (checked here, not only in
+the tests); a three-decimal value, which only a hand edit can store, is
+rounded on the next Save — harmless. Backlog 36: CSS only. R52: the lock
+wraps the hash check and the rebuild, `cameras.main()` logs after
+`log.to_file()`, and `filelock` 4.1.2 ships no `.pyd` or `.dll`. R51:
+`_best_view` keeps `Gallery.match`'s preference across views; the crop
+learned is the matched view's own (`views` and `crops` are appended
+together in `_group`). R30 (b): one constant, measured.
+
+**The page, at phone and desktop width** (PROCESS 1, the architect's since
+14/10). At 1280 px Notifications is two columns and Detection one panel of
+three sliders; at 375 px the sliders take their own rows with the end texts
+under them, Notifications stacks (both panels 335 px), the header button is
+39 × 32 px beside the version, and the page scrolls only vertically
+(`scrollWidth` 375). One text in ARCHITECTURE 22.4 was wrong and is fixed:
+the five Settings tabs wrap to two lines on a phone, they do not fit in one.
+Two small UX decisions: the sliders show no mark where the default sits, so
+backlog 38 adds a tick; the `alert()` for a refused header write stays —
+it only happens on an unpaired device.
+
+**What the review weighed hardest: the stranger.** R51 and R30 (b) both
+raise a resident's chances, and both were measured on the two residents
+only. R51 applies `Gallery.match`'s "a named person wins" across all of a
+group's views: a stranger has N chances to cross 0.30 against a resident,
+and a returning stranger whose views match their own unnamed entry far
+better still reads "probably <resident>" if one view crosses — silent in
+Home, against the rule the user set this morning (CONTEXT 3). The evidence
+at hand is reassuring — best of N lifted the other resident by 0.013, to
+0.256 — and production has no stranger with a face to measure (its gallery
+holds 2 named entries and no unnamed one). So the change ships, and **R54**
+watches it, with a trigger and the two rules to measure if it fires.
+
+**Production read.** `v2026.10.14` since 12:07: 6 face scans, one "probably
+Gustavo" silenced in Home, no error or warning in the log. The nine misfiled
+dog views of `PENDING.md` are all still there, so developer 23's R53 bench
+labels them itself.
+
+**Backlog 37, designed** (BACKLOG 1). Production's counts on 14/10: faces —
+2 named entries, 80 chosen and 58 waiting views, sightings 17, 23, 18, 142
+and 6 a day from 10/10 (13/10's 142 include the evening's rescan); dogs — 2
+named, 44 unnamed of 1 view each (`MAX_UNNAMED` 60), sightings 15–134 a day;
+the two folders 8.1 and 7.8 MB in six days. The Dogs tab at 375 px is 9,148
+px tall for 46 cards. Everything that grows is bounded except unnamed faces,
+so the layout pages long lists at 24 and folds every grid to two columns on a
+phone, and the one cleaning rule proposed is the dogs' cap for faces —
+the user's decision (`PENDING.md`).
+
+**Closed: R30, R51 and R52.** Their texts as they were open:
+
+**R30 (b)** — loosen the frontal gate once a second named person exists:
+waited since review 11 (13.12) for Izabel and then for ArcFace; done with
+the measurements in ARCHITECTURE 10.12.
+
+**R51 — A clip's face is matched by its heaviest view, not its best
+(medium, review 23).** `_group` keeps, for each face in a clip, the view with
+the largest width × YuNet score, and `_scan_clip` matches only that view: its
+score is the sighting's, decides "recognized" or "probably", and decides
+whether anything is learned. Under ArcFace that view is often not the best
+match. Gustavo's daytime clip `Back/2026-10-12/15-44-28`, scanned densely: 39
+views on him, the heaviest at 0.349 — "probably Gustavo" — while his best
+view scores 0.421 and 4 views pass 0.40. In Home it changes nothing (a
+probable resident is silent too, ARCHITECTURE 22.2); in Away it is the
+wording; and fewer views are learned, so Chosen renews more slowly (backlog
+28). **What to measure before changing it:** the score of the best view, of
+the second best and of the median of the three best, against the heaviest's,
+on the four clips of developer 21 and on clips of both residents by day and
+by night (`faces/<day>/*.json` names the clips), with each one's rate of
+wrong best matches. A best-of-N score rises for a stranger too — the more
+views, the likelier one crosses 0.30 — and no stranger has been measured, so
+the choice that adds right answers with the least lift for one-off views
+wins; the HANDOFF carries the table.
+
+**R52 — The gallery migration runs before the log file and before the port is
+held (low, review 23).** `cameras.main()` calls `migrate_gallery()` before
+`web.start()` and before `log.to_file()`. Two consequences. (1) Production
+runs under `pythonw.exe`, with no console, so the migration's line — views
+kept, "no face", entries dropped, the backup folder — is written nowhere:
+the one record of a non-additive change to the user's data is lost. (2) The
+port is what keeps a second copy out (ARCHITECTURE 18.8), and for the ~25 s
+of the migration it is not held: the 5-minute task trigger, or a click on
+`jarvis.bat`, passes the already-running check and migrates too. The second
+copy's write replaces the first's file with an equivalent one and then exits
+at `web.start()`, so at worst what the first copy learned or the user did in
+those seconds is lost; a collision of the two `.part` writes needs both to
+finish within milliseconds of each other. **Fix:** log the result after
+`log.to_file()`, and serialise the migration across processes —
+`filelock`'s `FileLock` beside the gallery (pure Python, well regarded,
+released by the operating system if the process dies; PROCESS 5.2), so the
+second copy waits, finds the hash unchanged and does nothing. A test with two
+threads standing in for two processes is enough for the lock; the log line is
+read in `logs/jarvis.log` on the test copy.
+
+**Documentation.** ARCHITECTURE 7.14 (the sliders), 10.3 (the best view),
+10.9 and 10.12 (the gate), 10.14 (the lock), 18.7, 19.5, 22.4 and 22.7;
+CONTEXT 10; PYTHON 42; BACKLOG 1, 2 and 3; PENDING; HISTORY 8.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1516,3 +1638,5 @@ of `CONTEXT.md`.
 | A29 | architect | ultracode | 14/10 11:05–11:20 | review 22: `face_bench.py` read against insightface's code, the baseline and SCRFD + ArcFace run again, the alignment measured three ways, the unnamed entries matched and a contact sheet, the licence read; HANDOFF integrated, ARCHITECTURE 10.14, PYTHON 40; no release; the user's two answers, the release assets read, developer 21 planned and started | 38% → 50% at the commit | 21% → 22% | 97k → 246k tokens, a new conversation |
 | D21 | developer | high | 14/10 late morning | session 21: R49 step 2 — R100 measured, SCRFD + ArcFace R50 in `faces.py`, the gallery migration, `downloads.py` and `FetchModels` (240 tests) | 50% → 66% | 22% → 25% | about 245k tokens at the end, a new conversation |
 | A30 | architect | ultracode | 14/10 11:50–12:25 | review 23: the diff read whole, `FetchModels` fixed and probed, production's gallery migrated again, the scan-against-photo gap and the wrong-best matches measured on four clips, backlog 28 settled on the ArcFace copy; HANDOFF integrated, PYTHON 41, raid log 17; release and deploy `v2026.10.14`; the user's request recorded as backlog 34; no handover (the window at 85 %) | 67% → about 86% | 25% → 27% | 67k → about 300k tokens, a new conversation |
+| D22 | developer | high | 14/10 15:00–15:35 | session 22: backlog 34, 35, 36, R52, R51 (measured leave-clip-out), R30 (b) (measured on production's clips) (269 tests) | 0% → 24% (new window) | 28% → 31% | about 250k tokens at the end, a new conversation |
+| A31 | architect | ultracode | 14/10 15:37–16:05 | review 24: the diff read whole, the page at 375 and 1280 px in the built-in browser, the slider's round trip, production's gallery, log and misfiled dog views read, backlog 37 designed from production's counts, R54; HANDOFF integrated, PYTHON 42, raid log 18; release and deploy `v2026.10.14.2`; developer 23 planned | 26% → END | 31% → END | 96k → END tokens, a new conversation |

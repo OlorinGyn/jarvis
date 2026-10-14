@@ -188,14 +188,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 23, covers
-up to `70d3fce`** (developer 21's handoff; release `v2026.10.14`); the next
+The table of every review is `HISTORY.md` 13.2. **The last review, 24, covers
+up to `099d547`** (developer 22's handoff; release `v2026.10.14.2`); the next
 starts from the commit after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.24, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.25.
+`HISTORY.md` 13.3 to 13.25, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.26.
 
 ---
 
@@ -346,3 +346,4 @@ review and commits.
 | 15 | `v2026.10.12.4` | The Signature at the Door / A Assinatura na Porta | written |
 | 16 | `v2026.10.13` | The Off Switch / O Botão de Desligar | written |
 | 17 | `v2026.10.14` | New Eyes / Olhos Novos | written |
+| 18 | `v2026.10.14.2` | The Switch, the Slider and the Lock / O Botão, a Régua e a Tranca | written |

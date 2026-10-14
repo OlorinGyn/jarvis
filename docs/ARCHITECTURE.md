@@ -1027,7 +1027,51 @@ stores the value rounded to two decimals; `settings.load()` replaces a stored
 value outside it — a hand edit, a string, `true` — by its default, so a bad
 value never breaks a read, and `check_data` reports it as a warning. The page
 reads the range and the defaults from `/api/settings`, so the numbers live
-only in `settings.py`. The fields step by 0.05 from 0.20.
+only in `settings.py`.
+
+**Sliders, not numbers (backlog 35, 14/10/2026).** The user's words: "the
+sensitivity cannot be numeric — a kind of slider where the middle is our
+default value". Each minimum is an `<input type="range">` with no number on
+it; its ends say in words what they do — "More detections, more false
+alarms" on the left, "Fewer, stricter" on the right. The middle is always the
+default, whatever its value: the mapping is **piecewise linear**, two straight
+lines that meet at the default (PYTHON 42).
+
+| Position (of `SLIDER_STEPS` = 1000) | Minimum confidence |
+|---|---|
+| 0 | 0.20, the low end of `CONFIDENCE_RANGE` |
+| 0 → 500 | in proportion from 0.20 to the default |
+| 500 | the default (0.35 for a person, 0.45 for a dog or another animal) |
+| 500 → 1000 | in proportion from the default to 0.90 |
+| 1000 | 0.90, the high end |
+
+So the two halves have different slopes: for a person, the left half covers
+0.15 and the right half 0.55. `settings.slider_position(value, default)` and
+`settings.slider_value(position, default)` are the two directions; they live
+in Python, where `tests/test_detection_sensitivity.py` checks them, and the
+page never computes the mapping itself. `GET /api/settings` adds
+`confidence_positions` (each minimum as a position) and `slider_steps`; Save
+posts `{"confidence_positions": {key: position}}`, which the server checks (a
+whole number from 0 to 1000, a known key) and turns back into the numbers
+`config.json` has always stored — **nothing on disk changed**. The numeric
+keys are still accepted: Back to the defaults uses them.
+
+**Why 1000 steps.** Save sends all three sliders, touched or not, so an
+untouched slider must give back exactly the number it was shown. With 100
+steps the right half of the person slider moves 0.011 per step, and a stored
+0.40 would come back as 0.41. With 1000, every two-decimal value from 0.20 to
+0.90 survives value → position → value for any default (checked for 0.20,
+0.25, 0.35, 0.45, 0.50 and 0.90 in review 24). A value with three decimals —
+only a hand edit could store one — is rounded to two on the next Save.
+
+**The explanation stays beside them** (the user, the same day: "the
+explanation on the numbers screen was perfect; I want to know how the sliders
+work in the background"): what the minimum is and what each direction does,
+always visible; a **How the sliders work** part with the mapping in words and
+one line per slider — "Person: minimum 0.35 now, default 0.35." — refreshed
+on Save, not while dragging (that would need the mapping in JavaScript too);
+and what no slider fixes, below. On a phone each slider takes its own row and
+the two end texts sit under it.
 
 **How the detector uses them.** YOLO runs once with the lowest of the three
 as its floor — the network's own cut and the NMS's — and each box is then
@@ -1059,7 +1103,7 @@ first.
 `replay.py` reads the settings of the folder it runs in, so a replay follows
 what is set now, not what was set when the clip was recorded. And the page
 says what no number fixes: a person bending over is called `dog` as
-confidently as a real dog, so raising the dog value cuts real dogs first. A
+confidently as a real dog, so moving the dog slider right cuts real dogs first. A
 lower person value feeds R44's and R46's memories with more boxes, which
 lengthens R47's chain.
 
@@ -1307,9 +1351,38 @@ user accepted it for this house (CONTEXT 3).
 
 A clip has dozens of frames of the same person. `_group()` joins the
 observations by the embeddings' own similarity (`SAME_FACE_THRESHOLD = 0.35`)
-and keeps, of each group, the **best** view — the one with the largest
-`width × score`, since a larger, more confident face gives a better
-embedding.
+and keeps, of each group, the **heaviest** view — the one with the largest
+`width × score`, the largest and sharpest picture. It gives the sighting its
+thumbnail, `face_width` and `box`, and a new unnamed entry is built from it
+and three others.
+
+**The best-matching view decides who it is (R51, 14/10/2026).** Under ArcFace
+the heaviest view is often not the one the recogniser knows best: Gustavo's
+daytime clip `Back/2026-10-12/15-44-28` had 39 views of him, the heaviest at
+0.349 — "probably" — while his best scored 0.421. `_best_view(gallery,
+group)` matches **every** view of the group and keeps the best by the same
+preference as `Gallery.match`: a person found, then a named person, then the
+score. That view gives the sighting its person and score, and it is the view
+`reinforce` learns, with its own crop, when it clears `LEARN_THRESHOLD`.
+Measured by the developer on 24 groups (139 views) of both residents' clips,
+leave-clip-out — the views a clip itself taught hidden from its own test, or
+the gallery only remembers itself (0.959 against an honest 0.551; PYTHON 42):
+
+| Method | Sure (≥ 0.40) | Probably | None | Wrong person | Other resident's best |
+|---|---|---|---|---|---|
+| heaviest (before) | 11 | 12 | 1 | 0 | 0.243 |
+| **best** (chosen) | **12** | 12 | **0** | 0 | 0.256 |
+| second best | 9 | 15 | 0 | 0 | 0.243 |
+| median of the best 3 | 11 | 13 | 0 | 0 | 0.243 |
+
+Best of N lifts the other resident by 0.013 at most, 0.044 under
+`MATCH_THRESHOLD`. **What it raises, and nobody measured:** a stranger has N
+chances instead of one to cross 0.30 against a resident, and a named match
+wins over a far better unnamed one, so a returning stranger whose views match
+their own unnamed entry at 0.6 needs only one view at 0.30 against a resident
+to be recorded as "probably" that resident — silent in Home. No stranger with
+a face is in production's data yet; review 24 left it as a watch (R54). Cost:
+one `Gallery.match` per view, well under 0.1 s for 40 views.
 
 If two groups of the same clip match the same person in the gallery, only the
 heavier becomes a sighting (`seen_here`). And `list_sightings()` shows one card
@@ -1472,8 +1545,8 @@ the nose and the corners of the mouth.
 
 `is_frontal()` demands all three: confidence ≥ `IDENTITY_SCORE` (0.75), the
 nose at most `MAX_NOSE_OFFSET` (0.35) off, and the eyes at least
-`MIN_EYE_SPREAD` (0.38) apart. In a profile the nose goes to the side and the
-eyes almost overlap. A face that fails only these limits can still reach the
+`MIN_EYE_SPREAD` apart — 0.38 until 14/10/2026, **0.30 since** (R30 (b),
+10.12). In a profile the nose goes to the side and the eyes almost overlap. A face that fails only these limits can still reach the
 phone as a picture, never the gallery (10.12).
 
 Four false ones were left on Front, small (36 to 42 px), passing all three —
@@ -1571,10 +1644,37 @@ else "face, side view", else the best view of the person (12.9, 22.3). On the
 three daytime clips of 10/10 that had no face, each now gives a side view
 (40–59 px); they had failed on the eye spread, not the nose.
 
-Part (b), loosening the frontal limits for recognition, was measured and not
-done: side faces of the one named person match 55–100 % of the time, but with
-a single named person nothing shows that a stranger's side face would not
-match too. It waits for a second named person (BACKLOG 2, R30).
+Part (b), loosening the frontal limits for recognition, was measured on
+11/10 and not done: side faces of the one named person matched 55–100 % of
+the time, but with a single named person nothing showed that a stranger's
+side face would not match too. It waited for a second named person — Izabel,
+13/10 — and for ArcFace.
+
+**Done on 14/10/2026: `MIN_EYE_SPREAD` 0.38 → 0.30, `MAX_NOSE_OFFSET` stays
+0.35.** On both residents' clips, read in place from production and scanned
+densely, 215 faces were rejected: 151 by both limits, 63 by the eye spread
+alone, 1 by the offset alone. The eye-spread-only ones are mostly people
+**looking down** — at the door, at a phone — whose eyes are foreshortened,
+not turned. Each candidate gate scored against both residents' Chosen:
+
+| Offset ≤ | Spread ≥ | Faces added | Right resident | Of which sure | Other resident | Nobody |
+|---|---|---|---|---|---|---|
+| 0.35 | 0.38 (before) | 0 | 0 | 0 | 0 | 0 |
+| **0.35** | **0.30** | **58** | **48** | 14 | **0** | 10 |
+| 0.35 | 0.20 | 62 | 52 | 15 | 0 | 10 |
+| 0.5 | 0.30 | 82 | 67 | 22 | **1** | 14 |
+| 0.7 | 0.20 | 122 | 96 | 27 | 2 | 24 |
+
+Loosening the offset is what lets the wrong resident in, so it stays. On 16
+daytime person clips of Front with no face sighting (13/10, 15:08–17:45), 0.30
+gives 2 of them a face, both Izabel looking down (8 probably, 1 sure); 0.25
+also adds "Gustavo probably 0.32" in one of her clips, on a face too blurred
+to tell — which is why the limit stops at 0.30. The whole scan simulated
+under the new gate: sure sightings Gustavo 5 → 7 and Izabel 8 → 11, no clip
+changes person, the same one new unnamed entry. Cost: about 3 more
+embeddings per resident clip, ~0.4 s at 0.13 s each (10.14). **The sample's
+limit:** two people and one afternoon of one camera, no stranger with a face
+— the same watch as R51's (10.3, R54).
 
 ### 10.13 A cheaper face scan (R31, 11/10/2026)
 
@@ -1712,7 +1812,8 @@ the model's name in the file name and in a `model` field), and
 `faces/gallery.json` (`LEGACY_GALLERY_FILE`) is **never written** by this
 version: `v2026.10.13`, restored by an automatic rollback, finds it as it
 was. `migrate_gallery()` runs in `cameras.main()`, after the `HOLD` and
-already-running checks and before the web and the cameras:
+already-running checks and before the web and the cameras, **holding a lock
+file** (R52, below):
 
 1. It copies both files to `backups/faces_arcface_w600k_r50_<stamp>/`.
 2. `refit_entry` embeds every chosen and waiting view again from its photo
@@ -1736,6 +1837,27 @@ the new version learned (their sightings then read "?"), and photos of views
 deleted on the new version (the old file still lists them: a broken image).
 Nothing becomes unreadable.
 
+**One copy at a time, and its line in the log (R52, 14/10/2026).** Review 23
+found two gaps. The migration ran before `log.to_file()`, and production runs
+under `pythonw.exe` with no console, so its line — views kept, "no face",
+entries dropped, the backup folder — was written nowhere: the one record of
+a non-additive change to the user's data was lost. And the port is what
+keeps a second copy out (18.7), but for the ~25 s of a migration nothing held
+it: the 5-minute task trigger or a click on `jarvis.bat` passed the
+already-running check and migrated too. Now `migrate_gallery` holds a
+`filelock.FileLock` on `gallery_arcface_w600k_r50.json.lock`, beside the
+gallery, for the whole hash check and rebuild (`_migrate`): a second copy
+waits on the lock, then finds the source's hash unchanged and returns None,
+and exits at `web.start()` as before. `cameras.main()` keeps the result and
+logs it right after `log.to_file()`. The lock is the operating system's
+(`msvcrt.locking` on Windows), so it is seen by every process, released if
+the holder dies, and its file is removed on release — none is left in
+`faces/`. `filelock` 4.1.2 is pure Python, no `.pyd` or `.dll` (PROCESS 5.3);
+production gets it through `uv sync` (PYTHON 42). The developer forced a
+migration on the test copy and started two copies a second apart: one
+migrated, the other waited and did nothing, and the line was in
+`logs/jarvis.log`.
+
 A bad-detection report taken before the switch holds 128-number embeddings:
 Undo restores its photos first, and `put_back` embeds the entry again from
 them (`refit`; a dog entry is returned as it is). `refit` runs **before**
@@ -1758,7 +1880,7 @@ without landmarks. **What it recognises there:** no view's best named match was
 the other person, in the developer's check and again in review 23's. Sure matches are rarer on clips than on the stored views:
 Gustavo's daytime clip has 4 of 39 views at ≥ 0.40 (dense sampling, review
 23), and the scan recorded him "probably", at 0.349 — the group's heaviest
-view, not its best (0.421; R51).
+view, not its best (0.421). Since R51 the best view decides (10.3).
 
 ---
 
@@ -2911,11 +3033,12 @@ such file. Review 23 found that skip broken: under `$ErrorActionPreference =
 command into a terminating error, so `git show` of a missing path threw
 instead of reaching `$LASTEXITCODE` — an update to `v2026.10.13` would have
 aborted. It now lowers the preference around the call, as `CurrentVersion`
-already did (`d07c09e`; PYTHON 41). **A gap in the guarantee above:** the
-first start of a release that migrates the gallery spends about 25 s in
+already did (`d07c09e`; PYTHON 41). **A gap in the guarantee above, closed:**
+the first start of a release that migrates the gallery spends about 25 s in
 `migrate_gallery()` before the web answers, and a second launch in that
-window (the 5-minute trigger) passes the already-running check and migrates
-too (R52).
+window (the 5-minute trigger) passed the already-running check and migrated
+too. Since R52 the migration holds a lock file, so the second copy waits and
+then finds nothing to do (10.14).
 
 **Two ways production starts, and they do not look the same** (seen on the
 first night, 09/10/2026):
@@ -3090,7 +3213,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night, 269 in about 15 s on 14/10 after developer 22): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALL 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -3297,7 +3420,8 @@ backlog 31) · Other devices · Archive · Bad-detection reports — and each pa
 or an unknown one, shows Notifications. An old `#notifications` link is
 replaced by `#settings/notifications` with `location.replace`, which adds no
 history entry, so Back does not bounce. The reports list is read only when its
-part is shown, and the five tabs fit in one line on a 375 px phone.
+part is shown. On a 375 px phone the five tabs wrap to two lines (checked in
+review 24); none is cut.
 
 The part itself: the active mode as three radio buttons at the top, and a table with the cases in rows and the modes in
 columns, the active column tinted. Each cell is a real form control —
@@ -3305,8 +3429,13 @@ columns, the active column tinted. Each cell is a real form control —
 (PYTHON 29). Flipping one posts `{"notify_modes": {mode: {case: bool}}}` at
 once; the server refuses unknown modes, unknown cases and anything that is
 not `true` or `false`, and merges the change over the stored switches. The
-Telegram form (token, chat, Find chat, test, prefix, cooldown) sits below it. The older per-label checkboxes are gone: `notify_labels` is still
-read, only to build the defaults.
+Telegram form (token, chat, Find chat, test, prefix, cooldown) sits **beside
+it** where the screen is wide enough, below it on a phone (backlog 36,
+14/10/2026, the user's): the part is a grid of `minmax(0, 3fr)` for the table
+and `minmax(300px, 2fr)` for Telegram, `align-items: start`, and one column
+under 860 px — so the app's pane at its default width (~800 px) shows one
+column too (PYTHON 42). The older per-label checkboxes are gone:
+`notify_labels` is still read, only to build the defaults.
 
 ### 22.5 Commands from the phone — `bot.py`
 
@@ -3395,3 +3524,22 @@ the next one. Only `notify_chat` can switch analysis, as with the modes.
 **On the page.** `/api/status` carries `analysis`, and the header shows "On"
 in green or a red "Off" badge on every screen, refreshed by the 5-second
 health check (17.8).
+
+**Switched from the page too (backlog 34, 14/10/2026).** The user, during
+review 23: "on the screen where the status shows, it must be possible to
+switch it on and off there too". The header's `#analysis` is a `<button>`: a
+click posts `{"on": bool}` to `POST /api/analysis`, which calls
+`analysis.set_on` exactly as `/on` and `/off` do — the same flag, still never
+stored, and the bot's 3-hour reminder follows — and logs `Web: analysis Off
+from the page` beside the Core's `Analysis Off`. The answer is `{"analysis":
+"On"|"Off", "changed": bool}`; anything but a boolean `on` is a 400. It is a
+write, so the write guard applies (17.12, R24): refused without the page's
+header, and from another device without the paired PIN — tested in
+`tests/test_on_off.py`. **Turning Off asks first** with the browser's
+`confirm()` — "Switch analysis Off? Nothing is recorded or sent until it is
+switched On again; Live keeps working." — since it stops all recording;
+**turning On is one click** (the user, 14/10/2026; PYTHON 42). A refused
+write shows `alert("Not done: …")`, the page's only `alert`, because the
+header has no result line; review 24 kept it, since it happens only on a
+device that is not paired. On a 375 px phone the button sits beside the
+version, 39 × 32 px.

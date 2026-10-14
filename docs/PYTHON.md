@@ -1852,3 +1852,140 @@ $ErrorActionPreference = $previous
 
 `CurrentVersion`, in the same script, already did this; the M900 runs 5.1,
 the PowerShell Windows ships.
+
+## 42. A lock between processes, a tuple as a ranking, a slider with a bent scale, and a page that adapts (developer 22)
+
+Six small things from one delivery: backlog 34–36, R51, R52 and R30 (b)
+(ARCHITECTURE 7.14, 10.3, 10.12, 10.14, 22.4, 22.7).
+
+**A lock that other processes see — `filelock` (R52).** `threading.Lock`
+(PYTHON 14) works between the threads of **one** process, like C#'s `lock` /
+`Monitor` or Java's `synchronized`. Two copies of J.A.R.V.I.S. are two
+processes, each with its own memory, so each would have its own
+`threading.Lock` and neither would see the other's. What both see is the
+file system, and the operating system can lock a file:
+
+```python
+from filelock import FileLock
+
+with FileLock(target.with_name(f"{target.name}.lock")):
+    return _migrate(target, source, backup_dir)
+```
+
+On Windows `filelock` opens the `.lock` file and locks a byte of it with
+`msvcrt.locking`; a second process asking for the same lock waits until the
+first releases it. It is .NET's **named `Mutex`** (`new Mutex(false,
+"Global\jarvis-gallery")`) or Java's `FileChannel.lock()`. Two properties
+matter here: if the holder crashes, Windows closes its handles and the lock
+is gone — no stale lock to clean by hand; and the file is deleted on
+release. The `with` block is a `try/finally` (C#'s `using`, Java's
+try-with-resources): the lock is released even when `_migrate` raises, and
+`return` inside the `with` still runs the release first. The package is pure
+Python — a few `.py` files calling the standard library — so Smart App
+Control has nothing to block (PROCESS 5.3).
+
+**A tuple as a ranking (R51).** `_best_view` must prefer, in order: a view
+that matched someone, then one that matched a **named** person, then the
+higher score. Python compares tuples element by element, left to right — the
+first difference decides, exactly like comparing words letter by letter:
+
+```python
+key = (person_id is not None, bool(person and person["name"]), score)
+if best is None or key > best[0]:
+    best = (key, person_id, score, index)
+```
+
+`(True, False, 0.61) < (True, True, 0.31)`: the second element already
+differs, so the score is never looked at. `False < True` because `bool` is a
+subclass of `int` (0 and 1). In Java this is
+`Comparator.comparing(found).thenComparing(named).thenComparing(score)`; in
+C#, `OrderBy(...).ThenBy(...)`, or a `ValueTuple`, which compares the same
+way. `max(views, key=...)` would do it in one line; the loop is there because
+it also keeps the index of the winning view, whose crop is the one learned.
+
+**A slider whose middle is not the middle of its range (backlog 35).** The
+user wanted the default in the middle of the slider, but 0.35 is not the
+middle of 0.20–0.90. The answer is two straight lines that meet at the
+default — a **piecewise linear** map:
+
+```python
+def slider_position(value, default):
+    low, high = CONFIDENCE_RANGE
+    middle = SLIDER_STEPS / 2
+    if value <= default:
+        share = (value - low) / (default - low) if default > low else 1.0
+        return round(share * middle)
+    share = (value - default) / (high - default) if high > default else 0.0
+    return round(middle + share * middle)
+```
+
+`share` is "how far along this half", from 0 to 1. The `if default > low else
+1.0` is Python's conditional expression — C#'s and Java's `cond ? a : b`
+written in the order of the sentence — and it avoids dividing by zero if a
+default ever sat at an end. `slider_value` is the same line read backwards,
+rounded to two decimals. **Why 1000 steps:** the page sends every slider on
+Save, so a slider nobody touched must give back exactly the number it showed.
+With 100 steps, one step of the person slider's right half is 0.011, so 0.40
+lands between two steps and comes back as 0.41; with 1000 it is 0.0011, finer
+than the two decimals stored, and every two-decimal value survives the round
+trip. A test checks it for several defaults rather than trusting the
+argument.
+
+**The page: a range input, a grid that folds, and blocking dialogs.**
+
+```html
+<input type="range" id="slider-confidence_person" name="confidence_person">
+```
+
+`type="range"` is the browser's own slider: `min`, `max`, `step` and `value`
+are set from `/api/settings`, and it works with a finger, a mouse or the
+arrow keys. Its `<label for="...">` names it for screen readers. The
+Notifications part puts two panels side by side with a **CSS grid**:
+
+```css
+.settings[data-part="notifications"] {
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+}
+@media (max-width: 860px) {
+  .settings[data-part="notifications"] { grid-template-columns: minmax(0, 1fr); }
+}
+```
+
+`fr` is a share of the free space — 3 parts for the table, 2 for Telegram,
+like star sizing (`3*`, `2*`) in a WPF `Grid`. `minmax(300px, 2fr)` stops the
+Telegram column from getting narrower than 300 px; `minmax(0, 3fr)` lets the
+table shrink instead of pushing the page sideways. The `@media` block is a
+rule that applies only while the window is at most 860 px wide: there the grid
+becomes one column and the panels stack. That is how one page serves a phone
+and a desktop without two versions.
+
+On the header switch, `confirm()` and `alert()` are the browser's own modal
+dialogs: `confirm` **stops the script** until the user answers and returns
+`true` or `false`, so Off asks before any request leaves:
+
+```javascript
+if (!wanted && !confirm("Switch analysis Off? ...")) return;
+analysisLabel.disabled = true;
+try {
+  showAnalysis((await send("/api/analysis", { on: wanted })).analysis);
+} catch (problem) {
+  alert(`Not done: ${problem.message}`);
+} finally {
+  analysisLabel.disabled = false;
+}
+```
+
+`disabled` during the request stops a second click from sending a second
+change; `finally` turns it back on whatever happened — the same
+`try/catch/finally` as in Java and C#, around an `await` — JavaScript's `async`/`await` reads like C#'s.
+
+**Leave-one-out, and why it matters (R51).** To ask "does the best view
+recognise better than the heaviest?", the developer scored production's clips
+against production's gallery. But the gallery **learned from those same
+clips**: some of their views are stored in it. Scoring a clip against a
+gallery that holds the clip's own views measures memory, not recognition —
+it gave 0.959. Hiding, for each clip, the views written while it was scanned
+gave the honest 0.551. It is the rule behind every fair test of a model: never
+test on what it was trained on — in machine learning, the split between a
+training set and a test set; "leave-one-out" when each item in turn is the
+test and all the others the reference (PYTHON 40 used it for the face bench).

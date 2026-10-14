@@ -33,7 +33,8 @@ grows, decisions are being postponed.
   Waiting 5 (`d6bb2c`, Mirana) and 24 (`f530c0`, a man); Mirana — Chosen 33
   (`6b3d84`, brown fur: check it), Waiting 22 (`6f8002`, dark clothing), 25
   (`557fa0`, shoes and a hand), 26 (`108df8`, someone in red) and 29
-  (`cc29b3`, Aurora). Positions as listed on 14/10 at 12:30. **The
+  (`cc29b3`, Aurora). Positions as listed on 14/10 at 12:30; **all nine still
+  there at review 24** (14/10, 15:45). **The
   once-only settle waits for these too**: it would put the Waiting ones into
   Chosen first. Done on the faces side: the seven head-tops deleted and the
   unnamed entries named (the user, 14/10). Gustavo's own five head-tops in
@@ -41,7 +42,15 @@ grows, decisions are being postponed.
   optional.
 - **`v2026.10.14` on the M900**: the next person events should name Gustavo
   and Izabel more often, sometimes as "probably" (R51); a face message that
-  names the wrong person goes to the architect.
+  names the wrong person goes to the architect. Read in review 24: 6 face
+  scans from 12:07 to 15:40, one "probably Gustavo" silenced in Home, no error
+  in the log.
+- **`v2026.10.14.2` on the phone and the M900** (backlog 34–36): the header's
+  On button switches analysis Off after asking, and On with one tap (from the
+  phone only once it is paired with the PIN); Settings → Detection shows
+  sliders with the explanation beside them; Settings → Notifications puts
+  Telegram beside the table on a wide screen. A note to the architect if a
+  slider's ends, or anything on the phone, reads wrong.
 
 ## Decided, not yet done
 
@@ -54,25 +63,31 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
-**Self-cleaning People and Dogs** (backlog 37, the user, 14/10): "perhaps
-clean themselves now and then". The architect proposes a policy in review 24
-— what goes (unnamed entries never seen again after some days? old
-sightings' photos?), what never goes (named people and dogs, their Chosen),
-measured on production's growth — and the user decides. The UX pass of 15:07
-also looks at People and Dogs as if they held hundreds of photos.
+**Self-cleaning People and Dogs — the architect's proposal, review 24**
+(backlog 37; the user, 14/10: "perhaps clean themselves now and then").
+Measured on production on 14/10: most of it already cleans itself. A
+person's or dog's Chosen keeps 40 views and Waiting at most 100 (backlog
+28); unnamed dogs keep the newest 60 (R27; 44 today, about 7 new a day); the
+sighting photos grow about 2.7 MB a day for faces and dogs together, next to
+~300 MB of clips, and are the record of who came — kept. **The one list with
+no bound is unnamed faces**: every stranger seen with two or more views
+becomes an entry, forever (none today: the old gallery's 8 unnamed entries
+were Izabel, named on 14/10).
+**Proposal:** the dogs' rule for faces — keep the newest 60 unnamed faces;
+past that, the oldest is forgotten with its view photos; a named person is
+never touched. What it costs: a stranger last seen 60 strangers ago is no
+longer recognised as "the same unnamed face" when they come back, and their
+old sightings read "?" on Recordings, as a forgotten dog's do. **The user
+decides**: yes, a different number, a rule by age (unnamed and not seen for
+N days) instead, or no cleaning.
 
-**Asked on 14/10 at 12:55, to fill the window from 15:00** (an answer may
-reach a cleared architect: read it against this list).
-1. ~~R42~~ answered: (b), and an unknown person always reaches the phone in
-   Home (CONTEXT 3).
-2. ~~Backlog 34~~ answered: Off asks first, On is one click (BACKLOG 1).
-3. **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
-   goes down, 33 buttons on the Telegram message, 6 search and filter: the
-   user liked all of them and will discuss them later (14/10). Still not
-   work until then.
+**The (proposto) items** — 1 zones per camera, 2 a warning when a camera
+goes down, 33 buttons on the Telegram message, 6 search and filter: the user
+liked all of them and will discuss them later (14/10). Still not work until
+then.
 
-None. The requests of 13/10/2026 (detection sensitivity, probable residents in
-Home, `/on` and `/off`, the photos piling up, the 40 views managing themselves,
-the "maybe" threshold) were answered by the user the same evening and are
-backlog 28–32 and R46. The question about competitors was answered in the
-conversation; its one new idea is backlog 33 (proposto).
+The requests of 13/10/2026 (detection sensitivity, probable residents in
+Home, `/on` and `/off`, the photos piling up, the 40 views managing
+themselves, the "maybe" threshold) were answered by the user the same evening
+and are backlog 28–32 and R46. The questions of 14/10 at 12:55 were answered
+the same day: R42 (b) and backlog 34's Off-asks-first.

@@ -48,9 +48,12 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **29.** `/on` and `/off` from the bot; Off never stored (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.7 |
 | ✓ | **30.** Home silences a probable resident: two cases of their own (decided 13/10, `v2026.10.13`) | ARCHITECTURE 22.2 |
 | ✓ | **31.** Detection sensitivity per label in Settings (decided 13/10, `45aa0e5`, review 21, `v2026.10.14`) | ARCHITECTURE 7.14 |
-| ✓ | **28.** The 40 views manage themselves (decided 13/10, `6345a7d`, `47a2e6a`, review 20; released with R49 in `v2026.10.14`, review 23). The once-only `settle_waiting.py` waits until the user deletes the seven head-tops of Izabel in Gustavo's Waiting (`PENDING.md`) | ARCHITECTURE 17.14 |
+| ✓ | **28.** The 40 views manage themselves (decided 13/10, `6345a7d`, `47a2e6a`, review 20; released with R49 in `v2026.10.14`, review 23). The once-only `settle_waiting.py` waits for the misfiled dog views to be deleted; the faces' side is ready since 14/10 (`PENDING.md`) | ARCHITECTURE 17.14 |
+| ✓ | **34.** Analysis On and Off from the page header; Off asks first, On is one click (decided 14/10, `8828e5c`, review 24, `v2026.10.14.2`) | ARCHITECTURE 22.7 |
+| ✓ | **35.** Detection sensitivity as sliders, the default in the middle, the explanation beside them (decided 14/10, `87a84fd`, review 24, `v2026.10.14.2`) | ARCHITECTURE 7.14 |
+| ✓ | **36.** Notifications: the Telegram card beside "What reaches the phone" (decided 14/10, `6295d57`, review 24, `v2026.10.14.2`) | ARCHITECTURE 22.4 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29 and 30, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34, 35 and 36, in `PENDING.md`.
 
 ### Decided on 13/10/2026, to build
 
@@ -85,48 +88,39 @@ taken in production that evening.
 
 ### Decided on 14/10/2026, to build
 
-34. **Analysis On and Off from the page** (decided; the user, 14/10/2026,
-    during review 23: "on the screen where the status shows, it must be
-    possible to switch it on and off there too"). The header that shows On
-    or Off on every screen (ARCHITECTURE 22.7) becomes a switch, calling
-    `analysis.set_on` as `/on` and `/off` do — same flag, same log line, same
-    reminder while Off, and still never stored. A write from the network, so
-    it goes through the write guard like every other change (ARCHITECTURE
-    17.12). **Turning Off asks first** ("are you sure?"), since it stops all
-    recording; **turning On is one click** (the user, 14/10/2026).
-35. **Detection sensitivity as a slider, not numbers** (decided; the user,
-    14/10/2026: "the sensitivity cannot be numeric — a kind of slider where
-    the middle is our default value, and the number goes down to the left
-    and up to the right, proportionally"). Each of backlog 31's three
-    minimums (ARCHITECTURE 7.14) becomes a slider with no number on it: the
-    middle is the default, the left end the lowest allowed minimum (0.20),
-    the right end the highest (0.90), each half linear, so the middle is
-    always the default whatever its value. The ends say in words what they
-    do — left: more detections, more false alarms; right: fewer, stricter.
-    `config.json` keeps storing the number, so nothing on disk changes.
-    **The explanation stays, moved to where it belongs** (the user, the same
-    day: "the explanation on the numbers screen was perfect; I want to know
-    how the sliders work in the background"). Both of today's hints keep
-    their substance — what the minimum is (how sure YOLO must be before
-    motion counts as a person or an animal), lower finds more and more false
-    ones, a change reaches the cameras within seconds without a restart, and
-    what this does not fix (a person bending over) — and gain a "how it works"
-    part that says what the slider moves underneath: the minimum
-    confidence, the middle being the default, the ends 0.20 and 0.90, each
-    half in proportion, with each slider's current value and default written
-    in that text, not on the control.
+Items 34, 35 and 36 are done (above, review 24); their full text is in
+`HISTORY.md` 8.
+
 37. **People and Dogs hold many photos gracefully** (decided, UX; the user,
     14/10/2026: some households will never open the page, so the screens
     must cope with a great many photos, "and perhaps clean themselves now
-    and then"). The layout part is the architect's (PROCESS 1): designed in
-    review 24 from production's counts and their growth per day, after the
-    UX pass — paging or loading as one scrolls, counts, grouping by day. The
-    self-cleaning part deletes the user's data, so it is the user's decision
-    on a policy the architect proposes (`PENDING.md`).
-36. **Notifications: the Telegram card beside "What reaches the phone"**
-    (decided; the user, 14/10/2026). Two columns where the screen is wide
-    enough, one under the other on a phone — the user opens the page from
-    the phone's browser too (PROCESS 1, UX).
+    and then"). **Designed in review 24** from production's counts on 14/10
+    (HISTORY 13.25). What grows, and what is already bounded: a person's
+    Chosen (40) and Waiting (`MAX_PENDING` 100) are bounded by backlog 28;
+    unnamed dogs by R27 (`MAX_UNNAMED` 60, 44 today, 1 view each, ~7 a day);
+    **unnamed faces have no bound at all**; the sighting photos in
+    `faces/<day>/` and `dogs/<day>/` grow about 2.7 MB a day together, next
+    to ~300 MB of clips. What a phone shows today: the Dogs tab at 375 px is
+    one column of 335 px cards, 46 of them make a page about 9,100 px tall.
+    **The layout (decided, UX — the architect's, PROCESS 1):**
+    (a) every `.people-grid` takes two columns under 480 px, named cards
+    included, as the "Looks like" groups already do (`style.css`);
+    (b) any list of photos that can pass 24 shows the newest 24 and a
+    "Show 24 more (N left)" button under it — the unnamed groups on People
+    and Dogs, a person's or dog's Waiting, "Days they were seen" — while
+    Chosen (at most 40) shows whole; the heading keeps the full count, and
+    images stay `loading="lazy"`; the server keeps sending whole lists (at
+    most a few hundred small items), so this is the page's work only;
+    (c) checked at 375 px and on the desktop with production's 46 dogs. **The
+    self-cleaning part** deletes the user's data, so it is the user's
+    decision on the policy proposed in `PENDING.md`: unnamed faces bounded
+    as unnamed dogs already are.
+38. **The default marked on each slider** (decided, UX, review 24). Backlog
+    35's sliders show no mark where the default sits, so a slider moved and
+    moved back cannot be put on the default by eye. A `<datalist>` with one
+    option at `slider_steps / 2`, named by the slider's `list` attribute,
+    makes the browser draw a tick there; nothing else changes. Check it at
+    375 px.
 
 ### Critical
 
@@ -213,16 +207,14 @@ proposes one, the answer is already here.
 
 The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
-model; R48 and R49 closed in review 23.
+model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
 | R53 | **high — the user's report, 14/10** | The two dogs are told apart by colour histograms, which overlap: Mirana among Aurora's views, a person among Mirana's | open (below) |
-| R51 | medium | A clip's face is matched by its heaviest view, not its best: a clip with sure views can be recorded "probably" | open (below) |
-| R52 | low | The gallery migration runs before the log file and before the port is held | open (below) |
+| R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | **high — decided 14/10: (b)** | In Home, a resident's face plus a second person who never shows a face sends nothing | decided: count people with YOLO; developer 23 |
-| R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
@@ -245,45 +237,6 @@ lighting, right and wrong over a threshold sweep, how far a person crop or a
 crop of both dogs lands from each dog, cost on the M900, size and licence.
 Nothing in the program changes in step 1.
 
-**R51 — A clip's face is matched by its heaviest view, not its best
-(medium, review 23).** `_group` keeps, for each face in a clip, the view with
-the largest width × YuNet score, and `_scan_clip` matches only that view: its
-score is the sighting's, decides "recognized" or "probably", and decides
-whether anything is learned. Under ArcFace that view is often not the best
-match. Gustavo's daytime clip `Back/2026-10-12/15-44-28`, scanned densely: 39
-views on him, the heaviest at 0.349 — "probably Gustavo" — while his best
-view scores 0.421 and 4 views pass 0.40. In Home it changes nothing (a
-probable resident is silent too, ARCHITECTURE 22.2); in Away it is the
-wording; and fewer views are learned, so Chosen renews more slowly (backlog
-28). **What to measure before changing it:** the score of the best view, of
-the second best and of the median of the three best, against the heaviest's,
-on the four clips of developer 21 and on clips of both residents by day and
-by night (`faces/<day>/*.json` names the clips), with each one's rate of
-wrong best matches. A best-of-N score rises for a stranger too — the more
-views, the likelier one crosses 0.30 — and no stranger has been measured, so
-the choice that adds right answers with the least lift for one-off views
-wins; the HANDOFF carries the table.
-
-**R52 — The gallery migration runs before the log file and before the port is
-held (low, review 23).** `cameras.main()` calls `migrate_gallery()` before
-`web.start()` and before `log.to_file()`. Two consequences. (1) Production
-runs under `pythonw.exe`, with no console, so the migration's line — views
-kept, "no face", entries dropped, the backup folder — is written nowhere:
-the one record of a non-additive change to the user's data is lost. (2) The
-port is what keeps a second copy out (ARCHITECTURE 18.8), and for the ~25 s
-of the migration it is not held: the 5-minute task trigger, or a click on
-`jarvis.bat`, passes the already-running check and migrates too. The second
-copy's write replaces the first's file with an equivalent one and then exits
-at `web.start()`, so at worst what the first copy learned or the user did in
-those seconds is lost; a collision of the two `.part` writes needs both to
-finish within milliseconds of each other. **Fix:** log the result after
-`log.to_file()`, and serialise the migration across processes —
-`filelock`'s `FileLock` beside the gallery (pure Python, well regarded,
-released by the operating system if the process dies; PROCESS 5.2), so the
-second copy waits, finds the hash unchanged and does nothing. A test with two
-threads standing in for two processes is enough for the lock; the log line is
-read in `logs/jarvis.log` on the test copy.
-
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
 found no face at all. If the user walks out with someone whose face is never
@@ -298,6 +251,25 @@ counts a dog as a second person (R18), one extra message. **Decided by the
 user, 14/10/2026: (b).** "If it errs, it errs": someone hiding beside a
 resident must reach the phone, so a person the system cannot account for
 always wins over silence in Home (CONTEXT 3).
+
+**R54 — Best of N and a looser gate give a stranger more chances to pass
+as a resident (medium, a watch, review 24).** R51 matches every view of a
+face group and keeps the best, with `Gallery.match`'s preference — a named
+person first, then the score; R30 (b) lets more looking-down faces in. Both
+are measured only on the two residents (ARCHITECTURE 10.3, 10.12): the other
+resident's best rose by 0.013, never reaching 0.30. What nobody measured is a
+stranger: N views are N chances to cross `MATCH_THRESHOLD` against a
+resident, and a returning stranger whose views match their own unnamed entry
+at 0.6 is recorded "probably <resident>" by one view at 0.30 — silent in
+Home, against the user's rule that an unknown person always reaches the
+phone (CONTEXT 3). Production holds no stranger with a face yet (2 named
+entries, 0 unnamed, 14/10). **Trigger:** a "probably Gustavo" or "probably
+Izabel" sighting whose photo is someone else, reported by the user or seen in
+a review. **Then:** measure, on that clip, the two cross-view rules that keep
+R51's gain for residents — the score alone deciding across views (a named
+match only wins within one view, as `Gallery.match` does), or a resident
+needing two views over the threshold — and keep the one that names the
+stranger right without losing a resident's sure sighting of R51's table.
 
 **R47 — R46's chain has no end (low, a watch, 13/10/2026).** Every
 relabelled box renews both memories (ARCHITECTURE 7.13), so a real dog that
@@ -316,59 +288,42 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 23 is done, with a release:** developer 21's R49 step 2 — SCRFD and
-ArcFace R50, the gallery migration, the models fetched before the stop — with
-backlog 28 and 31, as `v2026.10.14` (HISTORY 13.24). R48 and R49 are closed.
+**Review 24 is done, with a release:** developer 22's backlog 34, 35 and 36,
+R52, R51 and R30 (b), as `v2026.10.14.2` (HISTORY 13.25). R30, R51 and R52
+are closed; R54 is a watch; backlog 37 is designed and 38 added.
 
-**The user's instruction, 14/10:** use the whole 5-hour window that opens at
-15:00 (Brasília), cycle after cycle; the weekly limit renews at 16:00. Each
-review plans and starts the next developer session at once; the plans below
-are already written so no cycle waits.
+**Developer 23: R42 (b), backlog 37's layout and 38, R53 step 1, then
+backlog 32 for faces.**
 
-**Developer 22 (15:00): backlog 34 and 35, R52, R51, then R30 (b).**
+1. **R42 (b)** (section 2), decided by the user: a counter of how many people
+   YOLO saw at once in the held person's frames, compared with the distinct
+   faces the scan found; when every face found was silenced and YOLO saw
+   more people, the best view goes out as `faceless_person`. Tests for the
+   hidden-person case and for a dog counted as a person (R18). The counter
+   belongs to the event, so check what `clips/` stores: a new optional field
+   in the event's JSON is fine, anything else is not (CLAUDE.md).
+2. **Backlog 37's layout, (a) and (b), and backlog 38** (section 1): page
+   work only. Check at 375 px and on the desktop with production's numbers —
+   46 dogs: move the test copy's own `dogs/` aside, copy production's in for
+   the check, and put the test copy's back after; only read `C:\JARVIS`.
+3. **R53 step 1** (section 2): the bench on a copy of production's `dogs/`.
+   **The user has not deleted the misfiled views yet** (checked 14/10 in
+   review 24: all nine are still there), so the bench labels the views listed
+   in `PENDING.md` as "not this dog" itself, and never deletes them. Export
+   a candidate to ONNX once in a throwaway environment if needed, as AdaFace
+   was (ARCHITECTURE 10.14); nothing in the program changes in step 1.
+4. **Backlog 32 for faces only**, if the session has room: the face labels
+   are clean since 14/10; the dogs' half waits for R53's model.
 
-0. **Backlog 34, 35 and 36 first** (section 1): the user asked for both during
-   review 23, and both are small page changes. This puts them ahead of R30
-   (b), which is high, on purpose: R30 (b) was parked until the model
-   changed, and the user's requests are live. Tests as
-   `tests/test_on_off.py` does for the bot, plus the write guard; for 35,
-   the slider's mapping both ways (default in the middle, the ends at 0.20
-   and 0.90) in `tests/`.
-1. **R52** (section 2): the migration's line into `logs/jarvis.log`,
-   and `filelock` around `migrate_gallery`. A new dependency: check that
-   `filelock` is pure Python (no `.pyd`), as PROCESS 5.3 asks of anything
-   new on the M900.
-2. **R51** (section 2): the table first, the change only if it wins. Use
-   `tools/face_tuning.py` or a script in the scratchpad; production's clips
-   are readable from `C:\JARVIS\clips` without copying them all.
-3. **R30 (b)** (HISTORY 13.12): with ArcFace, measure whether the frontal
-   gate can be loosened. `is_frontal` rejects faces turned more than
-   `MAX_NOSE_OFFSET` 0.35 or with an eye spread under `MIN_EYE_SPREAD` 0.38;
-   on both residents' clips, score the three-quarter faces it rejects against
-   the person's own Chosen, and loosen only as far as the right person still
-   wins, with nothing wrong. `face_tuning.py` already prints both measures per
-   face. Report the gain in faces per clip, and the cost (each face now costs
-   ~0.13 s more, ARCHITECTURE 10.14).
+**HANDOFF:** R42 (b) as built and its tests; 37 and 38 checked at 375 px,
+with the Dogs tab's page height before and after; R53's table per candidate
+(right and wrong by lighting over a threshold sweep, a person crop's and a
+two-dog crop's distance to each dog, cost on the M900, size, licence). If the
+session runs short, stop after a coherent commit and say what is left.
 
-**HANDOFF:** backlog 34, 35 and 36 as built, each checked at 375 px wide too (and whether Off asks first);
-R51's table and the choice; R30 (b)'s per-limit table; the log
-line as written by the test copy. If the session runs short, stop after a
-coherent commit and say what is left.
+**Waits for the user:** the policy for unnamed faces (backlog 37,
+`PENDING.md`); the misfiled dog views, before the once-only settle of
+backlog 28; the checks on the M900 (`PENDING.md`).
 
-**Developer 23 (after review 24): R42 (b), R53 step 1, then backlog 32 for
-faces.** R42 (b) first (section 2), decided by the user: a counter of how
-many people YOLO saw at once in the held person's frames, compared with the
-distinct faces the scan found; when every face found was silenced and YOLO
-saw more people, the best view goes out as `faceless_person`. Tests for the
-hidden-person case and for a dog counted as a person. Then R53's bench (section 2) on a copy of production's `dogs/` taken after the
-user's deletions — if they are not done, label the views listed in
-`PENDING.md` as "not this dog" in the bench instead. Then backlog 32's table
-for faces only: the face labels are clean since 14/10 (the head-tops
-deleted, the unnamed entries named), and the dogs' half waits for R53's
-model.
-
-**Waits for the user:** R42; backlog 32 can be built now but means something
-once the labels are clean (`PENDING.md`); the once-only settle of backlog 28.
-
-**Not planned:** R47 is a watch. R14, R12 and R9 as before. Every other open
-backlog item is **(proposto)**.
+**Not planned:** R54 and R47 are watches. R14, R12 and R9 as before. Every
+other open backlog item is **(proposto)**.
