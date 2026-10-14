@@ -51,7 +51,6 @@ def other_clips(root, known, count):
 
 def measured_faces(clip):
     """(nose offset, eye spread / width, embedding) of every good face on a person in the clip."""
-    recogniser = faces._recogniser()
     found = []
     for frame in faces._sampled_frames(clip):
         detected = faces._detect(frame)
@@ -63,7 +62,9 @@ def measured_faces(clip):
             if not faces._on_a_person(tuple(int(v) for v in face[:4]), bodies):
                 continue
             spread = float(np.linalg.norm(face[6:8] - face[4:6])) / float(face[2])
-            embedding = recogniser.feature(recogniser.alignCrop(frame, face)).ravel()
+            embedding = faces.embed(frame, face[:4])
+            if embedding is None:
+                continue
             found.append((faces.nose_offset(face), spread, embedding))
     return found
 
@@ -89,7 +90,7 @@ def main():
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--others", type=int, default=15)
     args = parser.parse_args()
-    gallery = faces.Gallery(args.root / "faces" / "gallery.json")
+    gallery = faces.Gallery(args.root / "faces" / faces.GALLERY_FILE.name)
     known = clips_by_person(args.root, gallery)
     right, strangers = defaultdict(list), defaultdict(list)
     for clip, person_id in sorted(known.items()):

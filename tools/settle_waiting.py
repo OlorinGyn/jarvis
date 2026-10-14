@@ -51,6 +51,9 @@ def main(argv=None):
     if not dry_run and web.already_running(port):
         print(f"J.A.R.V.I.S. is running on port {port}: stop it first, or use --dry-run.")
         return 1
+    migrated = None if dry_run else faces.migrate_gallery(backup_dir=BACKUP_DIR)
+    if migrated:
+        print(f"Face gallery rebuilt for {faces.EMBEDDING_MODEL} first: {migrated}")
     found = galleries()
     if dry_run:
         print("Dry run: nothing is written or deleted.")

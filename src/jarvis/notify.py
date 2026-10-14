@@ -264,9 +264,9 @@ def person_case(sighting):
 def _who(sighting):
     """Name the face, and say so when the match is too weak to be sure.
 
-    A match only needs MATCH_THRESHOLD (0.363), the value OpenCV recommends for
-    sharp 112 px faces. Ours are 40-60 px, where a weak match can be chance;
-    LEARN_THRESHOLD is the bar the gallery already trusts to learn from.
+    A match only needs MATCH_THRESHOLD, where nothing measured was wrong; ours
+    are 40-60 px faces, where a weak match can be chance. LEARN_THRESHOLD is
+    the bar the gallery already trusts to learn from (ARCHITECTURE 10.14).
     """
     name = sighting.get("name") or ""
     if not name:

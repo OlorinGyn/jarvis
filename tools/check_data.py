@@ -21,7 +21,7 @@ EVENT_KEYS = ("camera", "started_at", "time", "seconds", "labels", "video", "thu
 SIGHTING_KEYS = ("person_id", "camera", "at", "time", "score", "thumbnail")
 PERSON_KEYS = ("id", "name", "embeddings")
 DOG_SIGHTING_KEYS = ("dog_id", "camera", "at", "time", "thumbnail")
-EMBEDDING_SIZE = 128
+LEGACY_EMBEDDING_SIZE = 128
 
 
 def check_events(root, problems):
@@ -52,17 +52,17 @@ def check_events(root, problems):
     return count
 
 
-def check_faces(problems):
-    """The gallery and every sighting, read as the People screen reads them."""
-    gallery = faces.Gallery()
-    if faces.GALLERY_FILE.exists() and not gallery.people:
-        problems.append(f"{faces.GALLERY_FILE}: exists but no person could be read")
+def check_gallery(path, size, problems):
+    """One face gallery file, read as the People screen reads it, with embeddings of the given size."""
+    gallery = faces.Gallery(path)
+    if path.exists() and not gallery.people:
+        problems.append(f"{path}: exists but no person could be read")
     for person in gallery.people:
         missing = [k for k in PERSON_KEYS if k not in person]
         if missing:
             problems.append(f"gallery person {person.get('id', '?')}: missing {missing}")
             continue
-        wrong = [len(e) for e in person["embeddings"] if len(e) != EMBEDDING_SIZE]
+        wrong = [len(e) for e in person["embeddings"] if len(e) != size]
         if wrong:
             problems.append(f"gallery person {person['id']}: embeddings of size {wrong}")
         views = person.get("views")
@@ -76,9 +76,17 @@ def check_faces(problems):
         if "resident" in person and not isinstance(person["resident"], bool):
             problems.append(f"gallery person {person['id']}: resident is not true or false")
         for waiting in person.get("pending") or []:
-            if not isinstance(waiting, dict) or len(waiting.get("embedding") or []) != EMBEDDING_SIZE:
+            if not isinstance(waiting, dict) or len(waiting.get("embedding") or []) != size:
                 problems.append(f"gallery person {person['id']}: a queued view is unreadable")
+    return len(gallery.people)
 
+
+def check_faces(problems):
+    """Both face galleries and every sighting: the older model's file stays for a rollback (ARCHITECTURE 10.14)."""
+    people = {path.name: check_gallery(path, size, problems)
+              for path, size in ((faces.LEGACY_GALLERY_FILE, LEGACY_EMBEDDING_SIZE),
+                                 (faces.GALLERY_FILE, faces.EMBEDDING_SIZE))
+              if path.exists()}
     sightings = 0
     for day in sorted(faces.days_with_faces()):
         folder = faces.FACE_DIR / day.isoformat()
@@ -96,7 +104,7 @@ def check_faces(problems):
             faces.list_sightings(day)
         except Exception as problem:
             problems.append(f"faces of {day}: the People screen cannot list them ({problem})")
-    return len(gallery.people), sightings
+    return people, sightings
 
 
 def check_settings(problems):
@@ -209,7 +217,8 @@ def main():
         print(f"archive {archive}: not reachable, not checked")
 
     people, sightings = check_faces(problems)
-    print(f"gallery: {people} person(s); face sightings: {sightings}")
+    galleries = "; ".join(f"{name} {count} person(s)" for name, count in people.items()) or "none"
+    print(f"face galleries: {galleries}; face sightings: {sightings}")
     named_dogs, dog_sightings = check_dogs(problems)
     print(f"dogs: {named_dogs} in the gallery; dog sightings: {dog_sightings}")
     print(f"bad-detection reports: {check_reports(problems)}")

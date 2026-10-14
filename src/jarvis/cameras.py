@@ -348,6 +348,11 @@ def main(argv=None):
             webbrowser.open(url)
         return
 
+    migrated = faces.migrate_gallery()
+    if migrated:
+        logger.info("Face gallery rebuilt for %s from %s: %s", faces.EMBEDDING_MODEL,
+                    faces.LEGACY_GALLERY_FILE.name, migrated)
+
     stop = threading.Event()
     server = web.start(port=port, on_stop=stop.set)
     if server is None and _answers_soon(port):

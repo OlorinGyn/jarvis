@@ -132,14 +132,14 @@ def test_away_names_the_person_at_once(sent):
 
 def test_only_a_sure_resident_is_the_resident_case():
     assert notify.person_case(face("p_1", "Ana", 0.6, resident=True)) == "resident_person"
-    assert notify.person_case(face("p_1", "Ana", 0.40, resident=True)) == "probable_resident_person"
+    assert notify.person_case(face("p_1", "Ana", 0.35, resident=True)) == "probable_resident_person"
     assert notify.person_case(face("p_1", "Ana", 0.6)) == "known_person"
     assert notify.person_case(face("p_1")) == "unknown_face"
 
 
 def test_in_home_a_resident_face_is_silent_and_a_probable_one_too(sent):
-    found = [face("p_1", "Gustavo", 0.6, True), face("p_2", "Gustavo", 0.40, True),
-             face("p_3"), face("p_4", "Ana", 0.6), face("p_5", "Ana", 0.40)]
+    found = [face("p_1", "Gustavo", 0.6, True), face("p_2", "Gustavo", 0.35, True),
+             face("p_3"), face("p_4", "Ana", 0.6), face("p_5", "Ana", 0.35)]
     assert notify.faces_seen("Front", START, found, HOME) == 3
     assert sent == ["Front 12:00:00: unknown face", "Front 12:00:00: Ana recognized",
                     "Front 12:00:00: probably Ana"]
@@ -162,7 +162,7 @@ def test_each_person_has_a_cooldown_of_their_own():
 
 
 def test_a_weak_match_is_announced_as_probable():
-    assert notify._who(face("p_1", "Ana", 0.40)) == "probably Ana"
+    assert notify._who(face("p_1", "Ana", 0.35)) == "probably Ana"
     assert notify._who(face("p_1", "Ana", 0.50)) == "Ana recognized"
     assert notify._who(face("p_1")) == "unknown face"
 

@@ -119,6 +119,18 @@ function CheckData([string]$When) {
     return $ok
 }
 
+function FetchModels([string]$Version) {
+    $source = git -C $ProdDir show "${Version}:src/jarvis/downloads.py" 2>$null
+    if ($LASTEXITCODE) { Say "$Version fetches no model ahead."; return }
+    Say "Fetching the models $Version needs, before stopping anything..."
+    $script = Join-Path $env:TEMP 'jarvis_downloads.py'
+    Set-Content -Path $script -Value $source -Encoding UTF8
+    try {
+        Python $script (Join-Path $ProdDir 'models') | Out-Host
+        if ($LASTEXITCODE) { throw "Fetching the models for $Version failed; nothing changed." }
+    } finally { Remove-Item $script -ErrorAction SilentlyContinue }
+}
+
 function Sync {
     Push-Location $ProdDir
     try {
@@ -271,6 +283,7 @@ function Update {
     Say "Updating $previous -> $target"
 
     if (-not (CheckData 'before, current version')) { throw 'Data already unreadable before updating; nothing changed. Investigate first.' }
+    FetchModels $target
     Hold "update $previous -> $target"
     StopService
     $good = $false

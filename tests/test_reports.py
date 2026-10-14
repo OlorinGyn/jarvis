@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from jarvis import faces, reports, web
+from jarvis import dogs, faces, reports, web
 
 CROP = np.zeros((40, 40, 3), np.uint8)
 HEADER = {"X-Jarvis-Request": "1"}
@@ -37,7 +37,7 @@ def sighting(gallery, person_id, at="2026-10-11T14:02:07"):
 
 
 def test_a_reported_face_leaves_the_gallery_and_is_kept_as_a_report(gallery, report_dir):
-    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    person_id = gallery.add([[0.1] * faces.EMBEDDING_SIZE], "t.jpg", [CROP])
     seen = sighting(gallery, person_id)
     path = reports.report_entry(gallery, person_id)
     report = json.loads(path.read_text(encoding="utf-8"))
@@ -52,7 +52,7 @@ def test_a_reported_face_leaves_the_gallery_and_is_kept_as_a_report(gallery, rep
 
 
 def test_a_named_person_cannot_be_reported(gallery, report_dir):
-    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    person_id = gallery.add([[0.1] * faces.EMBEDDING_SIZE], "t.jpg", [CROP])
     gallery.rename(person_id, "Someone")
     assert reports.report_entry(gallery, person_id) is None
     assert reports.report_entry(gallery, "p_00000000") is None
@@ -100,7 +100,7 @@ def test_events_written_before_reports_still_show_every_label(tmp_path):
 
 
 def test_undo_puts_a_reported_face_back_with_its_photos_and_sightings(gallery, report_dir):
-    person_id = gallery.add([[0.1] * 128, [0.2] * 128], "t.jpg", [CROP, CROP])
+    person_id = gallery.add([[0.1] * faces.EMBEDDING_SIZE, [0.2] * faces.EMBEDDING_SIZE], "t.jpg", [CROP, CROP])
     before = faces.Gallery(gallery.path).get(person_id)
     seen = sighting(gallery, person_id)
     path = reports.report_entry(gallery, person_id)
@@ -114,7 +114,7 @@ def test_undo_puts_a_reported_face_back_with_its_photos_and_sightings(gallery, r
 
 
 def test_undo_of_a_report_written_before_undo_existed(tmp_path, report_dir):
-    dog_gallery = faces.Gallery(tmp_path / "dogs" / "gallery.json")
+    dog_gallery = dogs.DogGallery(tmp_path / "dogs" / "gallery.json")
     folder = report_dir / "dog"
     folder.mkdir(parents=True)
     cv2.imwrite(str(folder / "2026-10-10_15-36-08_3d0bde.jpg"), CROP)
@@ -154,7 +154,7 @@ def test_undo_from_the_page_returns_a_label_to_its_recording(tmp_path, report_di
 
 
 def test_undo_refuses_an_entry_that_is_already_back(gallery, report_dir):
-    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    person_id = gallery.add([[0.1] * faces.EMBEDDING_SIZE], "t.jpg", [CROP])
     entry = faces.Gallery(gallery.path).get(person_id)
     path = reports.report_entry(gallery, person_id)
     gallery.put_back(entry)
@@ -180,13 +180,13 @@ def test_a_report_can_say_what_it_actually_was(tmp_path, report_dir, monkeypatch
 
 
 def test_a_view_added_while_reporting_is_never_lost_from_the_report(gallery, report_dir, monkeypatch):
-    person_id = gallery.add([[0.1] * 128], "t.jpg", [CROP])
+    person_id = gallery.add([[0.1] * faces.EMBEDDING_SIZE], "t.jpg", [CROP])
     sighting(gallery, person_id)
     seen = {}
     original = reports._sightings
 
     def scan_meanwhile(scanned_gallery, entry_id):
-        faces.Gallery(gallery.path).reinforce(entry_id, [0.2] * 128, CROP)
+        faces.Gallery(gallery.path).reinforce(entry_id, [0.2] * faces.EMBEDDING_SIZE, CROP)
         seen["entry"] = faces.Gallery(gallery.path).get(entry_id)
         return original(scanned_gallery, entry_id)
 

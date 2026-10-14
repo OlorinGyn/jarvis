@@ -5,8 +5,9 @@ in the original 1080p is only 30px at the 960x540 analysis size, far below what
 the recogniser needs. Scanning the recorded clip gives full resolution and
 costs nothing on the live path.
 
-Uses YuNet and SFace, both built into OpenCV, so no extra dependency. See
-docs/ARCHITECTURE.md section 10.
+YuNet finds the faces and gates them with is_frontal; InsightFace's SCRFD
+places the five landmarks in the square around each one, and ArcFace R50
+embeds the aligned crop. See docs/ARCHITECTURE.md section 10.14.
 """
 
 import hashlib
@@ -15,10 +16,11 @@ import logging
 import math
 import re
 import subprocess
+import shutil
 import threading
 import time
-import urllib.request
 import uuid
+from collections import Counter
 from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -26,21 +28,24 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from jarvis import ROOT, people
+from jarvis import ROOT, downloads, people
 from jarvis.capture import NO_WINDOW, ffmpeg_exe
 
 MODEL_DIR = ROOT / "models"
-DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
-RECOGNISER_MODEL = MODEL_DIR / "face_recognition_sface_2021dec.onnx"
-MODEL_SOURCE = "https://github.com/opencv/opencv_zoo/raw/main/models"
-MODEL_URLS = {
-    DETECTOR_MODEL: f"{MODEL_SOURCE}/face_detection_yunet/{DETECTOR_MODEL.name}",
-    RECOGNISER_MODEL: f"{MODEL_SOURCE}/face_recognition_sface/{RECOGNISER_MODEL.name}",
-}
+DETECTOR_MODEL = MODEL_DIR / downloads.YUNET
+SFACE_MODEL = MODEL_DIR / downloads.SFACE
+LANDMARK_MODEL = MODEL_DIR / downloads.BUFFALO_FOLDER / downloads.SCRFD
+RECOGNISER_MODEL = MODEL_DIR / downloads.BUFFALO_FOLDER / downloads.ARCFACE
+EMBEDDING_MODEL = "arcface_w600k_r50"
+EMBEDDING_SIZE = 512
 FACE_DIR = ROOT / "faces"
-GALLERY_FILE = FACE_DIR / "gallery.json"
+GALLERY_FILE = FACE_DIR / f"gallery_{EMBEDDING_MODEL}.json"
+LEGACY_GALLERY_FILE = FACE_DIR / "gallery.json"
+BACKUP_DIR = ROOT / "backups"
 
 DETECT_SCORE = 0.6
+LANDMARK_SIZE = 320
+LANDMARK_SCORE = 0.2
 IDENTITY_SCORE = 0.75
 MAX_NOSE_OFFSET = 0.35
 MIN_EYE_SPREAD = 0.38
@@ -50,9 +55,9 @@ DETECT_WIDTH = 960
 REFINE_MARGIN = 1.0
 LANDMARK_VALUES = 14
 GOOD_FACE_WIDTH = 80
-MATCH_THRESHOLD = 0.363
-LEARN_THRESHOLD = 0.45
-SAME_FACE_THRESHOLD = 0.40
+MATCH_THRESHOLD = 0.30
+LEARN_THRESHOLD = 0.40
+SAME_FACE_THRESHOLD = 0.35
 SAMPLE_EVERY = 6
 MAX_SAMPLES = 60
 DENSE_EVERY = 2
@@ -72,12 +77,7 @@ logger = logging.getLogger(__name__)
 
 def ensure_models():
     """Download the face models on first use, like people.ensure_model does."""
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    for target, url in MODEL_URLS.items():
-        if target.exists() and target.stat().st_size > 1024:
-            continue
-        print(f"Downloading {target.name}...")
-        urllib.request.urlretrieve(url, target)
+    downloads.fetch(MODEL_DIR)
     return True
 
 
@@ -89,21 +89,117 @@ def _detector():
 
 
 @lru_cache(maxsize=1)
+def _sface():
+    """OpenCV's SFace object: its alignCrop is the aligner; its own embedding is no longer used."""
+    ensure_models()
+    return cv2.FaceRecognizerSF.create(str(SFACE_MODEL), "")
+
+
+@lru_cache(maxsize=1)
+def _landmarker():
+    ensure_models()
+    return Scrfd(LANDMARK_MODEL, size=LANDMARK_SIZE, threshold=LANDMARK_SCORE)
+
+
+@lru_cache(maxsize=1)
 def _recogniser():
     ensure_models()
-    return cv2.FaceRecognizerSF.create(str(RECOGNISER_MODEL), "")
+    return cv2.dnn.readNetFromONNX(str(RECOGNISER_MODEL))
+
+
+def _distance_points(centres, distances):
+    return np.stack([centres[:, 0] - distances[:, 0], centres[:, 1] - distances[:, 1],
+                     centres[:, 0] + distances[:, 2], centres[:, 1] + distances[:, 3]], axis=1)
+
+
+class Scrfd:
+    """InsightFace's SCRFD detector, decoded the way insightface's own scrfd.py does."""
+
+    STRIDES = (8, 16, 32)
+    ANCHORS = 2
+
+    def __init__(self, path, size=640, threshold=0.5, nms=0.4):
+        self.net = cv2.dnn.readNetFromONNX(str(path))
+        self.size, self.threshold, self.nms = size, threshold, nms
+
+    def detect(self, image):
+        """[{box (x, y, w, h), score, points (5x2)}] in the image's coordinates."""
+        height, width = image.shape[:2]
+        scale = min(self.size / height, self.size / width)
+        resized = cv2.resize(image, (int(width * scale), int(height * scale)))
+        canvas = np.zeros((self.size, self.size, 3), np.uint8)
+        canvas[:resized.shape[0], :resized.shape[1]] = resized
+        blob = cv2.dnn.blobFromImage(canvas, 1 / 128, (self.size, self.size),
+                                     (127.5, 127.5, 127.5), swapRB=True)
+        self.net.setInput(blob)
+        outputs = [o.reshape(-1, o.shape[-1])
+                   for o in self.net.forward(self.net.getUnconnectedOutLayersNames())]
+        boxes, scores, points = [], [], []
+        for stride in self.STRIDES:
+            cells = (self.size // stride) ** 2 * self.ANCHORS
+            by_width = {o.shape[1]: o for o in outputs if o.shape[0] == cells}
+            side = self.size // stride
+            grid = np.stack(np.mgrid[:side, :side][::-1], axis=-1).reshape(-1, 2).astype(np.float32)
+            centres = np.repeat(grid * stride, self.ANCHORS, axis=0)
+            score = by_width[1].ravel()
+            keep = score >= self.threshold
+            if not keep.any():
+                continue
+            box = _distance_points(centres, by_width[4] * stride)
+            landmarks = by_width[10] * stride
+            landmarks = landmarks.reshape(-1, 5, 2) + centres[:, None, :]
+            boxes.append(box[keep])
+            scores.append(score[keep])
+            points.append(landmarks[keep])
+        if not boxes:
+            return []
+        boxes, scores, points = np.concatenate(boxes), np.concatenate(scores), np.concatenate(points)
+        boxes /= scale
+        points /= scale
+        rects = [[float(x1), float(y1), float(x2 - x1), float(y2 - y1)] for x1, y1, x2, y2 in boxes]
+        kept = cv2.dnn.NMSBoxes(rects, scores.tolist(), self.threshold, self.nms)
+        return [{"box": np.array(rects[i], np.float32), "score": float(scores[i]),
+                 "points": points[i].astype(np.float32)} for i in np.array(kept).ravel()]
 
 
 def align_crop(image, box, points):
     """The 112px crop ArcFace expects: OpenCV's least-squares fit of five landmarks onto its template."""
     row = np.concatenate([np.asarray(box, np.float32).ravel()[:4],
                           np.asarray(points, np.float32).ravel(), [1.0]]).astype(np.float32)
-    return _recogniser().alignCrop(image, row)
+    return _sface().alignCrop(image, row)
+
+
+def embed_view(image, centre=None):
+    """ArcFace's embedding of the face SCRFD finds nearest centre (default the middle), or None without one.
+
+    The image is a face photo framed like context_crop: a stored view, or the
+    same square cut from a frame, so the gallery and the scan embed alike.
+    """
+    found = _landmarker().detect(image)
+    if not found:
+        return None
+    centre = np.array(centre if centre is not None else (image.shape[1] / 2, image.shape[0] / 2))
+    face = min(found, key=lambda f: float(np.linalg.norm(f["box"][:2] + f["box"][2:4] / 2 - centre)))
+    crop = align_crop(image, face["box"], face["points"])
+    net = _recogniser()
+    net.setInput(cv2.dnn.blobFromImage(crop, 1 / 127.5, (112, 112), (127.5, 127.5, 127.5),
+                                       swapRB=True))
+    return net.forward().ravel().astype(np.float32)
+
+
+def embed(frame, box):
+    """The embedding of the face in box, from the square context_crop shows; None when SCRFD finds no face."""
+    left, top, side = _square(frame, box)
+    region = np.ascontiguousarray(frame[top:top + side, left:left + side])
+    x, y, w, h = box
+    return embed_view(region, (x + w / 2 - left, y + h / 2 - top))
 
 
 def cosine(a, b):
-    """Similarity of two embeddings: 1.0 identical, 0.0 unrelated."""
+    """Similarity of two embeddings: 1.0 identical, 0.0 unrelated or made by different models."""
     a, b = np.asarray(a, np.float32).ravel(), np.asarray(b, np.float32).ravel()
+    if a.shape != b.shape:
+        return 0.0
     denominator = float(np.linalg.norm(a) * np.linalg.norm(b))
     return float(np.dot(a, b) / denominator) if denominator else 0.0
 
@@ -141,15 +237,21 @@ def context_crop(frame, box):
     The aligned 112px crop is what the recogniser needs, not what a person
     recognises: it is cut tight and, from a 45px face, already upscaled once.
     """
-    x, y, w, h = box
+    left, top, side = _square(frame, box)
+    crop = frame[top:top + side, left:left + side]
+    interpolation = cv2.INTER_CUBIC if crop.shape[0] < THUMB_SIZE else cv2.INTER_AREA
+    return cv2.resize(crop, (THUMB_SIZE, THUMB_SIZE), interpolation=interpolation)
+
+
+def _square(frame, box):
+    """(left, top, side) of the square around a face with hair and shoulders, kept inside the frame."""
+    x, y, w, h = (int(v) for v in box[:4])
     side = int(max(w, h) * THUMB_CONTEXT)
     cx, cy = x + w // 2, y + h // 2
     height, width = frame.shape[:2]
     left = min(max(cx - side // 2, 0), max(width - side, 0))
     top = min(max(cy - side // 2, 0), max(height - side, 0))
-    crop = frame[top:top + side, left:left + side]
-    interpolation = cv2.INTER_CUBIC if crop.shape[0] < THUMB_SIZE else cv2.INTER_AREA
-    return cv2.resize(crop, (THUMB_SIZE, THUMB_SIZE), interpolation=interpolation)
+    return left, top, side
 
 
 def _detect(frame):
@@ -197,18 +299,18 @@ def _refine(frame, box):
     return best
 
 
-def faces_in(frame, sides=None):
+def faces_in(frame, sides=None, missed=None):
     """Return one dict per frontal face: box, embedding, score and a display crop.
 
     When sides is a list, good faces that are not frontal (seen from the side)
     are added to it with their box, nose offset and crop: they cannot be
-    recognised, but they are still a picture of the face (R30).
+    recognised, but they are still a picture of the face (R30). When missed is
+    a list, each frontal face SCRFD finds no landmarks for is added to it.
     """
     found = _detect(frame)
     if found is None:
         return []
 
-    recogniser = _recogniser()
     results = []
     for face in found:
         x, y, w, h = (int(v) for v in face[:4])
@@ -219,10 +321,14 @@ def faces_in(frame, sides=None):
                 sides.append({"box": (x, y, w, h), "offset": nose_offset(face),
                               "crop": context_crop(frame, (x, y, w, h))})
             continue
-        aligned = recogniser.alignCrop(frame, face)
+        embedding = embed(frame, (x, y, w, h))
+        if embedding is None:
+            if missed is not None:
+                missed.append((x, y, w, h))
+            continue
         results.append({
             "box": (x, y, w, h),
-            "embedding": recogniser.feature(aligned).ravel().tolist(),
+            "embedding": embedding.tolist(),
             "score": float(face[-1]),
             "crop": context_crop(frame, (x, y, w, h)),
         })
@@ -374,6 +480,7 @@ class Gallery:
 
     id_prefix = "p"
     sighting_key = "person_id"
+    model = EMBEDDING_MODEL
 
     def __init__(self, path=None):
         self.path = Path(path or GALLERY_FILE)
@@ -386,8 +493,10 @@ class Gallery:
         try:
             data = json.loads(self.path.read_text(encoding="utf-8-sig"))
             self.people = data.get("people", [])
+            self.header = {key: value for key, value in data.items() if key != "people"}
         except (OSError, ValueError):
             self.people = []
+            self.header = {}
 
     def save(self):
         """Write the gallery, after pointing the sightings of every merged entry at its target.
@@ -399,7 +508,8 @@ class Gallery:
             _repoint_sightings(self.path.parent, self.repoints, self.sighting_key)
             self.repoints = {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps({"people": self.people}, indent=2),
+        header = {**self.header, **({"model": self.model} if self.model else {})}
+        self.path.write_text(json.dumps({**header, "people": self.people}, indent=2),
                              encoding="utf-8")
         dropped, self.dropped = self.dropped, []
         for view in dropped:
@@ -633,8 +743,17 @@ class Gallery:
                 self.save()
         return rows
 
+    def refit(self, entry):
+        """The entry as this gallery can compare it: embedded again from its photos when an older model made it."""
+        sizes = ({len(e) for e in entry["embeddings"]}
+                 | {len(w["embedding"]) for w in entry.get("pending") or []})
+        if sizes <= {EMBEDDING_SIZE}:
+            return entry
+        return refit_entry(entry, self.path.parent)
+
     def put_back(self, entry):
         """Return an entry taken out by mistake. False when its id is already in the gallery."""
+        entry = self.refit(entry)
         with _GALLERY_LOCK:
             self.load()
             if self.get(entry["id"]) is not None:
@@ -806,7 +925,8 @@ class Gallery:
             for other in list(self.people):
                 if other is person or other["name"]:
                     continue
-                if max(_similarity(person, e) for e in other["embeddings"]) >= LEARN_THRESHOLD:
+                if max((_similarity(person, e) for e in other["embeddings"]),
+                       default=0.0) >= LEARN_THRESHOLD:
                     self._merge(other, person)
                     merged += 1
                     changed = True
@@ -853,6 +973,95 @@ def _portable(path):
         return str(Path(path).resolve().relative_to(ROOT))
     except ValueError:
         return str(path)
+
+
+def _embed_photo(folder, view, tally):
+    """The current model's embedding of a stored view's photo in folder/views, or None, counted in tally."""
+    if not view:
+        tally["no photo"] += 1
+        return None
+    image = cv2.imread(str(Path(folder) / "views" / Path(str(view).replace("\\", "/")).name))
+    if image is None:
+        tally["no photo"] += 1
+        return None
+    with _SCAN_LOCK:
+        embedding = embed_view(image)
+    if embedding is None:
+        tally["no face"] += 1
+        return None
+    tally["kept"] += 1
+    return embedding.tolist()
+
+
+def refit_entry(entry, folder=None, tally=None):
+    """A copy of a gallery entry with every view embedded again by the current model, from its photo.
+
+    A view whose photo is gone, or in which SCRFD finds no face, leaves the
+    copy; its photo stays on disk. When no chosen view is left, waiting ones
+    move up. tally counts kept, no photo, no face and moved up.
+    """
+    folder = Path(folder or FACE_DIR)
+    tally = tally if tally is not None else Counter()
+    chosen = [(_embed_photo(folder, view, tally), view) for view in views_of(entry)]
+    waiting = [(_embed_photo(folder, w.get("view"), tally), w.get("view"))
+               for w in entry.get("pending") or []]
+    chosen = [(e, v) for e, v in chosen if e is not None]
+    waiting = [(e, v) for e, v in waiting if e is not None]
+    if not chosen and waiting:
+        chosen, waiting = waiting[:MAX_EMBEDDINGS], waiting[MAX_EMBEDDINGS:]
+        tally["moved up"] += len(chosen)
+    moved = dict(entry, embeddings=[e for e, _ in chosen], views=[v for _, v in chosen])
+    if "pending" in entry or waiting:
+        moved["pending"] = [{"embedding": e, "view": v} for e, v in waiting]
+    _fix_cover(moved)
+    return moved
+
+
+def migrate_gallery(target=None, source=None, backup_dir=None):
+    """Build the current model's gallery from the older one beside it, embedding every view again from its photo.
+
+    The older file stays as it was, so a version rolled back to still reads
+    it. Runs when the current file is missing, or when the older file changed
+    since it was built from (an older version ran meanwhile); both files are
+    copied to backup_dir first. Returns the counts, or None when there was
+    nothing to do (ARCHITECTURE 10.14).
+    """
+    target = Path(target or GALLERY_FILE)
+    source = Path(source or target.with_name(LEGACY_GALLERY_FILE.name))
+    if not source.is_file() or source.resolve() == target.resolve():
+        return None
+    digest = hashlib.sha1(source.read_bytes()).hexdigest()
+    try:
+        built_from = json.loads(target.read_text(encoding="utf-8-sig")).get("source", {}).get("sha1")
+    except (OSError, ValueError, AttributeError):
+        built_from = None
+    if built_from == digest:
+        return None
+    began = time.monotonic()
+    backup = Path(backup_dir or BACKUP_DIR) / f"faces_{EMBEDDING_MODEL}_{datetime.now():%Y%m%d-%H%M%S}"
+    backup.mkdir(parents=True, exist_ok=True)
+    for path in (source, target):
+        if path.is_file():
+            shutil.copy2(path, backup / path.name)
+    data = json.loads(source.read_text(encoding="utf-8-sig"))
+    tally = Counter()
+    people = []
+    for person in data.get("people", []):
+        tally["views"] += len(views_of(person)) + len(person.get("pending") or [])
+        moved = refit_entry(person, source.parent, tally)
+        if not moved["name"] and not moved["embeddings"] and not moved.get("pending"):
+            tally["entries dropped"] += 1
+            continue
+        people.append(moved)
+    with _GALLERY_LOCK:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_name(f"{target.name}.part")
+        partial.write_text(json.dumps({"model": EMBEDDING_MODEL,
+                                       "source": {"file": source.name, "sha1": digest},
+                                       "people": people}, indent=2), encoding="utf-8")
+        partial.replace(target)
+    return {"people": len(people), **tally, "seconds": round(time.monotonic() - began, 1),
+            "backup": str(backup)}
 
 
 def _sighting_folder(when):
@@ -1004,21 +1213,23 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
 
     began = time.monotonic()
     observations = []
+    missed = []
     frames = 0
     paused = 0.0
     for frame in _sampled_frames(clip, moments):
         paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
         frames += 1
         side_here = [] if sides is not None else None
-        found = faces_in(frame, side_here)
+        found = faces_in(frame, side_here, missed)
         if found or side_here:
             bodies = people.person_boxes(frame)
             observations.extend(f for f in found if _on_a_person(f["box"], bodies))
             if side_here:
                 sides.extend(s for s in side_here if _on_a_person(s["box"], bodies))
     dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
-    logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s)",
-                clip.name, dense, frames, time.monotonic() - began, paused, len(observations))
+    logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s), "
+                "%d without landmarks", clip.name, dense, frames, time.monotonic() - began, paused,
+                len(observations), len(missed))
 
     if not observations:
         return []

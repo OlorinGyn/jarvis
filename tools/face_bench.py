@@ -41,6 +41,7 @@ HEAD_TOPS = IZABEL_TOPS + ("55edf5", "e5bf9c", "80936d", "1f8419", "dbc1b0")
 SWEEP = tuple(round(0.20 + 0.025 * step, 3) for step in range(17))
 FRAME_SIZE = (960, 540)
 TIMING_RUNS = 20
+SFACE_MATCH, SFACE_LEARN = 0.363, 0.45
 
 
 class View:
@@ -95,8 +96,8 @@ class Stored:
     """The embeddings production stored: YuNet + SFace as they ran on the clip."""
 
     name = "stored"
-    match, learn = faces.MATCH_THRESHOLD, faces.LEARN_THRESHOLD
-    files = (faces.DETECTOR_MODEL, faces.RECOGNISER_MODEL)
+    match, learn = SFACE_MATCH, SFACE_LEARN
+    files = (faces.DETECTOR_MODEL, faces.SFACE_MODEL)
 
     def read(self, view):
         return {"accepted": True, "embedding": view.stored, "norm": float(np.linalg.norm(view.stored))}
@@ -105,8 +106,8 @@ class Stored:
 class YuNetSFace:
     """Today's pipeline run again on the 300px view: YuNet, is_frontal unless gate is off, SFace."""
 
-    match, learn = faces.MATCH_THRESHOLD, faces.LEARN_THRESHOLD
-    files = (faces.DETECTOR_MODEL, faces.RECOGNISER_MODEL)
+    match, learn = SFACE_MATCH, SFACE_LEARN
+    files = (faces.DETECTOR_MODEL, faces.SFACE_MODEL)
 
     def __init__(self, gate=True):
         self.gate = gate
@@ -130,60 +131,9 @@ class YuNetSFace:
         return {"accepted": True, "score": face["score"], "embedding": self.embed(image, face)}
 
     def embed(self, image, face):
-        recogniser = faces._recogniser()
+        recogniser = faces._sface()
         feature = recogniser.feature(recogniser.alignCrop(image, face["raw"])).ravel()
         return feature.astype(np.float32)
-
-
-def _distance_points(centres, distances):
-    return np.stack([centres[:, 0] - distances[:, 0], centres[:, 1] - distances[:, 1],
-                     centres[:, 0] + distances[:, 2], centres[:, 1] + distances[:, 3]], axis=1)
-
-
-class Scrfd:
-    """InsightFace's SCRFD detector, decoded the way insightface's own scrfd.py does."""
-
-    STRIDES = (8, 16, 32)
-    ANCHORS = 2
-
-    def __init__(self, path, size=640, threshold=0.5, nms=0.4):
-        self.net = cv2.dnn.readNetFromONNX(str(path))
-        self.size, self.threshold, self.nms = size, threshold, nms
-
-    def detect(self, image):
-        height, width = image.shape[:2]
-        scale = min(self.size / height, self.size / width)
-        resized = cv2.resize(image, (int(width * scale), int(height * scale)))
-        canvas = np.zeros((self.size, self.size, 3), np.uint8)
-        canvas[:resized.shape[0], :resized.shape[1]] = resized
-        blob = cv2.dnn.blobFromImage(canvas, 1 / 128, (self.size, self.size),
-                                     (127.5, 127.5, 127.5), swapRB=True)
-        self.net.setInput(blob)
-        outputs = [o.reshape(-1, o.shape[-1]) for o in self.net.forward(self.net.getUnconnectedOutLayersNames())]
-        boxes, scores, points = [], [], []
-        for stride in self.STRIDES:
-            cells = (self.size // stride) ** 2 * self.ANCHORS
-            by_width = {o.shape[1]: o for o in outputs if o.shape[0] == cells}
-            side = self.size // stride
-            grid = np.stack(np.mgrid[:side, :side][::-1], axis=-1).reshape(-1, 2).astype(np.float32)
-            centres = np.repeat(grid * stride, self.ANCHORS, axis=0)
-            score = by_width[1].ravel()
-            keep = score >= self.threshold
-            if not keep.any():
-                continue
-            box = _distance_points(centres, by_width[4] * stride)
-            landmarks = by_width[10] * stride
-            landmarks = landmarks.reshape(-1, 5, 2) + centres[:, None, :]
-            boxes.append(box[keep]); scores.append(score[keep]); points.append(landmarks[keep])
-        if not boxes:
-            return []
-        boxes, scores, points = np.concatenate(boxes), np.concatenate(scores), np.concatenate(points)
-        boxes /= scale
-        points /= scale
-        rects = [[float(x1), float(y1), float(x2 - x1), float(y2 - y1)] for x1, y1, x2, y2 in boxes]
-        kept = cv2.dnn.NMSBoxes(rects, scores.tolist(), self.threshold, self.nms)
-        return [{"box": np.array(rects[i], np.float32), "score": float(scores[i]),
-                 "points": points[i].astype(np.float32)} for i in np.array(kept).ravel()]
 
 
 def arcface_crop(image, face):
@@ -236,7 +186,7 @@ class Buffalo:
         self.name = name
         self.files = (self.folder / "det_10g.onnx", self.folder / "w600k_r50.onnx",
                       self.folder / "1k3d68.onnx")
-        self.detector = Scrfd(self.files[0], threshold=detect_score)
+        self.detector = faces.Scrfd(self.files[0], threshold=detect_score)
         self.recogniser = cv2.dnn.readNetFromONNX(str(self.files[1]))
         self.landmarks = Landmark3D(self.files[2], BENCH_DIR / "meanshape_68.pkl")
         self.max_pitch, self.max_yaw = max_pitch, max_yaw
@@ -282,7 +232,7 @@ class AdaFace:
             self.finder = YuNetSFace(gate=False)
             self.files = (faces.DETECTOR_MODEL, self.model)
         else:
-            self.finder = Scrfd(BENCH_DIR / "buffalo_l" / "det_10g.onnx", size=size, threshold=score)
+            self.finder = faces.Scrfd(BENCH_DIR / "buffalo_l" / "det_10g.onnx", size=size, threshold=score)
             self.files = (BENCH_DIR / "buffalo_l" / "det_10g.onnx", self.model)
 
     def detect(self, image):

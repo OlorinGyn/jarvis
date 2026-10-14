@@ -50,9 +50,14 @@ class DogGallery(faces.Gallery):
 
     id_prefix = "d"
     sighting_key = "dog_id"
+    model = None
 
     def __init__(self, path=None):
         super().__init__(path or GALLERY_FILE)
+
+    def refit(self, entry):
+        """A dog's descriptor never changed model: the entry as it is."""
+        return entry
 
     def _absorb(self, person):
         """Gather the unnamed crops that are this dog for sure; repeat until none joins.
