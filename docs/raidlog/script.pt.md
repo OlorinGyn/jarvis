@@ -1102,3 +1102,70 @@ derrotados: **O Python Fantasiado** (R7) · **A Porta Velha** (o atalho
 antigo). À espreita: o trabalho decidido acabou. A próxima página está em
 branco, e só o Dono pode escrevê-la — zonas, um vigia de saúde, ou a segunda
 pessoa que nunca mostra o rosto (R42).
+
+## Edição #16 — O Botão de Desligar
+
+`v2026.10.13` · 13 out 2026, noite
+
+**Quadro 1.** Creme quente. A página em branco da edição #15, presa na
+parede — agora coberta de letra dourada, seis pedidos. A coruja lê com a
+lanterna; o castor segura a escada.
+O DONO (balão dourado, fora do quadro): Eu não vi nenhum "provavelmente"
+errado.
+ARQUITETO: Então um "provavelmente" de quem mora aqui ganha um interruptor
+só seu.
+
+**Quadro 2.** Vermelho escuro. O chefe: uma faxineira curvada sobre um balde,
+a sombra na parede com forma de cachorro. Acima dela, um adesivo descola da
+caixa do YOLO: `dog 0.81`. A caixa desliza de lado enquanto ela esfrega,
+deixando um rastro de contornos.
+CHEFE: EU ME MEXO CURVADA! TEU 0.5 NÃO ME SEGURA!
+LEGENDA: O R44 pegou a curvatura parada. A que se mexe manteve 13 caixas de
+cachorro em cinco clipes.
+
+**Quadro 3.** O castor numa mesa de luz, dois fotogramas lado a lado. No
+primeiro, uma caixa alta marcada `person`; no segundo, a caixa alta sumiu e
+uma caixa larga `dog` está sentada no lugar dela.
+DEV: Um cachorro de verdade fica ao lado de uma pessoa que continua ali. Aqui
+a pessoa sumiu, e a caixa de cachorro pegou a cadeira dela.
+
+**Quadro 4.** O castor parafusa uma placa na cadeira vazia: "took the place
+of a person who vanished". O J.A.R.V.I.S. lê em voz alta.
+J.A.R.V.I.S.: `kept person 0.81 (581,356 164x180); took the place of a person who vanished: dog 0.81 (581,356 164x180)`
+J.A.R.V.I.S.: `totals: {'frames': 722, 'frames with a subject': 555, 'person': 555}`
+
+**Quadro 5.** Noite, azul profundo. A coruja segue a cadeira com a lanterna:
+atrás dela, uma corrente de cadeiras iguais, cada uma segurando a próxima,
+saindo pela borda do quadro.
+ARQUITETO: Cada cadeira renova a próxima. Se um cachorro de verdade sentar
+ali um dia, a corrente não acaba.
+DEV: Doze cachorros de verdade, e nenhum sentou.
+ARQUITETO: Então ficamos de vigia. R47.
+
+**Quadro 6.** A porta da frente da casa, à noite. Uma carta marcada
+"probably Gustavo" para num interruptor novo no batente, com a etiqueta
+`probable_resident_person`, em OFF sob uma placa HOME. Uma carta marcada
+"unknown face" passa direto.
+LEGENDA: Em Casa, um provável morador fica em silêncio; Fora, ainda é
+enviado. Um toque desfaz.
+
+**Quadro 7.** O J.A.R.V.I.S. com um grande interruptor vermelho nas costas,
+virado para OFF; o olho se apaga num anel suave. Front e Back continuam
+voando, os cones ainda acesos; a tela do Live na parede ainda se mexe.
+J.A.R.V.I.S.: `Analysis Off`
+LEGENDA (um celular no pé do quadro): "Analysis Off: no events, recordings
+or messages until /on. Live keeps working, and a reminder comes every 3 h."
+
+**Quadro 8.** O M900 à noite, dois drones pairando. Um pacote marcado
+`v2026.10.13` entra; o J.A.R.V.I.S. acorda de olho aceso, e o interruptor
+nas costas voltou sozinho para ON.
+J.A.R.V.I.S.: `Production is running v2026.10.13.`
+LEGENDA: O Off nunca é escrito em lugar nenhum: todo reinício acorda em On.
+Dez segundos de pausa; as duas câmeras de volta três segundos depois.
+
+**Cartão final.** Habilidades: **A Cadeira Vazia** (R46) · **O Interruptor
+do Provável** (backlog 30) · **O Botão de Desligar** (backlog 29, `/on` e
+`/off`). Chefes derrotados: **A Curvatura que Anda** (R46). À espreita: a
+corrente sem fim de cadeiras (R47, de vigia); e a seguir, as 40 vistas
+começam a se cuidar sozinhas — a primeira vez que o sistema apaga fotos por
+conta própria, por escolha do Dono.

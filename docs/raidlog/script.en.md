@@ -1061,3 +1061,69 @@ defeated: **The Python in Costume** (R7) · **The Old Door** (the shim).
 Lurking: the decided work is done. The next page is blank, and only the Owner
 can write on it — zones, a health watch, or the second person who never shows
 a face (R42).
+
+## Issue #16 — The Off Switch
+
+`v2026.10.13` · 13 Oct 2026, night
+
+**Panel 1.** Warm cream. The blank page from issue #15, pinned to the wall —
+now covered in gold handwriting, six requests deep. The owl reads it with a
+lantern; the beaver holds the ladder.
+THE OWNER (gold balloon, off panel): I have not seen a wrong maybe.
+ARCHITECT: Then a "probably" of someone who lives here gets a switch of its
+own.
+
+**Panel 2.** Dark red. The boss: a cleaner bent over a bucket, her shadow on
+the wall shaped like a dog. Above her, a sticker peels off YOLO's box:
+`dog 0.81`. The box slides sideways as she scrubs, leaving a trail of
+outlines.
+BOSS: I MOVE WHILE I BEND! YOUR 0.5 CANNOT HOLD ME!
+CAPTION: R44 caught the still bend. The moving one kept 13 dog boxes in five
+clips.
+
+**Panel 3.** The beaver at a light table, two film frames side by side. In
+the first, a tall box marked `person`; in the second, the tall box is gone
+and a wide `dog` box sits in its seat.
+DEV: A real dog sits beside a person who is still there. Here the person
+vanished, and the dog box took her chair.
+
+**Panel 4.** The beaver bolts a nameplate on the empty chair: "took the place
+of a person who vanished". J.A.R.V.I.S. reads it out.
+J.A.R.V.I.S.: `kept person 0.81 (581,356 164x180); took the place of a person who vanished: dog 0.81 (581,356 164x180)`
+J.A.R.V.I.S.: `totals: {'frames': 722, 'frames with a subject': 555, 'person': 555}`
+
+**Panel 5.** Night, deep blue. The owl follows the chair with her lantern:
+behind it, a chain of identical chairs, each one holding up the next, running
+off the panel's edge.
+ARCHITECT: Every chair renews the next. If a real dog ever sits there, the
+chain never ends.
+DEV: Twelve real dogs, and none sat.
+ARCHITECT: Then we keep watch. R47.
+
+**Panel 6.** The house's front door at night. A letter marked "probably
+Gustavo" stops at a new switch on the doorframe labelled
+`probable_resident_person`, set OFF under a sign HOME. A letter marked
+"unknown face" passes straight through.
+CAPTION: Home silences a probable resident; Away still sends it. One tap
+undoes it.
+
+**Panel 7.** J.A.R.V.I.S. with a big red switch on its back, turned to OFF;
+its eye dims to a soft ring. Front and Back keep flying, their cones still
+lit; the Live screen on the wall still moves.
+J.A.R.V.I.S.: `Analysis Off`
+CAPTION (a phone at the bottom of the panel): "Analysis Off: no events,
+recordings or messages until /on. Live keeps working, and a reminder comes
+every 3 h."
+
+**Panel 8.** The M900 at night, two drones hovering. A parcel marked
+`v2026.10.13` goes in; J.A.R.V.I.S. wakes with its eye bright, and the switch
+on its back has snapped back to ON on its own.
+J.A.R.V.I.S.: `Production is running v2026.10.13.`
+CAPTION: Off is never written down: every restart wakes On. Ten seconds of
+pause; both cameras back three seconds later.
+
+**Closing card.** Abilities: **The Empty Chair** (R46) · **The Probable
+Switch** (backlog 30) · **The Off Switch** (backlog 29, `/on` and `/off`).
+Bosses defeated: **The Moving Bend** (R46). Lurking: the endless chain of
+chairs (R47, on watch); and next, the 40 views start managing themselves —
+the first time the system deletes photos on its own, by the Owner's choice.
