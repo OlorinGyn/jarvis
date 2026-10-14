@@ -102,9 +102,15 @@ a second gets `406 Not Acceptable`. That is why one ffmpeg makes both outputs.
 on the assembled clip at full resolution, off the critical path. This is also
 why a person's name is known only seconds after the event (ARCHITECTURE 22.3).
 
-**YuNet and SFace, not InsightFace.** Both built into OpenCV, no new
-dependency. Measured: similarity **1.000** for the same face and **0.045** for
-different faces, with a 0.363 threshold.
+**YuNet and SFace, not InsightFace — reopened by the user, 14/10/2026.**
+Chosen because both are built into OpenCV, no new dependency, and measured
+then at similarity **1.000** for the same face and **0.045** for different
+faces, with a 0.363 threshold — on good frontal faces. R49 showed what that
+measurement could not: YuNet takes the top or the back of a head for a face,
+and those views drew wrong "sure" matches. **The user's decision:** if much
+better models exist, they will be used, even though new models mean new
+embeddings for every gallery — with a migration, as for any change that is
+not additive. "No new dependency" was PROCESS 5's bias, not a reason.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

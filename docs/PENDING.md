@@ -28,21 +28,14 @@ grows, decisions are being postponed.
   (`http://192.168.0.18:8765`).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
-- **R48 and R49 — backlog 28 is built but held, and 31 with it** (reviews
-  20 and 21, 14/10/2026). First, on Gustavo's page, delete the twelve views
-  that are the top or the back of a head, not a face (R49):
-  - in **Waiting**, the seven of Izabel: photos starting `c58c97`, `e18912`,
-    `b3f8b9`, `69f368`, `1bbfa1`, `860372` and `eedcf9`, at positions 11, 12,
-    17, 20, 21, 22 and 26 on 14/10;
-  - in **Chosen**, the five of Gustavo that drew them: positions 15, 16, 18,
-    19 and 31, photos starting `55edf5`, `e5bf9c`, `80936d`, `1f8419` and
-    `dbc1b0`.
-
-  Then choose R48's (a), (b) — recommended — or (c) in BACKLOG 2, and whether
-  R49 may look for a stronger recogniser (new embeddings for every gallery)
-  or must stay with SFace. Then the architect releases 28 and 31 and runs
-  `settle_waiting.py`; 31's check on the M900 follows the release (Settings →
-  Detection).
+- **The twelve head-tops on Gustavo's page** (R49, 14/10/2026): deleting
+  them now helps production today — without the five in Chosen, no face
+  is matched to the wrong person (HISTORY 13.22). In **Waiting** the photos
+  starting `c58c97`, `e18912`, `b3f8b9`, `69f368`, `1bbfa1`, `860372` and
+  `eedcf9` (positions 11, 12, 17, 20, 21, 22 and 26 on 14/10); in **Chosen**
+  positions 15, 16, 18, 19 and 31, photos starting `55edf5`, `e5bf9c`,
+  `80936d`, `1f8419` and `dbc1b0`. R49's measurement uses a copy taken
+  before, so nothing is lost. R48 and R49 themselves are decided (BACKLOG 2).
 - **R42**: accept the corner, or count people with YOLO (recommended)
   (BACKLOG 2).
 

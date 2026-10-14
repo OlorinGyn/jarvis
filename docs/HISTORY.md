@@ -1303,6 +1303,15 @@ pictures.
 CONTEXT 10; PYTHON 17.4 and 39; BACKLOG 1, 2 (R48, R49, R47) and 3; PENDING.
 No developer session planned: R48 and R49 wait for the user.
 
+**The user's answer, the same morning:** no reason to change the screen's
+behaviour without R49 — backlog 28 waits for it — and R49 is the top
+priority; if much better models exist, they will be used. CONTEXT 3's
+"YuNet and SFace, not InsightFace" was reopened with that reason, and its
+old one logged as a bias (PROCESS 5.3). Production's `faces/` was copied to
+`backups/r49_faces_20261014/` so the user can delete the twelve head-tops
+now and the measurement keeps them; developer 20 is planned with R49's
+measurement (BACKLOG 3).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -1356,4 +1365,4 @@ of `CONTEXT.md`.
 | D18 | developer | high | 13/10 night | session 18: backlog 28 — the rule, the vectorised dog matrix, `settle_waiting.py` (216 tests) | 34% → 40% | 14% → 15% | ~163k tokens at the end, a new conversation |
 | A27 | architect | ultracode | 13/10 22:36 – 14/10 10:15 | review 20: production's galleries copied and settled, three recognition measurements, contact sheets of 146 faces, R48; HANDOFF integrated, PYTHON 38; no release; developer 19 planned. The connection dropped overnight mid-measurement and the session resumed in the morning | 42% → unknown at the drop; 0% → 7% in the new window | 15% → 17% | 91k → about 230k tokens, a new conversation |
 | D19 | developer | high | 14/10 morning | session 19: backlog 31 — three minimums in Settings, read without a restart (234 tests) | 7% → 14% | 17% → 18% | 125k tokens at the end, a new conversation |
-| A28 | architect | ultracode | 14/10 10:05–10:30 | two questions from the user (where the work stands, the decisions waiting), then review 21: three clips replayed old against new, the user's objection to R48 measured — cross-person similarity, a contact sheet, leave-one-out without the five head-tops, three quality cues — R49; the EPUB list; no release, no developer planned | 14% → 22% (the questions before the review cost under a point) | 18% → 19% | 84k → 179k tokens, the conversation the user opened this morning |
+| A28 | architect | ultracode | 14/10 10:05–10:40 | two questions from the user (where the work stands, the decisions waiting), then review 21: three clips replayed old against new, the user's objection to R48 measured — cross-person similarity, a contact sheet, leave-one-out without the five head-tops, three quality cues — R49; the EPUB list; the user's answer: R49 first, better models allowed — CONTEXT 3 reopened, production's faces copied, developer 20 planned | 14% → 25% (the questions before the review cost under a point) | 18% → 19% | 84k → 208k tokens, the conversation the user opened this morning |

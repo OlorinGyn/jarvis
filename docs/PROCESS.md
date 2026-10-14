@@ -289,6 +289,13 @@ not die with the window.
 tests; Claude never proposed them and the user never refused. R6 added them;
 there are 160 on 12/10 (ARCHITECTURE 19.5).
 
+**SFace because it came with OpenCV — logged 14/10/2026.** YuNet and SFace
+were chosen over InsightFace for being built into OpenCV (CONTEXT 3), and
+measured only on good frontal faces. Nobody compared them with stronger
+models on this house's cameras, which look down on heads. R49 is what it
+cost: the top of a head passed as a face and drew wrong "sure" matches. The
+user's answer: much better models will be used if they exist.
+
 **Everything in one process — a consequence, not a choice.** Capture,
 detection, recording, faces, the web and the Telegram poller share one Python
 process, with threads for whatever must not block. It works with 2 cameras;

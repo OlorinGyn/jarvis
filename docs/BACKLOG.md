@@ -188,8 +188,8 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R49 | **high** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | open (below); the cause of R48 |
-| R48 | **high — the user's decision** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | open (below); holds backlog 28's release, and 31's with it |
+| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | open (below): developer 20 measures stronger models |
+| R48 | **high — decided 14/10** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | decided: backlog 28 waits for R49; 31 waits with it |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
 | R30 | **high** | A face seen from the side is dropped, so many person events end without a face photo | (a) done `9fb8862`; (b) needs a second named person — **met on 13/10: Izabel** (HISTORY 13.12) |
@@ -216,8 +216,12 @@ score, the eye-to-mouth height over the eye spread and the embedding's
 length all overlap between the two. What is left to try: a face-quality
 measure, a recogniser made for poor faces, or the user removing them by
 hand. A different recogniser means new embeddings for every gallery — not
-additive, the user's decision. **Now:** the user deletes the five with the
-seven (`PENDING.md`); measure before any code.
+additive, the user's decision. **The user's decision, 14/10/2026:** R49
+comes before everything else, and if much better models exist they will be
+used, with a migration of every gallery (CONTEXT 3). Step 1 is developer
+20's measurement (section 3); step 2, the switch and the migration, is
+planned with its numbers. The user may delete the twelve views now: the
+measurement uses a copy taken before (`backups/r49_faces_20261014/`).
 
 **R48 — The 40-view rule lets a wrong-person view in first (high, the
 user's decision, review 20).** Backlog 28 keeps what is most different, and a
@@ -239,7 +243,10 @@ stops growing as the user asked, no wrong match can enter a full Chosen, and
 the user's own naming, which is right by definition, still renews the 40.
 **Review 21:** the wrong views are head-tops (R49), and nothing stops a new
 one being learned "sure" through another head-top of the person, so (b)
-still holds until R49 is fixed.
+still holds until R49 is fixed. **Decided by the user, 14/10/2026:** "no
+reason to change the screen's behaviour without doing R49" — backlog 28 is
+not released before R49; the rule is read again then, with the new model's
+numbers.
 
 **R42 — In Home, a resident's face hides a second person with no face
 (medium, the user's decision).** The faceless message goes only when the scan
@@ -272,20 +279,56 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 ## 3. Next sessions
 
 **Review 21 is done, without a release:** backlog 31 is reviewed and sits on
-`master` with 28, which waits for R48. Production stays on `v2026.10.13`; the
-next release carries 28, as the user decides it, and 31.
+`master` with 28, and 28 waits for R49 (the user, 14/10). Production stays
+on `v2026.10.13`; the next release carries R49, 28 and 31.
 
-**No developer session is planned — it waits for the user** (CLAUDE.md, stop
-and wait): R48 and R49 both touch the face galleries, and R49's way out may
-change the recogniser, which is the user's decision. **Proposed for developer
-20, once the user answers:** R48 as decided — under (b), past 40 only the
-user's naming and merging renew Chosen — and R49's measurement before any
-code: on production's kept faces with review 21's twelve head-tops labelled,
-which measure tells a head-top from a face.
+**Developer 20 (planned 14/10): R49, step 1 — measure; change nothing in
+production.** The user's decision: R49 comes before everything, and much
+better models will be used if they exist, even with new embeddings for every
+gallery (CONTEXT 3). Read HISTORY 13.21 and 13.22 first.
 
-**Waits for the user:** R48, R49's direction, and with them backlog 28's and
-31's release and backlog 32 (its table means something only on clean labels).
+- **The data.** `backups/r49_faces_20261014/`, a copy of production's
+  `faces/` taken by the architect on 14/10 before the user deletes anything:
+  `gallery.json` with Gustavo (40 Chosen, 31 Waiting) and Izabel (40, 35),
+  and the photos in `views/`. A view's label is its person, except **the
+  twelve head-tops, labelled "not a face"**: in Gustavo's Waiting the files
+  starting `c58c97`, `e18912`, `b3f8b9`, `69f368`, `1bbfa1`, `860372` and
+  `eedcf9` (the top of Izabel's head), in his Chosen `55edf5`, `e5bf9c`,
+  `80936d`, `1f8419` and `dbc1b0` (the top of his). Each view is a context
+  crop of 300 px with the face about 136 px wide — what a migration would
+  embed again.
+- **A benchmark tool,** `tools/face_bench.py`, kept in the repository. For
+  each candidate pipeline, detect and embed every view, then report:
+  (1) how many of the twelve head-tops it accepts as a face; (2) leave-one-out
+  over the named views — each against the Chosen of both, its own exact
+  copies left out — as sure right, sure wrong and none at the pipeline's own
+  threshold, plus the closest cross-person pair against each person's own
+  spread; (3) the cost per face on the M900 and the model's size. The
+  baseline, YuNet + SFace with today's `is_frontal`, must reproduce review
+  21's 111 / 7 / 28.
+- **Candidates, the well-regarded first** (PROCESS 5): (1) InsightFace's
+  `buffalo_l` — the SCRFD-10G detector, the ArcFace R50 recogniser, and its
+  3D landmark model, whose head pitch sees the "head down" that `is_frontal`
+  cannot. Its pretrained models are licensed for non-commercial research:
+  a home system is non-commercial, but say it plainly in the HANDOFF.
+  (2) AdaFace (CVPR 2022), made for poor faces; the length of its embedding
+  before normalisation is a quality cue — a head-top should come out short.
+  A trustworthy ONNX export or a one-off export; check its licence. (3) A
+  face-quality model (CR-FIQA, MagFace) only if (1) and (2) still accept
+  head-tops. Models only from their authors' releases. Run them with
+  `cv2.dnn` when it loads them; otherwise `onnxruntime`, a new compiled
+  dependency — check that it runs under Smart App Control (PROCESS 2.1)
+  before building on it.
+- **Not this session:** any change to `faces.py`, the galleries or the page.
+  The switch and its migration — every gallery embedded again from its
+  views, every older file still readable — are step 2, planned in the review
+  with the user's choice.
+- **HANDOFF:** the table per candidate, each licence, and the
+  recommendation.
 
-**Not planned:** R42 waits for the user's choice; R30 (b) can now be measured
-with Izabel and joins a later session; R47 is a watch. R14, R12 and R9 as
-before. Every other open backlog item is **(proposto)**.
+**Waits for the user:** R42; backlog 32 waits for R49 (its table means
+something only on clean labels and on the final model).
+
+**Not planned:** R30 (b) joins a later session — with a new detector it is
+measured again anyway; R47 is a watch. R14, R12 and R9 as before. Every other
+open backlog item is **(proposto)**.
