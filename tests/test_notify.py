@@ -44,11 +44,14 @@ def sent(monkeypatch):
 class Inline:
     """A thread that runs at start(), so a test sees the message at once."""
 
-    def __init__(self, target, args=(), daemon=None):
-        self.target, self.args = target, args
+    def __init__(self, target, args=(), kwargs=None, daemon=None):
+        self.target, self.args, self.kwargs = target, args, kwargs or {}
 
     def start(self):
-        self.target(*self.args)
+        self.target(*self.args, **self.kwargs)
+
+    def join(self):
+        pass
 
 
 def face(person_id, name="", score=0.5, resident=False):
@@ -268,3 +271,66 @@ def test_a_person_after_a_sent_dog_message_is_still_held(tmp_path, monkeypatch, 
     assert home.notified and sent[-1].startswith("Front: Aurora\n")
     home.update(frame(), [DOG, PERSON])
     assert home.person_held
+
+
+def test_a_person_hiding_beside_a_silenced_resident_reaches_the_phone(sent, best):
+    resident = face("p_1", "Gustavo", 0.6, True)
+    assert notify.after_scan("Front", START, [resident], True, False, None, best, HOME, people=2) == 1
+    assert sent == ["Front 12:00:00: 2 people seen, 1 face found, best view"]
+
+
+def test_as_many_people_as_silenced_faces_sends_nothing(sent, best):
+    found = [face("p_1", "Gustavo", 0.6, True), face("p_2", "Izabel", 0.6, True)]
+    assert notify.after_scan("Front", START, found, True, False, None, best, HOME, people=2) == 0
+    assert notify.after_scan("Front", START, found[:1], True, False, None, best, HOME, people=1) == 0
+    assert sent == []
+
+
+def test_a_face_that_reached_the_phone_accounts_for_the_scene(sent, best):
+    found = [face("p_1", "Gustavo", 0.6, True), face("p_9")]
+    assert notify.after_scan("Front", START, found, True, False, None, best, HOME, people=3) == 1
+    assert sent == ["Front 12:00:00: unknown face"]
+
+
+def test_the_hidden_person_answers_to_the_faceless_switch_and_the_cooldown(sent, best):
+    resident = [face("p_1", "Gustavo", 0.6, True)]
+    off = {**HOME, "notify_modes": {"home": {"faceless_person": False}}}
+    assert notify.after_scan("Front", START, resident, True, False, None, best, off, people=2) == 0
+    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 1
+    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 0
+    assert notify.after_scan("Front", START, resident, True, True, None, best, HOME, people=2) == 1
+
+
+def test_people_are_counted_at_once_not_over_the_event(tmp_path, monkeypatch, sent):
+    home = recorder(tmp_path, monkeypatch, HOME)
+    other = Detection(500, 60, 70, 240, 0.8, "person")
+    home.update(frame(), [PERSON])
+    home.update(frame(), [PERSON, other])
+    home.update(frame(), [other])
+    assert home.most_people == 2
+
+
+def test_a_dog_taken_for_a_person_costs_one_extra_message(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: captured.update(kwargs))
+    captured = {}
+    home = recorder(tmp_path, monkeypatch, HOME)
+    dog_as_person = Detection(10, 200, 120, 90, 0.6, "person")
+    home.update(frame(), [PERSON, dog_as_person])
+    meta = home.stop()
+    clips.wait_for_jobs()
+    assert captured["people"] == 2 and meta["most_people"] == 2
+    best = tmp_path / "12-00-00.best.jpg"
+    best.write_bytes(b"jpg")
+    resident = [face("p_1", "Gustavo", 0.6, True)]
+    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME,
+                             people=captured["people"]) == 1
+
+
+def test_the_hidden_person_follows_a_fake_scan(tmp_path, monkeypatch, sent, best):
+    monkeypatch.setattr(notify, "load", lambda: HOME)
+    monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
+    monkeypatch.setattr(clips, "_concat", lambda segments, destination: destination.write_bytes(b"x"))
+    monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [face("p_1", "Gustavo", 0.6, True)])
+    clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
+                    best, held=True, people=2)
+    assert sent == ["Front 12:00:00: 2 people seen, 1 face found, best view"]

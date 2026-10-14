@@ -189,14 +189,17 @@ def faces_seen(camera, started_at, sightings, settings=None):
 
 
 def after_scan(camera, started_at, found, held, notified, side_view=None, best=None,
-               settings=None):
+               settings=None, people=0):
     """Every message a finished face scan sends. Returns how many went out.
 
     Faces are announced each by its case. With no face, the side view, else
     the best view, is the faceless-person case: a follow-up after a sent
     event, as before, held or not; or, when the person was held and nothing
     of the event went out, the person message itself, which then answers to
-    the camera's cooldown like a first message.
+    the camera's cooldown like a first message. people is the most persons
+    YOLO saw in one frame: when the held person's faces were all silenced and
+    YOLO saw more people than faces, the best view goes out as the same case
+    (R42 (b)).
     """
     settings = settings or load()
     if not configured(settings):
@@ -205,10 +208,21 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
         sent = faces_seen(camera, started_at, found, settings)
         if held and sent:
             _claim(camera)
+        silenced = not any(modes.allowed(person_case(s), settings) for s in found)
+        if held and silenced and people > len(found) and best:
+            return sent + _faceless(camera, started_at, best, held, notified, settings,
+                                    hidden_person, people, len(found))
         return sent
     side = Path(side_view) if side_view and Path(side_view).exists() else None
     if side is None and not best:
         return 0
+    if side is not None:
+        return _faceless(camera, started_at, side, held, notified, settings, side_face)
+    return _faceless(camera, started_at, best, held, notified, settings, best_view)
+
+
+def _faceless(camera, started_at, image, held, notified, settings, message, *extra):
+    """Send one faceless-person message, if its switch is on and, alone, the camera's cooldown ran out."""
     if not modes.allowed("faceless_person", settings):
         logger.info("Notification %s no face: skipped: %s mode", camera, modes.mode_of(settings))
         return 0
@@ -218,9 +232,7 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
             return 0
     elif not notified:
         return 0
-    if side is not None:
-        return int(bool(side_face(camera, started_at, side, settings)))
-    return int(bool(best_view(camera, started_at, best, settings)))
+    return int(bool(message(camera, started_at, image, *extra, settings=settings)))
 
 
 def side_face(camera, started_at, image, settings=None):
@@ -244,6 +256,17 @@ def best_view(camera, started_at, image, settings=None):
         return False
     when = started_at.strftime("%H:%M:%S")
     return _send_logged(f"{camera} best view", f"{camera} {when}: no face seen, best view",
+                        str(image), settings)
+
+
+def hidden_person(camera, started_at, image, people, faces, settings=None):
+    """Send the best view of a scene where YOLO saw more people than the scan found faces (R42 (b))."""
+    settings = settings or load()
+    if not configured(settings):
+        return False
+    when = started_at.strftime("%H:%M:%S")
+    found = f"{faces} face{'s' if faces != 1 else ''} found"
+    return _send_logged(f"{camera} hidden person", f"{camera} {when}: {people} people seen, {found}, best view",
                         str(image), settings)
 
 

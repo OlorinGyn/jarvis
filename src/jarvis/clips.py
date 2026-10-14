@@ -87,7 +87,7 @@ def _clip_moments(segments, spans):
 
 
 def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
-              person_spans=(), dog_view=None, held=False):
+              person_spans=(), dog_view=None, held=False, people=0):
     """Wait for the final segment to close, build the clip, then read faces.
 
     When no face was found, the phone gets the side view or the best view of
@@ -100,7 +100,8 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
                                end + timedelta(seconds=POST_SECONDS))
     if not segments:
         if "person" in labels:
-            notify.after_scan(camera.label, start, [], held, notified, None, best_view)
+            notify.after_scan(camera.label, start, [], held, notified, None, best_view,
+                              people=people)
         return
     _concat(segments, destination)
     found = []
@@ -113,7 +114,7 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if "person" in labels:
         notify.after_scan(camera.label, start, found, held, notified,
-                          faces.side_view_path(destination), best_view)
+                          faces.side_view_path(destination), best_view, people=people)
     if dog_view:
         try:
             dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
@@ -210,6 +211,7 @@ class EventRecorder:
         self.best_view = None
         self.dog_view = None
         self.person_spans = []
+        self.most_people = 0
 
     @property
     def protect_from(self):
@@ -259,6 +261,7 @@ class EventRecorder:
         self.best_view = None
         self.dog_view = None
         self.person_spans = []
+        self.most_people = 0
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
 
@@ -301,11 +304,13 @@ class EventRecorder:
 
         The first frame is whatever triggered the event, often a pet. Taller
         boxes win, so a person standing beats a dog lying down even when the
-        detector mistakes it for one.
+        detector mistakes it for one. The most persons in one frame is what the
+        face scan's count is weighed against (R42 (b)).
         """
         persons = [s for s in subjects if s.is_person]
         if not persons:
             return
+        self.most_people = max(self.most_people, len(persons))
         self._note_person(datetime.now())
         score = max(s.confidence * s.h for s in persons)
         if self.best_view is None or score > self.best_view["score"]:
@@ -368,6 +373,8 @@ class EventRecorder:
         }
         if best is not None:
             meta["best_thumbnail"] = best.name
+        if self.most_people:
+            meta["most_people"] = self.most_people
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
@@ -387,7 +394,8 @@ class EventRecorder:
                                args=(self.camera, self.started_at, ended_at,
                                      destination, set(self.labels), self.notified,
                                      followup, [tuple(s) for s in self.person_spans],
-                                     self.dog_view, self.person_held))
+                                     self.dog_view, self.person_held),
+                               kwargs={"people": self.most_people})
         job.start()
         _jobs.append(job)
 

@@ -92,7 +92,7 @@ class Idle:
 def core(tmp_path, monkeypatch, clock):
     monkeypatch.setattr(cameras, "Housekeeper", Idle)
     monkeypatch.setattr(notify, "event", lambda *args: (False, False))
-    monkeypatch.setattr(clips, "_assemble", lambda *args: None)
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: None)
     return cameras.Core([Cam(tmp_path, [PERSON])])
 
 
