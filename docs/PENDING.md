@@ -56,6 +56,17 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
+**Asked on 14/10 at 12:55, to fill the window from 15:00** (an answer may
+reach a cleared architect: read it against this list).
+1. **R42**: (a) accept the corner, or (b) count people with YOLO
+   (recommended).
+2. **Backlog 34**: does switching Off ask "are you sure?" first
+   (recommended: yes)?
+3. **Which (proposto) items become work**: 1 zones per camera, 2 a warning
+   when a camera goes down, 33 "Not a dog / Not a person" buttons on the
+   Telegram message, 6 search and filter on Recordings. Each is a feature,
+   so the user's decision (PROCESS 1).
+
 None. The requests of 13/10/2026 (detection sensitivity, probable residents in
 Home, `/on` and `/off`, the photos piling up, the 40 views managing themselves,
 the "maybe" threshold) were answered by the user the same evening and are
