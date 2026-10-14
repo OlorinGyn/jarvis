@@ -114,6 +114,13 @@ and those views drew wrong "sure" matches. **The user's decision:** if much
 better models exist, they will be used, even though new models mean new
 embeddings for every gallery — with a migration, as for any change that is
 not additive. "No new dependency" was PROCESS 5's bias, not a reason.
+**Measured and decided, 14/10/2026** (ARCHITECTURE 10.14). InsightFace's
+SCRFD detector and ArcFace recogniser beat every other candidate on this
+house's photos. The user's answer was "if it is the best, we use it". That
+accepts InsightFace's licence for its models, "for non-commercial research
+purposes only", for a private home system. Which of its recognisers is
+measured first: R50 from `buffalo_l` or R100 from `antelopev2`, both in the
+author's release.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

@@ -36,19 +36,6 @@ grows, decisions are being postponed.
   positions 15, 16, 18, 19 and 31, photos starting `55edf5`, `e5bf9c`,
   `80936d`, `1f8419` and `dbc1b0`. R49's measurement uses a copy taken
   before, so nothing is lost. R48 and R49 themselves are decided (BACKLOG 2).
-- **R49, two answers before step 2** (review 22, 14/10/2026; ARCHITECTURE
-  10.14). (1) **Who is in the unnamed entries.** A contact sheet went to
-  the user in review 22's conversation, with the entries lettered from
-  `backups/r49_faces_20261014`: A `p_a8ef5acd`, B `p_385283de`, C
-  `p_4e2d9f32` show a woman with long loose hair; D `p_6c76506e` and E
-  `p_5bc580f7` grey hair tied back and a red top, like Izabel's photos; F
-  `p_d26b745a` and G `p_c5ed26cc` unclear. If A–C are not Izabel, ArcFace at
-  a 0.40 sure threshold learns two of their views as her. If they are, it
-  recognises her where SFace cannot. Naming them on the People page answers
-  it too. (2) **buffalo_l's licence**, "for non-commercial research purposes
-  only". A private home system is non-commercial but not research. Yes means
-  step 2 with SCRFD + ArcFace (BACKLOG 3). No means staying on SFace with the
-  head-tops deleted by hand and R48's option (b), a plan made with the user.
 - **R42**: accept the corner, or count people with YOLO (recommended)
   (BACKLOG 2).
 

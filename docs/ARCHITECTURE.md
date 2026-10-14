@@ -1637,12 +1637,14 @@ it on all 146 views. LMEDS differs on 19 views, cosine as low as 0.57, though
 the totals barely move (sure right 88 → 89 at 0.40). The switch uses
 `alignCrop`. **Only two people:** the gallery's seven unnamed entries, 22
 views, all match Izabel best under ArcFace, up to 0.546. Three of them, 11
-views, show a woman with long loose hair. If she is someone else, ArcFace at
-a 0.40 sure threshold would learn 2 of her views as Izabel (0.546 and 0.469)
-where SFace at 0.45 learns none (0.372 at most), though SFace calls two of
-them "probably Gustavo" (0.405, 0.385). If she is Izabel, ArcFace recognises
-her where SFace cannot. Named as her own person, both models give all 11 of
-her views to her. The user's answer is in `PENDING.md`.
+views, show a woman with long loose hair, who could have been a third person
+that ArcFace confuses with Izabel. **The user's answer: all 22 are Izabel**,
+the long-haired ones with her hair down. So they are 22 more test views of
+her, the hardest ones. Matched against the clean Chosen, ArcFace (0.30 /
+0.40) gets 8 sure right, 10 maybe right, 4 none and nothing wrong. SFace
+(0.363 / 0.45) gets no sure match, at most 5 maybe right, and two "probably
+Gustavo" (0.405, 0.385). There is still no stranger to measure, because the
+gallery holds none.
 
 **Cost.** The scan embeds every frontal face of every sampled frame — up to
 360 frames a clip, 300 of them dense where a person was seen (12.9). About

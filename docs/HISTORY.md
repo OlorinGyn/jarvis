@@ -216,7 +216,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 19 | 13/10/2026 | `v2026.10.12.4..594fbc6`, developer session 17 — R46, backlog 30 and 29 | no code fixed; R46 replayed on `15-00-17` (no dog left) and on two true dogs with a person (nothing relabelled); 208 tests pass, `check_data` reads every file; R46 closed, R47 opened (low, a watch); release `v2026.10.13`, deployed at 22:22: 913 events, 200 face and 363 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start, `/api/status` says `"analysis": "On"` (13.20) |
 | 20 | 13–14/10/2026 | `v2026.10.13..212179e`, developer session 18 — backlog 28 | no code fixed: the rule does what item 28 says; 216 tests pass, `check_data` reads every file. **Not released**: on a copy of production's galleries the rule would have put 6 of Izabel's faces, misfiled in Gustavo's Waiting by wrong "sure" matches, into his Chosen; the once-only tool was not run and R48 waits for the user (13.21) |
 | 21 | 14/10/2026 | `0f68445..865eb7f`, developer session 19 — backlog 31 | no code fixed; 234 tests pass, `check_data` reads every file; at the defaults the detector decides as before on R46's three clips, replayed old against new. **Not released**: 31 waits on `master` with 28. The user's objection to R48 led to its cause: the seven wrong views and five of Gustavo's references are the top of a head, not a face — R49 (13.22) |
-| 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); a possible third person in the unnamed entries would be learned as Izabel by ArcFace at 0.40 — two questions to the user; no release, no developer planned (13.23) |
+| 22 | 14/10/2026 | `865eb7f..706883b`, developer session 20 — R49 step 1, `tools/face_bench.py` | no code fixed; 234 tests pass; the SCRFD decoding and every model's preprocessing checked against their authors', the baseline reproduced, the alignment measured (OpenCV's `alignCrop` is the least-squares fit, LMEDS is not); the unnamed entries checked as a possible third person — the user: all are Izabel, and InsightFace if it is the best; no release; developer 21 planned with R49 step 2 (13.23) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1372,8 +1372,19 @@ named, to recognition-oss-pack@insightface.ai. That is the user's call too.
 
 **Documentation.** ARCHITECTURE 10.14 (new) and the file tree; CONTEXT 3
 (PyTorch imported under Smart App Control, not needed), 9 and 10; PYTHON 40;
-BACKLOG 2 (R49) and 3 (step 2's frame); PENDING. No developer session
-planned: step 2 waits for the user's two answers.
+BACKLOG 2 (R49) and 3; PENDING.
+
+**The user's answers, the same hour.** All seven unnamed entries are Izabel,
+the long-haired ones with her hair down. Asked whether InsightFace is
+certainly the best: "if it is, we use it". The honest answer was that it is
+the best of what was measured, by far, and that one stronger candidate from
+the same author was not measured: `antelopev2`'s R100, trained on
+Glint360K, in the same release and under the same licence, about twice as
+slow. Developer 21 measures it first, with the 22 views of Izabel as extra
+probes and OpenCV's alignment, keeps R50 unless R100 is clearly better, and
+then makes the switch and the migration. The migration writes a new gallery
+file, so that an automatic rollback to `v2026.10.13` still reads the old one
+(BACKLOG 3).
 
 ## 14.3 Usage log
 
@@ -1430,4 +1441,4 @@ of `CONTEXT.md`.
 | D19 | developer | high | 14/10 morning | session 19: backlog 31 — three minimums in Settings, read without a restart (234 tests) | 7% → 14% | 17% → 18% | 125k tokens at the end, a new conversation |
 | A28 | architect | ultracode | 14/10 10:05–10:40 | two questions from the user (where the work stands, the decisions waiting), then review 21: three clips replayed old against new, the user's objection to R48 measured — cross-person similarity, a contact sheet, leave-one-out without the five head-tops, three quality cues — R49; the EPUB list; the user's answer: R49 first, better models allowed — CONTEXT 3 reopened, production's faces copied, developer 20 planned | 14% → 25% (the questions before the review cost under a point) | 18% → 19% | 84k → 208k tokens, the conversation the user opened this morning |
 | D20 | developer | high | 14/10 morning | session 20: R49 step 1 — `tools/face_bench.py`, eleven pipelines measured, AdaFace and MagFace exported to ONNX once | 25% → 35% | 19% → 21% | 188k tokens at the end, a new conversation |
-| A29 | architect | ultracode | 14/10 11:05–11:20 | review 22: `face_bench.py` read against insightface's code, the baseline and SCRFD + ArcFace run again, the alignment measured three ways, the unnamed entries matched and a contact sheet, the licence read; HANDOFF integrated, ARCHITECTURE 10.14, PYTHON 40; no release, two questions to the user | 38% → 47% at the commit | 21% → 22% | 97k → 220k tokens, a new conversation |
+| A29 | architect | ultracode | 14/10 11:05–11:20 | review 22: `face_bench.py` read against insightface's code, the baseline and SCRFD + ArcFace run again, the alignment measured three ways, the unnamed entries matched and a contact sheet, the licence read; HANDOFF integrated, ARCHITECTURE 10.14, PYTHON 40; no release; the user's two answers, the release assets read, developer 21 planned and started | 38% → 50% at the commit | 21% → 22% | 97k → 246k tokens, a new conversation |

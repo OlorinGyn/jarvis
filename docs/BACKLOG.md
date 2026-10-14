@@ -188,7 +188,7 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | step 1 measured (review 22): SCRFD + ArcFace R50 leads on two people; step 2 waits for two answers from the user (`PENDING.md`) |
+| R49 | **highest — the user's, 14/10** | The top or the back of a head passes as a face; five such views of Gustavo are references in his Chosen | decided 14/10: InsightFace's SCRFD + ArcFace; step 2, the switch and the migration, is developer 21 (section 3) |
 | R48 | **high — decided 14/10** | The 40-view rule lets a wrong-person view in first; production's Waiting holds the top of Izabel's head as Gustavo's (R49) | decided: backlog 28 waits for R49; 31 waits with it |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R42 | medium — **the user's decision** | In Home, a resident's face plus a second person who never shows a face sends nothing | open |
@@ -228,11 +228,11 @@ detector, fed the view at 320, and its ArcFace R50 recogniser, aligned on
 SCRFD's points, separate the two named people far better: nothing wrong from
 0.275 with 125 of 134 faces right, against 110 from 0.375 for today's stored
 SFace embeddings. Every head-top's best match is its owner, highest to the
-other person 0.29. Two things stand between this and the switch, both the
-user's: whether the woman with long loose hair in three unnamed entries is
-Izabel — if she is not, ArcFace at a 0.40 sure threshold would learn two of
-her views as Izabel — and buffalo_l's licence, "non-commercial research
-purposes only".
+other person 0.29. **The user's answers, 14/10:** the seven unnamed entries,
+the long-haired woman included, are all Izabel. ArcFace finds her in 18 of
+those 22 views with nothing wrong, where SFace finds at most 5 and puts two
+on Gustavo. And "if it is the best, we use it", which accepts InsightFace's
+non-commercial research licence (CONTEXT 3).
 
 **R48 — The 40-view rule lets a wrong-person view in first (high, the
 user's decision, review 20).** Backlog 28 keeps what is most different, and a
@@ -294,42 +294,82 @@ step 1 (ARCHITECTURE 10.14, HISTORY 13.23). Backlog 28 and 31 still sit on
 `master` and wait for R49. Production stays on `v2026.10.13`. The next
 release carries R49, 28 and 31.
 
-**Next: R49 step 2 — the switch and its migration.** It is planned once the
-user answers two questions (`PENDING.md`): who the woman with long loose
-hair in three unnamed entries is, and whether buffalo_l's licence is
-acceptable. If the user says no to the licence, the next plan is a different
-one, made with them. What step 2 must hold, as review 22 left it:
+**Developer 21 (planned 14/10): R49 step 2, the switch to InsightFace and
+the migration of every gallery.** This is the user's decision: InsightFace's
+models if they are the best, with their licence accepted (CONTEXT 3). Read
+ARCHITECTURE 10.14 and HISTORY 13.23 first. Not released after this session:
+review 23 reads backlog 28's rule again with the new numbers before R49, 28
+and 31 ship together.
 
-- **The pipeline.** Detection on the frame stays YuNet, 30 ms a frame.
-  SCRFD-10G at 320 runs on the region around each YuNet face, as `_refine`
-  does today, and gives the five points. `FaceRecognizerSF.alignCrop`, given
-  those points in YuNet's row layout, aligns them; it is pixel-identical to
-  insightface's least-squares fit, where the bench's LMEDS was not. ArcFace
-  R50 (`w600k_r50`) embeds, 512 numbers. The 3D landmark model stays out: it
-  did not help and is 137 MB. Today's `is_frontal` keeps working on the
-  frame. Whether it should read SCRFD's points instead is a measurement for
-  that session.
-- **Thresholds.** `MATCH_THRESHOLD`, `LEARN_THRESHOLD` and
-  `SAME_FACE_THRESHOLD` (the grouping within a clip) are all SFace's
-  numbers. ArcFace's come from `face_bench.py`'s sweep on the views labelled
-  with the user's answer. The developer's starting point was sure 0.40 and
-  maybe 0.30.
-- **The migration.** Every view of every gallery is embedded again from its
-  300 px photo. In production every embedding has its photo: 106 chosen and
-  67 waiting on 14/10, with none missing. `gallery.json` gains a model
-  marker, an optional key. An older 128-number file is migrated before use
-  and never compared with a 512-number one, because `np.dot` of the two
-  raises. A view where SCRFD finds no face is the case to decide, measured.
-  The galleries are copied to `backups/` first, and `check_data.py` reads
-  both formats.
-- **The models.** They come from the author's release: `buffalo_l.zip`,
-  281 MB, of which two files are kept, 182 MB. They are downloaded before
-  production stops, so that a deploy does not wait on the network.
-- **Cost.** The clip scan is timed before and after on real person clips.
-- **Then** backlog 28's rule is read again with the new numbers, as the user
-  decided for R48, and after it backlog 32.
+1. **The best InsightFace recogniser, measured first.** Add `antelopev2`
+   to `face_bench.py`. It comes from the same author's release,
+   `github.com/deepinsight/insightface/releases/download/v0.7/antelopev2.zip`,
+   361 MB, and holds the same SCRFD-10G and the R100 recogniser trained on
+   Glint360K (`glintr100.onnx`). Run R100 next to R50 (`w600k_r50` from
+   `buffalo_l`), both on SCRFD at 320. Two changes to the bench first:
+   - **Labels:** the seven unnamed entries in the backup are all Izabel (the
+     user, 14/10). They are `p_a8ef5acd`, `p_385283de`, `p_4e2d9f32`,
+     `p_6c76506e`, `p_5bc580f7`, `p_d26b745a` and `p_c5ed26cc`. Their 22
+     views join the probes as Izabel's, the hardest ones she has.
+   - **Alignment:** `arcface_crop` gives way to
+     `FaceRecognizerSF.alignCrop`, fed SCRFD's points in YuNet's 15-number
+     row. It is insightface's least-squares fit, pixel for pixel; LMEDS was
+     not.
 
-**Waits for the user:** R49's two questions; R42; backlog 32 waits for R49
+   The rule: R100 only if it gets clearly more right at zero wrong on the
+   clean set plus the 22, and only if its scan cost on the M900 is
+   acceptable (point 5). Otherwise R50, which is twice as fast. The table
+   goes in the HANDOFF.
+2. **The pipeline in `faces.py`.** Detection on the frame stays YuNet. For
+   each YuNet face, SCRFD at 320 runs on the full-size region around it,
+   where `_refine` runs today, and gives the five points. The chosen ArcFace
+   embeds after `alignCrop`. SCRFD's decoding moves from the bench into the
+   program. Today's `is_frontal` gate on YuNet's row stays unless a
+   measurement says otherwise. A face SCRFD does not find in the region is
+   dropped, and counted in the scan's log line. The networks are shared
+   objects, behind `_SCAN_LOCK` as today.
+3. **Thresholds, from measurement.** `MATCH_THRESHOLD`, `LEARN_THRESHOLD`
+   and `SAME_FACE_THRESHOLD` (the grouping within a clip) take the chosen
+   model's values, from the bench's sweep. The HANDOFF gives the numbers
+   behind each. The developer's starting point was sure 0.40 and maybe 0.30
+   for R50. With no stranger in the data, err towards fewer sure matches.
+4. **The migration — the hard part. A rollback must keep working.**
+   `production.ps1` rolls back to `v2026.10.13` on its own if the new
+   version fails. So the old version must still find a `gallery.json` it
+   reads. The new version therefore writes its gallery to a **new file**
+   next to it, built once from `gallery.json` by embedding every view again
+   from its 300 px photo, and leaves `gallery.json` as it was. Production
+   has 106 chosen and 67 waiting views on 14/10, every one with its photo.
+   - Ids stay the same, so the sightings in `faces/<day>/` still point
+     right.
+   - A view where SCRFD finds no face is decided by measurement and
+     reported.
+   - The galleries are copied to `backups/` first.
+   - The new file carries the model's name, so that a later change of model
+     is detected the same way.
+   - `check_data.py` reads both files. Every tool that reads the gallery
+     follows `GALLERY_FILE`. Embeddings of different lengths are never
+     compared, because `np.dot` raises.
+   - If writing a new file is wrong for a reason the developer finds, stop
+     and say so in the HANDOFF. The rule is the user's: generated files
+     never break.
+5. **Cost.** Time `scan_clip` before and after on three real person clips
+   from production's `clips/`, through this copy. Report seconds per clip
+   and per face.
+6. **The models in production.** `ensure_models` fetches the zip from the
+   release, keeps the two files it needs and deletes the zip. A deploy must
+   never wait on the network: the models are on disk before production
+   stops. One way is a stdlib-only script that `production.ps1` runs from
+   the target tag before `StopService`. The developer chooses, and says
+   which in the HANDOFF.
+
+**HANDOFF:** the R50/R100 table and the choice; the thresholds; the
+migration's behaviour on the backup copy and on a copy of production's
+`faces/`; the scan's cost; and what review 23 should look at hardest.
+If the session runs short, stop after a coherent commit and say what is
+left.
+
+**Waits for the user:** R42; backlog 32 waits for R49
 (its table means something only on clean labels and on the final model).
 
 **Not planned:** R30 (b) joins a later session — with a new detector it is
