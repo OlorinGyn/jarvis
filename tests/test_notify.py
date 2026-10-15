@@ -276,7 +276,7 @@ def test_a_person_after_a_sent_dog_message_is_still_held(tmp_path, monkeypatch, 
 def test_a_person_hiding_beside_a_silenced_resident_reaches_the_phone(sent, best):
     resident = face("p_1", "Gustavo", 0.6, True)
     assert notify.after_scan("Front", START, [resident], True, False, None, best, HOME, people=2) == 1
-    assert sent == ["Front 12:00:00: 2 people seen, 1 face found, best view"]
+    assert sent == ["Front 12:00:00: 2 people seen, 1 face found"]
 
 
 def test_as_many_people_as_silenced_faces_sends_nothing(sent, best):
@@ -333,4 +333,47 @@ def test_the_hidden_person_follows_a_fake_scan(tmp_path, monkeypatch, sent, best
     monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [face("p_1", "Gustavo", 0.6, True)])
     clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
                     best, held=True, people=2)
-    assert sent == ["Front 12:00:00: 2 people seen, 1 face found, best view"]
+    assert sent == ["Front 12:00:00: 2 people seen, 1 face found"]
+
+
+def test_the_frame_where_the_people_were_counted_is_kept(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: captured.update(kwargs))
+    captured = {}
+    home = recorder(tmp_path, monkeypatch, HOME)
+    other = Detection(500, 60, 70, 240, 0.8, "person")
+    tall = Detection(300, 20, 90, 400, 0.95, "person")
+    home.update(frame(), [PERSON])
+    home.update(frame(), [PERSON, other])
+    home.update(frame(), [tall])
+    meta = home.stop()
+    clips.wait_for_jobs()
+    people = home.base.with_name(f"{home.base.name}.people.jpg")
+    assert people.is_file() and meta["people_thumbnail"] == people.name
+    assert captured["people_view"] == people and captured["people"] == 2
+    assert meta["best_thumbnail"] != people.name
+
+
+def test_one_person_at_a_time_keeps_no_people_frame(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: captured.update(kwargs))
+    captured = {}
+    home = recorder(tmp_path, monkeypatch, HOME)
+    home.update(frame(), [PERSON])
+    meta = home.stop()
+    clips.wait_for_jobs()
+    assert "people_thumbnail" not in meta and captured["people_view"] is None
+    assert not list(tmp_path.rglob("*.people.jpg"))
+
+
+def test_the_hidden_person_message_carries_the_counted_frame(tmp_path, monkeypatch, sent, best):
+    pictures = []
+    monkeypatch.setattr(notify, "send", lambda text, image=None, settings=None: (pictures.append(image), (True, ""))[1])
+    counted = tmp_path / "12-00-00.people.jpg"
+    counted.write_bytes(b"jpg")
+    resident = [face("p_1", "Gustavo", 0.6, True)]
+    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME,
+                             people=2, people_view=counted) == 1
+    assert pictures == [str(counted)]
+    notify.reset_cooldown()
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME,
+                             people=2, people_view=counted) == 1
+    assert pictures[-1] == str(best)

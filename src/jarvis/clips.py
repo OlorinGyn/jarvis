@@ -4,12 +4,14 @@ Nothing is re-encoded. The clip is built by concatenating whole segments from
 the rolling buffer with ffmpeg's stream copy, so the saved video is bit for bit
 what the camera produced.
 
-Each event produces three files sharing one basename, plus two optional ones:
+Each event produces three files sharing one basename, plus three optional ones:
     19-17-30.mp4        the video, assembled losslessly from segments
     19-17-30.jpg        the first frame where the subject appeared
     19-17-30.json       metadata, so the Records screen never decodes a video
     19-17-30.alert.jpg  only when the notification went out after the start
     19-17-30.best.jpg   only when a person was seen: the frame showing one best
+    19-17-30.people.jpg only when two or more people were seen at once: the frame
+                        where the count rose to its highest, for the hidden-person message
 
 See docs/ARCHITECTURE.md sections 5, 8 and 19.
 """
@@ -87,7 +89,7 @@ def _clip_moments(segments, spans):
 
 
 def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
-              person_spans=(), dog_view=None, held=False, people=0):
+              person_spans=(), dog_view=None, held=False, people=0, people_view=None):
     """Wait for the final segment to close, build the clip, then read faces.
 
     When no face was found, the phone gets the side view or the best view of
@@ -114,7 +116,8 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if "person" in labels:
         notify.after_scan(camera.label, start, found, held, notified,
-                          faces.side_view_path(destination), best_view, people=people)
+                          faces.side_view_path(destination), best_view, people=people,
+                          people_view=people_view)
     if dog_view:
         try:
             dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
@@ -212,6 +215,7 @@ class EventRecorder:
         self.dog_view = None
         self.person_spans = []
         self.most_people = 0
+        self.people_view = None
 
     @property
     def protect_from(self):
@@ -262,6 +266,7 @@ class EventRecorder:
         self.dog_view = None
         self.person_spans = []
         self.most_people = 0
+        self.people_view = None
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
 
@@ -305,12 +310,15 @@ class EventRecorder:
         The first frame is whatever triggered the event, often a pet. Taller
         boxes win, so a person standing beats a dog lying down even when the
         detector mistakes it for one. The most persons in one frame is what the
-        face scan's count is weighed against (R42 (b)).
+        face scan's count is weighed against (R42 (b)), and the frame where that
+        count rose is the hidden-person message's picture (R56).
         """
         persons = [s for s in subjects if s.is_person]
         if not persons:
             return
-        self.most_people = max(self.most_people, len(persons))
+        if len(persons) > self.most_people:
+            self.most_people = len(persons)
+            self.people_view = {"frame": frame.copy(), "subjects": list(subjects)}
         self._note_person(datetime.now())
         score = max(s.confidence * s.h for s in persons)
         if self.best_view is None or score > self.best_view["score"]:
@@ -342,6 +350,14 @@ class EventRecorder:
         self._save_thumbnail(self.best_view["frame"], self.best_view["subjects"], path)
         return path if path.exists() else None
 
+    def _write_people_view(self):
+        """Save the frame with the most people as HH-MM-SS.people.jpg when two or more were seen; else None."""
+        if self.people_view is None or self.most_people < 2:
+            return None
+        path = self.base.with_name(f"{self.base.name}.people.jpg")
+        self._save_thumbnail(self.people_view["frame"], self.people_view["subjects"], path)
+        return path if path.exists() else None
+
     def _save_thumbnail(self, frame, subjects, path):
         shot = frame.copy()
         height, width = shot.shape[:2]
@@ -358,7 +374,7 @@ class EventRecorder:
         cv2.imwrite(str(path), shot,
                     [cv2.IMWRITE_JPEG_QUALITY, 88])
 
-    def _write_metadata(self, ended_at, reason, best=None):
+    def _write_metadata(self, ended_at, reason, best=None, people_view=None):
         seconds = (ended_at - self.started_at).total_seconds() + PRE_SECONDS
         meta = {
             "camera": self.label,
@@ -375,6 +391,8 @@ class EventRecorder:
             meta["best_thumbnail"] = best.name
         if self.most_people:
             meta["most_people"] = self.most_people
+        if people_view is not None:
+            meta["people_thumbnail"] = people_view.name
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
@@ -385,7 +403,8 @@ class EventRecorder:
             return None
         ended_at = datetime.now()
         best = self._write_best_view()
-        meta = self._write_metadata(ended_at, reason, best)
+        people_view = self._write_people_view()
+        meta = self._write_metadata(ended_at, reason, best, people_view)
         destination = self.base.with_suffix(".mp4")
         already_sent = best is not None and self.best_view["moment"] == self.sent_moment
         followup = best if self.person_held or not already_sent else None
@@ -395,13 +414,14 @@ class EventRecorder:
                                      destination, set(self.labels), self.notified,
                                      followup, [tuple(s) for s in self.person_spans],
                                      self.dog_view, self.person_held),
-                               kwargs={"people": self.most_people})
+                               kwargs={"people": self.most_people, "people_view": people_view})
         job.start()
         _jobs.append(job)
 
         self.recording = False
         self.best_view = None
         self.dog_view = None
+        self.people_view = None
         summary = dict(meta)
         summary["path"] = destination
         return summary

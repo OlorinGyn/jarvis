@@ -47,6 +47,9 @@ def check_events(root, problems):
             problems.append(f"{sidecar}: the web cannot show it ({problem})")
         if "reported_labels" in entry and not isinstance(entry["reported_labels"], list):
             problems.append(f"{sidecar}: reported_labels is not a list")
+        people = entry.get("people_thumbnail")
+        if people is not None and not (isinstance(people, str) and people.endswith(".people.jpg")):
+            problems.append(f"{sidecar}: people_thumbnail is not a .people.jpg name")
         if not sidecar.with_suffix(".mp4").exists():
             problems.append(f"{sidecar}: video missing")
     return count

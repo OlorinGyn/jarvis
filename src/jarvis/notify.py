@@ -189,7 +189,7 @@ def faces_seen(camera, started_at, sightings, settings=None):
 
 
 def after_scan(camera, started_at, found, held, notified, side_view=None, best=None,
-               settings=None, people=0):
+               settings=None, people=0, people_view=None):
     """Every message a finished face scan sends. Returns how many went out.
 
     Faces are announced each by its case. With no face, the side view, else
@@ -198,8 +198,9 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     of the event went out, the person message itself, which then answers to
     the camera's cooldown like a first message. people is the most persons
     YOLO saw in one frame: when the held person's faces were all silenced and
-    YOLO saw more people than faces, the best view goes out as the same case
-    (R42 (b)).
+    YOLO saw more people than faces, the frame where YOLO counted them,
+    people_view, goes out as the same case (R42 (b), R56); the best view when
+    that frame was not kept.
     """
     settings = settings or load()
     if not configured(settings):
@@ -209,8 +210,9 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
         if held and sent:
             _claim(camera)
         silenced = not any(modes.allowed(person_case(s, settings), settings) for s in found)
-        if held and silenced and people > len(found) and best:
-            return sent + _faceless(camera, started_at, best, held, notified, settings,
+        picture = people_view if people_view and Path(people_view).exists() else best
+        if held and silenced and people > len(found) and picture:
+            return sent + _faceless(camera, started_at, picture, held, notified, settings,
                                     hidden_person, people, len(found))
         return sent
     side = Path(side_view) if side_view and Path(side_view).exists() else None
@@ -260,13 +262,13 @@ def best_view(camera, started_at, image, settings=None):
 
 
 def hidden_person(camera, started_at, image, people, faces, settings=None):
-    """Send the best view of a scene where YOLO saw more people than the scan found faces (R42 (b))."""
+    """Send the frame where YOLO saw more people than the scan found faces (R42 (b), R56)."""
     settings = settings or load()
     if not configured(settings):
         return False
     when = started_at.strftime("%H:%M:%S")
     found = f"{faces} face{'s' if faces != 1 else ''} found"
-    return _send_logged(f"{camera} hidden person", f"{camera} {when}: {people} people seen, {found}, best view",
+    return _send_logged(f"{camera} hidden person", f"{camera} {when}: {people} people seen, {found}",
                         str(image), settings)
 
 
