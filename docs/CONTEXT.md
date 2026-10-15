@@ -247,7 +247,7 @@ tools\production.ps1 -Action stop        stays stopped, even after a reboot, unt
 tools\production.ps1 -Action start       releases the hold and starts
 tools\production.ps1 -Action check       tools/check_data.py against production's data
 C:\JARVIS\logs\jarvis.log                what production did
-http://127.0.0.1:8765                    production's page (another computer: http://192.168.0.18:8765)
+http://127.0.0.1:8765                    production's page (another computer: the M900's DHCP address, .18 until 14/10, http://192.168.0.19:8765 on 15/10)
 ```
 
 Test copy and tools, from this folder:

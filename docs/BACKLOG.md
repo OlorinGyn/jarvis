@@ -358,8 +358,8 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 **Review 25 is done:** developer 23's R42 (b), backlog 37 (a, b) and 38,
 R53 step 1 and backlog 32 for faces, tagged `v2026.10.14.3` (HISTORY 13.26).
-**Its deploy rolled back** because both cameras left the network at the same
-time; the tag is deployed when they return. R42 is closed; R53 step 2 is
+Its first deploy rolled back because a power cut took both cameras off the
+network; **deployed on 15/10 at 16:05** once they were back (HISTORY 13.26). R42 is closed; R53 step 2 is
 decided (DINOv2-small); R55, R56 and R57 are open; backlog 39 is added.
 
 **Developer 24: R53 step 2, then backlog 39, then R56.**

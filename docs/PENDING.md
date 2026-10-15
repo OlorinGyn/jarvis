@@ -13,13 +13,24 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **Both cameras off the network since 16:32–16:39 on 14/10** (HISTORY
-  13.26): no ping, no port 554, not found anywhere on 192.168.0.x, while the
-  M900, the router and the 2.4 GHz network are up. Production runs
-  `v2026.10.14.2` with no frames and retries every 5 s, so it recovers on
-  its own once the cameras are back. **The user checks the cameras' power
-  and the Tapo app.** Then the architect deploys `v2026.10.14.3` (tagged,
-  its first deploy rolled back for this reason) and checks the frames.
+- **After a power cut the M900 goes to sleep at the sign-in screen**
+  (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
+  and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
+  `ScreenOffGracePeriod`) put it to sleep — 18 hours unwatched, until someone
+  woke it at 15:58 on 15/10. "Sleep after: never" does not cover the sign-in
+  screen with nobody logged on. **A system setting, so the user's to apply**;
+  the likely ones are two hidden power settings — "System unattended sleep
+  timeout" (`SUB_SLEEP`, `7bc4a2f9-d8fc-4469-b07b-33eb785aaca0`, 2 minutes
+  by default) and "Console lock display off timeout" (`SUB_VIDEO`,
+  `8ec4b3a5-6868-48c2-be75-4f3044be88a7`) — each made visible with
+  `powercfg -attributes <subgroup> <setting> -ATTRIB_HIDE` and set to 0 on
+  mains power with `powercfg -setacvalueindex SCHEME_CURRENT <subgroup>
+  <setting> 0`, then `powercfg -setactive SCHEME_CURRENT`, in an
+  administrator PowerShell. **The test that settles it:** restart the M900,
+  do not sign in, and after five minutes open the page from the phone
+  (`http://192.168.0.19:8765` today — the M900's address is .19 now, not
+  .18). If it still sleeps, the event log names the caller again. Once it
+  holds, the architect writes it into INSTALL for any new machine.
 - **Backlog 25's acceptance on the M900** (BACKLOG 1): in use since 13/10 —
   the user, Izabel, Mirana and Aurora are marked Resident and Home is on; the
   user's one remark (probable residents still reach the phone) became
@@ -32,7 +43,7 @@ grows, decisions are being postponed.
   no longer reaches the phone. One reading to confirm: an event already open
   at `/off` still finishes and sends its follow-ups (ARCHITECTURE 22.7).
 - **Backlog 3's acceptance**: open the page from a phone
-  (`http://192.168.0.18:8765`).
+  (`http://192.168.0.19:8765` since 15/10; the address comes from DHCP).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
 - **Misfiled dog views** (R53, 14/10): thirteen, all still in production
