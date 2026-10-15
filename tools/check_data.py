@@ -139,23 +139,34 @@ def check_settings(problems):
     return f"{len(stored)} key(s)"
 
 
-def check_dogs(problems):
-    """The dog gallery and every dog sighting, read as the Dogs tab reads them."""
-    gallery = dogs.DogGallery()
-    if dogs.GALLERY_FILE.exists() and not gallery.people:
-        problems.append(f"{dogs.GALLERY_FILE}: exists but no dog could be read")
+def check_dog_gallery(path, size, problems):
+    """One dog gallery file, read as the Dogs tab reads it, with descriptors of the given size."""
+    gallery = dogs.DogGallery(path)
+    if path.exists() and not gallery.people:
+        problems.append(f"{path}: exists but no dog could be read")
     for dog in gallery.people:
         missing = [k for k in PERSON_KEYS if k not in dog]
         if missing:
-            problems.append(f"dog {dog.get('id', '?')}: missing {missing}")
+            problems.append(f"{path.name} dog {dog.get('id', '?')}: missing {missing}")
             continue
-        wrong = [len(e) for e in dog["embeddings"] if len(e) != dogs.DESCRIPTOR_SIZE]
+        wrong = [len(e) for e in dog["embeddings"] if len(e) != size]
+        wrong += [len(w.get("embedding") or []) for w in dog.get("pending") or []
+                  if not isinstance(w, dict) or len(w.get("embedding") or []) != size]
         if wrong:
-            problems.append(f"dog {dog['id']}: descriptors of size {wrong}")
+            problems.append(f"{path.name} dog {dog['id']}: descriptors of size {wrong}")
         faces.views_of(dog)
         faces.cover_of(dog)
         if "resident" in dog and not isinstance(dog["resident"], bool):
-            problems.append(f"dog {dog['id']}: resident is not true or false")
+            problems.append(f"{path.name} dog {dog['id']}: resident is not true or false")
+    return len(gallery.people)
+
+
+def check_dogs(problems):
+    """Both dog galleries and every dog sighting: the histograms' file stays for a rollback (R53)."""
+    galleries = {path.name: check_dog_gallery(path, size, problems)
+                 for path, size in ((dogs.LEGACY_GALLERY_FILE, dogs.LEGACY_DESCRIPTOR_SIZE),
+                                    (dogs.GALLERY_FILE, dogs.DESCRIPTOR_SIZE))
+                 if path.exists()}
     sightings = 0
     for day in sorted(dogs.days_with_dogs()):
         for path in (dogs.DOG_DIR / day.isoformat()).glob("*.json"):
@@ -168,7 +179,7 @@ def check_dogs(problems):
             missing = [k for k in DOG_SIGHTING_KEYS if k not in entry]
             if missing:
                 problems.append(f"{path}: missing {missing}")
-    return len(gallery.people), sightings
+    return galleries, sightings
 
 
 def check_reports(problems):
@@ -219,8 +230,9 @@ def main():
     people, sightings = check_faces(problems)
     galleries = "; ".join(f"{name} {count} person(s)" for name, count in people.items()) or "none"
     print(f"face galleries: {galleries}; face sightings: {sightings}")
-    named_dogs, dog_sightings = check_dogs(problems)
-    print(f"dogs: {named_dogs} in the gallery; dog sightings: {dog_sightings}")
+    dog_galleries, dog_sightings = check_dogs(problems)
+    galleries = "; ".join(f"{name} {count} dog(s)" for name, count in dog_galleries.items()) or "none"
+    print(f"dog galleries: {galleries}; dog sightings: {dog_sightings}")
     print(f"bad-detection reports: {check_reports(problems)}")
     print(f"config.json: {check_settings(problems)}")
     print(f"devices.json: {check_devices(problems)}")

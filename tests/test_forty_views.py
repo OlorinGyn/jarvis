@@ -100,11 +100,8 @@ def test_a_merge_past_forty_keeps_forty_and_queues_nothing(tmp_path):
 
 
 def dog_view(rng, infrared):
-    tones = rng.dirichlet(np.ones(dogs.TONE_BINS)).tolist()
-    if infrared:
-        return [1.0] + tones + [0.0] * (dogs.HUE_BINS + dogs.SATURATION_BINS)
-    return ([0.0] + tones + rng.dirichlet(np.ones(dogs.HUE_BINS)).tolist()
-            + rng.dirichlet(np.ones(dogs.SATURATION_BINS)).tolist())
+    vector = rng.normal(size=dogs.EMBEDDING_SIZE)
+    return [1.0 if infrared else 0.0] + (vector / np.linalg.norm(vector)).tolist()
 
 
 @pytest.fixture

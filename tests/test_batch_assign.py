@@ -6,16 +6,11 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from dog_vectors import descriptor
 from jarvis import dogs, faces, reports, web
 
 CROP = np.zeros((40, 40, 3), np.uint8)
 HEADER = {"X-Jarvis-Request": "1"}
-
-
-def descriptor(tone_bin, infrared=True):
-    tone = [0.0] * dogs.TONE_BINS
-    tone[tone_bin] = 1.0
-    return [1.0 if infrared else 0.0] + tone + [0.0] * (dogs.HUE_BINS + dogs.SATURATION_BINS)
 
 
 def sighting(gallery, dog_id, stem):

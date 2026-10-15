@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from dog_vectors import descriptor
 from jarvis import dogs, faces, web
 from queues import queue
 
@@ -75,11 +76,8 @@ def test_nothing_to_choose_when_every_view_fits(tmp_path):
     assert gallery.spread_proposal(person_id) is None
 
 
-def dog_view(infrared, tone):
-    tones = [0.0] * dogs.TONE_BINS
-    tones[tone] = 1.0
-    colour = [0.0] * (dogs.HUE_BINS + dogs.SATURATION_BINS) if infrared else [1.0 / dogs.HUE_BINS] * dogs.HUE_BINS + [1.0 / dogs.SATURATION_BINS] * dogs.SATURATION_BINS
-    return [1.0 if infrared else 0.0] + tones + colour
+def dog_view(infrared, axis):
+    return descriptor(axis, infrared)
 
 
 def test_a_dog_keeps_both_day_and_night(tmp_path):

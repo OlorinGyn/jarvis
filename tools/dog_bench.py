@@ -1,6 +1,7 @@
 """Compare dog descriptors on the stored views of the named dogs (R53, step 1).
 
 Usage: uv run python tools/dog_bench.py [--dogs DIR] [--candidates NAME ...] [--json FILE]
+                                        [--limits DISTANCE ...]
 
 Each candidate describes every Chosen and Waiting view of the named dogs in a
 copy of production's dogs/ (by default backups/r53_dogs_20261014). The views
@@ -13,9 +14,11 @@ its exact copies left out, as nearest-dog right and wrong; right and wrong
 over a threshold sweep, and the right answers before the first wrong one;
 each person crop's and two-dog crop's distance to each dog, and whether it
 would be named at that threshold; the cost per crop on this machine, the
-size and the licence. Candidates' models are in models/bench/dogs, exported
-to ONNX once in a throwaway environment; a missing model is skipped. See
-BACKLOG 2, R53.
+size and the licence; with --limits, per distance limit, what each ratio to
+the second dog would name, as dogs.match decides. The histogram baseline is
+dogs.py's descriptor until R53 step 2, kept here. Candidates' models are in
+models/bench/dogs, exported to ONNX once in a throwaway environment; a
+missing model is skipped. See BACKLOG 2, R53.
 """
 
 import argparse
@@ -44,6 +47,12 @@ COPY_SIDE = 16
 COPY_DIFFERENCE = 4.0
 NAMED_SHARE = 0.9
 TIMING_RUNS = 20
+TONE_BINS = 16
+HUE_BINS = 16
+SATURATION_BINS = 8
+GRABCUT_ITERATIONS = 3
+MIN_FUR_PIXELS = 50
+RATIOS = (0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1.0)
 IMAGENET = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 CLIP_NORM = ((0.4815, 0.4578, 0.4082), (0.2686, 0.2613, 0.2758))
 
@@ -122,6 +131,76 @@ def inner_box(image):
     return int(width * inset), int(height * inset), int(width * (1 - 2 * inset)), int(height * (1 - 2 * inset))
 
 
+def _fur_mask(frame, box):
+    """The pixels of the dog inside its box, cut out of the background with GrabCut."""
+    x0, y0, x1, y1 = dogs._region(frame, box)
+    region = np.ascontiguousarray(frame[y0:y1, x0:x1])
+    x, y, w, h = (int(v) for v in box[:4])
+    rect = (x - x0, y - y0, max(min(w, x1 - x), 1), max(min(h, y1 - y), 1))
+    mask = np.zeros(region.shape[:2], np.uint8)
+    background, foreground = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
+    try:
+        cv2.grabCut(region, mask, rect, background, foreground, GRABCUT_ITERATIONS,
+                    cv2.GC_INIT_WITH_RECT)
+        fur = (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)
+    except cv2.error:
+        fur = np.zeros(region.shape[:2], bool)
+    if int(fur.sum()) < MIN_FUR_PIXELS:
+        fur = np.zeros(region.shape[:2], bool)
+        fur[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]] = True
+    return region, fur
+
+
+def _histogram(values, bins, top):
+    counts, _ = np.histogram(values, bins=bins, range=(0, top))
+    total = counts.sum()
+    return (counts / total).tolist() if total else [0.0] * bins
+
+
+def histogram_describe(frame, box):
+    """(descriptor, crop) for one dog box as dogs.py made it until R53 step 2: the fur's histograms.
+
+    The descriptor's first value says whether the frame was infrared, so day
+    views are only ever compared with day views, and night with night.
+    """
+    region, fur = _fur_mask(frame, box)
+    infrared = dogs.is_infrared(region)
+    grey = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)[fur]
+    descriptor = [1.0 if infrared else 0.0] + _histogram(grey, TONE_BINS, 256)
+    if infrared:
+        descriptor += [0.0] * (HUE_BINS + SATURATION_BINS)
+    else:
+        hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)[fur]
+        descriptor += _histogram(hsv[:, 0], HUE_BINS, 180)
+        descriptor += _histogram(hsv[:, 1], SATURATION_BINS, 256)
+    scale = dogs.CROP_SIDE / max(region.shape[:2])
+    crop = cv2.resize(region, (max(int(region.shape[1] * scale), 1),
+                               max(int(region.shape[0] * scale), 1)))
+    return descriptor, crop
+
+
+def _bhattacharyya(a, b):
+    """Distance between two normalised histograms: 0 identical, 1 nothing in common."""
+    a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)
+    if a.sum() <= 0 or b.sum() <= 0:
+        return 1.0
+    coefficient = float(np.sum(np.sqrt(a * b)))
+    return float(np.sqrt(max(1.0 - coefficient, 0.0)))
+
+
+def histogram_distance(first, second):
+    """How unlike two descriptors are, or None when one is day and the other infrared."""
+    if first[0] != second[0]:
+        return None
+    tone_end = 1 + TONE_BINS
+    parts = [_bhattacharyya(first[1:tone_end], second[1:tone_end])]
+    if not first[0]:
+        hue_end = tone_end + HUE_BINS
+        parts.append(_bhattacharyya(first[tone_end:hue_end], second[tone_end:hue_end]))
+        parts.append(_bhattacharyya(first[hue_end:], second[hue_end:]))
+    return sum(parts) / len(parts)
+
+
 class Histogram:
     """Today's descriptor: the stored one for gallery views, computed again from the crop for the others."""
 
@@ -132,13 +211,13 @@ class Histogram:
     def describe(self, crop):
         if crop.stored is not None:
             return np.asarray(crop.stored, np.float64)
-        return np.asarray(dogs.describe(crop.image, inner_box(crop.image))[0], np.float64)
+        return np.asarray(histogram_describe(crop.image, inner_box(crop.image))[0], np.float64)
 
     def time_one(self, crop):
-        return dogs.describe(crop.image, inner_box(crop.image))
+        return histogram_describe(crop.image, inner_box(crop.image))
 
     def distance(self, a, b):
-        found = dogs.distance(a, b)
+        found = histogram_distance(a, b)
         return 1.0 if found is None else found
 
 
@@ -247,7 +326,7 @@ def run(candidate, crops):
         candidate.load()
     vectors = [candidate.describe(crop) for crop in crops]
     report = {"name": candidate.name, "size_mb": round(candidate.size / 1e6, 1), "licence": candidate.licence,
-              "lighting": {}, "impostors": []}
+              "lighting": {}, "impostors": [], "probes": []}
     for infrared in (False, True):
         light = "night" if infrared else "day"
         results = []
@@ -260,6 +339,8 @@ def run(candidate, crops):
             (name, found), second = ranked(best)
             results.append({"view": crop.path.stem, "label": crop.label, "nearest": name,
                             "distance": found, "second": second, "right": name == crop.label})
+            report["probes"].append({"kind": "view", "lighting": light, "distance": found,
+                                     "second": second, "right": name == crop.label})
         clean, threshold, first_wrong = right_before_first_wrong(results)
         rights = sorted(r["distance"] for r in results if r["right"])
         share = sorted(r["distance"] for r in results)[max(int(NAMED_SHARE * len(results)) - 1, 0)]
@@ -285,6 +366,8 @@ def run(candidate, crops):
         part = report["lighting"][light]
         threshold = part["at_share"]["threshold"]
         (name, found), second = ranked(best)
+        report["probes"].append({"kind": crop.label, "lighting": light, "distance": found,
+                                 "second": second, "right": False})
         report["impostors"].append({"crop": crop.path.stem, "kind": crop.label, "lighting": light,
                                     "Aurora": round(best.get("Aurora", float("nan")), 3),
                                     "Mirana": round(best.get("Mirana", float("nan")), 3),
@@ -321,11 +404,45 @@ def show(report):
               f"{item['named_at_threshold'] or '-'}")
 
 
+def ratio_sweep(probes, limit, ratios=RATIOS):
+    """Per ratio to the second dog, at one distance limit, as dogs.match decides: what would be named.
+
+    One row per ratio: views named right and wrong, and person and two-dog
+    crops named, each per lighting.
+    """
+    rows = []
+    for ratio in ratios:
+        row = {"ratio": ratio}
+        for light in ("day", "night"):
+            named = [p for p in probes if p["lighting"] == light
+                     and p["distance"] <= limit and p["distance"] <= ratio * p["second"]]
+            row[light] = {"right": sum(p["kind"] == "view" and p["right"] for p in named),
+                          "wrong": sum(p["kind"] == "view" and not p["right"] for p in named),
+                          "person": sum(p["kind"] == "person" for p in named),
+                          "both": sum(p["kind"] == "both" for p in named)}
+        rows.append(row)
+    return rows
+
+
+def show_ratios(report, limits):
+    views = {light: sum(p["kind"] == "view" and p["lighting"] == light for p in report["probes"])
+             for light in ("day", "night")}
+    for limit in limits:
+        print(f"  ratio sweep at distance {limit} (views day {views['day']}, night {views['night']}): "
+              "ratio -> right/wrong/person/two-dog, day | night")
+        for row in ratio_sweep(report["probes"], limit):
+            day, night = row["day"], row["night"]
+            print(f"    {row['ratio']:.2f}: {day['right']}/{day['wrong']}/{day['person']}/{day['both']} | "
+                  f"{night['right']}/{night['wrong']}/{night['person']}/{night['both']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dogs", type=Path, default=DEFAULT_DOGS)
     parser.add_argument("--candidates", nargs="+", default=list(CANDIDATES), choices=list(CANDIDATES))
     parser.add_argument("--json", type=Path)
+    parser.add_argument("--limits", nargs="+", type=float, default=[],
+                        help="distance limits for a sweep of the ratio to the second dog")
     args = parser.parse_args()
     crops = load_crops(args.dogs)
     for crop in crops:
@@ -344,11 +461,13 @@ def main():
             continue
         report = run(candidate, crops)
         show(report)
+        show_ratios(report, args.limits)
         reports.append(report)
     if args.json:
         for report in reports:
             for part in report["lighting"].values():
                 part.pop("rights")
+            report["ratios"] = {str(limit): ratio_sweep(report.pop("probes"), limit) for limit in args.limits}
         args.json.write_text(json.dumps(reports, indent=2), encoding="utf-8")
 
 

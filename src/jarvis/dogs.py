@@ -1,16 +1,18 @@
 """Dogs the household teaches the system, the way People teaches faces.
 
-Each dog detection is cut out of its box with GrabCut, and the fur pixels
-alone give an appearance descriptor: a tone histogram, plus hue and
-saturation when the frame is in colour. Nothing here knows any particular
-dog; the user names crops on the Dogs tab and the gallery learns from that.
+Each dog detection is cut out of its box, padded square and described by
+DINOv2-small, a network trained without labels to tell images apart: the
+CLS token of its last layer, 384 numbers, behind one value that says whether
+the frame was infrared. Nothing here knows any particular dog; the user names
+crops on the Dogs tab and the gallery learns from that.
 
 The gallery is People's (views with photos, queue, favourite), kept in its
-own folder, dogs/. See docs/HISTORY.md section 8, backlog 22.
+own folder, dogs/. See docs/ARCHITECTURE.md section 20.
 """
 
 import json
 import logging
+import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -18,46 +20,84 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from jarvis import ROOT, faces
+from jarvis import ROOT, downloads, faces
 
 DOG_DIR = ROOT / "dogs"
-GALLERY_FILE = DOG_DIR / "gallery.json"
-TONE_BINS = 16
-HUE_BINS = 16
-SATURATION_BINS = 8
-DESCRIPTOR_SIZE = 1 + TONE_BINS + HUE_BINS + SATURATION_BINS
+EMBEDDING_MODEL = "dinov2_small"
+EMBEDDING_SIZE = 384
+DESCRIPTOR_SIZE = 1 + EMBEDDING_SIZE
+LEGACY_DESCRIPTOR_SIZE = 41
+GALLERY_FILE = DOG_DIR / f"gallery_{EMBEDDING_MODEL}.json"
+LEGACY_GALLERY_FILE = DOG_DIR / "gallery.json"
+MODEL_FILE = faces.MODEL_DIR / downloads.DINOV2
+INPUT_SIDE = 224
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+DECIMALS = 6
 MARGIN = 0.10
-GRABCUT_ITERATIONS = 3
-MIN_FUR_PIXELS = 50
 GREY_DIFFERENCE = 8.0
 CROP_SIDE = 320
 MAX_UNNAMED = 60
-SURE_DISTANCE = 0.35
+SURE_DISTANCE = 0.33
 SURE_RATIO = 0.6
-PROBABLE_DISTANCE = 0.5
+PROBABLE_DISTANCE = 0.39
 PROBABLE_RATIO = 0.8
 
 logger = logging.getLogger(__name__)
+
+
+class Network:
+    """One copy of DINOv2-small through cv2.dnn, loaded on first use.
+
+    A cv2.dnn.Net keeps buffers between calls and must never run in two
+    threads at once (people.load_background_model), so each copy has its own
+    lock, and the live loop and the assembly thread each use their own copy.
+    """
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.net = None
+
+    def embed(self, image):
+        """The unit-length CLS embedding of a BGR image, as a float32 array of EMBEDDING_SIZE."""
+        blob = _blob(image)
+        with self.lock:
+            if self.net is None:
+                downloads.fetch(faces.MODEL_DIR)
+                self.net = cv2.dnn.readNetFromONNX(str(MODEL_FILE))
+            self.net.setInput(blob)
+            output = self.net.forward()
+        vector = np.asarray(output, np.float32).reshape(-1, EMBEDDING_SIZE)[0]
+        norm = float(np.linalg.norm(vector))
+        return vector / norm if norm else vector
+
+
+LIVE = Network()
+STORED = Network()
 
 
 class DogGallery(faces.Gallery):
     """People's gallery for dogs: same views, queue and favourite, in dogs/.
 
     Naming a dog gathers only the unnamed crops that match it for sure, in
-    the same lighting: fur histograms of two dogs can look alike, so the
-    probable ones stay for the user to decide.
+    the same lighting: two dogs can look alike, so the probable ones stay for
+    the user to decide.
     """
 
     id_prefix = "d"
     sighting_key = "dog_id"
-    model = None
+    model = EMBEDDING_MODEL
 
     def __init__(self, path=None):
         super().__init__(path or GALLERY_FILE)
 
     def refit(self, entry):
-        """A dog's descriptor never changed model: the entry as it is."""
-        return entry
+        """The entry as this gallery can compare it: described again from its photos when histograms made it."""
+        sizes = ({len(e) for e in entry["embeddings"]}
+                 | {len(w["embedding"]) for w in entry.get("pending") or []})
+        if sizes <= {DESCRIPTOR_SIZE}:
+            return entry
+        return refit_entry(entry, self.path.parent)
 
     def _absorb(self, person):
         """Gather the unnamed crops that are this dog for sure; repeat until none joins.
@@ -115,18 +155,16 @@ class DogGallery(faces.Gallery):
         return len(excess)
 
     def distances(self, embeddings):
-        """Every pairwise distance between dog descriptors; day against infrared is infinitely far.
+        """Every pairwise distance between dog descriptors, 1 - cosine; day against infrared is infinitely far.
 
         So the farthest-point selection always keeps both lightings when a dog has both.
         """
         x = np.asarray(embeddings, np.float64).reshape(len(embeddings), DESCRIPTOR_SIZE)
-        tone_end = 1 + TONE_BINS
-        hue_end = tone_end + HUE_BINS
-        tone = _bhattacharyya_matrix(x[:, 1:tone_end])
-        colour = (tone + _bhattacharyya_matrix(x[:, tone_end:hue_end])
-                  + _bhattacharyya_matrix(x[:, hue_end:])) / 3
+        vectors = x[:, 1:]
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        vectors = vectors / np.where(norms > 0, norms, 1.0)
+        matrix = np.clip(1.0 - vectors @ vectors.T, 0.0, None)
         infrared = x[:, 0] != 0
-        matrix = np.where(infrared[:, None], tone, colour)
         matrix[infrared[:, None] != infrared[None, :]] = np.inf
         np.fill_diagonal(matrix, 0.0)
         return matrix
@@ -154,84 +192,90 @@ def _region(frame, box):
     return max(x - dx, 0), max(y - dy, 0), min(x + w + dx, width), min(y + h + dy, height)
 
 
-def fur_mask(frame, box):
-    """The pixels of the dog inside its box, cut out of the background with GrabCut."""
-    x0, y0, x1, y1 = _region(frame, box)
-    region = np.ascontiguousarray(frame[y0:y1, x0:x1])
-    x, y, w, h = (int(v) for v in box[:4])
-    rect = (x - x0, y - y0, max(min(w, x1 - x), 1), max(min(h, y1 - y), 1))
-    mask = np.zeros(region.shape[:2], np.uint8)
-    background, foreground = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
-    try:
-        cv2.grabCut(region, mask, rect, background, foreground, GRABCUT_ITERATIONS,
-                    cv2.GC_INIT_WITH_RECT)
-        fur = (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)
-    except cv2.error:
-        fur = np.zeros(region.shape[:2], bool)
-    if int(fur.sum()) < MIN_FUR_PIXELS:
-        fur = np.zeros(region.shape[:2], bool)
-        fur[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]] = True
-    return region, fur
+def _blob(image):
+    """The network's input: the image padded square with black, INPUT_SIDE px, RGB, ImageNet-normalised."""
+    if image.ndim < 3:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    height, width = image.shape[:2]
+    side = max(height, width, 1)
+    square = np.zeros((side, side, 3), np.uint8)
+    top, left = (side - height) // 2, (side - width) // 2
+    square[top:top + height, left:left + width] = image
+    rgb = cv2.cvtColor(cv2.resize(square, (INPUT_SIDE, INPUT_SIDE), interpolation=cv2.INTER_AREA),
+                       cv2.COLOR_BGR2RGB)
+    tensor = rgb.astype(np.float32).transpose(2, 0, 1)[None] / 255.0
+    mean = np.array(IMAGENET_MEAN, np.float32).reshape(1, 3, 1, 1)
+    std = np.array(IMAGENET_STD, np.float32).reshape(1, 3, 1, 1)
+    return (tensor - mean) / std
 
 
-def _histogram(values, bins, top):
-    counts, _ = np.histogram(values, bins=bins, range=(0, top))
-    total = counts.sum()
-    return (counts / total).tolist() if total else [0.0] * bins
+def descriptor_of(image, infrared, network=None):
+    """[1.0 if infrared else 0.0] followed by the image's embedding, rounded to DECIMALS."""
+    vector = (network or STORED).embed(image)
+    return [1.0 if infrared else 0.0] + [round(float(v), DECIMALS) for v in vector]
 
 
-def describe(frame, box):
-    """(descriptor, crop) for one dog box: the fur's appearance, and a picture of it.
+def describe(frame, box, network=None):
+    """(descriptor, crop) for one dog box: its embedding, and a picture of it.
 
-    The descriptor's first value says whether the frame was infrared, so day
+    The crop is the box widened by MARGIN, at most CROP_SIDE px, and is what
+    the network sees, so a live crop and its stored photo describe alike. The
+    descriptor's first value says whether the frame was infrared, so day
     views are only ever compared with day views, and night with night.
     """
-    region, fur = fur_mask(frame, box)
-    infrared = is_infrared(region)
-    grey = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)[fur]
-    descriptor = [1.0 if infrared else 0.0] + _histogram(grey, TONE_BINS, 256)
-    if infrared:
-        descriptor += [0.0] * (HUE_BINS + SATURATION_BINS)
-    else:
-        hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)[fur]
-        descriptor += _histogram(hsv[:, 0], HUE_BINS, 180)
-        descriptor += _histogram(hsv[:, 1], SATURATION_BINS, 256)
+    x0, y0, x1, y1 = _region(frame, box)
+    region = np.ascontiguousarray(frame[y0:y1, x0:x1])
     scale = CROP_SIDE / max(region.shape[:2])
     crop = cv2.resize(region, (max(int(region.shape[1] * scale), 1),
                                max(int(region.shape[0] * scale), 1)))
-    return descriptor, crop
-
-
-def _bhattacharyya(a, b):
-    """Distance between two normalised histograms: 0 identical, 1 nothing in common."""
-    a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)
-    if a.sum() <= 0 or b.sum() <= 0:
-        return 1.0
-    coefficient = float(np.sum(np.sqrt(a * b)))
-    return float(np.sqrt(max(1.0 - coefficient, 0.0)))
-
-
-def _bhattacharyya_matrix(histograms):
-    """_bhattacharyya between every pair of rows at once."""
-    roots = np.sqrt(np.clip(histograms, 0.0, None))
-    matrix = np.sqrt(np.clip(1.0 - roots @ roots.T, 0.0, None))
-    empty = histograms.sum(axis=1) <= 0
-    matrix[empty, :] = 1.0
-    matrix[:, empty] = 1.0
-    return matrix
+    return descriptor_of(crop, is_infrared(region), network), crop
 
 
 def distance(first, second):
-    """How unlike two descriptors are, or None when one is day and the other infrared."""
-    if first[0] != second[0]:
+    """How unlike two descriptors are, 1 - cosine, or None when one is day and the other infrared.
+
+    None too for descriptors of another size: an older model's, never comparable.
+    """
+    if len(first) != len(second) or first[0] != second[0]:
         return None
-    tone_end = 1 + TONE_BINS
-    parts = [_bhattacharyya(first[1:tone_end], second[1:tone_end])]
-    if not first[0]:
-        hue_end = tone_end + HUE_BINS
-        parts.append(_bhattacharyya(first[tone_end:hue_end], second[tone_end:hue_end]))
-        parts.append(_bhattacharyya(first[hue_end:], second[hue_end:]))
-    return sum(parts) / len(parts)
+    a, b = np.asarray(first[1:], np.float64), np.asarray(second[1:], np.float64)
+    norms = float(np.linalg.norm(a) * np.linalg.norm(b))
+    if not norms:
+        return None
+    return max(1.0 - float(a @ b) / norms, 0.0)
+
+
+def _embed_stored_photo(folder, old, view, tally):
+    """The current model's descriptor of a stored view's photo in folder/views, or None, counted in tally.
+
+    The lighting is the one the view was stored with, read from the old
+    descriptor's first value: it was judged on the whole frame region.
+    """
+    if not view:
+        tally["no photo"] += 1
+        return None
+    image = cv2.imread(str(Path(folder) / "views" / Path(str(view).replace("\\", "/")).name))
+    if image is None:
+        tally["no photo"] += 1
+        return None
+    infrared = bool(old[0]) if old else is_infrared(image)
+    tally["kept"] += 1
+    return descriptor_of(image, infrared)
+
+
+def refit_entry(entry, folder=None, tally=None):
+    """A copy of a dog entry with every view described again from its photo (faces.refit_entry)."""
+    return faces.refit_entry(entry, Path(folder or DOG_DIR), tally, embed=_embed_stored_photo)
+
+
+def migrate_gallery(target=None, source=None, backup_dir=None):
+    """Build gallery_dinov2_small.json from the histograms' gallery.json beside it, as the faces did.
+
+    gallery.json is never written, so a version rolled back to still reads
+    it; see faces.migrate_gallery and docs/ARCHITECTURE.md section 10.14.
+    """
+    target = Path(target or GALLERY_FILE)
+    return faces.migrate_gallery(target, source, backup_dir, model=EMBEDDING_MODEL, refit=refit_entry)
 
 
 def match(descriptor, gallery):
@@ -299,7 +343,7 @@ def identify(frame, boxes, gallery=None):
         gallery = gallery or DogGallery()
         found = []
         for box in boxes:
-            result = match(describe(frame, box)[0], gallery)
+            result = match(describe(frame, box, LIVE)[0], gallery)
             dog = gallery.get(result["dog_id"])
             resident = result["certainty"] if dog and dog.get("resident") else None
             found.append((wording(result, gallery), resident))

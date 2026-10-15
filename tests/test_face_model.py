@@ -1,7 +1,9 @@
 """The switch to SCRFD + ArcFace: the gallery migration, old reports, and the models (R49, ARCHITECTURE 10.14)."""
 
+import hashlib
 import io
 import json
+import pathlib
 import threading
 import time
 import zipfile
@@ -10,7 +12,7 @@ import cv2
 import numpy as np
 import pytest
 
-from jarvis import downloads, faces
+from jarvis import dogs, downloads, faces
 
 SIZE = faces.EMBEDDING_SIZE
 
@@ -119,12 +121,26 @@ def test_the_models_come_from_the_release_and_the_zip_is_deleted(tmp_path, monke
             handle.write(bundle.getvalue() if url == downloads.BUFFALO_URL else b"y" * 2048)
 
     monkeypatch.setattr(downloads.urllib.request, "urlretrieve", fake_download)
+    monkeypatch.setattr(downloads, "PINNED", {downloads.DINOV2: (
+        "https://example.invalid/model.onnx", hashlib.sha256(b"y" * 2048).hexdigest())})
     fetched = downloads.fetch(tmp_path)
-    assert set(fetched) == {downloads.YUNET, downloads.SFACE, downloads.SCRFD, downloads.ARCFACE}
+    assert set(fetched) == {downloads.YUNET, downloads.SFACE, downloads.SCRFD, downloads.ARCFACE,
+                            downloads.DINOV2}
     assert sorted(p.name for p in (tmp_path / downloads.BUFFALO_FOLDER).iterdir()) == sorted(downloads.BUNDLED)
     assert not list(tmp_path.glob("*.zip")) and not list(tmp_path.rglob("*.part"))
     asked.clear()
     assert downloads.fetch(tmp_path) == [] and asked == []
+
+
+def test_a_model_whose_hash_is_not_the_pinned_one_is_not_kept(tmp_path, monkeypatch):
+    monkeypatch.setattr(downloads.urllib.request, "urlretrieve",
+                        lambda url, target: pathlib.Path(target).write_bytes(b"z" * 2048))
+    monkeypatch.setattr(downloads, "FILES", {})
+    monkeypatch.setattr(downloads, "BUNDLED", ())
+    monkeypatch.setattr(downloads, "PINNED", {downloads.DINOV2: ("https://example.invalid/m", "0" * 64)})
+    with pytest.raises(RuntimeError, match="SHA-256"):
+        downloads.fetch(tmp_path)
+    assert not list(tmp_path.iterdir())
 
 
 def test_two_copies_starting_together_migrate_once(tmp_path, old_gallery, embedder, monkeypatch):
@@ -164,6 +180,7 @@ def test_the_migration_line_reaches_the_log_file(tmp_path, monkeypatch):
     monkeypatch.setattr(cameras, "HOLD_FILE", tmp_path / "HOLD")
     monkeypatch.setattr(web, "already_running", lambda port: False)
     monkeypatch.setattr(faces, "migrate_gallery", lambda: {"people": 2, "kept": 5})
+    monkeypatch.setattr(dogs, "migrate_gallery", lambda: {"people": 46, "kept": 205})
     monkeypatch.setattr(web, "start", lambda **kwargs: object())
     monkeypatch.setattr(log, "to_file", lambda: order.append("log file"))
     monkeypatch.setattr(cameras, "start_cameras", lambda env: [])
@@ -176,10 +193,10 @@ def test_the_migration_line_reaches_the_log_file(tmp_path, monkeypatch):
     original = cameras.logger.info
 
     def noted(message, *args):
-        if message.startswith("Face gallery rebuilt"):
-            order.append("migration line")
+        if message.startswith(("Face gallery rebuilt", "Dog gallery rebuilt")):
+            order.append(message.split()[0])
         original(message, *args)
 
     monkeypatch.setattr(cameras.logger, "info", noted)
     cameras.main(["--headless"])
-    assert order == ["log file", "migration line"]
+    assert order == ["log file", "Face", "Dog"]

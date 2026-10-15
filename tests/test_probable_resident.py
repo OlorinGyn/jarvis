@@ -68,7 +68,7 @@ class Gallery:
     (None, True, ("unidentified dog", None)),
 ])
 def test_identify_says_how_sure_a_resident_dog_is(monkeypatch, certainty, resident, expected):
-    monkeypatch.setattr(dogs, "describe", lambda frame, box: (None,))
+    monkeypatch.setattr(dogs, "describe", lambda frame, box, network=None: (None,))
     monkeypatch.setattr(dogs, "match", lambda descriptor, gallery: {
         "dog_id": "d_1" if certainty else None, "name": "Aurora" if certainty else "",
         "certainty": certainty, "distance": 0.3})

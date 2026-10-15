@@ -54,6 +54,9 @@ def main(argv=None):
     migrated = None if dry_run else faces.migrate_gallery(backup_dir=BACKUP_DIR)
     if migrated:
         print(f"Face gallery rebuilt for {faces.EMBEDDING_MODEL} first: {migrated}")
+    migrated = None if dry_run else dogs.migrate_gallery(backup_dir=BACKUP_DIR)
+    if migrated:
+        print(f"Dog gallery rebuilt for {dogs.EMBEDDING_MODEL} first: {migrated}")
     found = galleries()
     if dry_run:
         print("Dry run: nothing is written or deleted.")

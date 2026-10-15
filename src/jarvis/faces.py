@@ -1066,17 +1066,25 @@ def _embed_photo(folder, view, tally):
     return embedding.tolist()
 
 
-def refit_entry(entry, folder=None, tally=None):
+def _embed_face_photo(folder, old, view, tally):
+    return _embed_photo(folder, view, tally)
+
+
+def refit_entry(entry, folder=None, tally=None, embed=None):
     """A copy of a gallery entry with every view embedded again by the current model, from its photo.
 
     A view whose photo is gone, or in which SCRFD finds no face, leaves the
     copy; its photo stays on disk. When no chosen view is left, waiting ones
-    move up. tally counts kept, no photo, no face and moved up.
+    move up. tally counts kept, no photo, no face and moved up. embed(folder,
+    old embedding, view, tally) gives the new embedding or None; the dogs
+    pass their own.
     """
     folder = Path(folder or FACE_DIR)
     tally = tally if tally is not None else Counter()
-    chosen = [(_embed_photo(folder, view, tally), view) for view in views_of(entry)]
-    waiting = [(_embed_photo(folder, w.get("view"), tally), w.get("view"))
+    embed = embed or _embed_face_photo
+    chosen = [(embed(folder, old, view, tally), view)
+              for old, view in zip(entry["embeddings"], views_of(entry))]
+    waiting = [(embed(folder, w.get("embedding"), w.get("view"), tally), w.get("view"))
                for w in entry.get("pending") or []]
     chosen = [(e, v) for e, v in chosen if e is not None]
     waiting = [(e, v) for e, v in waiting if e is not None]
@@ -1090,7 +1098,7 @@ def refit_entry(entry, folder=None, tally=None):
     return moved
 
 
-def migrate_gallery(target=None, source=None, backup_dir=None):
+def migrate_gallery(target=None, source=None, backup_dir=None, model=EMBEDDING_MODEL, refit=None):
     """Build the current model's gallery from the older one beside it, embedding every view again from its photo.
 
     The older file stays as it was, so a version rolled back to still reads
@@ -1099,6 +1107,8 @@ def migrate_gallery(target=None, source=None, backup_dir=None):
     copied to backup_dir first. A lock file beside the gallery makes a second
     copy starting at the same moment wait, then find nothing to do. Returns
     the counts, or None when there was nothing to do (ARCHITECTURE 10.14).
+    model and refit(entry, folder, tally) name and rebuild another gallery's
+    entries: the dogs migrate the same way.
     """
     target = Path(target or GALLERY_FILE)
     source = Path(source or target.with_name(LEGACY_GALLERY_FILE.name))
@@ -1106,10 +1116,10 @@ def migrate_gallery(target=None, source=None, backup_dir=None):
         return None
     target.parent.mkdir(parents=True, exist_ok=True)
     with FileLock(target.with_name(f"{target.name}.lock")):
-        return _migrate(target, source, backup_dir)
+        return _migrate(target, source, backup_dir, model, refit or refit_entry)
 
 
-def _migrate(target, source, backup_dir):
+def _migrate(target, source, backup_dir, model, refit):
     """migrate_gallery's work, run while it holds the lock that keeps a second copy waiting."""
     digest = hashlib.sha1(source.read_bytes()).hexdigest()
     try:
@@ -1119,7 +1129,7 @@ def _migrate(target, source, backup_dir):
     if built_from == digest:
         return None
     began = time.monotonic()
-    backup = Path(backup_dir or BACKUP_DIR) / f"faces_{EMBEDDING_MODEL}_{datetime.now():%Y%m%d-%H%M%S}"
+    backup = Path(backup_dir or BACKUP_DIR) / f"{target.parent.name}_{model}_{datetime.now():%Y%m%d-%H%M%S}"
     backup.mkdir(parents=True, exist_ok=True)
     for path in (source, target):
         if path.is_file():
@@ -1129,7 +1139,7 @@ def _migrate(target, source, backup_dir):
     people = []
     for person in data.get("people", []):
         tally["views"] += len(views_of(person)) + len(person.get("pending") or [])
-        moved = refit_entry(person, source.parent, tally)
+        moved = refit(person, source.parent, tally)
         if not moved["name"] and not moved["embeddings"] and not moved.get("pending"):
             tally["entries dropped"] += 1
             continue
@@ -1137,7 +1147,7 @@ def _migrate(target, source, backup_dir):
     with _GALLERY_LOCK:
         target.parent.mkdir(parents=True, exist_ok=True)
         partial = target.with_name(f"{target.name}.part")
-        partial.write_text(json.dumps({"model": EMBEDDING_MODEL,
+        partial.write_text(json.dumps({"model": model,
                                        "source": {"file": source.name, "sha1": digest},
                                        "people": people}, indent=2), encoding="utf-8")
         partial.replace(target)

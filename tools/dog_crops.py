@@ -7,7 +7,8 @@ same for events recorded before, so the Dogs tab has something to name
 from the start. For each event labelled "dog" it reads the clip at the
 analysis size, finds the frame where the dogs show best with YOLO, and
 records each dog of that frame (dogs.record). Events already in the dog
-gallery are skipped, so it can run again safely. See HISTORY 8, backlog 22.
+gallery are skipped, so it can run again safely. The histograms' gallery is
+migrated first, as the program does when it starts. See HISTORY 8, backlog 22.
 """
 
 import argparse
@@ -59,6 +60,9 @@ def main():
     parser.add_argument("--days", type=int, default=0, help="only the last N days (0: all)")
     options = parser.parse_args()
     since = date.today() - timedelta(days=options.days) if options.days else date.min
+    migrated = dogs.migrate_gallery()
+    if migrated:
+        print(f"Dog gallery rebuilt for {dogs.EMBEDDING_MODEL} first: {migrated}")
     model = people.load_background_model()
     done = done_clips()
     added = events = 0

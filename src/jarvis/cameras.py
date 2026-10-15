@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, analysis, bot, faces, log, web
+from jarvis import ROOT, analysis, bot, dogs, faces, log, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -349,6 +349,7 @@ def main(argv=None):
         return
 
     migrated = faces.migrate_gallery()
+    dogs_migrated = dogs.migrate_gallery()
 
     stop = threading.Event()
     server = web.start(port=port, on_stop=stop.set)
@@ -362,6 +363,9 @@ def main(argv=None):
     if migrated:
         logger.info("Face gallery rebuilt for %s from %s: %s", faces.EMBEDDING_MODEL,
                     faces.LEGACY_GALLERY_FILE.name, migrated)
+    if dogs_migrated:
+        logger.info("Dog gallery rebuilt for %s from %s: %s", dogs.EMBEDDING_MODEL,
+                    dogs.LEGACY_GALLERY_FILE.name, dogs_migrated)
     core = Core(start_cameras(env))
     web.attach(core)
     bot.start()
