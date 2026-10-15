@@ -54,51 +54,14 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **36.** Notifications: the Telegram card beside "What reaches the phone" (decided 14/10, `6295d57`, review 24, `v2026.10.14.2`) | ARCHITECTURE 22.4 |
 | ✓ | **37 (a, b).** People and Dogs on a phone: two columns, long lists 24 at a time, Waiting newest first (decided, UX, `b8a731b`, review 25, `v2026.10.14.3`); the self-cleaning part waits for the user (`PENDING.md`) | ARCHITECTURE 17.17 |
 | ✓ | **38.** The default marked on each slider (decided, UX, `03cde0e`, review 25, `v2026.10.14.3`) | ARCHITECTURE 7.14 |
-| ✓ | **32, for faces.** The sure threshold chosen from measured accuracy (decided 13/10, `9fc5592`, review 25, `v2026.10.14.3`); the dogs' half is planned for developer 25, after R55 | ARCHITECTURE 10.15 |
+| ✓ | **32.** The sure threshold chosen from measured accuracy: faces (decided 13/10, `9fc5592`, review 25, `v2026.10.14.3`), dogs' sure distance (`bc94747`, review 27, `v2026.10.15.2`), both measured by leave-one-event-out (R55) | ARCHITECTURE 10.15, 20 |
 | ✓ | **39.** On a phone, an unnamed card is its photo and its name; the empty accuracy table hidden (decided, UX, `a9b8c32`, review 26, `v2026.10.15`) | ARCHITECTURE 17.17 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–39 and 32, in `PENDING.md`.
 
 ### Decided on 13/10/2026, to build
 
-Asked by the user on the evening of 13/10, with the answers to the
-architect's questions the same evening; the measurements behind them were
-taken in production that evening.
-
-32. **The "maybe" threshold, chosen from measured accuracy** (decided; the
-    user: with a metric they set the threshold, without one the maybe stays
-    as it is). Settings shows, for faces and for dogs, a table measured on
-    the user's own named photos by leave-one-out — each named view matched
-    against all the others: per threshold, how many named views would be
-    recognised for sure and what share to the right one, and how many
-    unnamed photos would cross it. The user sets the sure threshold from it
-    (faces `LEARN_THRESHOLD` 0.45; dogs the sure distance 0.35 and ratio
-    0.6), stored in `config.json`. Measured 13/10: faces are 99.3 % right at
-    any threshold from 0.363 to 0.45 (1 error in 146 views) — **wrong,
-    review 20**: 7 of Gustavo's views are Izabel's faces, counted as right by
-    their label; at 0.45 at least 8 of 146 are wrong, and the table means
-    something only on clean labels, with each view's exact copies left out of
-    its own test; and review 21 found that those wrong views are not faces
-    at all, but the top of a head (R49). **Since `v2026.10.14` the model is
-    ArcFace** (thresholds 0.30 / 0.40): the table is computed on it, and
-    means something once the labels are clean — the twelve head-tops deleted
-    and the seven unnamed entries of Izabel named (`PENDING.md`). Even so, 12 unnamed
-    face views fall between 0.363 and 0.45; dogs at today's thresholds are
-    right in 31 of 33 probable matches, the 2 wrong ones at night. **What it
-    cannot measure:** a stranger has no name, so the table shows confusion
-    between the named, not with strangers — the unnamed column is the only
-    hint, and the page says so. A lower sure threshold also means more views
-    learned on their own (28).
-    **The faces' half is done** (`9fc5592`, `v2026.10.14.3`, ARCHITECTURE
-    10.15): production's table has no wrong answer from 0.30 to 0.60, which
-    is optimistic until R55 leaves each view's whole event out. **The dogs'
-    half** is planned (section 3): on DINOv2-small's distances (R53,
-    `v2026.10.15`), born with R55's leave-one-event-out. **The user sets the
-    sure distance only; the ratio to the second dog stays `SURE_RATIO` 0.6**
-    (decided, UX, review 26): the bench showed the ratio is what keeps
-    two-dog crops out of the sure answers (3 + 1 instead of 7 + 1 at 0.33,
-    ARCHITECTURE 20) — a safety rule, not a preference — and one number to
-    set reads better than a grid of two.
+Items 28–32 are done (above); their full text is in `HISTORY.md` 8.
 
 ### Decided on 14/10/2026, to build
 
@@ -193,35 +156,15 @@ proposes one, the answer is already here.
 The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
 model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
-in review 25, R53, R56 and R57 in review 26.
+in review 25, R53, R56 and R57 in review 26, R55 in review 27.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | open (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
-
-**R55 — The accuracy tables leave out only exact copies (medium, review
-25).** Backlog 32's table, and R53's bench, leave each view out with its exact
-copies (cosine ≥ 0.9999 for faces), but the views of one event are
-consecutive frames of the same face or dog, and they vouch for each other: a
-probe's twin from its own event is still among the references. Production's
-face table has no wrong answer from 0.30 to 0.60, and the two residents'
-closest pair is 0.313 (ARCHITECTURE 10.14), so the low end, where the user
-would lower the threshold, is where a leave-one-**event**-out could differ.
-Views do not record their event; sightings do (`clip`). **Then:** record
-each view's event, additively and keyed by the view's photo — for instance
-`view_events: {"<12hex>.jpg": "Front/2026-10-14/12-00-00"}` in the entry —
-so no move by an older version can misalign it; recover the event of the
-views stored before, by matching each view photo to its sighting crop (the
-16×16 grey thumbnail of `dog_bench.py` found such pairs); and make
-`faces.accuracy`, and the dogs' table to come, leave out every reference of
-the probe's event. Views whose event cannot be recovered fall back to
-today's rule and are counted on the page. Measure on production's galleries
-the table before and after.
 
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
@@ -259,52 +202,22 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 26 is done:** developer 24's R53 step 2, backlog 39, R56 and R57,
-tagged `v2026.10.15` (HISTORY 13.27). R53, R56 and R57 are closed; nothing
-was opened.
+**Review 27 is done:** developer 25's R55 and backlog 32 for dogs, tagged
+`v2026.10.15.2` (HISTORY 13.28). R55 is closed and backlog 32 is done for
+both halves; nothing was opened.
 
-**Developer 25: R55, then backlog 32 for dogs.**
+**No developer session is planned.** Nothing decided waits: every open
+backlog item is **(proposto)** and every open recommendation is a watch or
+not planned. The next session starts from the user's choice among the
+proposed items (`PENDING.md`, open discussions).
 
-1. **R55** (section 2), the session's core. Record each view's event
-   additively, keyed by the view's photo (`view_events`), in the shared
-   gallery code so faces and dogs both get it; recover the event of the
-   views stored before — a dog view's photo is the same picture as its
-   sighting crop (developer 23's bench found such pairs by a 16×16 grey
-   thumbnail), and for faces find out first which stored image a view
-   photo matches; make `faces.accuracy` leave out every reference of the
-   probe's event, falling back to today's rule, counted on the page, for a
-   view whose event is unknown. Measure on copies of production's
-   galleries (only read `C:\JARVIS`): how many views' events are recovered
-   per gallery, and production's face table before and after. Additive in
-   both galleries: an older version must still read them (CLAUDE.md); run
-   `tools/check_data.py` before every commit that touches them.
-2. **Backlog 32 for dogs** (section 1), born with R55's rule: Settings →
-   Detection gains the dogs' table beside the faces', measured by
-   leave-one-event-out on DINOv2's distances, per lighting as the bench
-   does — per sure distance, the named views named for sure, by day and at
-   night, the share right, and the unnamed crops that would cross it, at
-   the fixed ratio `SURE_RATIO`. Rows from 0.20 to `PROBABLE_DISTANCE`
-   (0.39), at a step that keeps the table readable at 375 px. The user's
-   sure distance is stored in `config.json` as the faces' is (additive,
-   absent until saved, refused outside its range) and read once per
-   operation, never per comparison: `_absorb` matches every unnamed crop.
-   It must reach every place the sure rule decides — `record`'s
-   reinforcement, `_absorb`'s gathering, `guess` and the first message —
-   and nowhere else. Check the panel at 375 px and on the desktop.
-
-**HANDOFF:** R55 as built — how each gallery's events were recovered, how
-many views fell back, production's face table before and after; backlog 32
-for dogs — production's dog table at the defaults, from a copy, and the page
-at both widths. If the session runs short, stop after R55 with a coherent
-commit and say what is left.
-
-**Then, not planned yet:** nothing decided waits behind these two.
-
-**Waits for the user:** the policy for unnamed faces (backlog 37,
-`PENDING.md`); the misfiled dog views, thirteen, before the once-only
-settle of backlog 28 — the new model sees them right, but four sit in
-Chosen, where every match is measured against them; the M900 sleeping at
-the sign-in screen; the checks on the M900 (`PENDING.md`).
+**Waits for the user:** choosing the sure threshold for faces and the sure
+distance for dogs from the two tables in Settings → Detection (the defaults
+hold until then); the policy for unnamed faces (backlog 37, `PENDING.md`);
+the misfiled dog views, thirteen, before the once-only settle of backlog
+28 — the new model sees them right, but four sit in Chosen, where every
+match is measured against them; the M900 sleeping at the sign-in screen;
+the checks on the M900 (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R14, R12 and R9 as before. Every
 other open backlog item is **(proposto)**.

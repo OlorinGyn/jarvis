@@ -1941,37 +1941,113 @@ end is `MATCH_THRESHOLD`, below which nothing is a match at all), and
 So a lower threshold names more and learns more on its own, and gathers more
 when naming. The panel says so.
 
-**The table — `faces.accuracy(gallery, thresholds)`.** Leave-one-out over the
-named people's **Chosen** embeddings, as matching uses them: the rows are
-normalised and one matrix product gives every pair's cosine (PYTHON 43); each
-probe's own row and its exact copies — cosine ≥ `COPY_SIMILARITY` 0.9999 —
-are masked out, and the best remaining reference decides the name, as
+**The table — `faces.accuracy(gallery, thresholds)`.** Leave-one-**event**-out
+over the named people's **Chosen** embeddings, as matching uses them: the
+rows are normalised and one matrix product gives every pair's cosine
+(PYTHON 43); for each probe, `_left_out` masks its exact copies — cosine ≥
+`COPY_SIMILARITY` 0.9999, its own row among them — and **every view of its
+own event** (10.16), and the best remaining reference decides the name, as
 `Gallery.match`'s max over views does. Per threshold of `SURE_SWEEP` (0.300
 to 0.600 by 0.025), plus the current value: how many views would be named
 for sure, how many to the right person and how many to the wrong one, and how
-many views of unnamed entries would cross it toward someone named.
-`GET /api/accuracy/faces` answers the table with `current`, `default` and
-`range`; the choice is saved through `POST /api/settings`, validated by
+many views of unnamed entries would cross it toward someone named — by the
+same rule, so an unnamed view is not matched against a named view of its own
+event either. A view whose event is unknown leaves out only its exact copies
+and is counted in `unknown_events`, which the page reports when it is not
+zero. `GET /api/accuracy/faces` answers the table with `current`, `default`
+and `range`; the choice is saved through `POST /api/settings`, validated by
 `_clean` and rounded to three decimals.
 
-**Production's table on 14/10** (developer 23, read-only on
-`C:\JARVIS\faces`): 80 Chosen views of the two residents, no unnamed entry,
-**no wrong answer at any threshold**:
+**Why the event, and not only copies (R55, 15/10/2026).** The views of one
+event are consecutive frames of the same face: not copies, but twins. Left
+among the references, a probe's twin vouches for it, and the table measures
+how well the gallery recognises a frame it has already seen — in Java terms,
+testing on the training set. A new visit has no twin in the gallery. So the
+first table, built with copies only, was optimistic, and where it mattered
+was coverage, not errors. **Production's table, 80 Chosen views of the two
+residents, no unnamed entry** (developer 25 on a copy of 15/10; the review
+got the same numbers on its own copy):
 
 | Threshold | 0.30 | 0.35 | 0.40 (default) | 0.45 | 0.50 | 0.55 | 0.60 |
 |---|---|---|---|---|---|---|---|
-| Named for sure, of 80 | 77 | 73 | 66 | 39 | 23 | 12 | 4 |
+| Copies left out (14/10) | 77 | 73 | 66 | 39 | 23 | 12 | 4 |
+| **The event left out** | **69** | **60** | **39** | **15** | **4** | **0** | **0** |
 
-**What it cannot measure, and why it is optimistic.** A stranger has no name,
-so the table shows confusion between the people the user named, never with
-strangers; the Unnamed column is the only hint, and the page says so. And
-only exact copies are left out: the views of one event are consecutive
-frames of the same face, not copies, so a probe's twin from its own event is
-still among the references and makes the match look surer than a new event
-would. The closest pair of the two residents is 0.313 (10.14) — a threshold
-near 0.30 is where a leave-one-**event**-out could find wrong answers this
-table cannot. Views do not record their event; R55 (BACKLOG 2) is that
-measurement.
+**Still no wrong answer at any threshold.** At today's 0.40, a view of a
+resident is named for sure by another visit's view 39 times in 80, not 66.
+The low end, where the closest pair of the two residents sits (0.313, 10.14),
+was where a wrong answer could have hidden; there is none at 0.30.
+
+**Overlapping events, measured by the review.** A clip's pre-roll can cover
+the end of the previous event of the same camera, so two events can hold one
+moment. On the same copy, of the 69 views named for sure at 0.30, 8 had their
+nearest reference in an event of the same camera less than 180 s away (four
+reciprocal pairs, 37 s, 153 s and 165 s apart — only the first is a true
+overlap; the others are the person coming back). Leaving those neighbours out
+too changes 60 → 59 at 0.35, 39 → 36 at 0.40 and 15 → 11 at 0.45, and still
+finds no wrong answer; the dogs have no such pair. Too small to change the
+rule: an event stays the unit.
+
+**What it cannot measure.** A stranger has no name, so the table shows
+confusion between the people the user named, never with strangers; the
+Unnamed column is the only hint, and the page says so.
+
+### 10.16 Each view remembers its event (R55, 15/10/2026)
+
+A view is a photo in `faces/views/` (or `dogs/views/`) and an embedding;
+until R55 nothing said which visit it came from. Now each gallery entry —
+faces and dogs alike, in the shared `faces.Gallery` — may carry
+**`view_events`**: `{"<12hex>.jpg": "Back/2026-10-14/11-05-41"}`.
+
+- **The key is the photo's name, not the view's position.** Views move
+  between Chosen and Waiting, are replaced past 40 and merged into other
+  entries; a list aligned by index would misalign at the first move made by
+  an older version that does not know the field. A photo name never changes.
+- **The event is `faces.event_of(clip)`**: the clip path's last three parts,
+  camera/day/time, so a clip moved to the archive (11) is the same event.
+- **Filled when a view is stored**: `Gallery.add(..., event)` and
+  `Gallery.reinforce(..., event)`, from `_scan_clip` and `dogs.record`.
+  `_merge` carries the source's events into the target; `save()` prunes the
+  keys whose photo left the entry's views and queue (`_prune_events`).
+  Moves inside an entry keep the photo, so they keep the key. A view stored
+  without an event, or moved by a path that does not carry it, is found again
+  by the recovery below at the next start.
+
+**Recovering the views stored before — `Gallery.recover_events()`**, run at
+every start in `cameras.main()` beside the migrations, before the web and
+the cameras. It looks only at views with no key, and for each reads the
+sighting folders of the day its photo was written and the days beside it:
+
+1. **The same picture.** A dog's view is the same crop as its sighting's
+   photo, written twice at different JPEG qualities; a face's best view is its
+   sighting's photo. Bytes differ, so a hash would not find them:
+   `_tiny` shrinks both to a 16×16 grey thumbnail (`TINY_SIDE`, `cv2.resize`
+   with `INTER_AREA`, which averages), and a sighting photo of the same size
+   whose thumbnail differs by less than `SAME_PICTURE` 1.0 grey level on
+   average is the same picture — when all such photos are of one event.
+2. **Written together.** A face's other views are stored in the moment its
+   sighting is written: the sighting photos whose file time (`st_mtime`) is
+   within `WRITTEN_TOGETHER_SECONDS` 2 s of the view's, when all are of one
+   event.
+
+A view found by neither is written as `""`, so it is tried once and every
+later start skips it; `events_of` reads `""` as unknown. The counts go to
+the log ("Events of the face views stored before …"). **Measured on copies
+of production's galleries (15/10):** faces, 138 views — 81 by the same
+picture, 57 written together, none unknown; dogs, 205 views, all by the same
+picture; under a second each, nothing to do on a second run. Of the 83 face
+views byte-identical to a sighting photo, 81 agree with rule 1; the other 2
+are one picture in two sightings of two overlapping clips (17:45:14 and
+17:45:51 on 10/10), which rule 1 cannot split and rule 2 resolves by the time
+written. On rule 2 the nearest sighting was ≤ 0.1 s away and the next other
+event ≥ 6 s.
+
+**Its weakness is the file time.** Rule 2 trusts `st_mtime`, which any copy
+without preserved times or any rewrite changes. A copy of `faces/` made with
+plain `copy` would turn rule 2 into "not found" — or into a wrong event if
+every photo got one time within 2 s of a sighting. So production's **first
+start of `v2026.10.15.2`**, on its original files, is the moment that
+counts; after it every view has a key, and later copies do not matter.
 
 ---
 
@@ -3317,9 +3393,9 @@ the old one, which stays untouched for a rollback (10.14).
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
 | `clips/<cam>/<day>/HH-MM-SS.people.jpg` | `EventRecorder.stop` | the hidden-person message | **optional, since 15/10/2026**: the frame where two or more people were counted, boxes drawn (22.3, R56) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
-| `faces/gallery_arcface_w600k_r50.json` | `Gallery.save`, `migrate_gallery` | People, the face scan | **since 14/10/2026** (10.14): `gallery.json`'s schema with 512 floats per embedding, plus `model` and `source` (`file`, `sha1`) at the top |
+| `faces/gallery_arcface_w600k_r50.json` | `Gallery.save`, `migrate_gallery` | People, the face scan | **since 14/10/2026** (10.14): `gallery.json`'s schema with 512 floats per embedding, plus `model` and `source` (`file`, `sha1`) at the top; `view_events` per entry **optional since 15/10/2026** (10.16) |
 | `faces/gallery.json` | `Gallery.save` until `v2026.10.13`; **never written since** | `v2026.10.13` after a rollback, `migrate_gallery`, `check_data` | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
-| `dogs/gallery_dinov2_small.json` | `DogGallery.save`, `dogs.migrate_gallery` | the Dogs tab, matching | **since 15/10/2026** (section 20): `gallery.json`'s schema with 385 floats per descriptor (the infrared flag, then DINOv2-small's 384), plus `model` and `source` (`file`, `sha1`) at the top |
+| `dogs/gallery_dinov2_small.json` | `DogGallery.save`, `dogs.migrate_gallery` | the Dogs tab, matching | **since 15/10/2026** (section 20): `gallery.json`'s schema with 385 floats per descriptor (the infrared flag, then DINOv2-small's 384), plus `model` and `source` (`file`, `sha1`) at the top; `view_events` per entry **optional since 15/10/2026** (10.16) |
 | `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py`; `gallery.json` **never written since 15/10/2026** | the Dogs tab, matching, `check_data`; `gallery.json`: `v2026.10.14.3` after a rollback, `dogs.migrate_gallery`, `check_data` | **since 10/10/2026** (section 20); `gallery.json`'s descriptors are the 41-number histograms; entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
 | `models/dinov2_small.onnx` | `downloads.py` | `dogs.Network` | **since 15/10/2026**: 88.5 MB, kept only with its pinned SHA-256 (10.2) |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per chosen or waiting view; a view that leaves is deleted after the save (17.14) |
@@ -3327,7 +3403,7 @@ the old one, which stays untouched for a rollback (10.14).
 | `reports/<kind>/<stem>.json` + `.jpg` | `reports._write` | Settings → Bad-detection reports, `check_data`, each review | **since 11/10/2026** (section 21): `kind`, `verdict`, `source`, `reported_at`, `label`, `camera`, `at`, `time`, `clip`, `score`, `box`, `crop`; a gallery report adds `entry` and `sightings`, an event report `event`. **Optional since 11/10 (R38, R37):** `entry` holds the whole gallery entry (older reports: only `id`, `first_seen`, `embeddings`), `sighting_files`, `actually` |
 | `reports/<kind>/<stem>/` | `reports._keep_copies` | Undo | **since 11/10/2026 (R38)**: copies of the entry's view photos (`<12hex>.jpg`) and of its sightings' crops (`HH-MM-SS_<id>.jpg`); absent in older reports |
 | `devices.json` | `web` (pairing) | the write guard | **since 11/10/2026 (R34)**: each paired device's token SHA-256 hash, label and last use |
-| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10); `notify_mode` and `notify_modes` **since 12/10/2026** (22.2), written whole once this version saves any setting; `face_sure_threshold` **since 14/10/2026** (10.15), absent until the user saves one; `notify_labels` is still read, to build the default switches. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
+| `config.json` | `settings.save` | everything that reads settings | `archive_*`, `notify_*`; `notify_prefix` **since 09/10/2026**; `write_pin` **since 10/10/2026** (17.10); `notify_mode` and `notify_modes` **since 12/10/2026** (22.2), written whole once this version saves any setting; `face_sure_threshold` **since 14/10/2026** (10.15) and `dog_sure_distance` **since 15/10/2026** (20), each absent until the user saves one; `notify_labels` is still read, to build the default switches. Since 10/10/2026 `save()` keeps keys it does not know, so an older version never erases a newer one's settings (R11) |
 | `.env` | the user | `cameras.main` | `CAM_<LABEL>_IP/_USER/_PASSWORD`; `CAM_STREAM`, `WEB_PORT` **optional since 09/10/2026** |
 | `logs/jarvis.log` (+ `.1` to `.5`) | `log.to_file` | the user | 1 MB each, the oldest is dropped |
 | `HOLD` | `tools/production.ps1` | `cameras.main` | present while production is held (18.7) |
@@ -3377,7 +3453,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night, 269 in about 15 s on 14/10 after developer 22): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night, 269 in about 15 s on 14/10 after developer 22, 313 in about 18 s on 15/10 after developer 25): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALL 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -3446,9 +3522,55 @@ its ratio 0.6 keeps two-dog crops out of the sure answers (3 + 1 instead of
 **teaches** the gallery and gathers crops (R29): a two-dog crop named sure
 would be a new misfiled view. Probable sits 0.059 under the nearest person
 crop (0.449): 96/103 and 42/46 named, none wrong, no person. No answer is
-wrong anywhere in the sweep, which is **optimistic** while each view's own
-event stays among the references (R55, BACKLOG 2). `tools/dog_tuning.py` on
-the migrated copy agrees: 0 wrong at every point of its grid.
+wrong anywhere in the sweep. `tools/dog_tuning.py` on the migrated copy
+agrees: 0 wrong at every point of its grid. The bench left only exact copies
+out; for dogs that turned out not to matter (below).
+
+**The sure distance is the user's (backlog 32 for dogs, 15/10/2026).**
+Settings → Detection has a second panel beside the faces' (10.15), "Dog
+recognition: when a name is sure". The distance is the optional
+`dog_sure_distance` in `config.json` (0.20–0.39, `settings.DOG_SURE_RANGE`,
+whose top is `PROBABLE_DISTANCE`, a test ties them), refused outside it by
+the page's POST and read as the default by `settings.load()`.
+`SURE_DISTANCE` 0.33 is now only that default
+(`settings.DEFAULTS["dog_sure_distance"]`). **Only the distance**: the ratio
+to the second dog stays `SURE_RATIO` 0.6, a safety rule rather than a
+preference — it is what keeps two-dog crops out of the sure answers (the
+table above) — and one number to set reads better than a grid of two
+(review 26).
+
+`dogs.sure_distance()` reads it **once per operation** and passes it to
+`match(descriptor, gallery, sure)` in the four places the sure rule decides:
+`record` (once per call, before the loop over boxes: reinforcement),
+`_absorb` (once per naming: the crops it gathers), `guess` (once per entry:
+the Dogs tab's hint) and `identify` (the first message). Never per
+comparison — `_absorb` matches every unnamed crop, and `settings.load()`
+reads a file. `match` without `sure` uses the module constant, so
+`tools/dog_tuning.py`, which patches `SURE_DISTANCE`, still works.
+
+**The table — `dogs.accuracy(gallery, distances)`**, leave-one-event-out on
+DINOv2's distances, per lighting, at the fixed ratio. `_Reference` holds the
+named views as one matrix; each probe is one product (`1 − X·v`), masks its
+copies (`COPY_DISTANCE` 0.0001), the other lighting and its own event, then
+`np.minimum.at` keeps each dog's nearest view in one call (PYTHON 45) and the
+two smallest give the best dog and the second. Rows `SURE_SWEEP`, 0.20 to
+0.38 by 0.02 plus 0.39, and the current choice. `GET /api/accuracy/dogs` adds
+`current`, `default`, `range`, `ratio` and `probable`. The page shows Day and
+Night as sure/views with the share right beneath, then Wrong and Unnamed;
+both panels are one script, `surePanel` in `app.js` (PYTHON 45).
+
+**Production's table** (a copy of 15/10: 56 named views by day, 24 at night,
+44 unnamed crops; identical whether the event or only copies are left out —
+one crop per dog per event leaves nothing to leak):
+
+| Distance | 0.20 | 0.24 | 0.28 | 0.30 | **0.33** (default) | 0.36 | 0.39 |
+|---|---|---|---|---|---|---|---|
+| Sure by day, of 56 | 21 | 35 | 39 | 40 | **44** | 44 | 46 |
+| Sure at night, of 24 | 2 | 2 | 5 | 7 | **9** | 9 | 9 |
+| Unnamed crops named | 8 | 15 | 21 | 24 | **26** | 28 | 28 |
+
+Every sure answer is to the right dog, at every distance. Night is where the
+distance matters: 9 of 24 at most, the honest cost of infrared.
 
 **The gallery.** `DogGallery` subclasses `faces.Gallery` — the same views,
 queue and favourite photo, in `dogs/`, with ids `d_…` — by overriding class
@@ -3523,10 +3645,10 @@ named, and the nearest one sits about 0.11 further. A two-dog crop is named
 the dog that fills more of it, by every candidate: arguably right, but the
 second dog is missed.
 
-**What the bench cannot say.** The leave-one-out is optimistic: views of one
-event are different frames, so a view's own event may still be among the
-references, and a leave-one-event-out needs each view's clip, which views do
-not record (R55). And the two dogs are white and black. A household with two
+**What the bench cannot say.** The leave-one-out left only exact copies out;
+since R55 views record their event (10.16), and leaving each view's event
+out changes nothing on production's dogs (above). And the two dogs are white
+and black. A household with two
 dogs of one colour, or of one breed, is where the choice matters most, and
 nothing here measures it.
 

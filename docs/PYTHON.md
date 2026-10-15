@@ -2219,3 +2219,101 @@ is wrong, so one value both decides and explains — the caller writes
 element by element: `@(1, $null) -eq $null` returns the matching elements,
 not `$true` or `$false`. With `$null` on the left the answer is always one
 boolean.
+
+## 45. Testing on what was learned, a group-by minimum in one call, a picture compared by eye, a file's time as evidence, and a closure as an object (developer 25)
+
+From one delivery: R55 and backlog 32 for dogs (ARCHITECTURE 10.15, 10.16,
+20).
+
+**Leave-one-out and its leak (R55).** To measure a recogniser without a
+separate test set, each named view is taken out in turn and matched against
+the others: leave-one-out, the honest test when labels are few. It has one
+trap. The views of one visit are consecutive frames — twins. Take one out
+and its twin is still there, so the match is nearly certain; the table
+measures how well the gallery recognises a frame it has already seen. In
+Java terms, that is testing on the training set. The fix is to leave out the
+whole group the probe belongs to — here its event — so every probe faces the
+gallery as a new visit would. In code it is one more mask:
+
+```python
+out = scores >= COPY_SIMILARITY
+out = out | (events == event) if event else out
+scores = np.where(out, -1.0, scores)
+```
+
+`events` is a NumPy array of strings (`dtype=object`), so `events == event`
+compares every element at once and returns an array of booleans, as
+`scores >= COPY_SIMILARITY` does; `|` joins two such masks element by
+element. On production the faces' coverage fell from 66 to 39 of 80 at 0.40,
+with no new error; the dogs did not change at all — one crop per dog per
+event leaves no twin to leak.
+
+**`np.minimum.at`: a group-by minimum without a loop (backlog 32 for dogs).**
+Each probe gets a distance to every named view; what `match` needs is each
+dog's nearest view. In Java that is
+`Collectors.groupingBy(owner, Collectors.minBy(...))`:
+
+```python
+per_dog = np.full(dogs, np.inf)
+np.minimum.at(per_dog, owners, distances)
+```
+
+`owners[i]` is the dog of view `i`. `np.minimum.at` walks the pairs and does
+`per_dog[owners[i]] = min(per_dog[owners[i]], distances[i])` for each — in
+C. It must be the `.at` form: `per_dog[owners] = np.minimum(per_dog[owners],
+distances)` looks the same but is *buffered* — when one dog owns several
+views, every assignment to the same slot reads the same old value and the
+last write wins, not the smallest. `.at` is unbuffered: each write sees the
+one before. Then `np.argsort(per_dog)` gives the nearest dog and the second.
+
+**Comparing pictures by eye, not by bytes (R55).** A dog's view and its
+sighting are the same crop saved twice, at JPEG quality 92 and 90. Their
+bytes differ, so a SHA-1 would call them different. A perceptual comparison
+looks at what a person would see:
+
+```python
+image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+tiny = cv2.resize(image, (16, 16), interpolation=cv2.INTER_AREA).astype(np.float32)
+same = np.abs(tiny - other).mean() < 1.0
+```
+
+`INTER_AREA` averages every source pixel that falls into each of the 256
+cells, so JPEG's small noise cancels out and two savings of one picture
+differ by a fraction of a grey level, while two different frames differ by
+many. `astype(np.float32)` matters: on `uint8` arrays `a - b` wraps around
+(3 − 5 is 254), as a Java `byte` would.
+
+**A file's time as evidence (R55).** `Path(photo).stat().st_mtime` is the
+last time the file was written, in seconds since 1970 as a float — the
+`File.lastModified()` of Java, in seconds. A face view and its sighting are
+written in the same moment, so a view whose photo was written within 2 s of
+exactly one event's sightings came from that event. The weakness is that
+the time is the file system's, not the photo's: a plain copy, a restore or a
+rewrite sets a new one (`cp -p`, `shutil.copy2` and `robocopy` keep it;
+`shutil.copy` does not). That is why the recovery runs once, on
+production's own files.
+
+**A closure as a small object (`surePanel` in `app.js`).** The face and dog
+panels differ in a few cells and words, so one function builds both:
+
+```js
+function surePanel({ form, key, endpoint, ... }) {
+  let fallback = null;
+  async function load() { ... fallback = table.default; ... }
+  async function save(chosen) { ... }
+  panel.querySelector(".sure-default").addEventListener("click", () => save(fallback));
+  return { load };
+}
+const dogSure = surePanel({ form: "dog-sure-form", key: "dog_sure_distance", ... });
+```
+
+`fallback`, `load` and `save` live in the function's scope, and the inner
+functions keep that scope alive after `surePanel` returns: a **closure**.
+Each call makes a fresh scope, so the two panels have two `fallback`s that
+never meet. What is returned, `{ load }`, is the public part; the rest is
+private. In Java it is an anonymous class instance with private fields, or a
+C# lambda capturing locals. The configuration object passes functions as
+values (`value: (row) => row.distance`) — the strategy pattern without an
+interface. And `#accuracy-table` became the class `.accuracy-table`: an id
+must be unique in a page, so two tables need a class, and each panel finds
+its own parts with `panel.querySelector(...)` inside its form.

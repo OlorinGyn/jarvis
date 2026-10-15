@@ -90,9 +90,8 @@ grows, decisions are being postponed.
   show only you (R56); People and Dogs show two columns on the phone and
   long lists 24 at a time, Waiting newest first; each detection slider has a
   tick at its default; Settings → Detection → "Face recognition: when a name
-  is sure" shows production's table (77 of 80 sure at 0.30, 66 at 0.40, no
-  wrong answer) — **choosing a threshold is the user's**, and the table is
-  optimistic until R55 (ARCHITECTURE 10.15). A "hidden person" message for a
+  is sure" shows production's table — **choosing a threshold is the user's**;
+  since `v2026.10.15.2` it leaves each view's whole event out (below). A "hidden person" message for a
   scene with only residents and dogs goes to the architect, with its time.
 
 - **`v2026.10.15` on the phone and the M900** (R53, backlog 39, R56,
@@ -104,6 +103,18 @@ grows, decisions are being postponed.
   where the people were counted, boxes drawn. On the phone an unnamed card
   on People and Dogs is its photo and its name: tap photos, then name or
   report them in the bar at the bottom.
+
+- **`v2026.10.15.2` on the phone and the M900** (R55, backlog 32 for
+  dogs): Settings → Detection now holds two tables, both measured leaving
+  each photo's whole visit out — a visit's frames vouched for each other
+  and made the faces' table look better than it is. **The faces' numbers
+  dropped and that is the honest picture:** at 0.40, 39 of 80 named views
+  are named for sure by another visit (66 before), still no wrong answer at
+  any threshold (ARCHITECTURE 10.15). **The new dog table** — at the
+  default 0.33, 44 of 56 by day and 9 of 24 at night, all right; 26 unnamed
+  crops would be named. **Choosing the face threshold and the dog distance
+  is the user's**; the defaults hold until then. A note to the architect if
+  either table reads wrong on the phone.
 
 ## Decided, not yet done
 

@@ -108,6 +108,8 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+32. **Done 15/10 (faces `9fc5592`, `v2026.10.14.3`; dogs `bc94747`, `v2026.10.15.2`; both by leave-one-event-out, R55 `cde3087`; ARCHITECTURE 10.15, 20).** **The "maybe" threshold, chosen from measured accuracy** (decided; the user: with a metric they set the threshold, without one the maybe stays as it is). Settings shows, for faces and for dogs, a table measured on the user's own named photos by leave-one-out — each named view matched against all the others: per threshold, how many named views would be recognised for sure and what share to the right one, and how many unnamed photos would cross it. The user sets the sure threshold from it (faces `LEARN_THRESHOLD` 0.45; dogs the sure distance 0.35 and ratio 0.6), stored in `config.json`. Measured 13/10: faces are 99.3 % right at any threshold from 0.363 to 0.45 (1 error in 146 views) — **wrong, review 20**: 7 of Gustavo's views are Izabel's faces, counted as right by their label; at 0.45 at least 8 of 146 are wrong, and the table means something only on clean labels, with each view's exact copies left out of its own test; and review 21 found that those wrong views are not faces at all, but the top of a head (R49). **Since `v2026.10.14` the model is ArcFace** (thresholds 0.30 / 0.40): the table is computed on it, and means something once the labels are clean — the twelve head-tops deleted and the seven unnamed entries of Izabel named (`PENDING.md`). Even so, 12 unnamed face views fall between 0.363 and 0.45; dogs at today's thresholds are right in 31 of 33 probable matches, the 2 wrong ones at night. **What it cannot measure:** a stranger has no name, so the table shows confusion between the named, not with strangers — the unnamed column is the only hint, and the page says so. A lower sure threshold also means more views learned on their own (28). **The faces' half is done** (`9fc5592`, `v2026.10.14.3`, ARCHITECTURE 10.15): production's table has no wrong answer from 0.30 to 0.60, which is optimistic until R55 leaves each view's whole event out. **The dogs' half** is planned (section 3): on DINOv2-small's distances (R53, `v2026.10.15`), born with R55's leave-one-event-out. **The user sets the sure distance only; the ratio to the second dog stays `SURE_RATIO` 0.6** (decided, UX, review 26): the bench showed the ratio is what keeps two-dog crops out of the sure answers (3 + 1 instead of 7 + 1 at 0.33, ARCHITECTURE 20) — a safety rule, not a preference — and one number to set reads better than a grid of two. **Built:** the faces' half in developer session 23; the dogs' in developer session 25, with R55: on production's copy of 15/10 the faces are named for sure 39 times in 80 at 0.40 by another visit (66 before R55), the dogs 44 of 56 by day and 9 of 24 at night at 0.33, every answer right at every row of both tables.
+
 39. **Done 15/10 (`a9b8c32`, `v2026.10.15`, ARCHITECTURE 17.17).** **On a phone, an unnamed card is its photo and its name** (decided, UX, review 25). At 375 px an unnamed card was 309 px tall, and 137 px of it were the name, a name form and "Bad detection" — while tapping the photo already selects it, and the selection bar at the bottom names, assigns or reports one photo or many. Under 480 px: (a) unnamed cards on People and Dogs drop their own name form, their "Belongs to…" and their "Bad detection" — CSS only, the desktop keeps them; the hint above the unnamed list says "Tap photos to select them, then name or report them below" on a phone; (b) the accuracy table of Settings → Detection is hidden while nothing is measured, leaving its one sentence, on every width. Built in developer session 24: the Dogs tab at 375 px with production's 46 dogs 8,768 → 6,018 px, an unnamed card 349.5 → 231.5 px, two taps to name or report one photo.
 
 38. **Done 14/10 (`03cde0e`, `v2026.10.14.3`, ARCHITECTURE 7.14).** **The default marked on each slider** (decided, UX, review 24). Backlog 35's sliders showed no mark where the default sits, so a slider moved and moved back could not be put on the default by eye. A `<datalist>` with one option at `slider_steps / 2`, named by each slider's `list` attribute, makes the browser draw a tick there; nothing else changes. Built in developer session 23; seen at 375 px with the thumb moved away.
@@ -233,6 +235,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 24 | 14/10/2026 | `70d3fce..099d547`, developer session 22 — backlog 34, 35, 36, R52, R51, R30 (b) | no code fixed; 269 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1280 px (Off asks, On does not; no horizontal scroll); the slider's round trip checked for six defaults; `filelock` has no binary; R30, R51 and R52 closed, R54 opened (a watch: no stranger measured); backlog 37 designed from production's counts, 38 added; **release `v2026.10.14.2`**, deployed at 15:50: 976 events, 206 face and 412 dog sightings, 18 reports read before and after; `filelock` installed by `uv sync`; no migration ran (the hash unchanged), no lock file left; about 10 s stopped, cameras ok 3 s after the start (13.25) |
 | 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55, R56 and R57 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3` tagged, its deploy rolled back on its own**: both cameras left the network between 16:32 and 16:39 — a power cut, the user said the next day — nothing to do with the release; the M900 lost power at 17:13, booted at 21:47 and was put to sleep by Windows 50 s later, asleep until 15:58 on 15/10; **deployed on 15/10 at 16:05**: 977 events, 206 face and 413 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start (13.26) |
 | 26 | 15/10/2026 | `bd44c66..756ac12`, developer session 24 — R53 step 2, backlog 39, R56, R57 | no code fixed, one installer message corrected (the models' size); 296 tests pass, `check_data` reads both dog galleries, no comments; the model's pinned SHA-256 checked against Hugging Face's record; two of production's dog reports undone on a scratch copy (both back with 385-number descriptors); the page at 375 px and 1024 px; the live-loop cost found higher than the histograms', not lower, and the documentation corrected; R53, R56 and R57 closed, nothing opened; **release `v2026.10.15`**, deployed at 16:53: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; the model fetched before the stop; 205 of 205 dog views migrated in 21.7 s; about 35 s stopped, cameras ok 3 s after the start; the 44 unnamed dogs' guesses all right on a contact sheet (13.27) |
+| 27 | 15/10/2026 | `8ba7da3..e700b05`, developer session 25 — R55, backlog 32 for dogs | no code fixed; 313 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the event recovery run again on the review's own copy of production's galleries (times kept): the same 81 + 57 face views and 205 dog views, none unknown, and the same face table; overlapping events of one camera measured (3 of 39 sure views at 0.40, no wrong answer, no dog pair): the event stays the unit; the dog panel at 375 px and 1024 px with production's table; R55 closed, backlog 32 done for both halves, nothing opened; **release `v2026.10.15.2`** (13.28) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -310,6 +313,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R53 | **high** — the user's report | The two dogs are told apart by colour histograms, which overlap | done in two steps: the bench `bed651d` (review 25), DINOv2-small `8d762d6`, `v2026.10.15`, with a migrated gallery; every bench view named right, no person crop named (ARCHITECTURE 20; 13.27 below) |
 | ✓ | R56 | low | The hidden-person message shows the best single view, which may be the resident alone | done `a6818e4`, `v2026.10.15`: the frame where the people were counted, `HH-MM-SS.people.jpg` (ARCHITECTURE 22.3; 13.27 below) |
 | ✓ | R57 | low | `production.ps1 -Action update` stops a production whose cameras are down | done `e2165c0`, `v2026.10.15`: refuses unless `-Force`, and every failure says which part failed (ARCHITECTURE 18.7; 13.27 below) |
+| ✓ | R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | done `cde3087`, `v2026.10.15.2`: each view records its event (`view_events`), the views stored before recovered at start, both tables leave out the probe's whole event (ARCHITECTURE 10.15, 10.16; 13.28 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1904,6 +1908,94 @@ health check on cameras no release could reach, rolled back, failed again,
 and ended with "Running again: False" while the service was running. Then:
 read `/api/status` once before `Hold` and `StopService`; refuse unless
 `-Force`; let the failure messages say which part failed.
+
+### 13.28 Review 27 — developer session 25 (15/10/2026)
+
+Developer 25 reviewed whole (`8ba7da3..e700b05`: two code commits and the
+HANDOFF; 12 files besides it, +768 −105, of which tests +290). 313 tests
+pass (296 before); no comments in `src/` and `tools/`; `check_data` reads
+every file; `check_doc_refs` exits 0. **No code fix.** R55 closed, backlog
+32 done for both halves; nothing opened.
+
+**R55, read against the plan.** The event is keyed by the view's photo name,
+never by position, so an older version's moves cannot misalign it; the
+review read every path that moves a view. Inside an entry (demote, promote,
+spread, the 40-view rule) the photo stays, and so does its key; `_merge`
+carries the source's keys; `take_out` returns the entry whole, keys
+included, so a report's Undo puts them back; `save()` prunes keys whose
+photo left. A view moved by a path that does not carry its key is found
+again by the recovery at the next start, which only ever looks at views with
+no key. `faces.event_of` takes the clip's last three parts, and the sightings
+store the same clip through `_portable`, so recovered and recorded events
+are one string. The dogs' `accuracy` is `match`'s rule computed in one
+product per probe: per dog the nearest view, then the two smallest — the
+same "second" `match` uses, infinite when one dog has no view in that
+lighting.
+
+**The recovery, run again by the review** on its own copy of production's
+`faces/` and `dogs/` (`cp -p`, times kept; `C:\JARVIS` only read): faces
+81 by the same picture and 57 written together, dogs 205 by the same
+picture, none unknown — the developer's numbers — and the face table the
+same, 69 / 60 / 39 / 15 named for sure at 0.30 / 0.35 / 0.40 / 0.45, no
+wrong answer.
+
+**The developer's first question: overlapping events.** Of the 69 views
+named for sure at 0.30, 8 found their nearest reference in an event of the
+same camera less than 180 s away — four reciprocal pairs, 37, 153 and 165 s
+apart; only the first is a pre-roll overlap, the others the person coming
+back. Leaving those neighbours out as well: 60 → 59 at 0.35, 39 → 36 at
+0.40, 15 → 11 at 0.45, still no wrong answer; the dogs have no such pair.
+Too small to change the rule (ARCHITECTURE 10.15).
+
+**The mtime rule.** It is the only evidence for 57 face views, and it holds
+on production's own files; production's first start of this release is the
+moment it counts, and its log line is read below. Recorded as the rule's
+weakness in ARCHITECTURE 10.16.
+
+**The unnamed column leaves out exact copies and its own event too.**
+Accepted: an unnamed view meets the gallery, in use, as a new visit would —
+without twins of its own visit.
+
+**The test copy's dog gallery recovered at 17:04:42.** The test copy's log
+has no start between 16:42 and 17:11, and the 17:11 start logged no
+recovery for either gallery, so something outside the service ran the new
+code on the test copy's galleries before it — most likely one of the
+developer's measurement runs. It wrote what the next start would have
+written, on the test copy's data. Not pursued.
+
+**Read and left as they are.** `guess` reads `config.json` once per unnamed
+entry of the Dogs list (60 at most, microseconds each), within the plan's
+"once per operation". `_Reference` turns a zero descriptor into distance
+1.0 where `dogs.distance` says `None`; DINOv2 never returns one.
+
+**The page.** The test copy has no named dog, so the review served
+production's table (computed on its copy) to the test copy's page in the
+built-in browser: at 375 px the dog table is 301 px in a 335 px panel, no
+horizontal scroll, Day and Night with the share beneath; at 1024 px the dog
+panel sits in the left column, the face panel in the right. The explanation
+above each table is long on a phone (about 13 lines); it reads as the
+faces' does, and stays.
+
+**Closed: R55.** Its text as it was open:
+
+**R55 — The accuracy tables leave out only exact copies (medium, review
+25).** Backlog 32's table, and R53's bench, leave each view out with its exact
+copies (cosine ≥ 0.9999 for faces), but the views of one event are
+consecutive frames of the same face or dog, and they vouch for each other: a
+probe's twin from its own event is still among the references. Production's
+face table has no wrong answer from 0.30 to 0.60, and the two residents'
+closest pair is 0.313 (ARCHITECTURE 10.14), so the low end, where the user
+would lower the threshold, is where a leave-one-**event**-out could differ.
+Views do not record their event; sightings do (`clip`). **Then:** record
+each view's event, additively and keyed by the view's photo — for instance
+`view_events: {"<12hex>.jpg": "Front/2026-10-14/12-00-00"}` in the entry —
+so no move by an older version can misalign it; recover the event of the
+views stored before, by matching each view photo to its sighting crop (the
+16×16 grey thumbnail of `dog_bench.py` found such pairs); and make
+`faces.accuracy`, and the dogs' table to come, leave out every reference of
+the probe's event. Views whose event cannot be recovered fall back to
+today's rule and are counted on the page. Measure on production's galleries
+the table before and after.
 
 ## 14.3 Usage log
 
