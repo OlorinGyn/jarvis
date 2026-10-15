@@ -350,6 +350,7 @@ def main(argv=None):
 
     migrated = faces.migrate_gallery()
     dogs_migrated = dogs.migrate_gallery()
+    recovered = {"face": faces.Gallery().recover_events(), "dog": dogs.DogGallery().recover_events()}
 
     stop = threading.Event()
     server = web.start(port=port, on_stop=stop.set)
@@ -366,6 +367,9 @@ def main(argv=None):
     if dogs_migrated:
         logger.info("Dog gallery rebuilt for %s from %s: %s", dogs.EMBEDDING_MODEL,
                     dogs.LEGACY_GALLERY_FILE.name, dogs_migrated)
+    for kind, counts in recovered.items():
+        if counts:
+            logger.info("Events of the %s views stored before views recorded one: %s", kind, counts)
     core = Core(start_cameras(env))
     web.attach(core)
     bot.start()

@@ -1107,8 +1107,11 @@ function showAccuracy(table) {
   sureForm.querySelector("tbody").replaceChildren(
     ...table.rows.map((row) => accuracyRow(row, table.current, table.views)));
   sureForm.querySelector(".modes-wrap").hidden = !table.views;
+  const unknown = table.unknown_events
+    ? ` ${plural(table.unknown_events, "view has", "views have")} no known event: each leaves out only its exact copies.`
+    : "";
   document.getElementById("accuracy-summary").textContent = table.views
-    ? `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}.`
+    ? `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}, each leaving out its own event.${unknown}`
     : "Name at least two photos of someone before this can be measured.";
 }
 

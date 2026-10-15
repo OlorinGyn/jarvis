@@ -127,9 +127,9 @@ class DogGallery(faces.Gallery):
             return None
         return min(found, key=lambda r: (r["certainty"] != "sure", r["distance"]))["dog_id"]
 
-    def add(self, embeddings, thumbnail, crops=None):
+    def add(self, embeddings, thumbnail, crops=None, event=None):
         """Add an unnamed dog, then keep only the newest MAX_UNNAMED unnamed ones."""
-        dog_id = super().add(embeddings, thumbnail, crops)
+        dog_id = super().add(embeddings, thumbnail, crops, event)
         self.trim()
         return dog_id
 
@@ -375,9 +375,9 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
         result = match(descriptor, gallery)
         if result["certainty"] == "sure":
             dog_id = result["dog_id"]
-            gallery.reinforce(dog_id, descriptor, crop)
+            gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))
         else:
-            dog_id = gallery.add([descriptor], thumbnail, [crop])
+            dog_id = gallery.add([descriptor], thumbnail, [crop], faces.event_of(clip))
         sighting = {
             "dog_id": dog_id,
             "camera": camera,

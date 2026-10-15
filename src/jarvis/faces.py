@@ -21,7 +21,7 @@ import threading
 import time
 import uuid
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
@@ -72,6 +72,9 @@ THUMB_SIZE = 300
 THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
 MAX_PENDING = 100
+TINY_SIDE = 16
+SAME_PICTURE = 1.0
+WRITTEN_TOGETHER_SECONDS = 2.0
 
 _GALLERY_LOCK = threading.Lock()
 _SCAN_LOCK = threading.Lock()
@@ -480,43 +483,58 @@ def learn_threshold(values=None):
 
 
 def accuracy(gallery=None, thresholds=SURE_SWEEP):
-    """Leave-one-out over the named people's Chosen views, per sure threshold (backlog 32).
+    """Leave-one-event-out over the named people's Chosen views, per sure threshold (backlog 32, R55).
 
-    Each view is matched against every other named view, its exact copies
-    left out, as Gallery.match would: how many would be named for sure and
-    how many rightly, and how many views of unnamed entries would cross the
-    threshold toward a named person. A stranger has no name, so confusion
-    with strangers is not measured; the unnamed column is the only hint.
+    Each view is matched against every other named view, as Gallery.match
+    would, leaving out every view of its own event: the frames of one event
+    vouch for each other. A view whose event is unknown leaves out only its
+    exact copies, and is counted in unknown_events. The table says how many
+    would be named for sure and how many rightly, and how many views of
+    unnamed entries would cross the threshold toward a named person, by the
+    same rule. A stranger has no name, so confusion with strangers is not
+    measured; the unnamed column is the only hint.
     """
     gallery = gallery or Gallery()
     named = [p for p in gallery.people if p["name"] and p["embeddings"]]
-    owners, rows = [], []
+    owners, rows, events = [], [], []
     for index, person in enumerate(named):
         owners += [index] * len(person["embeddings"])
         rows += person["embeddings"]
-    unnamed = [e for p in gallery.people if not p["name"] for e in p["embeddings"]]
-    best, right, crossing = [], [], []
+        events += events_of(person)
+    unnamed = [(e, event) for p in gallery.people if not p["name"]
+               for e, event in zip(p["embeddings"], events_of(p))]
+    best, right, crossing, unknown = [], [], [], 0
     if rows and len({len(r) for r in rows}) == 1:
         matrix = _unit_rows(rows)
         similar = matrix @ matrix.T
-        owners = np.asarray(owners)
+        owners, events = np.asarray(owners), np.asarray(events, object)
         for probe in range(len(rows)):
-            scores = np.where(similar[probe] >= COPY_SIMILARITY, -1.0, similar[probe])
+            scores = np.where(_left_out(similar[probe], events, events[probe]), -1.0, similar[probe])
             top = int(np.argmax(scores))
             if scores[top] < 0:
                 continue
             best.append(float(scores[top]))
             right.append(owners[top] == owners[probe])
-        others = [e for e in unnamed if len(e) == matrix.shape[1]]
+            unknown += not events[probe]
+        others = [(e, event) for e, event in unnamed if len(e) == matrix.shape[1]]
         if others:
-            crossing = (_unit_rows(others) @ matrix.T).max(axis=1).tolist()
+            toward = _unit_rows([e for e, _ in others]) @ matrix.T
+            crossing = [float(np.where(_left_out(row, events, event), -1.0, row).max())
+                        for row, (_, event) in zip(toward, others)]
     best, right, crossing = np.asarray(best), np.asarray(right, bool), np.asarray(crossing)
     table = []
     for threshold in thresholds:
         sure = best >= threshold
         table.append({"threshold": threshold, "named": int(sure.sum()), "right": int((sure & right).sum()),
                       "wrong": int((sure & ~right).sum()), "unnamed": int((crossing >= threshold).sum())})
-    return {"views": int(len(best)), "unnamed_views": len(unnamed), "rows": table}
+    return {"views": int(len(best)), "unnamed_views": len(unnamed), "unknown_events": unknown,
+            "rows": table}
+
+
+def _left_out(scores, events, event):
+    """The references a probe is not matched against: its exact copies, and every view of its own event."""
+    out = scores >= COPY_SIMILARITY
+    return out | (events == event) if event else out
 
 
 def _unit_rows(rows):
@@ -579,6 +597,8 @@ class Gallery:
         if self.repoints:
             _repoint_sightings(self.path.parent, self.repoints, self.sighting_key)
             self.repoints = {}
+        for person in self.people:
+            _prune_events(person)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         header = {**self.header, **({"model": self.model} if self.model else {})}
         self.path.write_text(json.dumps({**header, "people": self.people}, indent=2),
@@ -659,7 +679,8 @@ class Gallery:
         person["views"] = views + [view]
         return "replaced"
 
-    def add(self, embeddings, thumbnail, crops=None):
+    def add(self, embeddings, thumbnail, crops=None, event=None):
+        """Add an unnamed entry with its views; event is the clip's (event_of), kept per view (R55)."""
         embeddings = list(embeddings)
         crops = list(crops or []) + [None] * len(embeddings)
         stored = [self._store_view(crop) for crop in crops[:min(len(embeddings), MAX_EMBEDDINGS)]]
@@ -672,6 +693,7 @@ class Gallery:
             "first_seen": datetime.now().isoformat(timespec="seconds"),
         }
         for embedding, view in zip(embeddings[:MAX_EMBEDDINGS], stored):
+            _note_event(person, view, event)
             self._take(person, embedding, view)
         with _GALLERY_LOCK:
             self.load()
@@ -679,7 +701,7 @@ class Gallery:
             self.save()
         return person["id"]
 
-    def reinforce(self, person_id, embedding, crop=None):
+    def reinforce(self, person_id, embedding, crop=None, event=None):
         """Keep one more view of a person; past MAX_EMBEDDINGS, only one that makes them more varied."""
         view = self._store_view(crop)
         with _GALLERY_LOCK:
@@ -688,6 +710,7 @@ class Gallery:
             if person is None:
                 self._forget_view(view)
                 return
+            _note_event(person, view, event)
             self._take(person, embedding, view)
             self.save()
 
@@ -781,7 +804,7 @@ class Gallery:
 
     def forget_views(self, person):
         """Delete the view photos of an entry that left the gallery."""
-        for view in views_of(person) + [w.get("view") for w in person.get("pending") or []]:
+        for view in _all_views(person):
             self._forget_view(view)
 
     def settle_waiting(self, dry_run=False):
@@ -814,6 +837,42 @@ class Gallery:
             else:
                 self.save()
         return rows
+
+    def recover_events(self):
+        """Find the event of every view stored before views recorded one, by recovered_event (R55).
+
+        A view not found is written as "", so each is tried once and later
+        starts only look at views an older version stored. Only the sighting
+        folders of the day the photo was written, and the days beside it,
+        are read. Returns the counts, or None when every view already has one.
+        """
+        tally, days = Counter(), {}
+        with _GALLERY_LOCK:
+            self.load()
+            for person in self.people:
+                known = dict(person.get("view_events") or {})
+                for view in _all_views(person):
+                    name = photo_name(view)
+                    if not name or name in known:
+                        continue
+                    photo = self.view_dir / name
+                    try:
+                        day = datetime.fromtimestamp(photo.stat().st_mtime).date()
+                    except OSError:
+                        known[name], how = "", "no photo"
+                    else:
+                        sightings = []
+                        for near in (day - timedelta(days=1), day, day + timedelta(days=1)):
+                            if near not in days:
+                                days[near] = _sighting_photos(self.path.parent, near)
+                            sightings += days[near]
+                        known[name], how = recovered_event(photo, sightings)
+                    tally[how] += 1
+                if known:
+                    person["view_events"] = known
+            if tally:
+                self.save()
+        return dict(tally) or None
 
     def refit(self, entry):
         """The entry as this gallery can compare it: embedded again from its photos when an older model made it."""
@@ -1012,6 +1071,8 @@ class Gallery:
         """
         if source.get("resident"):
             target["resident"] = True
+        if source.get("view_events"):
+            target.setdefault("view_events", {}).update(source["view_events"])
         for embedding, view in zip(source["embeddings"], views_of(source)):
             self._take(target, embedding, view)
         for waiting in source.get("pending") or []:
@@ -1038,6 +1099,93 @@ def _repoint_sightings(folder, moves, key="person_id"):
         if sighting.get(key) in moves:
             sighting[key] = moves[sighting[key]]
             path.write_text(json.dumps(sighting, indent=2), encoding="utf-8")
+
+
+def event_of(clip):
+    """The event a clip records, as camera/day/time ("Back/2026-10-14/11-05-41"); "" without a clip (R55).
+
+    Only the last three parts of the path, so a clip moved to the archive is the same event.
+    """
+    parts = Path(str(clip).replace("\\", "/")).parts if clip else ()
+    return "/".join([*parts[-3:-1], Path(parts[-1]).stem]) if len(parts) >= 3 else ""
+
+
+def photo_name(view):
+    """The file name of a view's photo: the key of its event in view_events."""
+    return Path(str(view).replace("\\", "/")).name if view else ""
+
+
+def events_of(person):
+    """The event of each stored view, aligned with its embeddings; "" where it is unknown (R55)."""
+    known = person.get("view_events") or {}
+    return [known.get(photo_name(view), "") if view else "" for view in views_of(person)]
+
+
+def _all_views(person):
+    """The photo of every chosen and waiting view of an entry."""
+    return views_of(person) + [w.get("view") for w in person.get("pending") or []]
+
+
+def _note_event(person, view, event):
+    """Record which event a view was stored from, keyed by its photo, so no move can misalign it."""
+    if view and event:
+        person.setdefault("view_events", {})[photo_name(view)] = event
+
+
+def _prune_events(person):
+    """Keep view_events only for the photos still among the entry's views and queue."""
+    if "view_events" in person:
+        kept = {photo_name(view) for view in _all_views(person)}
+        person["view_events"] = {name: event for name, event in person["view_events"].items()
+                                 if name in kept}
+
+
+def _tiny(path):
+    """(shape, 16x16 grey thumbnail) of a photo, to find one picture saved twice; None when unreadable."""
+    image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        return None
+    return image.shape, cv2.resize(image, (TINY_SIDE, TINY_SIDE),
+                                   interpolation=cv2.INTER_AREA).astype(np.float32)
+
+
+def _sighting_photos(folder, day):
+    """(event, time written, shape, thumbnail) of every sighting photo in one day's folder."""
+    found = []
+    for path in (Path(folder) / day.isoformat()).glob("*.json"):
+        try:
+            sighting = json.loads(path.read_text(encoding="utf-8-sig"))
+            photo = path.with_name(Path(sighting["thumbnail"]).name)
+            written = photo.stat().st_mtime
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+        event, tiny = event_of(sighting.get("clip")), _tiny(photo)
+        if event and tiny is not None:
+            found.append((event, written, *tiny))
+    return found
+
+
+def recovered_event(photo, sightings):
+    """(event, how) a view photo was stored from, found among sighting photos; "" when not found (R55).
+
+    The same picture names its event first: a dog's view is its sighting's
+    crop, a face's best shot its sighting's photo. Otherwise the sighting
+    photos written within WRITTEN_TOGETHER_SECONDS of it, when all are of one
+    event: a face's other views are stored in the moment its sighting is.
+    """
+    tiny = _tiny(photo)
+    if tiny is None:
+        return "", "no photo"
+    shape, small = tiny
+    same = {event for event, _, size, other in sightings
+            if size == shape and float(np.abs(other - small).mean()) < SAME_PICTURE}
+    if len(same) == 1:
+        return same.pop(), "same picture"
+    written = Path(photo).stat().st_mtime
+    together = {event for event, at, _, _ in sightings if abs(at - written) <= WRITTEN_TOGETHER_SECONDS}
+    if len(together) == 1:
+        return together.pop(), "written together"
+    return "", "not found"
 
 
 def _portable(path):
@@ -1348,9 +1496,10 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         if person_id is None:
             others = [(v, c) for v, c in zip(group["views"], group["crops"]) if v is not embedding]
             person_id = gallery.add([embedding, *(v for v, _ in others[:3])], thumbnail,
-                                    [group["crop"], *(c for _, c in others[:3])])
+                                    [group["crop"], *(c for _, c in others[:3])], event_of(clip))
         elif score >= sure:
-            gallery.reinforce(person_id, group["views"][matched], group["crops"][matched])
+            gallery.reinforce(person_id, group["views"][matched], group["crops"][matched],
+                              event_of(clip))
         seen_here.add(person_id)
 
         sighting = {

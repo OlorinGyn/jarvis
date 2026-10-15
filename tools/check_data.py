@@ -55,6 +55,16 @@ def check_events(root, problems):
     return count
 
 
+def check_view_events(entry, label, problems):
+    """An entry's view_events, if present: photo names to events, read as the accuracy table reads them (R55)."""
+    events = entry.get("view_events")
+    if events is not None and not (isinstance(events, dict) and all(
+            isinstance(k, str) and isinstance(v, str) for k, v in events.items())):
+        problems.append(f"{label}: view_events is not photo names to events")
+        return
+    faces.events_of(entry)
+
+
 def check_gallery(path, size, problems):
     """One face gallery file, read as the People screen reads it, with embeddings of the given size."""
     gallery = faces.Gallery(path)
@@ -76,6 +86,7 @@ def check_gallery(path, size, problems):
         if "cover" in person and not isinstance(person["cover"], str):
             problems.append(f"gallery person {person['id']}: cover is not a path")
         faces.cover_of(person)
+        check_view_events(person, f"gallery person {person['id']}", problems)
         if "resident" in person and not isinstance(person["resident"], bool):
             problems.append(f"gallery person {person['id']}: resident is not true or false")
         for waiting in person.get("pending") or []:
@@ -159,6 +170,7 @@ def check_dog_gallery(path, size, problems):
             problems.append(f"{path.name} dog {dog['id']}: descriptors of size {wrong}")
         faces.views_of(dog)
         faces.cover_of(dog)
+        check_view_events(dog, f"{path.name} dog {dog['id']}", problems)
         if "resident" in dog and not isinstance(dog["resident"], bool):
             problems.append(f"{path.name} dog {dog['id']}: resident is not true or false")
     return len(gallery.people)
