@@ -5,7 +5,8 @@ param(
     [string]$Tag = '',
     [string]$ProdDir = 'C:\JARVIS',
     [string]$Repo = '',
-    [switch]$SkipTask
+    [switch]$SkipTask,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,18 +69,31 @@ function Status {
     }
 }
 
-function Healthy {
+function FrameProblem {
+    $state = Status
+    if (-not $state) { return "the service is not answering on port $(Port)" }
+    $cameras = @($state.cameras)
+    if (-not $cameras.Count) { return 'the service answers, but with no camera' }
+    $stale = @($cameras | Where-Object {
+        $age = $state.frame_age.$_
+        $null -eq $age -or $age -ge $FreshSeconds
+    })
+    if (-not $stale.Count) { return $null }
+    $ages = ($stale | ForEach-Object {
+        $age = $state.frame_age.$_
+        if ($null -eq $age) { "$_ no frame yet" } else { "$_ last frame $age s ago" }
+    }) -join ', '
+    return "the service answers, but cameras deliver no frames ($ages)"
+}
+
+function WaitForFrames {
     $deadline = (Get-Date).AddSeconds($HealthSeconds)
-    while ((Get-Date) -lt $deadline) {
-        $state = Status
-        if ($state -and @($state.cameras).Count -gt 0) {
-            $ages = $state.frame_age.PSObject.Properties.Value
-            $fresh = @($ages | Where-Object { $_ -ne $null -and $_ -lt $FreshSeconds })
-            if ($fresh.Count -eq @($state.cameras).Count) { return $true }
-        }
+    $problem = FrameProblem
+    while ($problem -and (Get-Date) -lt $deadline) {
         Start-Sleep 3
+        $problem = FrameProblem
     }
-    return $false
+    return $problem
 }
 
 function StopService {
@@ -218,8 +232,9 @@ function Install {
     Sync
     if (-not (CheckData 'copied data, new installation')) { throw 'Existing data is not readable by this version. Nothing was started.' }
     StartService
-    if (-not (Healthy)) {
-        throw 'Installed, but the cameras did not deliver frames in time. Read logs\jarvis.log in the production folder.'
+    $problem = WaitForFrames
+    if ($problem) {
+        throw "Installed, but not healthy after $HealthSeconds s: $problem. Read logs\jarvis.log in the production folder."
     }
     Say "Production is running $target, every camera delivering frames."
     if ($SkipTask) { return }
@@ -285,6 +300,13 @@ function Update {
     $target = if ($Tag) { Invoke-ProdGit fetch --tags --quiet; $Tag } else { LatestTag }
     if ($target -eq $previous) { Say "Already on $target."; return }
     Say "Updating $previous -> $target"
+    $problem = FrameProblem
+    if ($problem) {
+        if (-not $Force) {
+            throw "Not updating: $problem. The cameras are not delivering frames now; nothing was changed. -Force updates anyway, for a release that fixes capture."
+        }
+        Say "Updating anyway (-Force): $problem."
+    }
 
     if (-not (CheckData 'before, current version')) { throw 'Data already unreadable before updating; nothing changed. Investigate first.' }
     FetchModels $target
@@ -296,7 +318,9 @@ function Update {
         $good = CheckData 'after, new version'
         if ($good) {
             StartService
-            $good = Healthy
+            $problem = WaitForFrames
+            $good = -not $problem
+            if ($problem) { Say "$target started, but is not healthy after $HealthSeconds s: $problem." }
         }
     } catch {
         Say "Error during the update: $_"
@@ -308,18 +332,19 @@ function Update {
     }
 
     Say "The new version failed. Rolling back to $previous..."
-    $back = $false
+    $back = 'the rollback stopped before starting the service'
     try {
         Hold "rollback to $previous"
         StopService
         SwitchTo $previous
         StartService
-        $back = Healthy
+        $back = WaitForFrames
     } catch {
         Say "Error during the rollback: $_"
     }
-    Notify "J.A.R.V.I.S. update to $target FAILED; rolled back to $previous (running: $back)"
-    throw "Update to $target failed and was rolled back to $previous. Running again: $back."
+    $outcome = if ($back) { "which is not healthy after $HealthSeconds s: $back" } else { 'running, every camera delivering frames' }
+    Notify "J.A.R.V.I.S. update to $target FAILED; rolled back to $previous, $outcome"
+    throw "Update to $target failed and was rolled back to $previous, $outcome."
 }
 
 function ShowStatus {
@@ -341,7 +366,7 @@ switch ($Action) {
     'install' { Install }
     'update' { Update }
     'status' { ShowStatus }
-    'start' { StartService; if (Healthy) { Say 'Running.' } else { throw 'Started, but no frames in time.' } }
+    'start' { StartService; $problem = WaitForFrames; if ($problem) { throw "Started, but not healthy after $HealthSeconds s: $problem." } else { Say 'Running.' } }
     'stop' { Hold 'stopped on request'; StopService; Say 'Stopped, and held until -Action start.' }
     'check' { if (CheckData 'on request') { Say 'Data OK.' } else { throw 'Some files are not readable by this version.' } }
     'register' { RegisterTask }
