@@ -1106,6 +1106,7 @@ function showAccuracy(table) {
   sureForm.querySelector(".sure-match").textContent = table.range[0].toFixed(2);
   sureForm.querySelector("tbody").replaceChildren(
     ...table.rows.map((row) => accuracyRow(row, table.current, table.views)));
+  sureForm.querySelector(".modes-wrap").hidden = !table.views;
   document.getElementById("accuracy-summary").textContent = table.views
     ? `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}.`
     : "Name at least two photos of someone before this can be measured.";
