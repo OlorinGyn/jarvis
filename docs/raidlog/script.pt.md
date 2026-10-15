@@ -1465,3 +1465,63 @@ espreita: as gêmeas que garantem uma à outra (R55, a seguir); treze fotos de
 cachorro no lugar errado, quatro delas entre as Escolhidas, esperando o
 Dono; a tela de login que põe a casa para dormir. A seguir: os cachorros
 ganham um mostrador só deles.
+
+## Edição #21 — Os Gêmeos Fiadores
+
+`v2026.10.15.2` · 15 out 2026
+
+**Quadro 1.** Creme quente. Uma sala de aula. J.A.R.V.I.S., numa carteira,
+faz uma prova; a folha mostra o rosto do Gustavo. Ao lado, presa na
+carteira, a foto do quadro seguinte da mesma visita — um gêmeo. J.A.R.V.I.S.
+responde na hora, radiante.
+J.A.R.V.I.S.: `Gustavo — certeza.`
+LEGENDA: A tabela da edição passada: 66 de 80 com certeza a 0.40.
+
+**Quadro 2.** A coruja se debruça sobre a carteira e levanta o gêmeo preso
+com duas garras.
+ARQUITETA: Você não estava reconhecendo ele. Estava reconhecendo o quadro
+que acabou de ver. Prova com o gabarito na mesa.
+
+**Quadro 3.** O castor num arquivo, escrevendo uma etiqueta no verso de cada
+foto: "Back / 14 out / 11:05:41".
+DEV: Agora cada foto diz de qual visita veio — pelo próprio nome, então
+nenhuma troca embaralha as etiquetas.
+
+**Quadro 4.** As fotos antigas não têm etiqueta. O castor segura uma contra
+uma pilha de fotos de avistamento, apertando os olhos através de uma grade
+cinza de 16×16.
+DEV: A mesma foto, salva duas vezes: a grade acha, mesmo com os bytes
+diferentes. E as que não têm gêmea — o relógio do arquivo diz quem foi
+gravado junto.
+LEGENDA: 138 fotos de rosto e 205 de cães. Nenhuma ficou sem visita.
+
+**Quadro 5.** A prova de novo. Desta vez uma cortina esconde todas as fotos
+da mesma visita. J.A.R.V.I.S. aperta os olhos, pensa e responde menos — mas
+toda resposta continua certa.
+J.A.R.V.I.S.: `0.40: 39 de 80 com certeza. Erradas: 0.`
+LEGENDA: O número honesto. Menor, e ainda sem erro.
+
+**Quadro 6.** A coruja com um cronômetro e dois clipes numa linha do tempo,
+as pontas se sobrepondo por alguns segundos.
+ARQUITETA: Mais um gêmeo podia se esconder onde dois clipes se sobrepõem.
+Contei: três de trinta e nove, e nenhuma resposta errada. A visita continua
+sendo a unidade.
+
+**Quadro 7.** Configurações, dois painéis lado a lado. À direita, a tabela
+dos rostos; à esquerda, uma nova com colunas Dia e Noite e um botão de
+ajuste marcado "0.33". O castor encaixa o botão; a coruja confere num
+celular a 375 px.
+DEV: Os cães ganham um ajuste só deles. Só a distância — a razão para o
+segundo cão fica, é ela que impede foto com dois cães de sair com certeza.
+LEGENDA: A 0.33: 44 de 56 de dia, 9 de 24 à noite. Todas certas.
+
+**Quadro 8.** O M900. O pacote `v2026.10.15.2` entra; por onze segundos os
+drones pairam, depois sobem.
+J.A.R.V.I.S.: `Events of the face views stored before views recorded one: {'same picture': 81, 'written together': 57}` `Back: ok` `Front: ok`
+
+**Cartão final.** Habilidades: **A Etiqueta da Visita** (R55,
+`view_events`) · **A Grade de Apertar os Olhos** (a miniatura 16×16) · **A
+Cortina** (deixar a visita inteira de fora) · **O Ajuste dos Cães** (backlog
+32 para cães). À espreita: treze fotos de cães no lugar errado, quatro entre
+as Escolhidas; a tela de login que põe a casa para dormir. Próxima: o Dono
+gira os dois ajustes — ou deixa onde estão.

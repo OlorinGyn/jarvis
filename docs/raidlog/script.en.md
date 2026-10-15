@@ -1411,3 +1411,60 @@ Pinned Parcel** (the model's fingerprint) · **The Head-Count Photo** (R56)
 twins that vouch for each other (R55, next); thirteen misfiled dog photos,
 four of them among the Chosen, waiting for the Owner; the sign-in screen
 that puts the house to sleep. Next: the dogs get a dial of their own.
+
+## Issue #21 — The Twins Who Vouched
+
+`v2026.10.15.2` · 15 Oct 2026
+
+**Panel 1.** Warm cream. A classroom. J.A.R.V.I.S. at a desk takes an exam;
+the sheet shows Gustavo's face. Beside it, pinned to the desk, the photo of
+the very next frame of the same visit — a twin. J.A.R.V.I.S. answers
+instantly, beaming.
+J.A.R.V.I.S.: `Gustavo — sure.`
+CAPTION: Last issue's table: 66 of 80 named for sure at 0.40.
+
+**Panel 2.** The owl leans over the desk and lifts the pinned twin with two
+claws.
+ARCHITECT: You weren't recognising him. You were recognising the frame you
+had just seen. Testing on the training set.
+
+**Panel 3.** The beaver at a filing cabinet, writing a small label on the
+back of each photo: "Back / 14 Oct / 11:05:41".
+DEV: Each photo now says which visit it came from — on its own name, so no
+shuffle can mix the labels up.
+
+**Panel 4.** Older photos have no label. The beaver holds one against a pile
+of sighting prints, squinting through a tiny 16×16 grey grid.
+DEV: Same picture, saved twice: the grid finds it, even when the bytes
+differ. And the ones with no twin — the clock on the file says who was
+written beside them.
+CAPTION: 138 face photos and 205 dog photos. Not one left unknown.
+
+**Panel 5.** The exam again. This time a curtain hides every photo of the
+same visit. J.A.R.V.I.S. squints, thinks, and answers fewer — but every
+answer still right.
+J.A.R.V.I.S.: `0.40: 39 of 80 sure. Wrong: 0.`
+CAPTION: The honest number. Lower, and still no mistake.
+
+**Panel 6.** The owl with a stopwatch and two clips on a timeline, their
+ends overlapping by a few seconds.
+ARCHITECT: One more twin could hide where two clips overlap. I counted: three
+of thirty-nine, and still no wrong answer. The visit stays the unit.
+
+**Panel 7.** Settings, two panels side by side. On the right, the faces'
+table; on the left, a new one with Day and Night columns and a dial marked
+"0.33". The beaver fits the dial; the owl checks it on a phone at 375 px.
+DEV: The dogs get a dial of their own. Only the distance — the ratio to the
+second dog stays, it keeps two-dog photos from being sure.
+CAPTION: At 0.33: 44 of 56 by day, 9 of 24 at night. All right.
+
+**Panel 8.** The M900. The parcel `v2026.10.15.2` goes in; for eleven
+seconds the drones hover, then rise.
+J.A.R.V.I.S.: `Events of the face views stored before views recorded one: {'same picture': 81, 'written together': 57}` `Back: ok` `Front: ok`
+
+**Closing card.** Abilities: **The Visit Label** (R55, `view_events`) ·
+**The Squint Grid** (the 16×16 thumbnail) · **The Curtain** (leave the whole
+visit out) · **The Dog Dial** (backlog 32 for dogs). Lurking: thirteen
+misfiled dog photos, four among the Chosen; the sign-in screen that puts the
+house to sleep. Next: the Owner turns the two dials — or leaves them where
+they are.
