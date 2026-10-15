@@ -28,8 +28,9 @@ grows, decisions are being postponed.
   <setting> 0`, then `powercfg -setactive SCHEME_CURRENT`, in an
   administrator PowerShell. **The test that settles it:** restart the M900,
   do not sign in, and after five minutes open the page from the phone
-  (`http://192.168.0.19:8765` today — the M900's address is .19 now, not
-  .18). If it still sleeps, the event log names the caller again. Once it
+  (`http://192.168.0.18:8765` at 16:40 on 15/10 — the M900's address
+  moves with DHCP: .19 for some hours that day, .18 again). If it still
+  sleeps, the event log names the caller again. Once it
   holds, the architect writes it into INSTALL for any new machine.
 - **Backlog 25's acceptance on the M900** (BACKLOG 1): in use since 13/10 —
   the user, Izabel, Mirana and Aurora are marked Resident and Home is on; the
@@ -43,7 +44,8 @@ grows, decisions are being postponed.
   no longer reaches the phone. One reading to confirm: an event already open
   at `/off` still finishes and sends its follow-ups (ARCHITECTURE 22.7).
 - **Backlog 3's acceptance**: open the page from a phone
-  (`http://192.168.0.19:8765` since 15/10; the address comes from DHCP).
+  (`http://192.168.0.18:8765` at 16:40 on 15/10; the address comes from
+  DHCP).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
 - **Misfiled dog views** (R53, 14/10): thirteen, all still in production
@@ -60,8 +62,13 @@ grows, decisions are being postponed.
     (`6f8002`, dark clothing) and 46 (`554245`, both dogs) — of 47, so 46
     is behind "Show 23 more".
   `257e9a`, `282a53`, `583bd4` and `554245` were found by developer 23's
-  bench: each is the same picture as a sighting of the two dogs together. R53 step 2 migrates them to the new model as they are, so
-  deleting them still matters, before or after. **The once-only settle waits
+  bench: each is the same picture as a sighting of the two dogs together.
+  **Since `v2026.10.15` the new model sees each of them right** — every
+  person crop is no dog, the Mirana filed under Aurora is "probably
+  Mirana", no two-dog crop is sure (ARCHITECTURE 20) — but they were
+  migrated as they are and still sit in the galleries, **four of them in
+  Chosen** (`89848c`, `7221b7`, `6b3d84`, `583bd4`), where every match is
+  measured against them. Deleting them still matters. **The once-only settle waits
   for these too**: it would put the Waiting ones into Chosen first. Done on
   the faces side: the seven head-tops deleted and the unnamed entries named
   (the user, 14/10). Gustavo's own five head-tops in his Chosen stay (they
@@ -87,6 +94,16 @@ grows, decisions are being postponed.
   wrong answer) — **choosing a threshold is the user's**, and the table is
   optimistic until R55 (ARCHITECTURE 10.15). A "hidden person" message for a
   scene with only residents and dogs goes to the architect, with its time.
+
+- **`v2026.10.15` on the phone and the M900** (R53, backlog 39, R56,
+  R57): the dogs are told apart by DINOv2-small — messages and the Dogs tab
+  should name Aurora and Mirana right more often, at night too, and a
+  person's shoes or clothing should never be named a dog; a dog message
+  that names the wrong dog goes to the architect, with its time. The
+  hidden-person message ("2 people seen, 1 face found") now shows the frame
+  where the people were counted, boxes drawn. On the phone an unnamed card
+  on People and Dogs is its photo and its name: tap photos, then name or
+  report them in the bar at the bottom.
 
 ## Decided, not yet done
 
@@ -128,5 +145,7 @@ themselves, the "maybe" threshold) were answered by the user the same evening
 and are backlog 28–32 and R46. The questions of 14/10 at 12:55 were answered
 the same day: R42 (b) and backlog 34's Off-asks-first. R42 (b) is built
 (`v2026.10.14.3`); R53 step 2's model, DINOv2-small, was the architect's
-choice in review 25 — Apache-2.0, nothing for the user to weigh — and the
-user may still prefer MobileNet's 12 ms (ARCHITECTURE 20).
+choice in review 25 — Apache-2.0, nothing for the user to weigh — built in
+`v2026.10.15`. It costs about 120 ms a dog in the live loop on the M900,
+where MobileNet, tied on every measurement, would cost about 12; the user
+may still prefer it (ARCHITECTURE 20).

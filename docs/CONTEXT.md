@@ -135,6 +135,17 @@ YOLO's count of people at once against the faces found, ARCHITECTURE 22.3).
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 
+**Dogs are told apart by DINOv2-small, not by colour** (R53, the user's
+report of 14/10; the architect's choice in review 25, built in
+`v2026.10.15`). The colour histograms put Mirana among Aurora's views and a
+person among Mirana's. DINOv2-small, a network trained without labels to
+tell images apart, named every view of the bench right by day and at night
+and no person crop; MobileNetV3 tied it and was not chosen because it is
+trained to put every dog of a breed into one class — the opposite of what
+two dogs of one breed need. Apache-2.0 weights; ~120 ms a dog on the M900.
+The gallery moved to a new file so a rollback still reads the old one
+(ARCHITECTURE 20).
+
 ## 4. Bugs found and fixed — do not reintroduce
 
 Moved to `HISTORY.md` 4: each bug with its cause and fix. Read it before
@@ -183,8 +194,8 @@ src/jarvis/
   people.py       layer 2: YOLO through cv2.dnn, people and animals
   clips.py        layer 3: events, lossless assembly, metadata, the held person
   faces.py        layer 4: YuNet, SCRFD + ArcFace, the gallery and its migration, naming
-  downloads.py    the face models' files, fetched once; standard library only (production.ps1 runs it)
-  dogs.py         the dog gallery: crops, appearance descriptor, matching
+  downloads.py    the face and dog models' files, fetched once, the dogs' pinned by SHA-256; standard library only (production.ps1 runs it)
+  dogs.py         the dog gallery: crops, the DINOv2-small descriptor, matching, its migration
   archive.py      layer 5: moves to the external drive, deletes only there when full
   settings.py     settings editable from the page (config.json)
   notify.py       Telegram messages: thumbnail, face, cooldowns, the cases
@@ -197,7 +208,7 @@ src/jarvis/
   web.py          the web interface: FastAPI in a thread beside the Core
   static/         the page: index.html, style.css, app.js
   geometry.py     Detection type and box utilities
-tests/            pytest: python -m pytest (ARCHITECTURE 19.5)
+tests/            pytest: python -m pytest (ARCHITECTURE 19.5); conftest.py swaps the dog network for a stand-in, dog_vectors.py builds descriptors at chosen distances
 tools/
   production.ps1  production on the M900: install, update, start, stop, status, check
   check_data.py   reads every file on disk with the current code (ARCHITECTURE 19)
@@ -226,7 +237,7 @@ jarvis_headless.bat service only, no browser (--headless)
 ```
 
 Structure explained in ARCHITECTURE 3. Not versioned: `.env` (credentials),
-`config.json` (Telegram token, PIN), `models/` (~255 MB, downloaded on
+`config.json` (Telegram token, PIN), `models/` (~340 MB, downloaded on
 demand), `clips/`, `faces/`, `dogs/`, `reports/`, `devices.json`, `backups/`
 (copies the tools make before touching data), `logs/` and `HOLD`.
 
@@ -242,12 +253,13 @@ Production, on the M900 (prefix every line with
 
 ```bat
 tools\production.ps1 -Action status      version, task, port, age of each camera's last frame
-tools\production.ps1 -Action update      to the latest release tag; rolls back on its own if it fails
+tools\production.ps1 -Action update      to the latest release tag; rolls back on its own if it fails;
+                                         refuses while the cameras deliver no frames (-Force overrides)
 tools\production.ps1 -Action stop        stays stopped, even after a reboot, until start
 tools\production.ps1 -Action start       releases the hold and starts
 tools\production.ps1 -Action check       tools/check_data.py against production's data
 C:\JARVIS\logs\jarvis.log                what production did
-http://127.0.0.1:8765                    production's page (another computer: the M900's DHCP address, .18 until 14/10, http://192.168.0.19:8765 on 15/10)
+http://127.0.0.1:8765                    production's page (another computer: the M900's DHCP address, which moves — .18, .19 for some hours on 15/10, .18 again at 16:40)
 ```
 
 Test copy and tools, from this folder:
@@ -297,6 +309,9 @@ ARCHITECTURE 7.14), `motion.py` (`MIN_AREA`,
 `LEARN_THRESHOLD` — since backlog 32 only the default of the user's sure
 threshold, ARCHITECTURE 10.15 — `SURE_SWEEP`, `COPY_SIMILARITY`, `SAME_FACE_THRESHOLD`, `IDENTITY_SCORE`, `MAX_NOSE_OFFSET`,
 `MIN_EYE_SPREAD`, `MIN_VIEWS_FOR_NEW`, `LANDMARK_SIZE`, `LANDMARK_SCORE`),
+`dogs.py` (`SURE_DISTANCE`, `SURE_RATIO`, `PROBABLE_DISTANCE`,
+`PROBABLE_RATIO`, `MARGIN`, `CROP_SIDE`, `MAX_UNNAMED`, `DECIMALS`;
+ARCHITECTURE 20),
 `settings.py` (`CONFIDENCE_RANGE`, `SLIDER_STEPS`: the detection sliders,
 ARCHITECTURE 7.14; `FACE_SURE_RANGE`, 10.15), `app.js` (`PAGE_STEP`, 17.17), `notify.py` (`MAX_FACES`), `bot.py` (`LONG_POLL_SECONDS`,
 `STALE_SECONDS`, `REMINDER_SECONDS`).

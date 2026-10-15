@@ -131,7 +131,7 @@ the reasons. Follow it, and say so when you deviate.
 |---|---|---|
 | `.env` | camera credentials | each machine has its own; `install.bat` creates it if missing |
 | `config.json` | the Telegram token and the PIN | **notifications start off on a new machine** |
-| `models/` | ~73 MB | downloaded on first use |
+| `models/` | ~340 MB | downloaded on first use |
 | `clips/`, `faces/`, `dogs/`, `reports/` | recordings and galleries | local by nature |
 
 If `config.json` is missing or has no `notify_token`, tell the user — it is
@@ -188,14 +188,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 25, covers
-up to `72e9527`** (developer 23's handoff; release `v2026.10.14.3`, deployed on 15/10 after a power cut rolled back the first attempt); the next
+The table of every review is `HISTORY.md` 13.2. **The last review, 26, covers
+up to `756ac12`** (developer 24's handoff; release `v2026.10.15`); the next
 starts from the commit after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.26, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.27.
+`HISTORY.md` 13.3 to 13.27, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.28.
 
 ---
 
@@ -348,3 +348,4 @@ review and commits.
 | 17 | `v2026.10.14` | New Eyes / Olhos Novos | written |
 | 18 | `v2026.10.14.2` | The Switch, the Slider and the Lock / O Botão, a Régua e a Tranca | written |
 | 19 | `v2026.10.14.3` | Two People, One Face / Duas Pessoas, Um Rosto | written |
+| 20 | `v2026.10.15` | The Dog Who Wore Shoes / O Cachorro de Sapatos | written |

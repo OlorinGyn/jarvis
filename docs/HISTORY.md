@@ -108,6 +108,8 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+39. **Done 15/10 (`a9b8c32`, `v2026.10.15`, ARCHITECTURE 17.17).** **On a phone, an unnamed card is its photo and its name** (decided, UX, review 25). At 375 px an unnamed card was 309 px tall, and 137 px of it were the name, a name form and "Bad detection" — while tapping the photo already selects it, and the selection bar at the bottom names, assigns or reports one photo or many. Under 480 px: (a) unnamed cards on People and Dogs drop their own name form, their "Belongs to…" and their "Bad detection" — CSS only, the desktop keeps them; the hint above the unnamed list says "Tap photos to select them, then name or report them below" on a phone; (b) the accuracy table of Settings → Detection is hidden while nothing is measured, leaving its one sentence, on every width. Built in developer session 24: the Dogs tab at 375 px with production's 46 dogs 8,768 → 6,018 px, an unnamed card 349.5 → 231.5 px, two taps to name or report one photo.
+
 38. **Done 14/10 (`03cde0e`, `v2026.10.14.3`, ARCHITECTURE 7.14).** **The default marked on each slider** (decided, UX, review 24). Backlog 35's sliders showed no mark where the default sits, so a slider moved and moved back could not be put on the default by eye. A `<datalist>` with one option at `slider_steps / 2`, named by each slider's `list` attribute, makes the browser draw a tick there; nothing else changes. Built in developer session 23; seen at 375 px with the thumb moved away.
 
 37. **(a) and (b) done 14/10 (`b8a731b`, `v2026.10.14.3`, ARCHITECTURE 17.17).** **People and Dogs hold many photos gracefully** (decided, UX; the user, 14/10/2026: some households will never open the page, so the screens must cope with a great many photos, "and perhaps clean themselves now and then"). Designed in review 24 from production's counts on 14/10 (13.25): a person's Chosen (40) and Waiting (`MAX_PENDING` 100) are bounded by backlog 28, unnamed dogs by R27 (`MAX_UNNAMED` 60, 44 that day, about 7 new a day), **unnamed faces by nothing**; the sighting photos grow about 2.7 MB a day for faces and dogs together, next to ~300 MB of clips. The Dogs tab at 375 px was one column of 335 px cards, 46 of them about 9,100 px tall. The layout: (a) every `.people-grid` takes two columns under 480 px; (b) any list of photos that can pass 24 shows the newest 24 and a "Show 24 more (N left)" button — the unnamed groups, a person's or dog's Waiting, "Days they were seen" — while Chosen shows whole, headings keep the full count, the server keeps sending whole lists; (c) checked at 375 px and on the desktop with production's 46 dogs. Built in developer session 23, with Waiting shown newest first. Measured: 9,163 → 8,591 px; review 25 found the card's height, not the columns, makes the page long — backlog 39. **The self-cleaning part** deletes the user's data: the user's decision on the policy in `PENDING.md`.
@@ -304,6 +306,9 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R51 | medium | A clip's face is matched by its heaviest view, not its best | done `734efa4`, `v2026.10.14.2`: every view matched, the best decides and is learned; sure 11 → 12, none 1 → 0, nothing wrong (ARCHITECTURE 10.3; 13.25 below) |
 | ✓ | R52 | low | The gallery migration runs before the log file and before the port is held | done `50c836e`, `v2026.10.14.2`: a `filelock` around the migration, its line after `log.to_file()` (ARCHITECTURE 10.14; 13.25 below) |
 | ✓ | R42 | **high** | In Home, a resident's face plus a second person who never shows a face sends nothing | (b), the user's decision of 14/10: done `747042b`, `v2026.10.14.3`: YOLO's most people at once against the distinct faces found; the best view goes out as `faceless_person` (ARCHITECTURE 22.3; 13.26 below) |
+| ✓ | R53 | **high** — the user's report | The two dogs are told apart by colour histograms, which overlap | done in two steps: the bench `bed651d` (review 25), DINOv2-small `8d762d6`, `v2026.10.15`, with a migrated gallery; every bench view named right, no person crop named (ARCHITECTURE 20; 13.27 below) |
+| ✓ | R56 | low | The hidden-person message shows the best single view, which may be the resident alone | done `a6818e4`, `v2026.10.15`: the frame where the people were counted, `HH-MM-SS.people.jpg` (ARCHITECTURE 22.3; 13.27 below) |
+| ✓ | R57 | low | `production.ps1 -Action update` stops a production whose cameras are down | done `e2165c0`, `v2026.10.15`: refuses unless `-Force`, and every failure says which part failed (ARCHITECTURE 18.7; 13.27 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -1732,6 +1737,148 @@ dies at 3 a.m., nothing warns"), now with a real case for the user. And
 **`production.ps1` stopped a production whose cameras may already have been
 down**, rolled back for a fault that was not the release's, and ended with
 "Running again: False" about a service that was running: **R57**.
+
+### 13.27 Review 26 — developer session 24 (15/10/2026)
+
+Developer 24 reviewed whole (`bd44c66..756ac12`: four code commits and the
+HANDOFF; 25 files besides it, +738 −219, of which tests +287). 296 tests
+pass (284 before), the one that runs the real DINOv2 file included; no
+comments in `src/` and `tools/`; `check_data` reads every file, both dog
+galleries among them; `check_doc_refs` exits 0. **No code fix.** One
+installer message corrected: `install.bat` said the models were ~73 MB,
+stale since R49; they are ~340 MB. R53, R56 and R57 closed; nothing
+opened.
+
+**R53 step 2, read against the plan's six points** (BACKLOG 2 as it was).
+
+1. **The file.** Downloaded at a pinned commit and kept only with its
+   SHA-256. The review asked Hugging Face's API for that commit: the LFS
+   SHA-256 of `onnx/model.onnx` is the pinned one, 88,532,934 bytes, and
+   `base_model` is `facebook/dinov2-small`; the M900's copy hashes the same.
+   The repository's card states no licence; the weights are Apache-2.0, and
+   a format conversion carries their terms (ARCHITECTURE 20). The check
+   against the developer's own export passed: cosine ≥ 0.99999988 on all
+   167 bench crops, where the plan asked 0.9999.
+2. **The descriptor** is the bench's, on the crop that is also stored as
+   the view's photo; `is_infrared` still judges the region before it is
+   shrunk. Two `Network` objects, each with its lock. **Lock order checked:**
+   `describe` finishes before any gallery lock is taken, and the migration
+   and Undo describe before `_GALLERY_LOCK` too, so no thread holds a
+   network's lock while waiting for the gallery's or the reverse — the
+   faces' deadlock rule (PYTHON 41) holds.
+3. **Distance and thresholds.** `match`, `guess`, `_absorb` and backlog
+   28's `replaced_view` (through `distances`) all go through the two
+   functions; `distance` is `None` across sizes, so a histogram left
+   anywhere is never compared with an embedding. Sure (0.33, 0.6) sits
+   under the 0.337 the plan named as its ceiling; probable (0.39, 0.8)
+   0.059 under the nearest person crop, where the plan asked 0.05.
+4. **The migration** is the faces' code, parameterised, not a copy. The
+   infrared flag carried from the old descriptor is the right call: it was
+   judged on the whole widened region of the frame. **Undo, on real
+   reports:** every dog report production holds (18) has 41-number
+   entries; two of them, one in today's form and one from 10/10 that kept
+   only one crop, were undone on a scratch copy and came back with
+   385-number descriptors. The first attempt put the scratch gallery
+   outside the project root, and Undo copied one view photo into the test
+   copy's `dogs/views/` — `reports._stored` resolves a stored path against
+   the project root, as it should for a real gallery; the photo was
+   referenced by nothing and was removed, and the check was run again with
+   the root pointed at the scratch folder. Production was only read.
+5. **Everything that reads dogs** keeps working: `check_data` checks each
+   file at its own size, Waiting included; the tools that write the gallery
+   migrate first; the histogram code lives on only in `dog_bench.py`.
+6. **Measured**, all on the M900: the migration of production's copy (205
+   of 205 views, 29.5 s), `identify` in the live loop, the sweep, and where
+   the thirteen misfiled views land (ARCHITECTURE 20).
+
+**The live loop, the developer's question.** `identify` costs 121 ms a dog
+and 243 ms for two, against the histograms' 37 and 72 ms there: GrabCut's
+cost follows the box, and a dog in a 960×540 frame is small. Review 25's
+reason for DINOv2 said "~150 ms is below today's GrabCut" — true of the
+bench's 320 px crops, not of the live loop; ARCHITECTURE 20 now says so.
+The cost is paid once per dog event, the loop takes the newest frame
+(ARCHITECTURE 5.4) so nothing queues, and the first message's dog name is
+the point of paying it there. **Accepted**; moving it off the loop would
+delay the name or need a second message. One corner, recorded and not a
+recommendation: on a machine whose `models/` lacks the file and that has no
+dog gallery to migrate, the first dog makes `Network.embed` download 88.5
+MB inside the analysis loop. `install.bat` (through `faces.ensure_models`)
+and `production.ps1` fetch it ahead, and the startup migration does on any
+machine with a dog gallery, so only a machine that never saw a dog and was
+installed before this release meets it, once.
+
+**The developer's other questions.** The ~30 s migration at the first
+start runs inside the 90 s health check (the deploy measured it, below).
+The rule "rebuild when the old file changed" drops what the new version
+learned if an older one ran in between — inherited from the faces, where
+it was decided (ARCHITECTURE 10.14), and accepted for dogs the same way.
+The thresholds rest on a leave-one-out that keeps a view's own event —
+R55, planned next. R57 refusing when production does not answer at all is
+right: an update is not the tool to revive a dead service, and `-Force`
+is there, named in the refusal. R56's text without ", best view" is right:
+the words were only true of the old picture. `dogs.migrate_gallery`
+calling `faces.migrate_gallery` by attribute is now in ARCHITECTURE 10.14.
+
+**R56 and R57, read.** `_consider_view` keeps the frame each time the count
+**rises**, so the frame kept is the first with the most people;
+`.people.jpg` is written only when `most_people` ≥ 2, which is the only
+case the message can fire (it needs more people than at least one face);
+the best view stays the fallback; the archive moves `base.*`, so nothing
+had to learn the new file. In `production.ps1`, the refusal comes before
+`CheckData`, `FetchModels`, `Hold` and `StopService`, so "nothing was
+changed" is literally true; `$back` starts as a reason, so a rollback that
+throws before its health check still says what happened.
+
+**The page, at phone and desktop width.** The test copy at 375 px: an
+unnamed dog card is its photo, "Unnamed dog" and its count of views; the
+hint reads "Tap photos to select them, then name or report them below.";
+one tap brings the bar with the name field, Save, Bad detection and Clear;
+Settings → Detection's face table is hidden with nothing measured, its
+sentence kept; no horizontal scroll (`scrollWidth` 375). At 1024 px every
+unnamed card keeps its name form and "Bad detection", the long hint shows,
+the phone hint does not. The test copy was stopped with `--stop` after the
+check; the two ffmpeg left running were production's.
+
+**PYTHON 44** corrects one line of the HANDOFF: DINOv2-small's patches are
+14 px, a 16×16 grid of them at 224 px — not 16 px patches.
+
+**Documentation.** ARCHITECTURE 2 (the diagram and the cost table), 3,
+8.4, 10.2, 10.14, 17.17, 18.7, 19.2, 20, 22.1 and 22.3; CONTEXT 3, 9 and
+10; INSTALL 3; PYTHON 44; PROCESS 2.4, 3.2, 3.3 and 6; BACKLOG 1, 2 and 3;
+PENDING; HISTORY 8, 13.2, 13.4 and 14.3.
+
+**Closed: R53, R56 and R57.** Their texts as they were open:
+
+**R53 — The dogs' identity rests on colour histograms, which overlap (high,
+the user's report, review 23).** The user sees Mirana among Aurora's views
+and a person among Mirana's. By leave-one-out with `dogs.distance`, 6 of
+Aurora's 40 chosen views and 5 of Mirana's sat closer to the other dog than
+to their own; at night both are grey, and a crop holding both dogs, or a
+person's dark shoes, describes as whichever colour its fur mask caught.
+Step 1 (`bed651d`) benched learned embeddings; step 2, decided in review
+25, replaces the histograms with DINOv2-small: the model downloadable by
+production with a pinned SHA-256 and checked against the local export; the
+stored crop padded square, 224 px, ImageNet-normalised, no GrabCut; two
+`cv2.dnn.Net` objects; 1 − cosine, thresholds from the bench; the
+migration to `dogs/gallery_dinov2_small.json` as the faces', with Undo
+describing pre-switch reports again; every tool that reads dogs kept
+working; measured on a copy of production's `dogs/`.
+
+**R56 — The hidden person's picture is the best single view (low, review
+25).** R42 (b)'s message says "2 people seen, 1 face found, best view", and
+the picture is the event's best view — chosen by one person's confidence ×
+height, so it may be the resident alone. Then: when `most_people` rises,
+keep that frame with the person boxes drawn, as an optional
+`HH-MM-SS.people.jpg` beside the event, and send it instead of the best
+view for the hidden-person message only. Additive.
+
+**R57 — An update with the cameras already down (low, review 25).** At
+16:39 on 14/10 both cameras had left the network. `Update` never asked
+whether the cameras deliver frames, so it stopped production, failed the
+health check on cameras no release could reach, rolled back, failed again,
+and ended with "Running again: False" while the service was running. Then:
+read `/api/status` once before `Hold` and `StopService`; refuse unless
+`-Force`; let the failure messages say which part failed.
 
 ## 14.3 Usage log
 

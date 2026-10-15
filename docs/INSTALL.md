@@ -182,10 +182,14 @@ not be versioned:
 | `models/face_detection_yunet_2023mar.onnx` | 227 KB | opencv/opencv_zoo |
 | `models/face_recognition_sface_2021dec.onnx` | 37 MB | opencv/opencv_zoo (only its alignment is used since 14/10/2026) |
 | `models/buffalo_l/det_10g.onnx` and `w600k_r50.onnx` | 182 MB | InsightFace's `buffalo_l.zip` release (289 MB, about 13 s on the M900; the zip is deleted) |
+| `models/dinov2_small.onnx` | 88.5 MB | Hugging Face, `onnx-community/dinov2-small` at a pinned commit, kept only with its pinned SHA-256 (since `v2026.10.15`, ARCHITECTURE 10.2) |
 
 The models are downloaded by `people.ensure_model()` and
-`faces.ensure_models()` the first time each layer runs. `install.bat` does it
-ahead of time so the first event does not wait for the download.
+`faces.ensure_models()` the first time each layer runs — `faces.ensure_models()`
+fetches the dogs' model too, since every file is in `downloads.py`.
+`install.bat` does it ahead of time so the first event does not wait for the
+download: about 340 MB in all. Production gets each release's new models
+before it is stopped (ARCHITECTURE 18.7).
 
 **The first start of `v2026.10.14` or later on a machine with a face gallery**
 builds `faces/gallery_arcface_w600k_r50.json` from `faces/gallery.json`,
@@ -193,6 +197,11 @@ embedding every stored view again from its photo — about 25 s for 173 views
 on the M900 — before the page answers. `gallery.json` is left as it was, and
 both are copied to `backups/` first (ARCHITECTURE 10.14). A view with no
 photo cannot be embedded again and is left out.
+
+**The first start of `v2026.10.15` or later on a machine with a dog gallery**
+does the same for dogs: `dogs/gallery_dinov2_small.json` from
+`dogs/gallery.json` — about 30 s for 205 views on the M900 — and downloads
+the 88.5 MB model first if it is missing (ARCHITECTURE 20).
 
 ## 4. Configuring the cameras
 

@@ -58,7 +58,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [5/7] Downloading vision models ^(~73 MB^)...
+echo [5/7] Downloading vision models ^(~340 MB^)...
 uv run python -c "from jarvis import people, faces; people.ensure_model(); faces.ensure_models(); print('      models ready')"
 if errorlevel 1 (
     echo.

@@ -66,7 +66,7 @@ The face is one more layer, run afterwards, on the clip (section 10).
          ┌───────────┐             │
          │ faces.py  │  YuNet +    │──► notify.py (faces, side or best view)
          │ dogs.py   │  ArcFace;   │
-         └─────┬─────┘  GrabCut    │
+         └─────┬─────┘  DINOv2     │
                │ galleries         │
                ▼                   ▼
          ┌─────────────────────────────────┐
@@ -87,6 +87,7 @@ one before and runs only if the one before found something.
 | MOG2 + lighting filter | ~3 ms | every frame |
 | YOLO11 | 50–62 ms (dev) | only with motion, at most 4×/s per camera |
 | Recording | ~2 ms | only with a person or an animal |
+| Dog naming (DINOv2-small) | ~120 ms per dog (M900) | once per dog event, in the live loop (section 20) |
 | Faces | 9–17 s per clip (M900) | only on clips with a person, off the live loop |
 
 ## 3. File layout
@@ -156,7 +157,7 @@ jarvis/
 ├── .env                  the cameras' IPs and credentials
 ├── config.json           settings, the Telegram token, the PIN (each machine its own)
 ├── devices.json          paired devices (17.12)
-├── models/               ONNX of YOLO and the face models (~255 MB, downloaded; 10.2)
+├── models/               ONNX of YOLO, the face models and DINOv2-small (~340 MB, downloaded; 10.2)
 ├── clips/                recordings
 │   ├── _buffer/          rolling segments per camera, deleted on their own
 │   └── Front/2026-09-26/19-17-30.{mp4,jpg,json}
@@ -1168,7 +1169,8 @@ Recordings tab immediately; the video materialises a few seconds later.
 
 Optional companions, all sharing the base name so the archive moves them
 together: `.best.jpg` (the best view of a person), `.alert.jpg` (the photo of
-a late notification), `.side.jpg` (a side face) — the full table is 19.2.
+a late notification), `.side.jpg` (a side face), `.people.jpg` (the frame
+where two or more people were counted, 22.3) — the full table is 19.2.
 
 The thumbnail comes from the analysis frame (960×540) reduced to
 `THUMB_WIDTH = 480` — no practical loss, since it is always shown small.
@@ -1193,7 +1195,8 @@ The `.json` exists so the Recordings tab **never has to open a video**:
 the first frame. `most_people`, **optional since 14/10/2026** and written
 only when a person was seen, is the most person boxes YOLO kept in one
 analysis frame of the event — what the face scan's count is weighed against
-(22.3, R42 (b)).
+(22.3, R42 (b)). `people_thumbnail`, **optional since 15/10/2026**, names the
+`.people.jpg` written when that count reached two or more (22.3, R56).
 
 One JSON per clip is deliberately simple and inspectable — the next step is
 SQLite, once there is search by person and period (backlog 13).
@@ -1354,6 +1357,13 @@ InsightFace's `buffalo_l.zip` release (289 MB), of which `downloads.py` keeps
 the two files in `models/buffalo_l/` and deletes the zip. `downloads.py` uses
 the standard library only and imports nothing from `jarvis`, so
 `production.ps1` can run it from the release it is about to deploy (18.7).
+**Since 15/10/2026 it also fetches the dogs' model** (section 20), the one
+file it pins: `PINNED` maps `dinov2_small.onnx` to a URL **at a fixed
+commit** of its Hugging Face repository and to its SHA-256; `_fetch_pinned`
+downloads to `<name>.part`, hashes it in 1 MB blocks (`sha256`, PYTHON 44)
+and keeps it only on a match — a wrong hash deletes the `.part` and raises,
+so nothing half-trusted lands in `models/`. The face files are still fetched
+by URL with no hash; their sources are release assets that do not move.
 InsightFace's models are "for non-commercial research purposes only" — the
 user accepted it for this house (CONTEXT 3).
 
@@ -1870,9 +1880,24 @@ migrated, the other waited and did nothing, and the line was in
 
 A bad-detection report taken before the switch holds 128-number embeddings:
 Undo restores its photos first, and `put_back` embeds the entry again from
-them (`refit`; a dog entry is returned as it is). `refit` runs **before**
-`_GALLERY_LOCK` is taken, because a scan holds `_SCAN_LOCK` and then takes
-the gallery lock — the opposite order would deadlock (PYTHON 41).
+them (`refit`; since 15/10/2026 a dog entry of histograms too, section 20).
+`refit` runs **before** `_GALLERY_LOCK` is taken, because a scan holds
+`_SCAN_LOCK` and then takes the gallery lock — the opposite order would
+deadlock (PYTHON 41).
+
+**The dogs migrate the same way (R53 step 2, 15/10/2026).** The code is
+shared, not copied: `migrate_gallery(target, source, backup_dir, model=,
+refit=)` and `refit_entry(entry, folder, tally, embed=)` take the model's
+name and the function that rebuilds an entry or embeds one photo, and
+`dogs.migrate_gallery` passes its own (section 20) — functions passed as
+values, PYTHON 43. The backup folder is now `<gallery folder>_<model>_<stamp>`:
+still `faces_arcface_w600k_r50_…` for faces, `dogs_dinov2_small_…` for dogs.
+`embed` receives the **old** embedding too, which the faces ignore and the
+dogs read for their infrared flag. One consequence the review noted: since
+`dogs.migrate_gallery` calls `faces.migrate_gallery` by attribute, a test
+that replaces the faces' function replaces the dogs' too. `cameras.main()`
+runs the faces' migration and then the dogs', and logs each line after
+`log.to_file()`.
 
 **Measured on the M900.** A copy of production's `faces/` on 14/10: 10
 entries, 173 views, 173 kept, nothing dropped, 24 s with production running
@@ -2952,6 +2977,22 @@ copy). On a phone the selection bar at the bottom (17.16) already does what
 the card's form and button do, for one photo or many: backlog 39 (decided,
 UX) drops them from the card on a phone.
 
+**On a phone an unnamed card is its photo and its name (backlog 39,
+15/10/2026).** Under 480 px, `.unnamed-grid .naming`, `.belongs` and
+`.report` are `display: none` — CSS only, so the desktop keeps every card's
+name form, "Belongs to…" list and "Bad detection". The hint above the
+unnamed list holds two spans, `.wide-only` (the long text) and `.phone-only`
+("Tap photos to select them, then name or report them below."); the base
+rule `.phone-only { display: none }` comes **before** the media query that
+shows it, because at equal specificity the later rule wins (PYTHON 44).
+Naming or reporting one photo is two taps: the photo, then the bar's "Assign
+to…" (it fires on `change`) or "Bad detection". Measured by developer 24 at
+375 px with production's 46 dogs: the Dogs tab **8,768 → 6,018 px**, an
+unnamed card 349.5 → 231.5 px; desktop (1024 px) unchanged. Review 26 saw it
+at 375 px and on the desktop on the test copy. Settings → Detection hides
+the accuracy table (backlog 32, 10.15) while nothing is measured
+(`views` 0), on every width, and keeps its one sentence.
+
 ---
 
 ## 18. Production and test (designed and built 09/10/2026)
@@ -3164,6 +3205,14 @@ dies silently on an invalid handle.
 
 **An update**, in order, and where it stops:
 
+0. **Are the cameras delivering frames now?** (R57, 15/10/2026.) One read
+   of `/api/status`: if the service does not answer, or any camera's last
+   frame is `$FreshSeconds` or older, refuse — "Not updating: … The cameras
+   are not delivering frames now; nothing was changed." — unless `-Force`
+   is given, for a release that fixes capture or a crash at startup. On
+   14/10 an update during a camera outage stopped a working production,
+   failed the health check on cameras no release could reach, and rolled
+   back (HISTORY 13.26).
 1. Check the data with the **current** version. Unreadable already → refuse,
    nothing changed.
 2. Hold, stop cleanly.
@@ -3174,6 +3223,19 @@ dies silently on an invalid handle.
 6. Any failure in 3–5 → hold, stop, check out the previous version, sync,
    start, health check, and a Telegram message saying the update failed and
    what is running.
+
+**Each failure says which part failed** (R57). `FrameProblem` makes one
+read and returns `$null` or the reason — "the service is not answering on
+port N", or "the service answers, but cameras deliver no frames (Back no
+frame yet, Front last frame 63 s ago)"; `WaitForFrames` polls it for
+`$HealthSeconds` (90) and returns the last reason. A function that returns
+a reason or `$null` instead of `$true`/`$false` (PYTHON 44). `install`,
+`start`, `update` and the rollback all print it, and the rollback ends with
+"rolled back to X, running, every camera delivering frames" or "…, which is
+not healthy after 90 s: <reason>" — never again "Running again: False" of a
+service that was running without frames. Tested by developer 24 with a
+throwaway clone as `-ProdDir` pointed at the test copy: stopped, one camera
+at a wrong address, the same with `-Force`, and both cameras live.
 
 **Tested before the first release**, in a temporary folder with
 `-SkipTask` (no task, no shortcut, no Telegram):
@@ -3249,14 +3311,17 @@ the old one, which stays untouched for a rollback (10.14).
 |---|---|---|---|
 | `clips/<cam>/<day>/HH-MM-SS.mp4` | `clips._concat` | the user, the face scan, `tools/check_clips.py` | the camera's own H.264, never re-encoded (8.1) |
 | `clips/<cam>/<day>/HH-MM-SS.jpg` | `EventRecorder._start` | Records, web, notification | first frame with the subject, boxes drawn (8.5) |
-| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026**; `most_people` **optional since 14/10/2026** (8.4) |
+| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026**; `most_people` **optional since 14/10/2026**; `people_thumbnail` **optional since 15/10/2026** (8.4) |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
+| `clips/<cam>/<day>/HH-MM-SS.people.jpg` | `EventRecorder.stop` | the hidden-person message | **optional, since 15/10/2026**: the frame where two or more people were counted, boxes drawn (22.3, R56) |
 | `clips/_buffer/<cam>/*.mp4` | ffmpeg | `covering()` | rolling segments, deleted on their own (5.5) |
 | `faces/gallery_arcface_w600k_r50.json` | `Gallery.save`, `migrate_gallery` | People, the face scan | **since 14/10/2026** (10.14): `gallery.json`'s schema with 512 floats per embedding, plus `model` and `source` (`file`, `sha1`) at the top |
 | `faces/gallery.json` | `Gallery.save` until `v2026.10.13`; **never written since** | `v2026.10.13` after a rollback, `migrate_gallery`, `check_data` | `people`: `id`, `name`, `embeddings` (128 floats each), `thumbnail`, `first_seen`; `views`, `pending` and `cover` **optional since 10/10/2026** (17.10); `resident` (only ever `true`) **optional since 12/10/2026** (22.1) |
-| `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py` | the Dogs tab, matching, `check_data` | **since 10/10/2026** (section 20); entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
+| `dogs/gallery_dinov2_small.json` | `DogGallery.save`, `dogs.migrate_gallery` | the Dogs tab, matching | **since 15/10/2026** (section 20): `gallery.json`'s schema with 385 floats per descriptor (the infrared flag, then DINOv2-small's 384), plus `model` and `source` (`file`, `sha1`) at the top |
+| `dogs/` (`gallery.json`, `views/`, `<day>/*.json` + crops) | `dogs.py`; `gallery.json` **never written since 15/10/2026** | the Dogs tab, matching, `check_data`; `gallery.json`: `v2026.10.14.3` after a rollback, `dogs.migrate_gallery`, `check_data` | **since 10/10/2026** (section 20); `gallery.json`'s descriptors are the 41-number histograms; entries take the optional `resident` like faces **since 12/10/2026**; dog sightings: `dog_id`, `camera`, `at`, `time`, `infrared`, `clip`, `thumbnail`, `certainty`, `match`, `words` |
+| `models/dinov2_small.onnx` | `downloads.py` | `dogs.Network` | **since 15/10/2026**: 88.5 MB, kept only with its pinned SHA-256 (10.2) |
 | `faces/views/<12hex>.jpg` | `Gallery._store_view` | the person page | **since 10/10/2026**: one face crop per chosen or waiting view; a view that leaves is deleted after the save (17.14) |
 | `faces/<day>/<HH-MM-SS>_<id>.json` + `.jpg` | `scan_clip` | People, `check_data` | `person_id`, `camera`, `at`, `time`, `score`, `frames`, `face_width`, `reliable`, `clip`, `thumbnail` |
 | `reports/<kind>/<stem>.json` + `.jpg` | `reports._write` | Settings → Bad-detection reports, `check_data`, each review | **since 11/10/2026** (section 21): `kind`, `verdict`, `source`, `reported_at`, `label`, `camera`, `at`, `time`, `clip`, `score`, `box`, `crop`; a gallery report adds `entry` and `sightings`, an event report `event`. **Optional since 11/10 (R38, R37):** `entry` holds the whole gallery entry (older reports: only `id`, `first_seen`, `embeddings`), `sighting_files`, `actually` |
@@ -3324,51 +3389,95 @@ still readable, and failing would block going back to an older version.
 The software is for any house; the user names their dogs on the **Dogs** tab,
 and the system learns from those names.
 
-**Seeing a dog's fur, not its box.** `dogs.fur_mask` cuts the dog out of its
-YOLO box (+10 % margin) with OpenCV's **GrabCut** — a segmentation that starts
-from a rectangle and iterates a graph cut over colour models of "inside" and
-"outside". The first measurement without it failed: a box holds the mat, the
-floor, sun and shade, and the fur tone of 168 detections was a continuous
-smear. With it, 89 detections split into a dark and a light group, and at
-night cleanly (CONTEXT, backlog 15 and 22).
+**The descriptor: DINOv2-small (R53 step 2, 15/10/2026).** `dogs.describe`
+cuts the YOLO box widened by `MARGIN` (10 %), clipped to the frame, and
+shrinks it so its longer side is at most `CROP_SIDE` (320 px): that crop is
+both the view's stored photo and what the network sees, so a live crop and
+its photo describe alike. `_blob` pads it square with black, resizes it to
+224 px (`INTER_AREA`), turns BGR into RGB and normalises it with ImageNet's
+mean and standard deviation — exactly what the bench embedded (step 1,
+below). DINOv2-small is a vision transformer: it cuts the image into a 16×16
+grid of 14 px patches and adds one extra **CLS** token that attends to all
+of them; the CLS token's vector in the last layer is the image's summary
+(PYTHON 44). The ONNX file has one output, `last_hidden_state` (1, 257,
+384), and the descriptor is its token 0 — what Hugging Face calls
+`pooler_output`, which the file does not expose because only the graph's
+leaves are outputs. Descriptor = the infrared flag + those 384 numbers,
+unit length, rounded to 6 decimals (`DECIMALS`): 385 numbers
+(`DESCRIPTOR_SIZE`). `is_infrared` still judges the region before it is
+shrunk: the mean channel difference is 3.98 on every night clip and 15–24
+by day, so 8 is safe. **No GrabCut**: the network looks at the whole crop,
+and the bench showed it tells the two dogs apart without cutting out the
+floor.
 
-**The descriptor.** 41 numbers: an infrared flag, 16 tone bins of the fur,
-and 16 hue + 8 saturation bins when the frame is in colour (zeros at night).
-`is_infrared`: the mean channel difference is 3.98 on every night clip and
-15–24 by day, so a threshold of 8 is safe.
+**Two copies of the network.** `dogs.LIVE` serves `identify`, in the
+analysis loop, for the first message's words; `dogs.STORED` serves
+`record`, in the assembly thread, the migration and Undo. Each is a
+`Network` with its own lock, loaded on first use (about 1 s): a
+`cv2.dnn.Net` keeps buffers between calls and must never run in two threads
+at once (`people.load_background_model`). Two cameras' loops share `LIVE`
+and wait for each other on its lock, at most once per dog event.
+
+**The distance.** `dogs.distance` is 1 − cosine within one lighting, and
+`None` between day and infrared — never compared — **or between
+descriptors of different sizes**, so a histogram is never compared with an
+embedding. `DogGallery.distances` gives every pair at once for the
+farthest-point choice of 40 views (backlog 28): rows normalised, one matrix
+product `1 − X @ Xᵀ`, ∞ across lightings (PYTHON 43).
+
+**The thresholds, from the bench's sweep** (developer 24, on the copy of
+14/10: 103 day and 46 night views, leave-one-out with exact copies left
+out). `match` takes the nearest named dog: **sure** within `SURE_DISTANCE`
+0.33 and at most `SURE_RATIO` 0.6× the second nearest; **probable** within
+`PROBABLE_DISTANCE` 0.39 and 0.8×; otherwise nobody — the margin to the
+second is what lets it honestly say "I don't know". Each cell is right /
+wrong / person crops named / two-dog crops named, day | night:
+
+| distance | ratio 0.6 | 0.7 | 0.8 | 1.0 |
+|---|---|---|---|---|
+| 0.30 | 85/0/0/3 \| 28/0/0/1 | 85/0/0/5 \| 32/0/0/1 | 85/0/0/6 \| 32/0/0/1 | 85/0/0/6 \| 32/0/0/1 |
+| **0.33** | **89/0/0/3 \| 30/0/0/1** | 90/0/0/5 \| 36/0/0/1 | 90/0/0/7 \| 38/0/0/1 | 90/0/0/8 \| 38/0/0/1 |
+| 0.337 | 89/0/0/3 \| 30/0/0/1 | 91/0/0/5 \| 36/0/0/1 | 91/0/0/7 \| 38/0/0/1 | 91/0/0/8 \| 38/0/0/1 |
+| **0.39** | 92/0/0/3 \| 30/0/0/1 | 94/0/0/5 \| 38/0/0/1 | **96/0/0/8 \| 42/0/0/1** | 96/0/0/10 \| 42/0/0/1 |
+
+Sure sits under 0.337, the distance that names 90 % of the day views, and
+its ratio 0.6 keeps two-dog crops out of the sure answers (3 + 1 instead of
+7 + 1) at no cost in right views. That matters because a sure answer
+**teaches** the gallery and gathers crops (R29): a two-dog crop named sure
+would be a new misfiled view. Probable sits 0.059 under the nearest person
+crop (0.449): 96/103 and 42/46 named, none wrong, no person. No answer is
+wrong anywhere in the sweep, which is **optimistic** while each view's own
+event stays among the references (R55, BACKLOG 2). `tools/dog_tuning.py` on
+the migrated copy agrees: 0 wrong at every point of its grid.
 
 **The gallery.** `DogGallery` subclasses `faces.Gallery` — the same views,
-queue and favourite photo, in `dogs/`, with ids `d_…` — by overriding two
-class attributes (`id_prefix`, `sighting_key`): the same code with different
-constants, the way a Java subclass overrides a constant. Naming never gathers
-other crops on its own (`_absorb` is off): two dogs' histograms can look alike.
-The page reuses one JavaScript factory, `galleryTab(...)`, for People and Dogs.
-`DogGallery.distances` builds every pairwise distance at once in numpy
-(backlog 28, PYTHON 38): Bhattacharyya for all pairs is one matrix product per
-histogram block, day against infrared stays infinite. 0.5 ms for 41 views
-instead of 36 ms, equal to `distance` within 1e-15 on production's 167
-descriptors.
-
-**Matching.** `dogs.distance` is the mean Bhattacharyya distance over the
-histograms (a standard measure of how much two distributions overlap), and
-`None` between day and infrared — they are never compared. `match` takes the
-nearest named dog: **sure** within 0.35 and at most 0.6× the second nearest,
-**probable** within 0.5 and 0.8×; otherwise nobody. The margin to the second
-is what lets it honestly say "I don't know". Measured on 20 test crops: day
-distances 0.16–0.81 (median 0.53), infrared 0.18–1.0 (median 0.82); the
-thresholds sit below the medians and **are not yet validated** — they wait for
-the user's names.
+queue and favourite photo, in `dogs/`, with ids `d_…` — by overriding class
+attributes (`id_prefix`, `sighting_key`, `model`): the same code with
+different constants, the way a Java subclass overrides a constant. Naming
+gathers only the crops that match **for sure** (R29, below). The page reuses
+one JavaScript factory, `galleryTab(...)`, for People and Dogs.
 
 **The wording (the user's rule).** A dog alerts because a dog is there,
 whenever `dog` is an alert label; certainty only changes the words: the name,
 "probably <name>", or "unidentified dog" (plain "dog" while nothing is named).
-The first message names the dogs of the triggering frame (~100 ms, once per
-dog event); the Recordings card shows the event's best dog frame, so the two
-can differ. A sure match reinforces that dog with one more view; anything less
-becomes an unnamed crop (R27 caps them). `tools/dog_crops.py [--days N]` gives
-crops to events recorded before the feature (~21 s per event on the M900).
+The first message names the dogs of the triggering frame, once per dog event
+and once more if "dog" arrives late; the Recordings card shows the event's
+best dog frame, so the two can differ. A sure match reinforces that dog with
+one more view; anything less becomes an unnamed crop (R27 caps them).
+`tools/dog_crops.py [--days N]` gives crops to events recorded before the
+feature (~21 s per event on the M900).
 
-**Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop had a **Dismiss**, replaced on 11/10 by **Bad detection** (section 21). `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's `dogs/gallery.json`.
+**What naming costs the live loop** (developer 24, M900, 960×540 frames,
+real dog boxes, 80 named views): `identify` **121 ms median per dog** (max
+207), **243 ms with two** (max 456); `match` alone 2.6 ms. The histograms
+took 37 and 72 ms there, because GrabCut's cost follows the box and a dog in
+a 960×540 frame is small; the ~1,200 ms of the bench's table (step 1, below)
+was on the stored 320 px crops. So in the live loop DINOv2 is about 85 ms
+**dearer** per dog, not cheaper. At 10 analysis frames a second that skips
+one to three frames once per dog event; nothing queues, since the loop
+takes the newest frame (5.4). Accepted in review 26.
+
+**Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop had a **Dismiss**, replaced on 11/10 by **Bad detection** (section 21). `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's gallery (since 15/10/2026 `dogs/gallery_dinov2_small.json`, its default).
 
 **Dogs gather their look-alikes (R29, 11/10/2026).** Naming or merging a dog re-examines every unnamed crop against the dog's updated views with the *sure* rule only, same lighting only, repeating until nothing joins; past recordings show the dog's current name from `dog_id` instead of the words frozen when they were recorded.
 
@@ -3428,7 +3537,70 @@ put every dog of a breed into one ImageNet class — ImageNet has 120 dog
 breeds — which is the opposite of what two Labradors in one house need
 (CONTEXT 3: each household teaches its own dogs). Its licence covers the
 weights, with nothing for the user to weigh. Its cost, ~150 ms per crop,
-is below today's GrabCut. BACKLOG 2, R53, holds the plan.
+is below GrabCut's on the bench's 320 px crops — but not in the live loop,
+where GrabCut ran on small boxes (above).
+
+**The model's file (R53 step 2).** `downloads.py` fetches
+`onnx-community/dinov2-small`'s `onnx/model.onnx` at a pinned commit
+(`8b1f705a…`) and keeps it only with the pinned SHA-256 (10.2): 88,532,934
+bytes, `models/dinov2_small.onnx`. Against the developer's own export from
+step 1, its CLS token gave cosine **≥ 0.99999988 on all 167 bench crops**
+(the plan asked ≥ 0.9999), so no export of ours had to be published.
+Review 26 checked Hugging Face's own record of that commit: the file's LFS
+SHA-256 is the pinned one, and `base_model` is `facebook/dinov2-small`.
+**The licence:** the weights are Meta's `facebook/dinov2-small`,
+Apache-2.0; the ONNX file is a format conversion by the `onnx-community`
+organisation (for Transformers.js), whose card states no licence of its
+own, and a conversion of Apache-2.0 weights carries Apache-2.0's terms.
+Nothing for the user to weigh in a private home system.
+
+**The migration** is the faces' (10.14), shared: `dogs.migrate_gallery`
+writes `dogs/gallery_dinov2_small.json` (`GALLERY_FILE`, with `model` and
+`source`); `dogs/gallery.json` (`LEGACY_GALLERY_FILE`) is **never written**
+again, so `v2026.10.14.3`, restored by a rollback, reads it as it was.
+Every chosen and waiting view is described again from its photo in
+`dogs/views/`, keeping ids (the sightings point by `dog_id`), names,
+favourites, residents and thumbnails; a backup first
+(`backups/dogs_dinov2_small_<stamp>`), the `FileLock`, its line in the log
+after `log.to_file()`, and a rerun only when `gallery.json`'s SHA-1
+changes. **The infrared flag is carried from the old descriptor**, not
+judged again on the stored JPEG: it was judged on the whole widened region
+of the frame, the better evidence. `tools/dog_crops.py` and
+`tools/settle_waiting.py` run the migration first, since a tool that wrote
+the new file before the program's first migration would have its work
+replaced by it. **Measured on a copy of production's `dogs/`** (46 entries,
+2 named, 124 chosen + 81 waiting = 205 views): **205 kept, nothing dropped,
+29.5 s**; the old file's SHA-1 unchanged; a second run does nothing; the new
+file is 1,735 KB against 251 KB. The test copy's real start with that copy:
+30.2 s, inside the 90 s health check (18.7).
+
+**Undo of a report taken before the switch.** A dog report holds the entry
+as it left — 41-number histograms in every report production holds on
+15/10. `DogGallery.refit` describes the entry again from its photos when its
+sizes are not 385, as faces' `put_back` does (10.14). Review 26 undid two of
+production's real reports on a scratch copy — one from 12/10 with its
+copies, and the older form from 10/10 that kept only one crop — and both
+came back with 385-number descriptors.
+
+**Where the thirteen misfiled views land** (`PENDING.md`; each against the
+clean views of each dog, near-copies under 0.01 left out): the five person
+crops are no dog; the Mirana filed under Aurora (`d6bb2c`) is "probably
+Mirana"; of the six two-dog crops five are "probable" one dog or the
+other and one is no dog, none sure; `6b3d84`, unclear, is no dog. The new model sees them right — but
+they are still **in** the galleries, four of them in Chosen, where every
+match is measured against them. Deleting them is the user's (`PENDING.md`).
+
+**Until `v2026.10.14.3`: colour histograms.** `fur_mask` cut the dog out of
+its box with OpenCV's GrabCut (a graph cut over colour models of "inside"
+and "outside"), and 41 numbers described the fur: the infrared flag, 16 tone
+bins, and 16 hue + 8 saturation bins by day; the mean Bhattacharyya
+distance compared them (sure 0.35, probable 0.5). Without GrabCut the box's
+mat, floor, sun and shade had smeared every tone together. It worked while
+the dogs were one white and one black by day, and failed at night and on
+anything dark (R53). `fur_mask`, the histograms and the distance now live
+only in `tools/dog_bench.py` (`histogram_describe`, `histogram_distance`),
+as the bench's baseline; the bench also gained `--limits` for the ratio
+sweep above.
 
 ---
 
@@ -3467,7 +3639,7 @@ phone, and **recording never changes**.
 
 A named person or dog can be marked **Resident** on its page (the switch is
 hidden while the entry has no name). Stored as an optional `"resident": true`
-on the entry in `faces/gallery.json` or `dogs/gallery.json`, and removed —
+on the entry in the face or dog gallery (19.2), and removed —
 not set to `false` — when switched off. A plain rename keeps it; a merge makes
 the target a resident when either side was one (`Gallery._merge`). The grid
 card shows a "Resident" badge. The face scan copies the flag into each
@@ -3577,12 +3749,13 @@ someone the system cannot account for always wins over silence (CONTEXT 3).
   event, so two people passing one after the other count as one. It is
   reset in `_start`, written to the event's JSON (8.4) and handed to
   `_assemble` and `after_scan` as `people=`.
-- `after_scan` sends the event's best view as `faceless_person` when the
-  scan found faces, the person was **held**, **every** face found was
-  silenced by its case, `people` is greater than the faces found, and a best
-  view exists. Text: "Front 14:02:11: 2 people seen, 1 face found, best
-  view" (`notify.hidden_person`). The faces found are distinct people:
-  `_scan_clip` skips a second group that matches a person already seen.
+- `after_scan` sends a picture as `faceless_person` when the scan found
+  faces, the person was **held**, **every** face found was silenced by its
+  case, and `people` is greater than the faces found. Text: "Front
+  14:02:11: 2 people seen, 1 face found" (`notify.hidden_person`; until
+  `v2026.10.14.3` it ended ", best view"). The faces found are distinct
+  people: `_scan_clip` skips a second group that matches a person already
+  seen.
 - One helper, `_faceless`, now holds the faceless rules for the side view,
   the best view and the hidden person alike: the `faceless_person` switch;
   then, when the person was held and nothing of the event went out, the
@@ -3593,9 +3766,19 @@ someone the system cannot account for always wins over silence (CONTEXT 3).
   together with one face seen: the system cannot tell that from a stranger.
   Two boxes on one body are what NMS (0.45) and `drop_duplicates` remove
   before anything is counted.
-- **The picture is the best single view**, chosen by confidence × height,
-  not the frame where the people were counted: the phone may show only the
-  resident under "2 people seen". R56 (BACKLOG 2) keeps that frame instead.
+- **The picture is the frame where the people were counted** (R56,
+  15/10/2026). Until then it was the best single view, chosen by one
+  person's confidence × height, and the phone could show only the resident
+  under "2 people seen" — the message existing for the person not in it.
+  Now `_consider_view` keeps the frame and its subjects (`people_view`)
+  each time the count of persons in one frame **rises**, so the frame kept
+  is the first one with the most people; `stop()` writes it, boxes drawn as
+  on the thumbnail (8.5), as `HH-MM-SS.people.jpg` **only when
+  `most_people` ≥ 2** — the only case this message can fire, since it needs
+  more people than at least one face found — names it in the event's JSON
+  (`people_thumbnail`, 8.4) and hands it to `after_scan` as `people_view=`.
+  The best view stays the fallback when that file is missing. The base name
+  is shared, so the archive moves it with the event (19.2).
 
 ### 22.4 Notifications, the first part of Settings
 

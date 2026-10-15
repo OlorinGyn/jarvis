@@ -2112,3 +2112,110 @@ as they are — no flicker, no lost scroll position. `shown` is a `Map` that
 outlives each redraw, so a list the user opened stays open when naming a
 photo reloads it; `shown.get(key) || 0` reads 0 for a key never set, as
 `dict.get(key, 0)` would in Python.
+
+## 44. A vision transformer's summary token, a pinned download, a stand-in network in every test, and a rule that must come first (developer 24)
+
+From one delivery: R53 step 2, backlog 39, R56 and R57 (ARCHITECTURE 10.2,
+10.14, 17.17, 18.7, 20, 22.3).
+
+**The CLS token (R53 step 2).** A convolutional network such as MobileNet
+slides small filters over the image. A vision transformer — DINOv2 is one —
+first cuts the image into patches: at 224 px, a 16×16 grid of 14 px
+squares, 256 patches, each flattened into a vector. It adds one extra vector
+that belongs to no patch, the **CLS** ("class") token, and then every layer
+lets each of the 257 vectors look at all the others (attention) and update
+itself. After the last layer the CLS token has gathered something from every
+patch: it is the image's summary, and DINOv2's authors use it as the
+image's embedding. That is why the file's output is `(1, 257, 384)` — one
+batch, 257 tokens, 384 numbers each — and the program keeps only row 0:
+
+```python
+output = self.net.forward()
+vector = np.asarray(output, np.float32).reshape(-1, EMBEDDING_SIZE)[0]
+```
+
+`reshape(-1, 384)` turns the output into 257 rows of 384, whatever the
+leading dimensions (`-1` means "as many as it takes", like letting the
+compiler infer an array length), and `[0]` is the CLS row. Hugging Face's
+Python model also returns a `pooler_output`, which is this same row after
+the final layer norm; the ONNX file does not list it because an ONNX graph
+exposes only its declared outputs, and `net.getUnconnectedOutLayersNames()`
+shows which those are. Developer 24 checked the CLS row against their own
+export: cosine 0.99999988 or more on all 167 bench crops.
+
+**Pinning a download, and reading a file in blocks.** A URL on Hugging Face
+`.../resolve/main/...` follows whatever the repository holds today; with a
+commit hash in place of `main` it is fixed forever, like depending on a
+library at an exact version instead of "latest". The SHA-256 then proves the
+bytes are the ones measured:
+
+```python
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+```
+
+`iter(callable, sentinel)` — the two-argument form — calls the function
+again and again and stops when it returns the sentinel: here, read 1 MB
+(`1 << 20`, a bit shift, 2²⁰ bytes) until `read` returns `b""` at the end of
+the file. It is Python's way of writing `while ((n = stream.Read(buffer))
+> 0)` from C# or Java, without holding 88 MB in memory at once. The hash is
+checked on `<name>.part`, which is renamed into place only on a match, so a
+half-downloaded or tampered file never sits under the real name.
+
+**One stand-in for every test: `conftest.py`, `autouse` and a class
+method replaced.** Every test that records a dog would load an 88 MB network
+— or download it. pytest reads `tests/conftest.py` before the tests, and a
+fixture declared there with `autouse=True` runs for **every** test without
+being named:
+
+```python
+@pytest.fixture(autouse=True)
+def fake_dog_network(request, monkeypatch):
+    if request.node.get_closest_marker("real_dog_model") is None:
+        monkeypatch.setattr(dogs.Network, "embed", fake_embed)
+```
+
+`monkeypatch.setattr` on the **class** replaces the method for every
+instance, `LIVE` and `STORED` included, and puts it back when the test ends
+— like a mocking framework replacing a virtual method for one test, but
+with no interface needed. `fake_embed(self, image)` takes `self` because it
+becomes a method. A test marked `@pytest.mark.real_dog_model` is left alone
+(`get_closest_marker` looks at the test's own marks), and it skips itself
+when `models/` lacks the file. `pytest_configure` registers the marker so
+pytest does not warn about an unknown name.
+
+**A cosine you choose (`tests/dog_vectors.py`).** To test thresholds the
+tests need descriptors at exact distances. A unit vector turned by an angle
+θ from an axis has cosine `cos θ` with it, so `descriptor(direction, angle)`
+puts `cos θ` and `sin θ` on two neighbouring axes, and `at_distance(d)` asks
+for `θ = acos(1 − d)`: a distance of exactly `d`. The fake network writes on
+axes the test descriptors never use, so a real crop and a hand-made
+descriptor are always far apart.
+
+**CSS: at equal specificity, the later rule wins (backlog 39).**
+
+```css
+.phone-only { display: none; }
+@media (max-width: 480px) {
+  .phone-only { display: inline; }
+}
+```
+
+Both selectors weigh the same, and a media query adds no weight: it only
+switches its rules on or off. So when both apply — on a phone — the one
+written **later** in the file wins. Written the other way round, the base
+rule would hide the phone text on the phone too; developer 24 hit exactly
+that and moved it up.
+
+**PowerShell: `$null` on the left, and returning a reason (R57).**
+`FrameProblem` returns `$null` when all is well, or a sentence saying what
+is wrong, so one value both decides and explains — the caller writes
+`if ($problem) { throw "... $problem" }`. Comparisons put `$null` first,
+`$null -eq $age`, because PowerShell compares a collection on the left
+element by element: `@(1, $null) -eq $null` returns the matching elements,
+not `$true` or `$false`. With `$null` on the left the answer is always one
+boolean.
