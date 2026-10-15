@@ -1377,3 +1377,91 @@ passo 1). À espreita: a foto que mostra a pessoa errada (R56); as gêmeas que
 garantem uma à outra (R55); treze fotos de cachorro no lugar errado
 esperando o Dono; um deploy que para uma casa já cega (R57). A seguir: para
 onde foram os dois drones?
+
+## Edição #20 — O Cachorro de Sapatos
+
+`v2026.10.15` · 14–15 out 2026
+
+**Quadro 1.** Azul-noite, a casa apagada — todas as janelas pretas, o poste
+da rua apagado. Front e Back caídas no gramado, hélices paradas, olhos
+escuros. Lá dentro, a luz de energia do M900 está apagada.
+O DONO (dourado, de fora do quadro): Faltou energia. O computador desligou
+também.
+LEGENDA: Para onde foram os dois drones. 14 de outubro, 17:13.
+
+**Quadro 2.** 21:47. O M900 acende sozinho; J.A.R.V.I.S. se levanta, olho
+brilhando; Front e Back sobem do gramado. Então uma cortina pesada com a
+etiqueta "tela de login" cai sobre o monitor, e uma figurinha marcada
+`winlogon.exe` puxa uma alavanca escrita "Sleep".
+J.A.R.V.I.S.: `Back: ok` `Front: ok`
+CHEFÃO (a cortina): NINGUÉM ENTROU. LUZES APAGADAS.
+LEGENDA: Cinquenta segundos depois, o Windows o pôs para dormir. Dezoito
+horas sem gravar e sem mensagem.
+
+**Quadro 3.** A coruja, lanterna erguida, lê um pergaminho comprido — o log
+do sistema — e circula duas palavras: "ScreenOffGracePeriod",
+"SetSuspendState". Ela prende um cartão no pergaminho: "para o Dono".
+ARQUITETA: Uma configuração do sistema. Não sou eu quem muda: o Dono aplica,
+e testa reiniciando sem ninguém entrar.
+
+**Quadro 4.** Creme quente. Uma bancada de laboratório. A lente de roda de
+cores da edição passada vai para uma gaveta etiquetada `dog_bench.py`. O
+castor rosqueia uma lente de vidro marcada "DINOv2" no olho do J.A.R.V.I.S.
+Através dela, um par de sapatos escuros mostra "?".
+DEV: As cores ficam na bancada, para comparar. A casa agora olha a forma:
+384 números por recorte, e mais um que diz se é noite.
+
+**Quadro 5.** O castor recebe um pacote de uma nuvem etiquetada "Hugging
+Face". Uma impressão digital comprida está carimbada nele; ele segura a
+prancheta ao lado, a mesma impressão digital nas duas.
+DEV: Preso a um commit, guardado só se a impressão digital bater. Uma
+errada, e nada entra na pasta.
+LEGENDA: 88,5 MB. Contra a exportação do próprio Dev: cosseno 0,99999988 ou
+melhor em todos os 167 recortes.
+
+**Quadro 6.** A coruja com um cronômetro ao lado do loop ao vivo, uma esteira
+de quadros. Um quadro espera enquanto a foto de um cachorro passa pela lente
+nova.
+ARQUITETA: A bancada disse que a lente nova era mais barata que a velha. Não
+nas caixas pequenas do loop ao vivo: 121 milissegundos por cachorro, contra
+37. Uma vez por evento de cachorro, nada se acumula. Aceito — e o livro
+corrigido.
+
+**Quadro 7.** Um quadro de avisos com duas fotos. À esquerda, a da edição
+passada: só o morador, sob "2 people seen". À direita, a nova: duas caixas
+desenhadas, duas pessoas no quadro. A coruja tira o cartão "R56" do quadro.
+J.A.R.V.I.S.: `Front 14:02:11: 2 people seen, 1 face found`
+LEGENDA: A mensagem da pessoa escondida agora leva o quadro onde as pessoas
+foram contadas.
+
+**Quadro 8.** Uma porta marcada "update" e, na frente dela, um guardinha — o
+script novo do castor. Pela janela, Front e Back estão apagadas. O guarda
+levanta a mão.
+J.A.R.V.I.S.: `Not updating: the service answers, but cameras deliver no frames (Back no frame yet). The cameras are not delivering frames now; nothing was changed.`
+LEGENDA: Um update não para mais uma casa que já está cega. `-Force` ainda
+abre a porta, para uma versão que conserta os olhos.
+
+**Quadro 9.** Um celular a 375 px: fotos de cachorro em duas colunas, cada
+cartão só uma foto e um nome. Um dedo toca uma; uma barra sobe de baixo: "1
+selected — Assign to… — Bad detection".
+LEGENDA: No celular, um cartão é a sua foto. Toque, e aja na barra.
+
+**Quadro 10.** O M900, 16:53. O pacote `v2026.10.15` entra. Um álbum velho
+etiquetado `gallery.json` fica na prateleira, intocado; um novo,
+`gallery_dinov2_small.json`, sai da máquina.
+J.A.R.V.I.S.: `Dog gallery rebuilt for dinov2_small from gallery.json: {'people': 46, 'views': 205, 'kept': 205, 'seconds': 21.7, …}` `Back: ok` `Front: ok`
+
+**Quadro 11.** A coruja separa as 44 fotos sem nome em três pilhas:
+cachorros brancos sob "Aurora", pretos sob "Mirana", e uma pilha pequena,
+"sem palpite", com duas pessoas e um recorte com as duas cadelas.
+ARQUITETA: Vinte e dois palpites de Aurora: vinte e duas cadelas brancas.
+Dezessete de Mirana: dezessete pretas. E as pessoas não são cachorro de
+ninguém.
+
+**Cartão final.** Habilidades: **A Lente da Forma** (R53, DINOv2-small) ·
+**O Pacote Lacrado** (a impressão digital do modelo) · **A Foto da Contagem**
+(R56) · **O Guarda da Porta** (R57) · **O Cartão de Bolso** (backlog 39). À
+espreita: as gêmeas que garantem uma à outra (R55, a seguir); treze fotos de
+cachorro no lugar errado, quatro delas entre as Escolhidas, esperando o
+Dono; a tela de login que põe a casa para dormir. A seguir: os cachorros
+ganham um mostrador só deles.

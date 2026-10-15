@@ -1328,3 +1328,86 @@ Tick** (backlog 38) · **The Lens Bench** (R53 step 1). Lurking: the picture
 that shows the wrong person (R56); the twins that vouch for each other
 (R55); thirteen misfiled dog photos waiting for the Owner; a deploy that
 stops a house already blind (R57). Next: where did the two drones go?
+
+## Issue #20 — The Dog Who Wore Shoes
+
+`v2026.10.15` · 14–15 Oct 2026
+
+**Panel 1.** Night-blue, the house dark — every window black, the street
+lamp out. Front and Back lie on the lawn, propellers still, eyes dark.
+Inside, the M900's power light is off.
+THE OWNER (gold, from off panel): There was a power cut. The computer was
+off too.
+CAPTION: Where the two drones went. 14 October, 17:13.
+
+**Panel 2.** 21:47. The M900 lights up by itself; J.A.R.V.I.S. sits up, eye
+glowing; Front and Back rise from the lawn. Then a heavy curtain labelled
+"sign-in screen" drops over the monitor, and a small figure tagged
+`winlogon.exe` pulls a lever marked "Sleep".
+J.A.R.V.I.S.: `Back: ok` `Front: ok`
+BOSS (the curtain): NOBODY SIGNED IN. LIGHTS OUT.
+CAPTION: Fifty seconds later, Windows put it to sleep. Eighteen hours with
+no recording and no message.
+
+**Panel 3.** The owl, lantern raised, reads a long scroll — the System log —
+and circles two words: "ScreenOffGracePeriod", "SetSuspendState". She pins a
+card on the scroll: "for the Owner".
+ARCHITECT: A system setting. Not mine to change: the Owner applies it, and
+tests it with a restart nobody signs into.
+
+**Panel 4.** Warm cream. A lab bench. Last issue's colour-wheel lens goes
+into a drawer labelled `dog_bench.py`. The beaver screws a glass lens marked
+"DINOv2" into J.A.R.V.I.S.'s eye. Through it, a pair of dark shoes reads "?".
+DEV: Colours stay on the bench, for comparing. The house now looks at shape:
+384 numbers a crop, and one more that says night.
+
+**Panel 5.** The beaver receives a parcel from a cloud labelled "Hugging
+Face". A long fingerprint is stamped on it; he holds his clipboard beside
+it, the same fingerprint on both.
+DEV: Pinned to one commit, kept only if the fingerprint matches. A wrong
+one, and nothing lands in the folder.
+CAPTION: 88.5 MB. Against the Dev's own export: cosine 0.99999988 or better
+on all 167 crops.
+
+**Panel 6.** The owl with a stopwatch beside the live loop, a conveyor belt
+of frames. One frame waits while a dog photo passes through the new lens.
+ARCHITECT: The bench said the new lens was cheaper than the old one. Not on
+the small boxes of the live loop: 121 milliseconds a dog, against 37. Once
+per dog event, nothing queues. Accepted — and the book corrected.
+
+**Panel 7.** A pinboard with two photos. Left, last issue's: only the
+resident, under "2 people seen". Right, the new one: two boxes drawn, two
+people in the frame. The owl takes the "R56" card off the board.
+J.A.R.V.I.S.: `Front 14:02:11: 2 people seen, 1 face found`
+CAPTION: The hidden-person message now carries the frame where the people
+were counted.
+
+**Panel 8.** A door marked "update", and in front of it a small guard — the
+beaver's new script. Through the window, Front and Back are dark. The guard
+raises a hand.
+J.A.R.V.I.S.: `Not updating: the service answers, but cameras deliver no frames (Back no frame yet). The cameras are not delivering frames now; nothing was changed.`
+CAPTION: An update no longer stops a house that is already blind. `-Force`
+still opens the door, for a release that fixes the eyes.
+
+**Panel 9.** A phone at 375 px: dog photos in two columns, each card only a
+photo and a name. A finger taps one; a bar rises from the bottom: "1
+selected — Assign to… — Bad detection".
+CAPTION: On a phone a card is its photo. Tap, then act in the bar.
+
+**Panel 10.** The M900, 16:53. The parcel `v2026.10.15` goes in. An old
+album labelled `gallery.json` stays on its shelf, untouched; a new one,
+`gallery_dinov2_small.json`, comes out of the machine.
+J.A.R.V.I.S.: `Dog gallery rebuilt for dinov2_small from gallery.json: {'people': 46, 'views': 205, 'kept': 205, 'seconds': 21.7, …}` `Back: ok` `Front: ok`
+
+**Panel 11.** The owl sorts the 44 unnamed photos into three piles: white
+dogs under "Aurora", black dogs under "Mirana", and a small pile, "no
+guess", holding two people and one crop with both dogs.
+ARCHITECT: Twenty-two guesses of Aurora: twenty-two white dogs. Seventeen
+of Mirana: seventeen black. And the people are nobody's dog.
+
+**Closing card.** Abilities: **The Shape Lens** (R53, DINOv2-small) · **The
+Pinned Parcel** (the model's fingerprint) · **The Head-Count Photo** (R56)
+· **The Door Guard** (R57) · **The Pocket Card** (backlog 39). Lurking: the
+twins that vouch for each other (R55, next); thirteen misfiled dog photos,
+four of them among the Chosen, waiting for the Owner; the sign-in screen
+that puts the house to sleep. Next: the dogs get a dial of their own.

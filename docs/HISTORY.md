@@ -232,6 +232,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 23 | 14/10/2026 | `706883b..70d3fce`, developer session 21 — R49 step 2: SCRFD + ArcFace R50, the migrated gallery, models before the stop | **one code fix** (`d07c09e`): `FetchModels` aborted on a tag without `downloads.py` instead of skipping it; 240 tests pass; the scan and the stored photos embed alike (0.97–0.99); R48 and R49 closed, R51 and R52 opened; **release `v2026.10.14`** (R49, backlog 28 and 31), deployed at 12:07: 955 events, 202 face and 393 dog sightings, 18 reports read before and after; the models fetched before the stop; 173 of 173 views migrated in about 23 s; about 36 s stopped, cameras ok 3 s after the start; the migration's line is not in the log (R52). The once-only settle waits for the user (13.24) |
 | 24 | 14/10/2026 | `70d3fce..099d547`, developer session 22 — backlog 34, 35, 36, R52, R51, R30 (b) | no code fixed; 269 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1280 px (Off asks, On does not; no horizontal scroll); the slider's round trip checked for six defaults; `filelock` has no binary; R30, R51 and R52 closed, R54 opened (a watch: no stranger measured); backlog 37 designed from production's counts, 38 added; **release `v2026.10.14.2`**, deployed at 15:50: 976 events, 206 face and 412 dog sightings, 18 reports read before and after; `filelock` installed by `uv sync`; no migration ran (the hash unchanged), no lock file left; about 10 s stopped, cameras ok 3 s after the start (13.25) |
 | 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55, R56 and R57 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3` tagged, its deploy rolled back on its own**: both cameras left the network between 16:32 and 16:39 — a power cut, the user said the next day — nothing to do with the release; the M900 lost power at 17:13, booted at 21:47 and was put to sleep by Windows 50 s later, asleep until 15:58 on 15/10; **deployed on 15/10 at 16:05**: 977 events, 206 face and 413 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start (13.26) |
+| 26 | 15/10/2026 | `bd44c66..756ac12`, developer session 24 — R53 step 2, backlog 39, R56, R57 | no code fixed, one installer message corrected (the models' size); 296 tests pass, `check_data` reads both dog galleries, no comments; the model's pinned SHA-256 checked against Hugging Face's record; two of production's dog reports undone on a scratch copy (both back with 385-number descriptors); the page at 375 px and 1024 px; the live-loop cost found higher than the histograms', not lower, and the documentation corrected; R53, R56 and R57 closed, nothing opened; **release `v2026.10.15`**, deployed at 16:53: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; the model fetched before the stop; 205 of 205 dog views migrated in 21.7 s; about 35 s stopped, cameras ok 3 s after the start; the 44 unnamed dogs' guesses all right on a contact sheet (13.27) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -1847,6 +1848,30 @@ check; the two ffmpeg left running were production's.
 10; INSTALL 3; PYTHON 44; PROCESS 2.4, 3.2, 3.3 and 6; BACKLOG 1, 2 and 3;
 PENDING; HISTORY 8, 13.2, 13.4 and 14.3.
 
+**The deploy.** `production.ps1 -Action update` at 16:52: the new
+first step found both cameras delivering frames; every file read before
+(979 events, 206 face and 413 dog sightings, 18 reports); `FetchModels`
+downloaded `dinov2_small.onnx` and the hash matched, before anything
+stopped; the service stopped at 16:53:11, the new version read every file
+again, and on its first start **migrated production's dog gallery: 46
+entries, 205 of 205 views kept, 21.7 s**, its line in `logs/jarvis.log`
+after the log file opened, the backup in
+`backups/dogs_dinov2_small_20261015-165321`; both cameras "ok" at 16:53:46
+— about 35 s stopped, the migration inside it. `gallery.json`'s SHA-1 is
+the backup's, untouched. `-Action check` afterwards reads both dog
+galleries, 46 dogs each.
+
+**What the new model says about production's own photos.** The 44 unnamed
+dogs, read from the running service's Dogs list a minute after the start,
+grouped by their "Looks like" guess and laid out on one contact sheet: **22
+guessed Aurora, and all 22 are the white dog; 17 guessed Mirana, and all 17
+are the black dog**; 5 have no guess — two crops of a person, one crop
+holding both dogs, and two of the white dog that it would not name. Under
+the histograms the same list was three groups of 18, 10 and 16
+(ARCHITECTURE 17.17). Not a measurement with labels — the photos are
+unnamed — but the first look at the model on photos the bench did not
+label.
+
 **Closed: R53, R56 and R57.** Their texts as they were open:
 
 **R53 — The dogs' identity rests on colour histograms, which overlap (high,
@@ -1943,3 +1968,5 @@ of `CONTEXT.md`.
 | D23 | developer | high | 14/10 afternoon | session 23: R42 (b), backlog 37 (a, b) and 38, R53 step 1 — `tools/dog_bench.py`, three models exported to ONNX once — backlog 32 for faces (284 tests) | 40% → 60% | 33% → 2% (the weekly window reset at 19:00 UTC mid-session) | 76k → about 285k tokens, a new conversation |
 | A32 | architect | ultracode | 14/10 16:20–16:55 | review 25: the diff read whole, the page at 375 and 1024 px in the built-in browser (the test copy started from the new `.claude/launch.json`), R53's bench run again for two models, production's misfiled dog views read; HANDOFF integrated, ARCHITECTURE 10.15 and 17.17, PYTHON 43, raid log 19; R53 step 2 decided, R55–R57, backlog 39; release `v2026.10.14.3` tagged and its deploy rolled back on a camera outage, diagnosed (ping, ARP, a subnet sweep, the Wi-Fi events) and pushed to the user's phone; no handover (a deploy rolled back, the window at 82 %) | 61% → 82% (the diagnosis of the outage cost about 4) | 2% → 5% | 74k → about 320k tokens, a new conversation |
 | A33 | architect | ultracode | 15/10 16:00–16:10 | resumed after the power cut, in review 25's conversation: production's 18 silent hours traced in the System log (a sleep by `winlogon.exe` at the sign-in screen 50 s after the boot), two live frames checked, `v2026.10.14.3` deployed; PENDING and HISTORY 13.26; developer 24 started | 6% → about 12% (new window; the conversation was already ~320k) | 6% → 6% | 321k → about 360k tokens |
+| D24 | developer | high | 15/10 16:10–16:40 | session 24: R53 step 2 — DINOv2-small, the pinned download, the dog migration — backlog 39, R56, R57 (296 tests) | 12% → 33%: R53 step 2 12, backlog 39 4, R56 2, R57 and HANDOFF 3 | 6% → 9% | about 309k tokens at the end, a new conversation |
+| A34 | architect | ultracode | 15/10 16:40–17:10 | review 26: the diff read whole, the model's hash against Hugging Face, Undo of real reports on a scratch copy, the page at 375 and 1024 px; HANDOFF integrated, ARCHITECTURE 20 rewritten, PYTHON 44, raid log 20; release and deploy `v2026.10.15`, the unnamed dogs' guesses checked on a contact sheet; developer 25 planned and started | 33% → about 56% | 9% → 12% | 105k → about 330k tokens, a new conversation (started by the developer's handover) |
