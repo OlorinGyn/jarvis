@@ -20,7 +20,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from jarvis import ROOT, downloads, faces
+from jarvis import ROOT, downloads, faces, settings
 
 DOG_DIR = ROOT / "dogs"
 EMBEDDING_MODEL = "dinov2_small"
@@ -38,10 +38,12 @@ MARGIN = 0.10
 GREY_DIFFERENCE = 8.0
 CROP_SIDE = 320
 MAX_UNNAMED = 60
-SURE_DISTANCE = 0.33
+SURE_DISTANCE = settings.DEFAULTS[settings.DOG_SURE_KEY]
 SURE_RATIO = 0.6
 PROBABLE_DISTANCE = 0.39
 PROBABLE_RATIO = 0.8
+SURE_SWEEP = tuple(round(0.20 + 0.02 * step, 2) for step in range(10)) + (PROBABLE_DISTANCE,)
+COPY_DISTANCE = 0.0001
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +108,7 @@ class DogGallery(faces.Gallery):
         distance of a day view to a night view is undefined): a view that
         joins can make another crop recognisable, as for faces (R29).
         """
+        sure = sure_distance()
         merged = 0
         changed = True
         while changed:
@@ -113,7 +116,7 @@ class DogGallery(faces.Gallery):
             for other in list(self.people):
                 if other is person or other["name"]:
                     continue
-                results = [match(view, self) for view in other["embeddings"]]
+                results = [match(view, self, sure) for view in other["embeddings"]]
                 if any(r["certainty"] == "sure" and r["dog_id"] == person["id"] for r in results):
                     self._merge(other, person)
                     merged += 1
@@ -122,7 +125,8 @@ class DogGallery(faces.Gallery):
 
     def guess(self, entry):
         """The named dog an unnamed crop matches, sure or probable, as a message would say; else None."""
-        found = [r for r in (match(view, self) for view in entry["embeddings"]) if r["dog_id"]]
+        sure = sure_distance()
+        found = [r for r in (match(view, self, sure) for view in entry["embeddings"]) if r["dog_id"]]
         if not found:
             return None
         return min(found, key=lambda r: (r["certainty"] != "sure", r["distance"]))["dog_id"]
@@ -278,14 +282,22 @@ def migrate_gallery(target=None, source=None, backup_dir=None):
     return faces.migrate_gallery(target, source, backup_dir, model=EMBEDDING_MODEL, refit=refit_entry)
 
 
-def match(descriptor, gallery):
+def sure_distance(values=None):
+    """The sure distance the user chose in Settings (backlog 32); SURE_DISTANCE until they choose."""
+    value = (settings.load() if values is None else values).get(settings.DOG_SURE_KEY, SURE_DISTANCE)
+    return value if settings.dog_sure_valid(value) else SURE_DISTANCE
+
+
+def match(descriptor, gallery, sure=None):
     """Which named dog this looks like: {"dog_id", "name", "certainty", "distance"}.
 
     Nearest neighbour over every named dog's views in the same lighting. A
-    name is given only when the nearest dog is close and clearly closer than
-    the second ("sure"), or close enough and somewhat closer ("probable");
-    otherwise certainty is None. Dogs that look alike stay "dog".
+    name is given only when the nearest dog is within sure (SURE_DISTANCE
+    when None) and clearly closer than the second ("sure"), or close enough
+    and somewhat closer ("probable"); otherwise certainty is None. Dogs that
+    look alike stay "dog". Callers read sure_distance once per operation.
     """
+    sure = SURE_DISTANCE if sure is None else sure
     nearest = []
     for dog in gallery.people:
         if not dog["name"]:
@@ -299,12 +311,95 @@ def match(descriptor, gallery):
     best, dog = nearest[0]
     second = nearest[1][0] if len(nearest) > 1 else float("inf")
     certainty = None
-    if best <= SURE_DISTANCE and best <= SURE_RATIO * second:
+    if best <= sure and best <= SURE_RATIO * second:
         certainty = "sure"
     elif best <= PROBABLE_DISTANCE and best <= PROBABLE_RATIO * second:
         certainty = "probable"
     return {"dog_id": dog["id"] if certainty else None, "name": dog["name"] if certainty else "",
             "certainty": certainty, "distance": round(best, 3)}
+
+
+def accuracy(gallery=None, distances=SURE_SWEEP):
+    """Leave-one-event-out over the named dogs' Chosen views, per sure distance, by day and at night (backlog 32).
+
+    Each view is matched as match would, at the fixed SURE_RATIO, against
+    every other named view in its own lighting, leaving out every view of
+    its own event (R55); a view whose event is unknown leaves out only its
+    exact copies, and is counted in unknown_events. Per distance: how many
+    would be named for sure by day and at night, how many rightly and
+    wrongly, and how many unnamed crops would be named for sure, by the same
+    rule. A dog that is not the household's has no name, so the Unnamed
+    column is the only hint of that confusion.
+    """
+    gallery = gallery or DogGallery()
+    named = [d for d in gallery.people if d["name"]]
+    owners, rows, events = [], [], []
+    for index, dog in enumerate(named):
+        for descriptor, event in zip(dog["embeddings"], faces.events_of(dog)):
+            if len(descriptor) == DESCRIPTOR_SIZE:
+                owners.append(index)
+                rows.append(descriptor)
+                events.append(event)
+    unnamed = [(e, event) for d in gallery.people if not d["name"]
+               for e, event in zip(d["embeddings"], faces.events_of(d)) if len(e) == DESCRIPTOR_SIZE]
+    probes, crossing, unknown = [], [], 0
+    if rows:
+        reference = _Reference(rows, owners, events, len(named))
+        for probe, descriptor in enumerate(rows):
+            found = reference.nearest(descriptor, events[probe])
+            if found is None:
+                continue
+            dog, best, second = found
+            probes.append((bool(descriptor[0]), best, second, dog == owners[probe]))
+            unknown += not events[probe]
+        crossing = [found[1:] for found in (reference.nearest(e, event) for e, event in unnamed)
+                    if found is not None]
+    table = []
+    for limit in distances:
+        row = {"distance": limit, "unnamed": sum(1 for best, second in crossing if _sure(best, second, limit))}
+        for lighting, infrared in (("day", False), ("night", True)):
+            sure = [right for night, best, second, right in probes
+                    if night == infrared and _sure(best, second, limit)]
+            row[lighting] = {"sure": len(sure), "right": sum(sure), "wrong": len(sure) - sum(sure)}
+        table.append(row)
+    return {"views": {"day": sum(1 for p in probes if not p[0]), "night": sum(1 for p in probes if p[0])},
+            "unnamed_views": len(unnamed), "unknown_events": unknown, "rows": table}
+
+
+def _sure(best, second, limit):
+    """match's sure rule at one distance: within it, and at most SURE_RATIO of the second dog's distance."""
+    return best <= limit and best <= SURE_RATIO * second
+
+
+class _Reference:
+    """The named views as one matrix, so each probe is one product instead of a loop over views."""
+
+    def __init__(self, rows, owners, events, dogs):
+        x = np.asarray(rows, np.float64)
+        self.infrared = x[:, 0] != 0
+        vectors = x[:, 1:]
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        self.vectors = vectors / np.where(norms > 0, norms, 1.0)
+        self.owners = np.asarray(owners)
+        self.events = np.asarray(events, object)
+        self.dogs = dogs
+
+    def nearest(self, descriptor, event):
+        """(dog index, distance, second dog's distance) over the comparable views, or None when there is none."""
+        x = np.asarray(descriptor, np.float64)
+        vector = x[1:] / (np.linalg.norm(x[1:]) or 1.0)
+        found = np.clip(1.0 - self.vectors @ vector, 0.0, None)
+        out = (self.infrared != (x[0] != 0)) | (found <= COPY_DISTANCE)
+        if event:
+            out |= self.events == event
+        found = np.where(out, np.inf, found)
+        per_dog = np.full(self.dogs, np.inf)
+        np.minimum.at(per_dog, self.owners, found)
+        order = np.argsort(per_dog)
+        if not np.isfinite(per_dog[order[0]]):
+            return None
+        second = per_dog[order[1]] if self.dogs > 1 else np.inf
+        return int(order[0]), float(per_dog[order[0]]), float(second)
 
 
 def wording(result, gallery):
@@ -341,9 +436,10 @@ def identify(frame, boxes, gallery=None):
     """
     try:
         gallery = gallery or DogGallery()
+        sure = sure_distance()
         found = []
         for box in boxes:
-            result = match(describe(frame, box, LIVE)[0], gallery)
+            result = match(describe(frame, box, LIVE)[0], gallery, sure)
             dog = gallery.get(result["dog_id"])
             resident = result["certainty"] if dog and dog.get("resident") else None
             found.append((wording(result, gallery), resident))
@@ -366,13 +462,14 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
     folder = gallery.path.parent / started_at.strftime("%Y-%m-%d")
     folder.mkdir(parents=True, exist_ok=True)
     stamp = started_at.strftime("%H-%M-%S")
+    sure = sure_distance()
     added = []
     for box in boxes:
         descriptor, crop = describe(frame, box)
         name = f"{stamp}_{uuid.uuid4().hex[:6]}"
         thumbnail = folder / f"{name}.jpg"
         cv2.imwrite(str(thumbnail), crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
-        result = match(descriptor, gallery)
+        result = match(descriptor, gallery, sure)
         if result["certainty"] == "sure":
             dog_id = result["dog_id"]
             gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))

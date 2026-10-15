@@ -60,6 +60,7 @@ BATCH_MAX = 500
 NOTIFY_LABELS = ("person", "dog", "cat", "bird", "horse", "sheep", "cow")
 EDITABLE = {
     "face_sure_threshold": float,
+    "dog_sure_distance": float,
     "notify_chat": str,
     "notify_prefix": str,
     "notify_labels": list,
@@ -888,6 +889,11 @@ def _clean(key, value):
             return round(float(value), 3)
         low, high = settings.FACE_SURE_RANGE
         raise HTTPException(400, f"{key} must be a number from {low} to {high}")
+    if key == settings.DOG_SURE_KEY:
+        if settings.dog_sure_valid(value):
+            return round(float(value), 3)
+        low, high = settings.DOG_SURE_RANGE
+        raise HTTPException(400, f"{key} must be a number from {low} to {high}")
     if key in settings.CONFIDENCE_KEYS:
         if settings.confidence_valid(value):
             return round(float(value), 2)
@@ -923,6 +929,17 @@ def face_accuracy():
     thresholds = tuple(sorted({*faces.SURE_SWEEP, current}))
     table = faces.accuracy(faces.Gallery(), thresholds)
     table.update(current=current, default=faces.LEARN_THRESHOLD, range=list(settings.FACE_SURE_RANGE))
+    return table
+
+
+@app.get("/api/accuracy/dogs")
+def dog_accuracy():
+    """How the sure distance would do on the named dogs, measured now, with the current choice (backlog 32)."""
+    current = dogs.sure_distance()
+    distances = tuple(sorted({*dogs.SURE_SWEEP, current}))
+    table = dogs.accuracy(dogs.DogGallery(), distances)
+    table.update(current=current, default=dogs.SURE_DISTANCE, range=list(settings.DOG_SURE_RANGE),
+                 ratio=dogs.SURE_RATIO, probable=dogs.PROBABLE_DISTANCE)
     return table
 
 

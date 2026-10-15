@@ -22,6 +22,8 @@ CONFIDENCE_RANGE = (0.20, 0.90)
 SLIDER_STEPS = 1000
 FACE_SURE_KEY = "face_sure_threshold"
 FACE_SURE_RANGE = (0.30, 0.60)
+DOG_SURE_KEY = "dog_sure_distance"
+DOG_SURE_RANGE = (0.20, 0.39)
 
 _LOCK = threading.RLock()
 
@@ -41,6 +43,7 @@ DEFAULTS = {
     "confidence_dog": 0.45,
     "confidence_animal": 0.45,
     "face_sure_threshold": 0.40,
+    "dog_sure_distance": 0.33,
 }
 
 
@@ -81,12 +84,20 @@ def load():
             values[key] = DEFAULTS[key]
     if not face_sure_valid(values[FACE_SURE_KEY]):
         values[FACE_SURE_KEY] = DEFAULTS[FACE_SURE_KEY]
+    if not dog_sure_valid(values[DOG_SURE_KEY]):
+        values[DOG_SURE_KEY] = DEFAULTS[DOG_SURE_KEY]
     return values
 
 
 def face_sure_valid(value):
     """True for a face sure threshold the page may set: a number inside FACE_SURE_RANGE (backlog 32)."""
     low, high = FACE_SURE_RANGE
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
+
+
+def dog_sure_valid(value):
+    """True for a dog sure distance the page may set: a number inside DOG_SURE_RANGE (backlog 32)."""
+    low, high = DOG_SURE_RANGE
     return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
 
 

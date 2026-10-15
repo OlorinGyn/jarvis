@@ -1072,76 +1072,134 @@ document.getElementById("detection-defaults").addEventListener("click", () => {
   saveSettings({ ...confidenceDefaults }, detectionResult);
 });
 
-const sureForm = document.getElementById("sure-form");
-const sureResult = document.getElementById("sure-result");
-let sureDefault = null;
-
-function accuracyRow(row, current, views) {
-  const line = document.createElement("tr");
-  line.classList.toggle("active", row.threshold === current);
-  const pick = document.createElement("td");
-  const label = document.createElement("label");
-  const radio = document.createElement("input");
-  radio.type = "radio";
-  radio.name = "face_sure_threshold";
-  radio.value = row.threshold;
-  radio.checked = row.threshold === current;
-  label.append(radio, ` ${row.threshold.toFixed(3)}`);
-  pick.append(label);
-  const share = row.named ? `${Math.round((100 * row.right) / row.named)} %` : "-";
-  const cells = [`${row.named}/${views}`, share, row.wrong, row.unnamed];
-  line.append(pick, ...cells.map((value) => {
-    const cell = document.createElement("td");
-    cell.textContent = value;
-    return cell;
-  }));
-  line.addEventListener("click", (clicked) => {
-    if (clicked.target !== radio) radio.checked = true;
-  });
-  return line;
+function sharePercent(sure, right) {
+  return sure ? `${Math.round((100 * right) / sure)} %` : "-";
 }
 
-function showAccuracy(table) {
-  sureDefault = table.default;
-  sureForm.querySelector(".sure-match").textContent = table.range[0].toFixed(2);
-  sureForm.querySelector("tbody").replaceChildren(
-    ...table.rows.map((row) => accuracyRow(row, table.current, table.views)));
-  sureForm.querySelector(".modes-wrap").hidden = !table.views;
-  const unknown = table.unknown_events
+function accuracyCell(value, detail) {
+  const cell = document.createElement("td");
+  cell.textContent = value;
+  if (detail !== undefined) {
+    const small = document.createElement("small");
+    small.textContent = detail;
+    cell.append(document.createElement("br"), small);
+  }
+  return cell;
+}
+
+function unknownEvents(table) {
+  return table.unknown_events
     ? ` ${plural(table.unknown_events, "view has", "views have")} no known event: each leaves out only its exact copies.`
     : "";
-  document.getElementById("accuracy-summary").textContent = table.views
-    ? `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}, each leaving out its own event.${unknown}`
-    : "Name at least two photos of someone before this can be measured.";
 }
 
-async function loadAccuracy() {
-  try {
-    showAccuracy(await getJSON("/api/accuracy/faces"));
-  } catch {
-    sureResult.textContent = "Could not measure the named faces.";
+function surePanel({ form, key, endpoint, value, digits, cells, measured, fill, summary, empty, failed }) {
+  const panel = document.getElementById(form);
+  const result = panel.querySelector(".result");
+  let fallback = null;
+
+  function row(entry, table) {
+    const line = document.createElement("tr");
+    const chosen = value(entry) === table.current;
+    line.classList.toggle("active", chosen);
+    const pick = document.createElement("td");
+    const label = document.createElement("label");
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = key;
+    radio.value = value(entry);
+    radio.checked = chosen;
+    label.append(radio, ` ${value(entry).toFixed(digits)}`);
+    pick.append(label);
+    line.append(pick, ...cells(entry, table));
+    line.addEventListener("click", (clicked) => {
+      if (clicked.target !== radio) radio.checked = true;
+    });
+    return line;
   }
-}
 
-async function saveSure(value) {
-  try {
-    await send("/api/settings", { face_sure_threshold: value });
-    sureResult.textContent = "Saved.";
-  } catch (problem) {
-    sureResult.textContent = `Not saved: ${problem.message}`;
+  function show(table) {
+    fallback = table.default;
+    fill(panel, table);
+    panel.querySelector("tbody").replaceChildren(...table.rows.map((entry) => row(entry, table)));
+    panel.querySelector(".modes-wrap").hidden = !measured(table);
+    panel.querySelector(".accuracy-summary").textContent = measured(table) ? summary(table) : empty;
   }
-  loadAccuracy();
+
+  async function load() {
+    try {
+      show(await getJSON(endpoint));
+    } catch {
+      result.textContent = failed;
+    }
+  }
+
+  async function save(chosen) {
+    try {
+      await send("/api/settings", { [key]: chosen });
+      result.textContent = "Saved.";
+    } catch (problem) {
+      result.textContent = `Not saved: ${problem.message}`;
+    }
+    load();
+  }
+
+  panel.addEventListener("submit", (submitted) => {
+    submitted.preventDefault();
+    const chosen = panel.querySelector(`input[name=${key}]:checked`);
+    if (chosen) save(Number(chosen.value));
+  });
+
+  panel.querySelector(".sure-default").addEventListener("click", () => {
+    if (fallback !== null) save(fallback);
+  });
+
+  return { load };
 }
 
-sureForm.addEventListener("submit", (submitted) => {
-  submitted.preventDefault();
-  const chosen = sureForm.querySelector("input[name=face_sure_threshold]:checked");
-  if (chosen) saveSure(Number(chosen.value));
+const faceSure = surePanel({
+  form: "sure-form",
+  key: "face_sure_threshold",
+  endpoint: "/api/accuracy/faces",
+  value: (row) => row.threshold,
+  digits: 3,
+  cells: (row, table) => [`${row.named}/${table.views}`, sharePercent(row.named, row.right), row.wrong, row.unnamed]
+    .map((text) => accuracyCell(text)),
+  measured: (table) => table.views,
+  fill: (panel, table) => {
+    panel.querySelector(".sure-match").textContent = table.range[0].toFixed(2);
+  },
+  summary: (table) => `Now ${table.current.toFixed(3)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views, "named view", "named views")} and ${plural(table.unnamed_views, "unnamed view", "unnamed views")}, each leaving out its own event.${unknownEvents(table)}`,
+  empty: "Name at least two photos of someone before this can be measured.",
+  failed: "Could not measure the named faces.",
 });
 
-document.getElementById("sure-default").addEventListener("click", () => {
-  if (sureDefault !== null) saveSure(sureDefault);
+const dogSure = surePanel({
+  form: "dog-sure-form",
+  key: "dog_sure_distance",
+  endpoint: "/api/accuracy/dogs",
+  value: (row) => row.distance,
+  digits: 2,
+  cells: (row, table) => [
+    accuracyCell(`${row.day.sure}/${table.views.day}`, sharePercent(row.day.sure, row.day.right)),
+    accuracyCell(`${row.night.sure}/${table.views.night}`, sharePercent(row.night.sure, row.night.right)),
+    accuracyCell(row.day.wrong + row.night.wrong),
+    accuracyCell(row.unnamed),
+  ],
+  measured: (table) => table.views.day + table.views.night,
+  fill: (panel, table) => {
+    panel.querySelector(".sure-probable").textContent = table.probable.toFixed(2);
+    panel.querySelector(".sure-ratio").textContent = `${Math.round(100 * table.ratio)} %`;
+  },
+  summary: (table) => `Now ${table.current.toFixed(2)}, the default ${table.default.toFixed(2)}. Measured on ${plural(table.views.day, "named view", "named views")} by day, ${table.views.night} at night, and ${plural(table.unnamed_views, "unnamed crop", "unnamed crops")}, each leaving out its own event.${unknownEvents(table)}`,
+  empty: "Name at least two photos of a dog, in the same lighting, before this can be measured.",
+  failed: "Could not measure the named dogs.",
 });
+
+function loadAccuracy() {
+  faceSure.load();
+  dogSure.load();
+}
 
 const pinForm = document.getElementById("pin-form");
 const pinResult = document.getElementById("pin-result");
