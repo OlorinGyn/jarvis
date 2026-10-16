@@ -3902,6 +3902,20 @@ someone the system cannot account for always wins over silence (CONTEXT 3).
   The best view stays the fallback when that file is missing. The base name
   is shared, so the archive moves it with the event (19.2).
 
+**How long the hold takes, and what Home sends — measured 16/10/2026.**
+The user asked whether Home could wait for the face before notifying. It
+already does: every one of the 31 messages sent in Home from 16:00 on 15/10
+to 15:00 on 16/10 went out after the scan, a median **30 s** after the clip
+starts (16 s after the event ends; 2 min at worst, two scans queued; the
+events last a median 17 s). Read one by one, by their pictures, none was a
+stranger: about 22 were the residents with no face seen or none known — the
+backyard at night in infrared, the back of a head by day, far away — about 6
+were Aurora or Mirana boxed as `person` (R59), and both hidden-person
+messages were false: one body with two boxes, one inside the other, and a
+dog counted as the second person (R58). Waiting longer would not help: the
+scan had already found no face to see. The user kept the rule as it is
+(CONTEXT 3).
+
 ### 22.4 Notifications, the first part of Settings
 
 **Since backlog 27 (12/10/2026, the user's)** Notifications is not a tab of its

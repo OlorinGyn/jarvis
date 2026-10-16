@@ -131,6 +131,14 @@ own face never showed, is notified even when a resident is in the scene:
 "if it errs, it errs" — one extra message is better than someone hiding
 beside the user going unannounced (R42 (b), built in `v2026.10.14.3`:
 YOLO's count of people at once against the faces found, ARCHITECTURE 22.3).
+**Reconfirmed by the user, 16/10/2026,** after "many notifications in Home":
+31 messages in 23 hours, none a stranger — the residents with no face seen
+(the backyard at night, the back of a head), the household's dogs taken for
+people, and two false "2 people" (ARCHITECTURE 22.3). Shown the example of
+four messages in eleven minutes for one walk in the backyard, and offered
+one message per camera per 15 minutes, no faceless message in Home, or the
+front camera only, the user chose **every faceless person still reaches the
+phone in Home**; only the false ones go (R58, R59).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

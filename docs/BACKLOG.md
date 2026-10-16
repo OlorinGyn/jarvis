@@ -160,11 +160,57 @@ in review 25, R53, R56 and R57 in review 26, R55 in review 27.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
+| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | open (below) |
+| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | open (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+
+**R59 — The household's dogs reach the phone as people (high, the user's
+report, 16/10/2026).** "Many notifications in Home": 31 in 23 hours, read
+one by one (ARCHITECTURE 22.3). About 6 were Aurora or Mirana in a `person`
+box (0.40–0.88), five of them at night, each sent as a faceless person —
+the case the user keeps on in Home for every event (CONTEXT 3). The clips,
+in production's `clips/`: `Back/2026-10-15/20-54-37` (likely), `Back/
+2026-10-15/21-01-08`, `Front/2026-10-15/22-00-19`, `Front/2026-10-16/
+00-52-26`, `Back/2026-10-16/00-54-05` (likely), `Front/2026-10-16/14-51-12`
+(by day), and the dog counted as a second person in `Front/2026-10-16/
+00-12-09` (R58); `Back/2026-10-15/20-59-24` is unclear. The architect's
+quick probe on the sent pictures — boxes drawn, not the clean frames — had
+the dog gallery name only one (Mirana at 0.256). Not known: whether YOLO
+itself said `person`, or R44 or R46 relabelled a dog box (ARCHITECTURE 7.12,
+7.13) — R47's trigger. **Then:** replay each clip (`tools/replay.py`) and
+say, box by box, where the `person` came from. From R46's chain: R47's bound
+is the fix. From YOLO: measure on these clips, and on the residents' true
+faceless events of the same days (`Back/2026-10-15/18-30-12` and
+`18-42-31`, `Back/2026-10-16/00-01-03`, `00-05-30` and `00-11-41`,
+`Front/2026-10-15/19-24-49` and `19-41-18`, `Front/2026-10-16/11-31-51`,
+`Back/2026-10-16/13-23-34`), the candidate signals — the dog gallery's
+match on the box in the clean frame, YOLO's own dog score in that box, the
+box's shape — and build the rule that turns these into dogs **without
+losing one true person**: an unknown person always reaches the phone in
+Home (CONTEXT 3). A dog so found is a dog by its own case (`resident_dog`,
+off in Home). Measure its cost on the M900 if it runs in the live loop.
+Copies only; `C:\JARVIS` is read, never written.
+
+**R58 — One body with two boxes counts as two people (medium,
+16/10/2026).** R42 (b)'s hidden-person message fired twice in those 23
+hours, both false. `Front/2026-10-15/21-47-33`: one person coming through
+the door, two `person` boxes (0.70 and 0.42), the smaller inside the larger
+— IoU about 0.4, under NMS's 0.45 and `drop_duplicates`'
+`SAME_SUBJECT_IOU` 0.5 — so `most_people` was 2. `Front/2026-10-16/
+00-12-09`: the resident and a dog in a `person` box (R59). **Then:**
+measure, on these two events and on the true two-person events (events
+with `most_people` ≥ 2 in their JSON whose picture shows two people — the
+user leaving with Izabel), two rules for counting people at once: (a) a
+box mostly inside another — intersection over the smaller box's area at or
+above some value — is the same body; (b) a count holds only when seen in
+more than one analysis frame. Keep the one that removes the false ones
+without losing a true pair; a person in front of another also makes one box
+sit inside the other, and the user's rule is that one extra message beats a
+hidden person (CONTEXT 3), so a tie keeps today's count.
 
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
@@ -202,14 +248,27 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 27 is done:** developer 25's R55 and backlog 32 for dogs, tagged
-`v2026.10.15.2` (HISTORY 13.28). R55 is closed and backlog 32 is done for
-both halves; nothing was opened.
+**Review 27 is done** (HISTORY 13.28, `v2026.10.15.2`). Then, on 16/10, the
+user's report — many notifications in Home — read message by message
+(ARCHITECTURE 22.3): the user kept the rule (CONTEXT 3), and the false ones
+became R59 and R58.
 
-**No developer session is planned.** Nothing decided waits: every open
-backlog item is **(proposto)** and every open recommendation is a watch or
-not planned. The next session starts from the user's choice among the
-proposed items (`PENDING.md`, open discussions).
+**Developer 26: R59, then R58.**
+
+1. **R59** (section 2), the session's core. Copy the listed clips from
+   production (`C:\JARVIS` only read) and replay each: where each `person`
+   box came from — YOLO, R44 or R46. Fix by cause: R47's bound if R46's
+   chain; otherwise the measured rule on the dog clips and the true-person
+   clips listed, which must keep every true person. If it runs in the live
+   loop, measure its cost per analysed frame on the M900.
+2. **R58** (section 2): both counting rules measured on the false and the
+   true two-person events; build the one that separates them, or none if
+   neither does, and say so.
+
+**HANDOFF:** per clip, the box's origin; the rule chosen, with its numbers
+on the dog clips and on the true-person clips; its cost; R58's two rules
+and their numbers. If the session runs short, stop after R59 with a
+coherent commit and say what is left.
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
