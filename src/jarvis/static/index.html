@@ -176,9 +176,10 @@
         </label>
         <p class="hint" id="token-state"></p>
         <label>Chat <input name="notify_chat" autocomplete="off"></label>
-        <label>Minimum interval per camera, seconds
+        <label>Quiet window of an incident, seconds
           <input type="number" name="notify_cooldown" min="0" step="1">
         </label>
+        <p class="hint">Nothing is dropped. Messages less than this apart belong to one incident: its first rings, and so does another camera or more people at once; the rest arrive silently. At most one rings every 30 seconds; what comes inside is named by one text at the end.</p>
         <label>Message prefix <input name="notify_prefix" autocomplete="off"></label>
         <div class="actions">
           <button type="submit">Save</button>
