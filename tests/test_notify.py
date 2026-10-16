@@ -1,4 +1,4 @@
-"""Who gets notified, in which mode, how often, and that the bot token never leaks into a message."""
+"""Who gets notified, in which mode, loud or silent, and that the bot token never leaks into a message."""
 
 import json
 from datetime import datetime
@@ -14,6 +14,7 @@ SETTINGS = {"notify_token": TOKEN, "notify_chat": "1", "notify_labels": ["person
             "notify_cooldown": 120, "notify_mode": "away"}
 HOME = {**SETTINGS, "notify_mode": "home"}
 START = datetime(2026, 10, 10, 12, 0, 0)
+SEND = notify.send
 
 EXPECTED = {
     "away": {"resident_person": True, "probable_resident_person": True, "known_person": True,
@@ -26,19 +27,58 @@ EXPECTED = {
 }
 
 
+class Sent(list):
+    """The texts sent, with silent beside them, one flag per message."""
+
+    def __init__(self):
+        super().__init__()
+        self.silent = []
+
+
+class Clock:
+    """The incident's clock, moved by hand."""
+
+    now = 1000.0
+
+
+class Timer:
+    """The floor's timer, fired by hand."""
+
+    started = []
+
+    def __init__(self, interval, function, args=()):
+        self.interval, self.function, self.args = interval, function, args
+        self.daemon = False
+
+    def start(self):
+        Timer.started.append(self)
+
+    def cancel(self):
+        pass
+
+    def fire(self):
+        Clock.now += self.interval
+        return self.function(*self.args)
+
+
 @pytest.fixture(autouse=True)
 def sent(monkeypatch):
-    notify.reset_cooldown()
-    messages = []
+    notify.reset_incident()
+    Clock.now = 1000.0
+    Timer.started = []
+    messages = Sent()
 
-    def record(text, image=None, settings=None):
+    def record(text, image=None, settings=None, silent=False):
         messages.append(text)
+        messages.silent.append(silent)
         return True, ""
 
     monkeypatch.setattr(notify, "send", record)
     monkeypatch.setattr(notify.threading, "Thread", Inline)
+    monkeypatch.setattr(notify.threading, "Timer", Timer)
+    monkeypatch.setattr(notify, "_clock", lambda: Clock.now)
     yield messages
-    notify.reset_cooldown()
+    notify.reset_incident()
 
 
 class Inline:
@@ -102,10 +142,76 @@ def test_stored_switches_are_made_whole_and_unknown_values_dropped():
     assert modes.mode_of({"notify_mode": "party"}) == "away"
 
 
-def test_a_camera_is_notified_once_per_cooldown():
+def test_a_second_event_in_the_same_place_goes_out_silently(sent):
     assert notify.event("Front", [("person", None)], None, SETTINGS) == (True, False)
-    assert notify.event("Front", [("person", None)], None, SETTINGS) == (False, False)
-    assert notify.event("Back", [("person", None)], None, SETTINGS) == (True, False)
+    Clock.now += 40
+    assert notify.event("Front", [("person", None)], None, SETTINGS) == (True, False)
+    assert sent.silent == [False, True]
+
+
+def test_another_camera_rings(sent):
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    Clock.now += 40
+    notify.event("Back", [("person", None)], None, SETTINGS)
+    assert sent.silent == [False, False]
+
+
+def test_more_people_at_once_than_the_incident_had_rings(sent, best):
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=1) == 1
+    Clock.now += 40
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=1) == 1
+    Clock.now += 40
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=2) == 1
+    assert sent.silent == [False, True, False]
+
+
+def test_the_incident_closes_after_its_quiet_window(sent):
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    for _ in range(3):
+        Clock.now += 119
+        notify.event("Front", [("person", None)], None, SETTINGS)
+    Clock.now += 120
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    assert sent.silent == [False, True, True, True, False]
+
+
+def test_a_loud_message_inside_the_floor_goes_out_silently_and_one_text_names_it(sent):
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    Clock.now += 10
+    notify.event("Back", [("person", None)], None, SETTINGS)
+    Clock.now += 5
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    assert sent.silent == [False, True, True] and len(Timer.started) == 1
+    assert Timer.started[0].interval == 20
+    assert Timer.started[0].fire()
+    assert sent[-1].startswith("Back ") and sent[-1].endswith(": person — and 1 more, sent silently above")
+    assert sent.silent[-1] is False
+    Clock.now += 10
+    notify.event("Back", [("person", None)], None, SETTINGS)
+    assert sent.silent[-1] is True and len(Timer.started) == 2
+
+
+def test_one_held_back_message_is_named_alone(sent):
+    notify.event("Front", [("person", None)], None, SETTINGS)
+    notify.event("Back", [("person", None)], None, SETTINGS)
+    Timer.started[0].fire()
+    assert sent[-1].endswith(": person — sent silently above")
+
+
+def test_silent_asks_telegram_for_no_sound(monkeypatch):
+    calls = []
+    monkeypatch.setattr(notify, "_call", lambda token, method, fields, *a: (calls.append(fields), (True, ""))[1])
+    SEND("x", None, SETTINGS, silent=True)
+    SEND("x", None, SETTINGS)
+    assert calls[0]["disable_notification"] == "true" and "disable_notification" not in calls[1]
+
+
+def test_the_log_says_which(sent, caplog):
+    caplog.set_level("INFO", logger="jarvis.notify")
+    notify.faces_seen("Front", START, [face("p_1"), face("p_2")], SETTINGS)
+    lines = [r.getMessage() for r in caplog.records]
+    assert lines == ["Notification Front face, unknown face: sent",
+                     "Notification Front face, unknown face: sent silently"]
 
 
 def test_nothing_is_sent_without_a_token():
@@ -152,16 +258,18 @@ def test_silent_sends_no_face():
     assert notify.faces_seen("Front", START, [face("p_1")], {**SETTINGS, "notify_mode": "silent"}) == 0
 
 
-def test_a_face_is_sent_even_when_its_event_was_in_the_cooldown(sent):
+def test_a_face_after_its_event_goes_out_silently(sent):
     assert notify.event("Front", [("person", None)], None, SETTINGS)[0]
-    assert not notify.event("Front", [("person", None)], None, SETTINGS)[0]
+    assert notify.event("Front", [("person", None)], None, SETTINGS)[0]
     assert notify.faces_seen("Front", START, [face("p_1", "Ana", 0.6)], SETTINGS) == 1
     assert sent[-1] == "Front 12:00:00: Ana recognized"
+    assert sent.silent == [False, True, True]
 
 
-def test_each_person_has_a_cooldown_of_their_own():
+def test_the_same_face_again_is_sent_not_dropped(sent):
     assert notify.faces_seen("Front", START, [face("p_1"), face("p_2")], SETTINGS) == 2
-    assert notify.faces_seen("Back", START, [face("p_1"), face("p_3")], SETTINGS) == 1
+    assert notify.faces_seen("Back", START, [face("p_1"), face("p_3")], SETTINGS) == 2
+    assert sent.silent == [False, True, True, True] and len(Timer.started) == 1
 
 
 def test_a_weak_match_is_announced_as_probable():
@@ -177,18 +285,13 @@ def best(tmp_path):
     return path
 
 
-def test_a_held_person_with_no_face_is_sent_once_per_camera_cooldown(sent, best):
-    assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
-    assert sent == ["Front 12:00:00: no face seen, best view"]
-    assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 0
-
-
-def test_a_held_resident_sends_nothing_and_a_stranger_claims_the_camera(sent, best):
+def test_a_held_resident_sends_nothing_and_a_stranger_opens_the_incident(sent, best):
     assert notify.after_scan("Front", START, [face("p_1", "Gustavo", 0.6, True)], True, False,
                              None, best, HOME) == 0
     assert notify.after_scan("Front", START, [face("p_9")], True, False, None, best, HOME) == 1
-    assert not notify.event("Front", [("dog", "other_dog")], None,
-                            {**HOME, "notify_modes": modes.defaults(["person", "dog"])})[0]
+    assert notify.event("Front", [("dog", "other_dog")], None,
+                        {**HOME, "notify_modes": modes.defaults(["person", "dog"])})[0]
+    assert sent.silent == [False, True]
 
 
 def test_a_held_person_with_no_face_is_sent_after_the_dog_message_of_the_same_event(sent, best):
@@ -256,7 +359,7 @@ def test_a_person_arriving_mid_event_follows_the_same_rules(tmp_path, monkeypatc
     home.update(frame(), [DOG, PERSON])
     assert sent == [] and home.person_held and not home.notified
 
-    notify.reset_cooldown()
+    notify.reset_incident()
     away = recorder(tmp_path / "away", monkeypatch, SETTINGS)
     away.update(frame(), [DOG])
     assert sent == []
@@ -292,13 +395,14 @@ def test_a_face_that_reached_the_phone_accounts_for_the_scene(sent, best):
     assert sent == ["Front 12:00:00: unknown face"]
 
 
-def test_the_hidden_person_answers_to_the_faceless_switch_and_the_cooldown(sent, best):
+def test_the_hidden_person_answers_to_the_faceless_switch_and_is_never_dropped(sent, best):
     resident = [face("p_1", "Gustavo", 0.6, True)]
     off = {**HOME, "notify_modes": {"home": {"faceless_person": False}}}
     assert notify.after_scan("Front", START, resident, True, False, None, best, off, people=2) == 0
     assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 1
-    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 0
+    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 1
     assert notify.after_scan("Front", START, resident, True, True, None, best, HOME, people=2) == 1
+    assert sent.silent == [False, True, True]
 
 
 def test_people_are_counted_at_once_not_over_the_event(tmp_path, monkeypatch, sent):
@@ -366,14 +470,21 @@ def test_one_person_at_a_time_keeps_no_people_frame(tmp_path, monkeypatch, sent)
 
 def test_the_hidden_person_message_carries_the_counted_frame(tmp_path, monkeypatch, sent, best):
     pictures = []
-    monkeypatch.setattr(notify, "send", lambda text, image=None, settings=None: (pictures.append(image), (True, ""))[1])
+    monkeypatch.setattr(notify, "send", lambda text, image=None, settings=None, silent=False:
+                        (pictures.append(image), (True, ""))[1])
     counted = tmp_path / "12-00-00.people.jpg"
     counted.write_bytes(b"jpg")
     resident = [face("p_1", "Gustavo", 0.6, True)]
     assert notify.after_scan("Front", START, resident, True, False, None, best, HOME,
                              people=2, people_view=counted) == 1
     assert pictures == [str(counted)]
-    notify.reset_cooldown()
+    notify.reset_incident()
     assert notify.after_scan("Front", START, [], True, False, None, best, HOME,
                              people=2, people_view=counted) == 1
     assert pictures[-1] == str(best)
+
+
+def test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone(sent, best):
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
+    assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
+    assert sent == ["Front 12:00:00: no face seen, best view"] * 2 and sent.silent == [False, True]
