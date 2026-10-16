@@ -118,6 +118,30 @@ grows, decisions are being postponed.
 
 ## Decided, not yet done
 
+- **Tracking: once a face names a body, follow the body** (backlog 7, the
+  user, 16/10/2026). The user's words: once one frame recognised them, stop
+  caring about the face and follow the object — turning around does not
+  make them someone else, nobody teleports into their place. Today the
+  name belongs to the event, not the body: one good frame already names the
+  whole clip, but the name dies when YOLO loses the body for 5 s and the
+  event closes, and with two people nobody knows which body is whom.
+  Measured on the 29 person messages of 15/10 16:00 to 16/10 15:00
+  (production's log): **4** were one walk cut into two clips 0–7 s apart,
+  the user recognised in one and not the other (`Back/2026-10-15/18-42-31`,
+  `Front/2026-10-15/19-41-18`, `Front/2026-10-16/00-30-11`,
+  `Front/2026-10-16/14-19-58`) — what tracking fixes; 7 dogs (R59) and 2
+  false "2 people" (R58), which a track's label history and one track per
+  body would help; **14** had no frame recognising anyone nearby — the
+  backyard at night, six clips from 00:01 to 00:12 — which tracking cannot
+  name; 2 had the user recognised 24 s and 3 min earlier on that camera,
+  reachable only by a rule of time, which the architect advised against: it
+  would hide a stranger arriving right after a resident (CONTEXT 3). The
+  identity must follow the body, never the clock; across a gap of a few
+  seconds it is an inference, so the gap a track survives is measured, not
+  guessed. To plan in the next review, after R59: a well-regarded tracker
+  (ByteTrack, e.g. through `supervision`), each face of the clip scan bound
+  to a track by the frame's time, a named track not scanned again while
+  other tracks still are, and the track surviving the event boundary.
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the
