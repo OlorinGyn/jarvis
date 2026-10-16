@@ -101,13 +101,13 @@ def configured(settings):
     return bool(settings.get("notify_token") and settings.get("notify_chat"))
 
 
-def _loud(camera, people, what, settings):
+def _loud(camera, people, what, settings, force=False):
     """Whether a message rings, by the house's incident; one held back by the floor goes out silent.
 
     The incident opens with a message sent while none is open and closes
     when nothing was sent for notify_cooldown seconds. A message rings when
-    it opens one, comes from another camera than the last, or counts more
-    people at once than the incident had. At most one rings in
+    it opens one, comes from another camera than the last, counts more
+    people at once than the incident had, or is forced. At most one rings in
     LOUD_FLOOR_SECONDS; the others are named by one loud text at its end.
     """
     quiet = float(settings.get("notify_cooldown", QUIET_SECONDS))
@@ -117,7 +117,7 @@ def _loud(camera, people, what, settings):
         if fresh:
             _incident.clear()
             _incident["people"] = 0
-        loud = fresh or camera != _incident["camera"] or people > _incident["people"]
+        loud = force or fresh or camera != _incident["camera"] or people > _incident["people"]
         _incident.update(last_sent=now, camera=camera, people=max(people, _incident["people"]))
         if not loud:
             return False
@@ -305,6 +305,18 @@ def hidden_person(camera, started_at, image, people, faces, settings=None):
     found = f"{faces} face{'s' if faces != 1 else ''} found"
     return _deliver(camera, people, f"{camera} hidden person",
                     f"{camera} {when}: {people} people seen, {found}", str(image), settings)
+
+
+def camera_down(camera, text, settings=None):
+    """Tell the phone a camera lost its picture, or got it back: loud, as the camera_down case."""
+    settings = settings or load()
+    if not configured(settings):
+        return False
+    if not modes.allowed("camera_down", settings):
+        logger.info("Notification %s: skipped: %s mode", text, modes.mode_of(settings))
+        return False
+    silent = not _loud(camera, 0, text, settings, force=True)
+    return _send_logged(text, text, None, settings, silent)
 
 
 def person_case(sighting, settings=None):

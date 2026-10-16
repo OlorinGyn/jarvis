@@ -173,6 +173,9 @@ class Stopped:
     def close(self):
         pass
 
+    def frame_ages(self):
+        return {}
+
 
 def test_the_migration_line_reaches_the_log_file(tmp_path, monkeypatch):
     from jarvis import cameras, log, web

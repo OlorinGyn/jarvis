@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from dotenv import dotenv_values
 
-from jarvis import ROOT, analysis, bot, dogs, faces, log, web
+from jarvis import ROOT, analysis, bot, dogs, faces, log, outage, web
 from jarvis.archive import Housekeeper
 from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
@@ -373,6 +373,8 @@ def main(argv=None):
     core = Core(start_cameras(env))
     web.attach(core)
     bot.start()
+    threading.Thread(target=outage.CameraWatch(core.frame_ages).run, args=(stop,), daemon=True,
+                     name="camera-watch").start()
     if open_browser and server is not None:
         webbrowser.open(url)
     try:

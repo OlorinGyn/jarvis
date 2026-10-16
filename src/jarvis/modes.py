@@ -10,8 +10,9 @@ section 8, backlogs 25 and 30.
 PERSON_CASES = ("resident_person", "probable_resident_person", "known_person", "unknown_face",
                 "faceless_person")
 ANIMAL_CASES = ("resident_dog", "probable_resident_dog", "other_dog", "other_animal")
+CAMERA_CASES = ("camera_down",)
 PROBABLE_RESIDENT_CASES = ("probable_resident_person", "probable_resident_dog")
-CASES = PERSON_CASES + ANIMAL_CASES
+CASES = PERSON_CASES + ANIMAL_CASES + CAMERA_CASES
 MODES = ("home", "away", "silent")
 DEFAULT_MODE = "away"
 
@@ -25,6 +26,7 @@ CASE_NAMES = {
     "probable_resident_dog": "Resident dog, probable match",
     "other_dog": "Other dog (another name, probably another, unidentified)",
     "other_animal": "Other animals",
+    "camera_down": "Camera with no picture, and its return",
 }
 MODE_NAMES = {"home": "Home", "away": "Away", "silent": "Silent"}
 
@@ -35,7 +37,7 @@ def defaults(labels=None):
     dogs = "dog" in labels
     animals = {"resident_dog": dogs, "probable_resident_dog": dogs, "other_dog": dogs,
                "other_animal": any(label not in ("person", "dog") for label in labels)}
-    away = {**{case: True for case in PERSON_CASES}, **animals}
+    away = {**{case: True for case in PERSON_CASES}, **animals, "camera_down": True}
     home = {**away, "resident_person": False, "resident_dog": False,
             **{case: False for case in PROBABLE_RESIDENT_CASES}}
     return {"home": home, "away": away, "silent": {case: False for case in CASES}}

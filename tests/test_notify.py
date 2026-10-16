@@ -19,10 +19,12 @@ SEND = notify.send
 EXPECTED = {
     "away": {"resident_person": True, "probable_resident_person": True, "known_person": True,
              "unknown_face": True, "faceless_person": True, "resident_dog": False,
-             "probable_resident_dog": False, "other_dog": False, "other_animal": False},
+             "probable_resident_dog": False, "other_dog": False, "other_animal": False,
+             "camera_down": True},
     "home": {"resident_person": False, "probable_resident_person": False, "known_person": True,
              "unknown_face": True, "faceless_person": True, "resident_dog": False,
-             "probable_resident_dog": False, "other_dog": False, "other_animal": False},
+             "probable_resident_dog": False, "other_dog": False, "other_animal": False,
+             "camera_down": True},
     "silent": {case: False for case in modes.CASES},
 }
 
