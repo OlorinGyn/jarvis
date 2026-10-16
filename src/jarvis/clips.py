@@ -30,6 +30,7 @@ import cv2
 
 from jarvis import ROOT, dogs, faces, notify
 from jarvis.capture import NO_WINDOW, SEGMENT_FORMAT, SEGMENT_SECONDS, ffmpeg_exe
+from jarvis.tracks import Record
 
 CLIP_DIR = ROOT / "clips"
 BUFFER_DIR = CLIP_DIR / "_buffer"
@@ -216,14 +217,15 @@ class EventRecorder:
         self.person_spans = []
         self.most_people = 0
         self.people_view = None
+        self.tracks = Record()
 
     @property
     def protect_from(self):
         """Segments newer than this must survive pruning."""
         return self.started_at if self.recording else None
 
-    def update(self, frame, subjects):
-        """Feed one analysis frame. Returns a summary when an event closes."""
+    def update(self, frame, subjects, tracked=None):
+        """Feed one analysis frame, with (moment, tracked) when YOLO ran on it. Returns a summary when an event closes."""
         now = time.monotonic()
 
         if subjects:
@@ -241,6 +243,8 @@ class EventRecorder:
 
         if not self.recording:
             return None
+        if tracked is not None:
+            self.tracks.add(*tracked)
 
         quiet = now - self.last_subject > POST_SECONDS
         too_long = now - self.started > MAX_SECONDS
@@ -267,6 +271,7 @@ class EventRecorder:
         self.person_spans = []
         self.most_people = 0
         self.people_view = None
+        self.tracks = Record(self.started)
         thumbnail = self.base.with_suffix(".jpg")
         self._save_thumbnail(frame, subjects, thumbnail)
 
@@ -393,6 +398,9 @@ class EventRecorder:
             meta["most_people"] = self.most_people
         if people_view is not None:
             meta["people_thumbnail"] = people_view.name
+        if self.tracks.tracks:
+            meta["tracks"] = self.tracks.summary()
+            meta["most_person_tracks"] = self.tracks.most_person_tracks()
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta

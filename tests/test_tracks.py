@@ -71,3 +71,45 @@ def test_a_tie_votes_a_person_and_only_more_dog_frames_a_dog():
     assert voted(Counter(person=2, dog=2)) == "person"
     assert voted(Counter(person=2, dog=3)) == "dog"
     assert voted(Counter(cat=3)) == "other"
+
+
+class Detector:
+    """A SubjectDetector stand-in: YOLO runs only when told, as MIN_INTERVAL lets it."""
+
+    def __init__(self):
+        self.last_run = 0.0
+        self.subjects = []
+
+    def detect(self, frame, boxes):
+        if self.runs:
+            self.last_run += 0.3
+            self.subjects = [Detection(100, 100, 60, 150, 0.6, "person")]
+        return self.subjects
+
+
+def camera(detector, tracks):
+    from jarvis.cameras import Camera
+    cam = Camera.__new__(Camera)
+    cam.label, cam.subjects, cam.tracks = "Front", detector, tracks
+    return cam
+
+
+def test_the_camera_feeds_its_tracker_only_when_yolo_ran():
+    detector = Detector()
+    cam = camera(detector, Tracks())
+    detector.runs = True
+    subjects, tracked = cam.detect(None, [(0, 0, 10, 10)])
+    assert tracked == (0.3, [(1, subjects[0])])
+    detector.runs = False
+    assert cam.detect(None, [(0, 0, 10, 10)]) == (subjects, None)
+
+
+def test_a_tracking_failure_leaves_the_subjects_and_the_loop_alone(caplog):
+    class Broken:
+        def update(self, found, moment):
+            raise ValueError("broken")
+
+    detector = Detector()
+    detector.runs = True
+    subjects, tracked = camera(detector, Broken()).detect(None, [(0, 0, 10, 10)])
+    assert subjects and tracked is None and "Tracking failed on Front" in caplog.text

@@ -79,6 +79,9 @@ class Cam:
     def read(self):
         return FRAME
 
+    def detect(self, frame, boxes):
+        return self.subjects.detect(frame, boxes), None
+
     def prune(self):
         pass
 

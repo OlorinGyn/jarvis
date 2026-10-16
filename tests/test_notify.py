@@ -501,3 +501,39 @@ def test_the_floor_text_does_not_reopen_an_incident_that_closed(sent):
     Clock.now += 5
     notify.event("Back", [("person", None)], None, short)
     assert len(Timer.started) == 2
+
+
+def test_an_event_records_its_tracks_and_acts_on_nothing(tmp_path, monkeypatch, sent):
+    import time
+    from jarvis.tracks import Tracks
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: captured.update(kwargs))
+    captured = {}
+    home = recorder(tmp_path, monkeypatch, HOME)
+    follower = Tracks()
+    start = time.monotonic()
+    for step in range(3):
+        moment = start + 0.3 * step
+        found = [PERSON._replace(x=PERSON.x + 5 * step), DOG]
+        home.update(frame(), found, (moment, follower.update(found, moment)))
+    meta = home.stop()
+    clips.wait_for_jobs()
+    written = json.loads(home.base.with_suffix(".json").read_text(encoding="utf-8"))
+    assert written["tracks"] == meta["tracks"]
+    assert sorted((item["frames"] for item in meta["tracks"]), key=str) == [{"dog": 3}, {"person": 3}]
+    assert [item["first"] for item in meta["tracks"]] == [0.0, 0.0]
+    assert meta["most_person_tracks"] == 1 and meta["most_people"] == 1 and captured["people"] == 1
+    assert sent == []
+
+
+def test_an_event_without_tracks_writes_no_tracks_and_old_events_still_read(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(clips, "_assemble", lambda *args, **kwargs: None)
+    monkeypatch.setattr(clips, "CLIP_DIR", tmp_path)
+    home = recorder(tmp_path, monkeypatch, HOME)
+    home.update(frame(), [PERSON])
+    meta = home.stop()
+    assert "tracks" not in meta and "most_person_tracks" not in meta
+    old = home.base.with_name("00-00-01.json")
+    old.write_text(json.dumps({"camera": "Front", "started_at": "2026-10-01T00:00:01", "labels": ["person"]}),
+                   encoding="utf-8")
+    listed = clips.list_clips(home.started_at.date())
+    assert {entry["video_path"].stem for entry in listed} == {home.base.name, "00-00-01"}

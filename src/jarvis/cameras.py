@@ -26,6 +26,7 @@ from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
 from jarvis.motion import MotionDetector
 from jarvis.people import SubjectDetector
+from jarvis.tracks import Tracks
 
 DEFAULT_STREAM = "stream1"
 PLACEHOLDER_IP = "ip-da-camera"
@@ -79,6 +80,7 @@ class Camera:
         self.stream = FFmpegCamera(label, url, BUFFER_DIR)
         self.motion = MotionDetector()
         self.subjects = SubjectDetector()
+        self.tracks = Tracks()
         self.recorder = EventRecorder(self.stream)
 
     def read(self):
@@ -86,6 +88,18 @@ class Camera:
 
     def prune(self):
         self.stream.prune(self.recorder.protect_from)
+
+    def detect(self, frame, motion_boxes):
+        """The detector's subjects, and (moment, tracked) when YOLO ran on this frame, else None."""
+        ran = self.subjects.last_run
+        subjects = self.subjects.detect(frame, motion_boxes)
+        if self.subjects.last_run == ran:
+            return subjects, None
+        try:
+            return subjects, (self.subjects.last_run, self.tracks.update(subjects, self.subjects.last_run))
+        except Exception:
+            logger.exception("Tracking failed on %s; this run goes untracked", self.label)
+            return subjects, None
 
     def close(self):
         self.stream.stop()
@@ -195,12 +209,12 @@ class Core:
                 continue
             fresh = True
 
-            subjects = []
+            subjects, tracked = [], None
             if analysing:
                 motion_boxes = cam.motion.detect(frame)
-                subjects = cam.subjects.detect(frame, motion_boxes)
+                subjects, tracked = cam.detect(frame, motion_boxes)
                 self.analysed[cam.label] += 1
-            saved = cam.recorder.update(frame, subjects)
+            saved = cam.recorder.update(frame, subjects, tracked)
             if saved:
                 names = ", ".join(saved["labels"]) or "?"
                 logger.info("  event %s %s [%s] %ss, %s", cam.label, saved["path"].name,
