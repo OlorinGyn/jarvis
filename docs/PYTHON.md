@@ -2380,3 +2380,79 @@ detectors and gives frame `i` to detector `i % 3`: each detector sees its
 own third, with its own memories (R44, R46), as a live camera on that
 phase would — every box any live run could have drawn, and each one's
 origin.
+
+## 47. A one-shot timer, a call put off with `lambda`, and an optional form field (developer 27)
+
+Backlog 40 (ARCHITECTURE 12.11, 12.12) needed three things the project had
+not used yet, and two it had.
+
+**`threading.Timer`: run something once, later, in its own thread.** The
+floor rings at most once in 30 s; a message that should ring inside it goes
+out silent at once, and something has to wake at the 30 s mark to send the
+one loud text that names it:
+
+```python
+timer = threading.Timer(last + LOUD_FLOOR_SECONDS - now, _end_of_floor, args=(settings,))
+timer.daemon = True
+_floor["timer"] = timer
+timer.start()
+```
+
+`Timer` is a `Thread` subclass: `start()` launches a thread that waits for
+the interval and then calls the function with `args`, unless `cancel()` was
+called first. It is Java's `ScheduledExecutorService.schedule(task, delay)`
+and C#'s `System.Threading.Timer` with no period — but each `Timer` is a
+whole thread, fine for one pending at a time, as here (`_floor["timer"]` is
+`None` again once it fires). `daemon = True` means it does not keep the
+process alive at exit. `_end_of_floor` takes the module's lock, copies and
+empties the list and only then sends, outside the lock — section 26's
+rule. Two things it does not have: a monotonic interval you can control in
+a test, and a way to fire it early. The tests swap `threading.Timer` for a
+small class with the same `start` and `cancel` that records itself and
+fires on demand — the duck typing of section 46.
+
+**A sleep a stop can end, again.** The camera watch's loop is
+`while not stop.wait(CHECK_SECONDS)` — section 27's `Event.wait(timeout)`,
+which returns `False` after the timeout and `True` the moment the service
+sets `stop`. A `time.sleep(5)` would hold a stopping service up to 5 s.
+
+**A clock passed in.** `CameraWatch(ages, clock=time.monotonic,
+wall=datetime.now)` takes its clocks as arguments with the real ones as
+defaults (section 39), and `notify` keeps `_clock = time.monotonic` as a
+module name (section 36). A test passes `lambda: now[0]` and moves time by
+hand — what Java does with an injected `java.time.Clock` and .NET with
+`TimeProvider`. Nothing waits for real in those tests.
+
+**A call put off: `lambda` with no arguments.** `_faceless` decides whether
+a faceless message goes out at all; each of its three callers sends a
+different message with different arguments. Instead of passing the
+function and its arguments separately (`message, *extra`), each caller
+hands over the finished call, unrun:
+
+```python
+return _faceless(camera, held, notified, settings,
+                 lambda: best_view(camera, started_at, best, settings, seen))
+```
+
+and `_faceless` ends with `message()`. A `lambda` with no parameters is
+Java's `Supplier<T>` or C#'s `Func<T>`: the body runs only when called,
+and it reads `camera`, `best` and the others from the enclosing call
+(a closure, section 45). One more thing comes from running late: the name
+`best_view` is looked up in the module **when the lambda runs**, not when
+it is written. That is why the tests' `monkeypatch.setattr(notify,
+"best_view", fake)` still reaches it — the lambda finds the fake.
+
+**An optional field in a form.** Telegram's `disable_notification` should
+be in the request only when the message is silent:
+
+```python
+quiet = {"disable_notification": "true"} if silent else {}
+{"chat_id": chat, "text": text[:4096], **quiet}
+```
+
+`**quiet` spreads the dict into the literal (section 39); an empty dict
+spreads into nothing, so a loud message's form is exactly what it was
+before. The value is the string `"true"` because `requests.post(data=fields)`
+sends form fields — URL-encoded for a text, `multipart/form-data` beside a
+photo — and a form field is always text; Telegram reads `"true"` as the
+boolean.

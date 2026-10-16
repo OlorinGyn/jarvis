@@ -108,6 +108,49 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+40. **Done 16/10 (`136e9b0`, `dcbdeb4`, `217b61d`, `dc86e89`, `v2026.10.16`; ARCHITECTURE 12.11, 12.12), except its "later, with tracking" part, which is backlog 7's.** **Notifications by incident** (decided 16/10: the user's principles,
+    CONTEXT 3; which situations are risk was left to the architect, and the
+    design is the architect's). Measured on production's log the same day:
+    in Home, 33 messages in 24 hours, only 2 within 30 s of the one before
+    — there the volume is the false ones (R59, R58) and residents with no
+    face seen; before the modes, every case on as in Away, 91 of 389
+    messages came within 30 s of the one before, 80 on one camera, mostly
+    an event's immediate "person" and its follow-up. And today's intervals
+    drop what they block (R60). Competitors drop or snooze (Frigate's
+    cooldowns, Ring's Motion Frequency, Eufy's snooze); none merges. The
+    design:
+    - **An incident**, one for the house, opens with the first message
+      sent while none is open and closes when no message was sent for
+      `notify_cooldown` seconds — the page's field, 120 in production,
+      whose meaning changes from "per camera, dropped" to "the incident's
+      quiet window"; the key stays, so `config.json` does not change.
+    - **Nothing is dropped.** Every message the mode wants goes out, **loud**
+      or **silent** (Telegram's `disable_notification`: it arrives with no
+      sound). Silent, not one message edited, so each photo stays on
+      Telegram's servers — evidence off the M900 if it is stolen or broken
+      in a break-in.
+    - **Loud:** the incident's first message; a message from a camera other
+      than the incident's last one (the user: "every time you see him in a
+      different place it is worth a new notification"); more people at once
+      than the incident had; a camera that stops delivering pictures, and
+      its return.
+    - **Silent:** everything else inside the incident — the next clips in
+      the same place, the face or best view that follows a message.
+    - **The floor, the user's number:** at most one loud message in 30 s
+      across the house. A loud one that falls inside goes out silent at
+      once, and at the 30 s mark one loud text says what came; several
+      merge into that one.
+    - **A camera with no picture** (backlog 2's first part, now decided
+      here): no frame for a minute is a loud message, "Back: no picture
+      since 16:32:10", and its return another, with how long it was out — a
+      case of its own, on in Away and Home, off in Silent. Always a log
+      line, which the outage of 14/10 did not leave. A black or covered
+      picture waits for a measurement on night frames.
+    - **Later, with tracking (item 7):** a person nobody accounts for still
+      there after some minutes, once (loitering, as Frigate's zones and
+      UniFi Protect's alarms have); and "the same place" becoming "the same
+      body", so a new person on the same camera rings again.
+
 32. **Done 15/10 (faces `9fc5592`, `v2026.10.14.3`; dogs `bc94747`, `v2026.10.15.2`; both by leave-one-event-out, R55 `cde3087`; ARCHITECTURE 10.15, 20).** **The "maybe" threshold, chosen from measured accuracy** (decided; the user: with a metric they set the threshold, without one the maybe stays as it is). Settings shows, for faces and for dogs, a table measured on the user's own named photos by leave-one-out — each named view matched against all the others: per threshold, how many named views would be recognised for sure and what share to the right one, and how many unnamed photos would cross it. The user sets the sure threshold from it (faces `LEARN_THRESHOLD` 0.45; dogs the sure distance 0.35 and ratio 0.6), stored in `config.json`. Measured 13/10: faces are 99.3 % right at any threshold from 0.363 to 0.45 (1 error in 146 views) — **wrong, review 20**: 7 of Gustavo's views are Izabel's faces, counted as right by their label; at 0.45 at least 8 of 146 are wrong, and the table means something only on clean labels, with each view's exact copies left out of its own test; and review 21 found that those wrong views are not faces at all, but the top of a head (R49). **Since `v2026.10.14` the model is ArcFace** (thresholds 0.30 / 0.40): the table is computed on it, and means something once the labels are clean — the twelve head-tops deleted and the seven unnamed entries of Izabel named (`PENDING.md`). Even so, 12 unnamed face views fall between 0.363 and 0.45; dogs at today's thresholds are right in 31 of 33 probable matches, the 2 wrong ones at night. **What it cannot measure:** a stranger has no name, so the table shows confusion between the named, not with strangers — the unnamed column is the only hint, and the page says so. A lower sure threshold also means more views learned on their own (28). **The faces' half is done** (`9fc5592`, `v2026.10.14.3`, ARCHITECTURE 10.15): production's table has no wrong answer from 0.30 to 0.60, which is optimistic until R55 leaves each view's whole event out. **The dogs' half** is planned (section 3): on DINOv2-small's distances (R53, `v2026.10.15`), born with R55's leave-one-event-out. **The user sets the sure distance only; the ratio to the second dog stays `SURE_RATIO` 0.6** (decided, UX, review 26): the bench showed the ratio is what keeps two-dog crops out of the sure answers (3 + 1 instead of 7 + 1 at 0.33, ARCHITECTURE 20) — a safety rule, not a preference — and one number to set reads better than a grid of two. **Built:** the faces' half in developer session 23; the dogs' in developer session 25, with R55: on production's copy of 15/10 the faces are named for sure 39 times in 80 at 0.40 by another visit (66 before R55), the dogs 44 of 56 by day and 9 of 24 at night at 0.33, every answer right at every row of both tables.
 
 39. **Done 15/10 (`a9b8c32`, `v2026.10.15`, ARCHITECTURE 17.17).** **On a phone, an unnamed card is its photo and its name** (decided, UX, review 25). At 375 px an unnamed card was 309 px tall, and 137 px of it were the name, a name form and "Bad detection" — while tapping the photo already selects it, and the selection bar at the bottom names, assigns or reports one photo or many. Under 480 px: (a) unnamed cards on People and Dogs drop their own name form, their "Belongs to…" and their "Bad detection" — CSS only, the desktop keeps them; the hint above the unnamed list says "Tap photos to select them, then name or report them below" on a phone; (b) the accuracy table of Settings → Detection is hidden while nothing is measured, leaving its one sentence, on every width. Built in developer session 24: the Dogs tab at 375 px with production's 46 dogs 8,768 → 6,018 px, an unnamed card 349.5 → 231.5 px, two taps to name or report one photo.
@@ -237,6 +280,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 26 | 15/10/2026 | `bd44c66..756ac12`, developer session 24 — R53 step 2, backlog 39, R56, R57 | no code fixed, one installer message corrected (the models' size); 296 tests pass, `check_data` reads both dog galleries, no comments; the model's pinned SHA-256 checked against Hugging Face's record; two of production's dog reports undone on a scratch copy (both back with 385-number descriptors); the page at 375 px and 1024 px; the live-loop cost found higher than the histograms', not lower, and the documentation corrected; R53, R56 and R57 closed, nothing opened; **release `v2026.10.15`**, deployed at 16:53: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; the model fetched before the stop; 205 of 205 dog views migrated in 21.7 s; about 35 s stopped, cameras ok 3 s after the start; the 44 unnamed dogs' guesses all right on a contact sheet (13.27) |
 | 27 | 15/10/2026 | `8ba7da3..e700b05`, developer session 25 — R55, backlog 32 for dogs | no code fixed; 313 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the event recovery run again on the review's own copy of production's galleries (times kept): the same 81 + 57 face views and 205 dog views, none unknown, and the same face table; overlapping events of one camera measured (3 of 39 sure views at 0.40, no wrong answer, no dog pair): the event stays the unit; the dog panel at 375 px and 1024 px with production's table; R55 closed, backlog 32 done for both halves, nothing opened; **release `v2026.10.15.2`**, deployed at 17:27: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; about 11 s stopped, cameras ok 3 s after the start; the first start recovered 81 + 57 face and 205 dog events, none unknown, and the live tables matched the copy's (13.28) |
 | 28 | 16/10/2026 | `a672890..655faa6`, developer session 26 — R59 and R58 measured | no code fixed, no program code changed, no release; `person_signals.py` read (it only reads); the four two-person events in production's JSON checked, none two people; ARCHITECTURE 22.3 corrected (nested boxes survive NMS and `drop_duplicates`); R59 and R58 wait for tracking; R60 opened (the cooldowns drop what they block); backlog 7 (tracking) and 40 (notifications by incident) decided by the user the same day (13.29) |
+| 29 | 16/10/2026 | `0cf58f9..7670811`, developer session 27 — R60, backlog 40: notifications by incident, a camera with no picture | no code fixed; 328 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again on production's log (741 messages, 220 loud and 17 floor texts at 120 s); no send ever failed there and at most 9 messages fall in a minute; the page checked at 375 px and about 1000 px; tracking's library probed on the M900 for the plan (Roboflow's `trackers` imports under Smart App Control); R60 closed, R61 opened (low); **release `v2026.10.16`** (13.30) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -315,6 +359,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R56 | low | The hidden-person message shows the best single view, which may be the resident alone | done `a6818e4`, `v2026.10.15`: the frame where the people were counted, `HH-MM-SS.people.jpg` (ARCHITECTURE 22.3; 13.27 below) |
 | ✓ | R57 | low | `production.ps1 -Action update` stops a production whose cameras are down | done `e2165c0`, `v2026.10.15`: refuses unless `-Force`, and every failure says which part failed (ARCHITECTURE 18.7; 13.27 below) |
 | ✓ | R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | done `cde3087`, `v2026.10.15.2`: each view records its event (`view_events`), the views stored before recovered at start, both tables leave out the probe's whole event (ARCHITECTURE 10.15, 10.16; 13.28 below) |
+| ✓ | R60 | **high** | The per-camera and per-face cooldowns drop what they block: a held faceless person can never reach the phone | done `136e9b0`, `v2026.10.16`, with backlog 40: nothing is dropped, a message rings or arrives silently by the house's incident; reproduced first by `test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone` (ARCHITECTURE 12.11; 13.30 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -2052,6 +2097,93 @@ and notifications that never lose a risk and never shout — measured on
 production's log and written as backlog 7 and 40; reading `notify._faceless`
 for item 40 found that the cooldowns drop what they block (R60).
 
+### 13.30 Review 29 — developer session 27 (16/10/2026)
+
+Developer 27 reviewed whole (`0cf58f9..7670811`, four code commits and the
+HANDOFF: `notify.py` rewritten around the incident, `outage.py` new, the
+tenth case in `modes.py`, the camera watch started in `cameras.main`, the
+page's field, 34 new tests, `tools/replay_notifications.py`). 328 tests
+pass, `check_data` reads every file, no comments in `src/` and `tools/`,
+`check_doc_refs` exits 0. **No code fix; release `v2026.10.16`.** R60
+closed, R61 opened.
+
+**R60 as it was opened (review 28).** `notify._faceless` sent a held
+person's only message when the camera's cooldown ran out, and otherwise
+logged "no face: skipped: cooldown" and returned: nothing reached the
+phone. So in Home a stranger whose clip came within `notify_cooldown`
+(120 s) of any message sent on that camera — a resident's faceless message,
+a dog — was lost, against CONTEXT 3; a face inside its person's cooldown
+was dropped the same way. Seen in production only on the residents' own
+walks (`00:01:35`, `00:03:17` on 16/10), but nothing in the code told those
+from a stranger. Reproduced by the developer's test first: at the commit
+before, the second held person returned 0.
+
+**The rule, read against the design** (backlog 40, section 8). Every
+sending path — `event`, `faces_seen`, `side_face`, `best_view`,
+`hidden_person` and the new `camera_down` — asks `_loud`, and none drops a
+message; `_cooled_down`, `_claim` and `_last_sent` are gone, and
+`_faceless` no longer checks a cooldown. `event()` decides before it starts
+its thread, so two events a frame apart cannot both ring. `_loud` reads
+`_incident["camera"]` only when `fresh` and `force` are both false, and
+only then is the key there — Python's `or` stops at the first true
+operand; it holds, though a reordering would raise `KeyError`.
+`_end_of_floor` copies and empties `held_back` under the lock and sends
+outside it; a timer that had already fired and waits on the lock while
+`reset_incident` runs finds the list empty and sends nothing. The floor's
+text is sent outside `_loud`, so it does not move the incident's camera.
+
+**Measured again, not taken from the HANDOFF.** The replay on production's
+log gave the HANDOFF's numbers plus one line written after it ran: 741
+messages, 220 loud and 17 floor texts at 120 s; since 15/10 20:00, 97
+messages and 39 + 1 rings. In the whole log no send ever failed, and the
+densest stretches, now that nothing is dropped, are 2 messages in a second,
+4 in ten and 9 in a minute — far under Telegram's limits for one chat, so
+sending everything costs no refusals. `capture.py` logs nothing when ffmpeg
+restarts, so the log cannot tell how often a camera went silent for a
+minute: the watch's lines from this release are the first measurement.
+
+**Looked at and accepted.** While analysis is Off the watch still reports a
+camera down: Off stops what is analysed, and the cameras still feed Live
+(ARCHITECTURE 12.12). The floor's text keeps the settings of the first
+message it names. The incident's camera follows silent messages and the
+camera-down text too, so a person on Front right after "Back: no picture"
+rings as another camera — right: a new place. In Home the chat receives
+about twice what it did (100 against 54 in the last 24 hours) while the
+phone rings less (42 against 54): the user's principle chose it, and R59
+and R58 — tracking — are what will take the false ones out.
+
+**R61 — three small things in item 40 (low, review 29).** (a) The floor's
+text renews `_incident["last_sent"]` even when the incident had already
+closed, which can happen only with a quiet window under 30 s: the next
+message then belongs to an incident that should have ended. (b)
+`tools/replay_notifications.py`'s pattern reads a camera-down line's camera
+as `Back:` — its subject is the whole text — so a log from `v2026.10.16` on
+counts it as a third camera and a ring. (c) The return text counts minutes
+only: the 18 hours the M900 slept on 14–15/10 would read "1080 min
+without". **Then:** renew the incident only while it is open; parse the
+camera-down lines by their own words; from an hour on, "18 h 5 min
+without". Each by a test first.
+
+**The page.** Settings → Notifications in the built-in browser at 375 px
+(`scrollWidth` 375 of 375) and about 1000 px: the field reads "Quiet window
+of an incident, seconds" with its hint below, and the new row "Camera with
+no picture, and its return" is on in Home and Away, off in Silent. The hint
+is long for a phone but reads; kept.
+
+**For the next plan: tracking's library on the M900** (backlog 7). The
+design named ByteTrack "e.g. through `supervision`": `supervision` 0.31 no
+longer has it; Roboflow's `trackers` 2.6.1 (Apache-2.0) does,
+`ByteTrackTracker`, with SORT, OC-SORT and BoT-SORT beside it. It needs
+`supervision` (MIT), `scipy`, `matplotlib`, `av` (PyAV, with FFmpeg's
+libraries, BSD) and `pillow` — no second OpenCV: `supervision` falls back
+to numpy when none is installed, and the project's `opencv-python`
+satisfies it. In a throwaway environment with the signed python.org
+Python, every one of them imported under Smart App Control; **the first
+import took 89 s**, Smart App Control's first look at each new DLL, and the
+next 4.2 s. One update with two boxes costs 0.35 ms. Its defaults are not
+this project's: a box under `track_activation_threshold` 0.7 starts no
+track, so the second test box, at 0.6, got none.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2122,3 +2254,5 @@ of `CONTEXT.md`.
 | A36 | architect | ultracode | 16/10 15:30–15:50 | the user's report, many notifications in Home: production's log since 15/10 16:00, the 31 sent pictures on a contact sheet and zoomed, the dog gallery tried on the false person boxes, the hold's delay measured, quiet periods simulated; the user kept the rule (CONTEXT 3); R58, R59; developer 26 planned and started | 4% → 10% (new window) | 17% → 17% | 229k → 288k tokens, review 27's conversation |
 | D26 | developer | high | 16/10 15:50–18:45 | session 26: R59 and R58 measured — every listed clip replayed in three phases, 588 production events scanned for two people (about an hour, four processes) — `person_signals.py`, no rule built | 10% → 40%, shared with A37 from 16:15 | 17% → 21% | about 232k tokens at the end, a new conversation |
 | A37 | architect | ultracode | 16/10 16:15–19:20 | resumed; the user's two requests — follow the body once a face names it, notifications that never lose a risk and never shout — measured on production's log (29 and 33 messages, the cooldown's drops, loud and silent replayed), competitors searched, backlog 7 and 40 written, R60; then review 28, no release; developer 27 planned | 14% → 48%, shared with D26 until 18:45: about 8 points before the review, 8 for it | 18% → 22% | 100k → 270k tokens, a new conversation |
+| D27 | developer | high | 16/10 19:00–19:30 | session 27: R60 by a test, backlog 40 — the incident, the floor, the camera watch, the page — and `replay_notifications.py` (328 tests) | 49% → 58% | 23% → 24% | 179k tokens at the end, a new conversation |
+| A38 | architect | ultracode | 16/10 19:30– | review 29: the diff read whole, the replay run again, the log's bursts and failures, the page at 375 and 1000 px, tracking's library probed under Smart App Control; HANDOFF integrated, ARCHITECTURE 12.11–12.12 and 22.2, PYTHON 47, raid log 22; release and deploy `v2026.10.16`; developer 28 planned | 60% → END5H | 24% → ENDWK | 110k → ENDCTX, a new conversation (started by the developer's handover) |

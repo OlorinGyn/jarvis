@@ -121,11 +121,24 @@ grows, decisions are being postponed.
   is the user's**; the defaults hold until then. A note to the architect if
   either table reads wrong on the phone.
 
+- **`v2026.10.16` on the phone and the M900** (backlog 40, R60): nothing
+  the mode wants is dropped any more. **The chat will hold about twice the
+  messages and the phone will ring less** — in the last 24 hours before it,
+  100 messages instead of 54, 42 rings instead of 54 (ARCHITECTURE 12.11):
+  the first message of an incident rings, another camera or more people at
+  once ring, the rest arrive with no sound; at most one ring in 30 s, and a
+  text "… — sent silently above" names what came inside. A camera with no
+  picture for a minute sends "Back: no picture since HH:MM:SS", and its
+  return "picture back"; the switch is in Settings → Notifications. The
+  design is the architect's, from the user's principles: **the user may
+  veto any part of it**, and a ring that should not have rung, or a silent
+  message that should have, goes to the architect with its time.
+
 ## Decided, not yet done
 
-- **Tracking and notifications by incident** (16/10/2026) are work now:
-  BACKLOG 1, items 7 and 40. Item 40's design is the architect's, from the
-  user's principles (CONTEXT 3); the user may veto any part of it.
+- **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7, planned in
+  BACKLOG 3 (developer 28, its first part). Item 40 is done
+  (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the

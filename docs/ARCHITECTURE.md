@@ -2206,16 +2206,19 @@ Two locks prevent the flood that would make the feature unbearable:
 - **What is sent at all.** `notify_labels` started as `["person"]`: animals
   did not notify, or every cat at dawn would become a message. Since 12/10/2026
   each mode has a switch per case (22.2), built from `notify_labels` at first.
-- **A minimum interval per camera.** `notify_cooldown = 120` seconds, counted
-  **per camera**: someone walking about in front does not make twenty
-  messages, but an event on Back during Front's quiet still gets through.
-  Faces have their own per-person interval (12.10).
+- **What rings.** Since `v2026.10.16` (backlog 40) every message the mode
+  wants is sent, and the house's **incident** decides whether it rings or
+  arrives with no sound: the first of an incident rings, the next ones in the
+  same place do not, and at most one rings in 30 s (12.11).
 
-**Both intervals drop what they block** — the message is never sent, only
-logged as "skipped: cooldown" — so a held faceless person on a camera that
-sent anything in the last two minutes never reaches the phone (R60, found
-16/10/2026). Backlog 40 replaces both with incidents that silence a message
-instead of dropping it.
+**Until `v2026.10.16` there was a minimum interval instead**, and it dropped
+what it blocked. `notify_cooldown = 120` seconds per camera, and one per
+person for faces (12.10): a message inside it was never sent, only logged as
+"skipped: cooldown". So a held faceless person on a camera that had sent
+anything in the last two minutes never reached the phone (R60, found
+16/10/2026) — against the rule that an unknown person always does
+(CONTEXT 3). 291 of 740 messages in production's log from 10/10 to 16/10
+were dropped that way.
 
 ### 12.4 It never stalls capture
 
@@ -2310,7 +2313,8 @@ moment, so someone named yesterday appears with a name today.
 out if the first had; since R25 (12.10) a face goes out even when its event
 fell in the camera's cooldown, with a cooldown per person instead, so a face
 is never lost to a busy camera. Since 12/10/2026 the active mode decides each
-face by its case (22.3).
+face by its case (22.3). Since `v2026.10.16` no cooldown is left: a face
+always goes out, and after its event's message it arrives silently (12.11).
 
 **It stalls nothing.** The post-scan messages run on the clip's assembly
 thread, which is already in the background and already waits for the scan;
@@ -2396,7 +2400,8 @@ does to live analysis on 4 cores (R21).
 
 **Every message leaves a line in the log (R16).** `Notification <camera>
 <labels>: sent` and `skipped: cooldown` at INFO, `failed: <detail>` at
-WARNING, so a check for warnings finds a failed send. `_allowed()` became
+WARNING, so a check for warnings finds a failed send. Since `v2026.10.16`,
+`sent` or `sent silently`, and `skipped: cooldown` is gone (12.11). `_allowed()` became
 `_wanted()` and `_cooled_down()` to tell the two skips apart; a label nobody
 asked for stays silent. **The token never reaches text:** a `requests`
 exception quotes the URL, and the URL holds the token (`/bot<token>/…`).
@@ -2466,7 +2471,126 @@ person whose feet touch the edge is always tall. The architect had specified
 mat at 2.42–2.48, so 2.0 — real persons measure 0.4–0.6, still a fourfold
 margin. Every box the rule drops in those events is the mat.
 
-**A found face is always announced (R25, 10/10/2026).** The face message used to go out only after the event's own first message, so a face found in an event that fell in the 120 s cooldown was never sent — and faces are rare (2 of 21 scans that afternoon). Now `faces_seen` runs whenever the scan found a face; `_cooled_down(key, settings)` takes any key, the camera for events and `("face", person_id)` for faces, in the same table, so the same person is not announced twice within `notify_cooldown`. The best-view follow-up keeps its rule: only after a sent event.
+**A found face is always announced (R25, 10/10/2026).** The face message used to go out only after the event's own first message, so a face found in an event that fell in the 120 s cooldown was never sent — and faces are rare (2 of 21 scans that afternoon). Now `faces_seen` runs whenever the scan found a face; `_cooled_down(key, settings)` takes any key, the camera for events and `("face", person_id)` for faces, in the same table, so the same person is not announced twice within `notify_cooldown`. The best-view follow-up keeps its rule: only after a sent event. **Since `v2026.10.16` the table is gone**: nothing is dropped, and the same face again arrives silently (12.11).
+
+### 12.11 Notifications by incident (backlog 40, R60, `v2026.10.16`)
+
+**The user's principles, 16/10/2026** (CONTEXT 3): an event that may mean
+risk must never be lost, and more than one notification in 30 s means
+something is wrong; a subject seen in a new place deserves a new message,
+the same subject in the same place does not. Which situations count as
+risk was left to the architect. Competitors drop or snooze — Frigate's
+cooldowns, Ring's Motion Frequency, Eufy's snooze — and none merges.
+
+**Nothing is dropped; a message is loud or silent.** Telegram's
+`disable_notification` delivers a message with no sound: it is in the chat
+with its photo, and the phone does not ring. Silent messages rather than
+one message edited, so each photo stays on Telegram's servers — evidence off
+the M900 if it is stolen or broken in a break-in. `send(text, image,
+settings, silent)` adds `"disable_notification": "true"` to the form when
+silent (`{"chat_id": …, **quiet}` — a dict spread, PYTHON 39); the log line
+says `sent` or `sent silently`.
+
+**The incident, one for the house.** `_incident` holds `last_sent`, the
+`camera` of the last message and the most `people` at once so far. A message
+sent while none is open — or `notify_cooldown` seconds after the last one
+sent, the page's "Quiet window of an incident", 120 in production — opens a
+new one. The key kept its name, so `config.json` did not change; only its
+meaning did, from "per camera, dropped" to "the incident's quiet window".
+Every message sent, loud or silent, renews it.
+
+| Rings | Arrives silently |
+|---|---|
+| the incident's first message | the next clips in the same place |
+| a message from a camera other than the incident's last | the face, side view or best view that follows a message |
+| more people at once than the incident had | the same face again |
+| a camera with no picture, and its return (12.12) | |
+
+**People**, for that rule: an event's own message counts 1 when its parts
+hold a person not held for the scan, else 0 — a dog's message opens the
+incident with 0, so a person after it rings; after the scan, `max(people, 1)`
+from YOLO's `most_people` (22.3), so the hidden-person message, at 2 or
+more, rings over an incident of one.
+
+**The floor, the user's number.** `_floor` holds `last_loud`, apart from
+the incident so a short quiet window cannot get round it. A message that
+should ring within `LOUD_FLOOR_SECONDS` = 30 of the last loud one goes out
+**silent at once** and its words are kept in `held_back`; the first of them
+starts a `threading.Timer` (PYTHON 47) for the 30 s mark, and `_end_of_floor`
+then sends one loud text naming what came: "Back 21:03:10: person — sent
+silently above", or "… — and 2 more, sent silently above". That text is a
+loud one (the floor starts again) and a message sent (the incident is
+renewed). Nothing waits: the silent message has already arrived with its
+photo, the ring only comes later.
+
+**All of it under `_lock`, none of it blocking.** `_loud(camera, people,
+what, settings, force)` decides and updates both dicts under the module's
+lock; it runs in the capture thread (`event`) and in the clip threads
+(after the scan). The timer runs `_end_of_floor` in a thread of its own,
+which takes the lock, copies and empties `held_back`, and sends outside
+it. The lock is not re-entrant (PYTHON 31), so nothing under it calls back
+into the module — the floor's own pattern is PYTHON 26. `event()` decides before it starts the sending thread, so
+two events a frame apart cannot both ring. The clock is `_clock =
+time.monotonic`, a module name the tests replace (PYTHON 36).
+
+**What it changed, measured on production's log** (`tools/replay_notifications.py`,
+developer 27): every line sent or dropped by the old cooldowns from 10/10
+01:16 to 16/10 19:20, replayed through `_loud` itself with a clock set from
+the log's times. Rings are loud messages plus floor texts.
+
+| Range | Sent before | Once dropped | Now sent | Rings |
+|---|---|---|---|---|
+| all, 120 s | 449 | 291 | 740 | 219 + 17 |
+| before the modes (to 13/10 11:26) | 259 | 100 | 359 | 105 + 6 |
+| last 24 h, Home | 54 | 46 | 100 | 41 + 1 |
+| last 24 h, Home, at 180 s | 54 | 46 | 100 | 31 + 1 |
+
+**In Home the phone rings less and the chat holds twice as much.** 44 of the
+46 once dropped there were held faceless persons — R60's case, mostly the
+residents' own walks and the dogs boxed as people (R59, R58): the cooldown
+was hiding volume by losing it. Under-counted: an event once dropped left no
+best-view follow-up in the log, and now sends it too. No send ever failed in
+that log, and at most 9 messages fall in one minute, far under Telegram's
+limits.
+
+**Open, for tracking (backlog 7):** "the same place" becoming "the same
+body", so a new person on the same camera rings again; and a person nobody
+accounts for still there after some minutes, once.
+
+### 12.12 A camera with no picture (backlog 40, `v2026.10.16`)
+
+**The case.** On 14/10, 16:32–16:39, both cameras left the network and
+neither the phone nor the log knew (HISTORY 13.26). `outage.CameraWatch`
+reads `Core.frame_ages()` every `CHECK_SECONDS` = 5 in a daemon thread of
+its own, `camera-watch`, started in `cameras.main` after the cameras — not
+in the core loop, so a stalled loop cannot hide a dead camera. Its loop is
+`while not stop.wait(CHECK_SECONDS)`: a sleep that the service's stop ends
+at once (PYTHON 27).
+
+- No frame for `CAMERA_DOWN_SECONDS` = 60 is a camera down: "Back: no
+  picture since 16:32:10", the wall time of its last frame. A camera that
+  never delivered counts from the watch's start.
+- Its first frame after that is its return: "Back: picture back, 7 min
+  without".
+- Nothing in the first `GRACE_SECONDS` = 60 after the watch starts, while
+  the streams open.
+- Both are a `WARNING` line in the log whatever the mode (`Camera Back: no
+  picture since …`), and a message as the tenth case, `camera_down` (22.2):
+  on in Away and Home, off in Silent. Always loud (`force`), but through
+  the floor, so two cameras dropping together ring once and name the
+  second 30 s later.
+- **While analysis is Off** (22.7) the cameras keep feeding Live, so the
+  watch keeps watching, and a camera that dies then is still reported:
+  Off stops what is analysed, not the health of the cameras.
+
+`frame_age` is read under the capture's own lock and survives ffmpeg's
+restarts, which never reset the last frame's time. A minute is long
+against ffmpeg's own restart after `RESTART_SECONDS` = 5 and its socket
+timeout, so a hiccup is not reported. **Not this:** a black or covered
+picture still delivers frames; telling it needs a measurement on night
+frames first. Nothing in the log before this told how often the cameras
+went silent — `capture.py` logs nothing on a restart — so the watch's
+lines are the first measurement.
 
 ---
 
@@ -3489,7 +3613,7 @@ still readable, and failing would block going back to an older version.
 
 ### 19.5 Automatic tests (10/10/2026)
 
-`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night, 269 in about 15 s on 14/10 after developer 22, 313 in about 18 s on 15/10 after developer 25): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
+`uv run python -m pytest` runs the tests in `tests/` (R6; 23 on 10/10, 92 in about 16 s on 11/10, 160 in about 14 s on 12/10, 208 in about 16 s on 13/10, 216 in about 13 s that night, 269 in about 15 s on 14/10 after developer 22, 313 in about 18 s on 15/10 after developer 25, 328 in about 18 s on 16/10 after developer 27): the gallery's view alignment (`test_gallery.py`: a photo per view, old views without one, moves between Chosen and Waiting, merges), the 40-view rule (`test_forty_views.py`: the closest pair loses one, never the favourite, a near-copy discarded with its photo, the dogs' lighting, a merge past 40, `settle_waiting.py`'s dry run changing no byte), the write guard (`test_web_guard.py`: FastAPI's `TestClient` as 127.0.0.1 and as a LAN address), the notification rules (`test_notify.py`: redaction, both cooldowns, every case in every mode, the held person message with a fake scan), the Telegram commands against a fake Bot API (`test_bot.py`), the modes through the web (`test_modes_web.py`) and the view moves' check (`test_view_moves.py`). Every test works on temporary folders and replaces `notify.send`, so nothing touches real data or the network. `pytest` and `httpx2` are development dependencies only; `httpx2` is the successor of `httpx` that this Starlette's `TestClient` imports first (checked 10/10: same author, Pydantic's repository).
 
 **Why `python -m pytest` and not `uv run pytest` (11/10/2026).** On the M900, `uv run pytest` fails with *"An Application Control policy has blocked this file (os error 4551)"*: it starts `.venv\Scripts\pytest.exe`, a small launcher `uv` writes for each installed command, and that launcher is not signed, so Smart App Control blocks it (INSTALL 1.2, the same reason the project uses the official Python). `python -m pytest` asks the signed `python.exe` to run the `pytest` package itself — the same tests, no unsigned file in the way. Use it for any tool installed into `.venv`.
 
@@ -3803,7 +3927,7 @@ the target a resident when either side was one (`Gallery._merge`). The grid
 card shows a "Resident" badge. The face scan copies the flag into each
 sighting it returns, so the notifier needs no second read of the gallery.
 
-### 22.2 Nine cases, three modes
+### 22.2 Ten cases, three modes
 
 `modes.py` holds the rules as data. Each message belongs to one **case**:
 
@@ -3818,6 +3942,7 @@ sighting it returns, so the notifier needs no second read of the gallery.
 | `probable_resident_dog` | a "probably <name>" of a dog marked Resident — since backlog 30 |
 | `other_dog` | any other dog: another name, "probably" another, unidentified |
 | `other_animal` | cats, birds and every other animal label |
+| `camera_down` | a camera with no picture for a minute, and its return (12.12) — since backlog 40, `v2026.10.16`; not a person or animal case, so `holds_person` never looks at it |
 
 **Only a sure match is the resident.** A stranger who looks a little like the
 user gets "probably Gustavo", so on 12/10 every "probably …" went to
@@ -3843,6 +3968,7 @@ its own switch per case, all editable. The defaults:
 | `resident_dog`, `probable_resident_dog` | from `notify_labels` | off | off |
 | `other_dog` | from `notify_labels` | from `notify_labels` | off |
 | `other_animal` | from `notify_labels` | from `notify_labels` | off |
+| `camera_down` | on | on | off |
 
 "From `notify_labels`" means on only if the older setting listed that label —
 production's lists only `person`, so no animal message appears until the user
@@ -3880,13 +4006,16 @@ case is `None`, unknown until the scan — and returns `(sent, held)`.
 (`_notify_late`, 12.8) is held the same way, even after a dog's message went
 out. `notify.after_scan` sends everything that follows the scan:
 
-- faces: each by its case, three at most, each person with their own
-  cooldown; a silenced resident no longer uses up one of the three places;
-  when the person was held and a face went out, it claims the camera's
-  cooldown, as a first message would;
+- faces: each by its case, three at most; a silenced resident no longer
+  uses up one of the three places;
 - no face: `faceless_person`, if on. A follow-up when the event already sent
   a message, held or not; when the person was held and nothing of the event
-  went out, it is the first message and answers to the camera cooldown.
+  went out, it is the person's only message.
+
+Until `v2026.10.16` faces had a cooldown per person and a held person's
+first message answered to the camera's cooldown, both dropping what they
+blocked (R60); since backlog 40 every one of these goes out, loud or silent
+by the incident (12.11).
 
 **Fixed in review 15 (`5224983`).** The first version checked the camera
 cooldown for every held faceless message, so in Home with a dog switch on, a
@@ -3916,8 +4045,9 @@ someone the system cannot account for always wins over silence (CONTEXT 3).
   seen.
 - One helper, `_faceless`, now holds the faceless rules for the side view,
   the best view and the hidden person alike: the `faceless_person` switch;
-  then, when the person was held and nothing of the event went out, the
-  camera's cooldown, as a first message; otherwise only after a sent event.
+  then, when the person was not held, only after a sent event. Since
+  `v2026.10.16` it takes the message as a call put off (PYTHON 47) and no
+  longer checks a cooldown (12.11).
 - **What it costs, accepted by the user:** anything YOLO keeps as a person
   counts — a dog relabelled by R44 or R46 (7.12, 7.13), or YOLO calling a dog
   a person (R18) — and costs one extra message. So do two residents leaving
@@ -3972,7 +4102,8 @@ columns, the active column tinted. Each cell is a real form control —
 (PYTHON 29). Flipping one posts `{"notify_modes": {mode: {case: bool}}}` at
 once; the server refuses unknown modes, unknown cases and anything that is
 not `true` or `false`, and merges the change over the stored switches. The
-Telegram form (token, chat, Find chat, test, prefix, cooldown) sits **beside
+Telegram form (token, chat, Find chat, test, prefix, the incident's quiet
+window) sits **beside
 it** where the screen is wide enough, below it on a phone (backlog 36,
 14/10/2026, the user's): the part is a grid of `minmax(0, 3fr)` for the table
 and `minmax(300px, 2fr)` for Telegram, `align-items: start`, and one column

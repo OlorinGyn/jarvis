@@ -188,14 +188,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 28, covers
-up to `655faa6`** (developer 26's handoff; no release, no program code
-changed); the next starts from the commit after it.
+The table of every review is `HISTORY.md` 13.2. **The last review, 29, covers
+up to `7670811`** (developer 27's handoff; release `v2026.10.16`); the next
+starts from the commit after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.29, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.30.
+`HISTORY.md` 13.3 to 13.30, one section per review (13.16 is the reading of
+the bad-detection reports); the next one is 13.31.
 
 ---
 
@@ -350,3 +350,4 @@ review and commits.
 | 19 | `v2026.10.14.3` | Two People, One Face / Duas Pessoas, Um Rosto | written |
 | 20 | `v2026.10.15` | The Dog Who Wore Shoes / O Cachorro de Sapatos | written |
 | 21 | `v2026.10.15.2` | The Twins Who Vouched / Os Gêmeos Fiadores | written |
+| 22 | `v2026.10.16` | The Silent Bell / O Sino Silencioso | written |
