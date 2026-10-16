@@ -5,8 +5,9 @@ Usage: uv run python tools/replay_tracks.py <video>... [--join] [--lost 3 ...] [
 Item 7's part 1, R59 and R58's measurement through tracks. YOLO runs as in
 person_signals.py: on every frame with motion, through three SubjectDetectors
 that each take every third frame, the three phases a live camera's rhythm can
-fall on. Each phase's kept detections, every label, go to a ByteTrackTracker
-of its own, once for each lost-track buffer asked for; YOLO runs once. With
+fall on. Each phase's kept detections, every label, go to a jarvis.tracks.Tracks
+of its own, the live loop's tracker, once for each lost-track buffer asked
+for; YOLO runs once. With
 --join the videos are one timeline, each placed at its event's started_at
 less PRE_SECONDS, frames already covered by the one before skipped: whether
 one track would cover a walk cut into two events. Read-only. See
@@ -23,10 +24,8 @@ from itertools import islice
 from pathlib import Path
 
 import numpy as np
-import supervision as sv
-from trackers import ByteTrackTracker
 
-from jarvis import people, settings
+from jarvis import people, tracks
 from jarvis.capture import ANALYSIS_FPS
 from jarvis.clips import PRE_SECONDS
 from jarvis.motion import WARMUP_FRAMES, MotionDetector
@@ -35,18 +34,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import replay
 from person_signals import PHASES, inside_smaller
 
-LABELS = ("person", "dog")
-FRAME_RATE = ANALYSIS_FPS / PHASES
-LIBRARY_FPS = 30
 NESTED = 0.8
-
-
-def tracker(lost_seconds):
-    """A ByteTrackTracker with this project's parameters: the live minimums start a track, the buffer in seconds."""
-    minimum = min(settings.load()[key] for key in settings.CONFIDENCE_KEYS)
-    return ByteTrackTracker(lost_track_buffer=round(lost_seconds * LIBRARY_FPS), frame_rate=FRAME_RATE,
-                            track_activation_threshold=minimum, high_conf_det_threshold=minimum,
-                            minimum_consecutive_frames=1)
 
 
 def timeline(videos, join):
@@ -90,78 +78,58 @@ def detect(placed):
     return runs
 
 
-def as_detections(found):
-    """The detector's subjects as supervision Detections, with their labels kept in data."""
-    if not found:
-        return sv.Detections.empty()
-    return sv.Detections(xyxy=np.array([[d.x, d.y, d.x + d.w, d.y + d.h] for d in found], dtype=float),
-                         confidence=np.array([d.confidence for d in found], dtype=float),
-                         class_id=np.array([LABELS.index(d.label) if d.label in LABELS else len(LABELS)
-                                            for d in found]),
-                         data={"label": np.array([d.label for d in found])})
-
-
 def track(runs, lost_seconds):
-    """One phase's runs through a fresh tracker: its tracks, the most boxes and tracks at once, the cost."""
-    follower = tracker(lost_seconds)
-    tracks = {}
+    """One phase's runs through a fresh jarvis.tracks.Tracks: its tracks, the most boxes and tracks at once, the cost."""
+    follower = tracks.Tracks(lost_seconds)
+    record = tracks.Record()
+    extra = {}
     most = Counter()
     untracked = Counter()
     spent = []
-    present = []
     for video, moment, found in runs:
         start = time.perf_counter()
-        result = follower.update(as_detections(found), timestamp=moment)
+        observed = follower.update(found, moment)
         spent.append(time.perf_counter() - start)
+        record.add(moment, observed)
         most["person boxes"] = max(most["person boxes"], sum(d.label == "person" for d in found))
         boxes = {}
-        for xyxy, label, tracker_id in zip(result.xyxy, result.data.get("label", []), result.tracker_id):
-            if tracker_id == -1:
-                untracked[str(label)] += 1
+        for tracker_id, detection in observed:
+            if tracker_id is None:
+                untracked[detection.label] += 1
                 continue
-            box = [int(xyxy[0]), int(xyxy[1]), int(xyxy[2] - xyxy[0]), int(xyxy[3] - xyxy[1])]
-            boxes[int(tracker_id)] = box
-            entry = tracks.setdefault(int(tracker_id), {"first": moment, "labels": Counter(), "largest": box,
-                                                         "videos": [], "nested": 0.0})
-            entry["last"] = moment
-            entry["labels"][str(label)] += 1
+            box = [detection.x, detection.y, detection.w, detection.h]
+            boxes[tracker_id] = box
+            entry = extra.setdefault(tracker_id, {"largest": box, "videos": [], "nested": 0.0})
             if box[2] * box[3] > entry["largest"][2] * entry["largest"][3]:
                 entry["largest"] = box
             if video not in entry["videos"]:
                 entry["videos"].append(video)
         most["tracks"] = max(most["tracks"], len(boxes))
-        present.append(set(boxes))
         for one, box in boxes.items():
             for other, around in boxes.items():
                 if one != other and box[2] * box[3] <= around[2] * around[3]:
-                    tracks[one]["nested"] = max(tracks[one]["nested"], inside_smaller(box, around))
-    people_tracks = {tracker_id for tracker_id, entry in tracks.items() if voted(entry["labels"]) == "person"}
-    most["person tracks"] = max((len(ids & people_tracks) for ids in present), default=0)
-    return tracks, most, untracked, spent
-
-
-def voted(labels):
-    """A track's label by its frames: a dog only when dog frames are more than person frames, a tie a person."""
-    if labels["person"] and labels["person"] >= labels["dog"]:
-        return "person"
-    return "dog" if labels["dog"] else "other"
+                    extra[one]["nested"] = max(extra[one]["nested"], inside_smaller(box, around))
+    for tracker_id, entry in record.tracks.items():
+        entry.update(extra[tracker_id])
+    most["person tracks"] = record.most_person_tracks()
+    return record.tracks, most, untracked, spent
 
 
 def report(name, runs, lost_seconds, verbose):
     """The lines of one phase at one lost-track buffer."""
-    tracks, most, untracked, spent = track(runs, lost_seconds)
+    found_tracks, most, untracked, spent = track(runs, lost_seconds)
     cost = f"{1000 * float(np.median(spent)):.2f} ms median" if spent else "no update"
-    lines = [f"  {name}, lost {lost_seconds:g} s: {len(tracks)} tracks, most at once {most['tracks']} "
+    lines = [f"  {name}, lost {lost_seconds:g} s: {len(found_tracks)} tracks, most at once {most['tracks']} "
              f"(person boxes {most['person boxes']}, tracks voted person {most['person tracks']}), untracked "
              + (", ".join(f"{k} {v}" for k, v in untracked.most_common()) or "none") + f", update {cost}"]
-    for tracker_id, entry in sorted(tracks.items()):
+    for tracker_id, entry in sorted(found_tracks.items()):
         frames_seen = sum(entry["labels"].values())
         dog_share = entry["labels"]["dog"] / frames_seen
         if not verbose and not (entry["labels"]["person"] or entry["labels"]["dog"]):
             continue
         lines.append(f"    #{tracker_id} {entry['first']:.1f}-{entry['last']:.1f} s, {frames_seen} frames: "
                      + ", ".join(f"{k} {v}" for k, v in entry["labels"].most_common())
-                     + f"; dog share {dog_share:.2f}, voted {voted(entry['labels'])}, largest {entry['largest']}"
+                     + f"; longest person run {entry['longest_person_run']}, dog share {dog_share:.2f}, voted {tracks.voted(entry['labels'])}, largest {entry['largest']}"
                      + (f", nested {entry['nested']:.2f}" if entry["nested"] >= NESTED else "")
                      + (f", spans {len(entry['videos'])} clips" if len(entry["videos"]) > 1 else ""))
     return lines

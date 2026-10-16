@@ -19,9 +19,9 @@ def walk(labels, start=100, step=10, confidence=0.6):
 def test_one_body_is_one_track_and_its_frames_are_counted_by_label():
     runs = walk(["person", "dog", "dog", "dog", "person", "dog"])
     tracks, most, untracked, _ = replay_tracks.track(runs, 3)
-    assert len(tracks) == 1 and untracked == {"person": 1}
+    assert len(tracks) == 1 and not untracked
     entry = next(iter(tracks.values()))
-    assert entry["labels"] == {"dog": 4, "person": 1}
+    assert entry["labels"] == {"dog": 4, "person": 2} and entry["longest_person_run"] == 1
     assert most == {"tracks": 1, "person boxes": 1, "person tracks": 0}
 
 
@@ -38,10 +38,3 @@ def test_a_gap_longer_than_the_buffer_starts_a_new_track():
     runs = first + [(video, moment + 5.0, found) for video, moment, found in second]
     assert len(replay_tracks.track(runs, 3)[0]) == 2
     assert len(replay_tracks.track(runs, 8)[0]) == 1
-
-
-def test_a_tie_votes_a_person_and_only_more_dog_frames_a_dog():
-    from collections import Counter
-    assert replay_tracks.voted(Counter(person=2, dog=2)) == "person"
-    assert replay_tracks.voted(Counter(person=2, dog=3)) == "dog"
-    assert replay_tracks.voted(Counter(cat=3)) == "other"
