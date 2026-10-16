@@ -106,8 +106,9 @@ def track(runs, lost_seconds):
     follower = tracker(lost_seconds)
     tracks = {}
     most = Counter()
-    untracked = 0
+    untracked = Counter()
     spent = []
+    present = []
     for video, moment, found in runs:
         start = time.perf_counter()
         result = follower.update(as_detections(found), timestamp=moment)
@@ -116,7 +117,7 @@ def track(runs, lost_seconds):
         boxes = {}
         for xyxy, label, tracker_id in zip(result.xyxy, result.data.get("label", []), result.tracker_id):
             if tracker_id == -1:
-                untracked += 1
+                untracked[str(label)] += 1
                 continue
             box = [int(xyxy[0]), int(xyxy[1]), int(xyxy[2] - xyxy[0]), int(xyxy[3] - xyxy[1])]
             boxes[int(tracker_id)] = box
@@ -129,11 +130,21 @@ def track(runs, lost_seconds):
             if video not in entry["videos"]:
                 entry["videos"].append(video)
         most["tracks"] = max(most["tracks"], len(boxes))
+        present.append(set(boxes))
         for one, box in boxes.items():
             for other, around in boxes.items():
                 if one != other and box[2] * box[3] <= around[2] * around[3]:
                     tracks[one]["nested"] = max(tracks[one]["nested"], inside_smaller(box, around))
+    people_tracks = {tracker_id for tracker_id, entry in tracks.items() if voted(entry["labels"]) == "person"}
+    most["person tracks"] = max((len(ids & people_tracks) for ids in present), default=0)
     return tracks, most, untracked, spent
+
+
+def voted(labels):
+    """A track's label by its frames: a dog only when dog frames are more than person frames, a tie a person."""
+    if labels["person"] and labels["person"] >= labels["dog"]:
+        return "person"
+    return "dog" if labels["dog"] else "other"
 
 
 def report(name, runs, lost_seconds, verbose):
@@ -141,7 +152,8 @@ def report(name, runs, lost_seconds, verbose):
     tracks, most, untracked, spent = track(runs, lost_seconds)
     cost = f"{1000 * float(np.median(spent)):.2f} ms median" if spent else "no update"
     lines = [f"  {name}, lost {lost_seconds:g} s: {len(tracks)} tracks, most at once {most['tracks']} "
-             f"(person boxes {most['person boxes']}), {untracked} boxes untracked, update {cost}"]
+             f"(person boxes {most['person boxes']}, tracks voted person {most['person tracks']}), untracked "
+             + (", ".join(f"{k} {v}" for k, v in untracked.most_common()) or "none") + f", update {cost}"]
     for tracker_id, entry in sorted(tracks.items()):
         frames_seen = sum(entry["labels"].values())
         dog_share = entry["labels"]["dog"] / frames_seen
@@ -149,7 +161,7 @@ def report(name, runs, lost_seconds, verbose):
             continue
         lines.append(f"    #{tracker_id} {entry['first']:.1f}-{entry['last']:.1f} s, {frames_seen} frames: "
                      + ", ".join(f"{k} {v}" for k, v in entry["labels"].most_common())
-                     + f"; dog share {dog_share:.2f}, largest {entry['largest']}"
+                     + f"; dog share {dog_share:.2f}, voted {voted(entry['labels'])}, largest {entry['largest']}"
                      + (f", nested {entry['nested']:.2f}" if entry["nested"] >= NESTED else "")
                      + (f", spans {len(entry['videos'])} clips" if len(entry["videos"]) > 1 else ""))
     return lines
