@@ -20,6 +20,7 @@ from jarvis import notify
 
 LINE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ .*jarvis\.notify: Notification (\S+) (.*): "
                   r"(sent|sent silently|skipped: cooldown|failed)")
+CAMERA_WORDS = ("no picture since", "picture back")
 COLUMNS = ("sent before", "once dropped", "messages", "loud", "silent", "floor text")
 
 
@@ -39,8 +40,11 @@ def messages(path, since, until=None):
         match = LINE.match(line)
         if match:
             when = datetime.strptime(match[1], "%Y-%m-%d %H:%M:%S")
+            camera, what = match[2], match[3]
+            if camera.endswith(":") and what.startswith(CAMERA_WORDS):
+                camera = camera[:-1]
             if (since is None or when >= since) and (until is None or when < until):
-                found.append((when, match[2], match[3], match[4]))
+                found.append((when, camera, what, match[4]))
     return found
 
 
@@ -85,7 +89,8 @@ def replay(path, quiet, since=None, until=None):
         moment = (when - epoch).total_seconds()
         fire_until(moment)
         clock["now"] = moment
-        loud = notify._loud(camera, people_of(what), f"{camera} {what}", settings)
+        loud = notify._loud(camera, people_of(what), f"{camera} {what}", settings,
+                            force=what.startswith(CAMERA_WORDS))
         counts = days.setdefault(when.date(), Counter())
         counts["messages"] += 1
         counts["loud" if loud else "silent"] += 1

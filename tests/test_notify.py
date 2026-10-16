@@ -490,3 +490,14 @@ def test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone(
     assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
     assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
     assert sent == ["Front 12:00:00: no face seen, best view"] * 2 and sent.silent == [False, True]
+
+
+def test_the_floor_text_does_not_reopen_an_incident_that_closed(sent):
+    short = {**SETTINGS, "notify_cooldown": 10}
+    notify.event("Front", [("person", None)], None, short)
+    Clock.now += 5
+    notify.event("Back", [("person", None)], None, short)
+    assert Timer.started[0].fire()
+    Clock.now += 5
+    notify.event("Back", [("person", None)], None, short)
+    assert len(Timer.started) == 2

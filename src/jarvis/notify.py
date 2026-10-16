@@ -142,7 +142,8 @@ def _end_of_floor(settings):
         if not held_back:
             return False
         _floor["last_loud"] = _clock()
-        if _incident:
+        quiet = float(settings.get("notify_cooldown", QUIET_SECONDS))
+        if _incident and _floor["last_loud"] - _incident["last_sent"] < quiet:
             _incident["last_sent"] = _floor["last_loud"]
     more = len(held_back) - 1
     tail = f"and {more} more, sent silently above" if more else "sent silently above"

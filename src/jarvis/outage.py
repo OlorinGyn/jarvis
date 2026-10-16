@@ -21,6 +21,14 @@ GRACE_SECONDS = 60
 logger = logging.getLogger(__name__)
 
 
+def _duration(minutes):
+    """Minutes as "6 min", "1 h" or "18 h 5 min"."""
+    hours, minutes = divmod(minutes, 60)
+    if not hours:
+        return f"{minutes} min"
+    return f"{hours} h {minutes} min" if minutes else f"{hours} h"
+
+
 class CameraWatch:
     """Which cameras are down, from their frame ages, and the message for each change."""
 
@@ -45,7 +53,7 @@ class CameraWatch:
                 changes.append((label, f"{label}: no picture since {since}"))
             elif label in self.down and age < CAMERA_DOWN_SECONDS:
                 minutes = max(1, round((now - age - self.down.pop(label)) / 60))
-                changes.append((label, f"{label}: picture back, {minutes} min without"))
+                changes.append((label, f"{label}: picture back, {_duration(minutes)} without"))
         for label, text in changes:
             logger.warning("Camera %s", text)
             notify.camera_down(label, text)

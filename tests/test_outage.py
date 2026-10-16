@@ -86,3 +86,16 @@ def test_an_older_config_gets_the_new_switch():
     result = modes.normalised(stored, ["person"])
     assert result["home"]["camera_down"] and result["away"]["camera_down"]
     assert not result["silent"]["camera_down"]
+
+
+@pytest.mark.parametrize("seconds, text", [(6 * 60, "6 min"), (60 * 60, "1 h"), (18 * 3600 + 5 * 60, "18 h 5 min")])
+def test_a_long_outage_is_told_in_hours_and_minutes(sent, monkeypatch, seconds, text):
+    clock = Clock()
+    ages = {"Back": 0.1}
+    camera = watch(ages, clock, monkeypatch)
+    clock.now += 120
+    ages["Back"] = 60.0
+    camera.check()
+    clock.now += seconds - 60
+    ages["Back"] = 0.2
+    assert camera.check() == [f"Back: picture back, {text} without"]
