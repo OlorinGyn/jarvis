@@ -146,7 +146,7 @@ every ten seconds is unbearable: **more than one notification in 30 s means
 something is wrong.** A subject seen in a new place — at the Front, then at
 the Back — deserves a new message; the same subject in the same place does
 not. The user left to the architect which situations count as risk, looking
-at the competitors; the design is in `PENDING.md`, "Decided, not yet done".
+at the competitors; the design is backlog 40 (`BACKLOG.md` 1).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -232,6 +232,7 @@ tools/
   face_tuning.py, dog_tuning.py, dog_crops.py   measure thresholds; crop past dog events
   face_bench.py   candidate face pipelines on a copy of faces/ (R49; models in models/bench)
   dog_bench.py    dog descriptors against learned embeddings on a copy of dogs/ (R53; models in models/bench/dogs)
+  person_signals.py  per person box of a clip: its origin, the signals that could tell a dog, two people at once (R59, R58)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -296,6 +297,7 @@ uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
+uv run python tools/person_signals.py <video>... [--gallery FILE]   where each person box came from, and what could tell a dog (ARCHITECTURE 7.15)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg

@@ -59,6 +59,51 @@ finished item is in `HISTORY.md` 8.
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–39 and 32, in `PENDING.md`.
 
+### Decided on 16/10/2026, to build
+
+40. **Notifications by incident** (decided 16/10: the user's principles,
+    CONTEXT 3; which situations are risk was left to the architect, and the
+    design is the architect's). Measured on production's log the same day:
+    in Home, 33 messages in 24 hours, only 2 within 30 s of the one before
+    — there the volume is the false ones (R59, R58) and residents with no
+    face seen; before the modes, every case on as in Away, 91 of 389
+    messages came within 30 s of the one before, 80 on one camera, mostly
+    an event's immediate "person" and its follow-up. And today's intervals
+    drop what they block (R60). Competitors drop or snooze (Frigate's
+    cooldowns, Ring's Motion Frequency, Eufy's snooze); none merges. The
+    design:
+    - **An incident**, one for the house, opens with the first message
+      sent while none is open and closes when no message was sent for
+      `notify_cooldown` seconds — the page's field, 120 in production,
+      whose meaning changes from "per camera, dropped" to "the incident's
+      quiet window"; the key stays, so `config.json` does not change.
+    - **Nothing is dropped.** Every message the mode wants goes out, **loud**
+      or **silent** (Telegram's `disable_notification`: it arrives with no
+      sound). Silent, not one message edited, so each photo stays on
+      Telegram's servers — evidence off the M900 if it is stolen or broken
+      in a break-in.
+    - **Loud:** the incident's first message; a message from a camera other
+      than the incident's last one (the user: "every time you see him in a
+      different place it is worth a new notification"); more people at once
+      than the incident had; a camera that stops delivering pictures, and
+      its return.
+    - **Silent:** everything else inside the incident — the next clips in
+      the same place, the face or best view that follows a message.
+    - **The floor, the user's number:** at most one loud message in 30 s
+      across the house. A loud one that falls inside goes out silent at
+      once, and at the 30 s mark one loud text says what came; several
+      merge into that one.
+    - **A camera with no picture** (backlog 2's first part, now decided
+      here): no frame for a minute is a loud message, "Back: no picture
+      since 16:32:10", and its return another, with how long it was out — a
+      case of its own, on in Away and Home, off in Silent. Always a log
+      line, which the outage of 14/10 did not leave. A black or covered
+      picture waits for a measurement on night frames.
+    - **Later, with tracking (item 7):** a person nobody accounts for still
+      there after some minutes, once (loitering, as Frigate's zones and
+      UniFi Protect's alarms have); and "the same place" becoming "the same
+      body", so a new person on the same camera rings again.
+
 ### Decided on 13/10/2026, to build
 
 Items 28–32 are done (above); their full text is in `HISTORY.md` 8.
@@ -79,7 +124,8 @@ Without these the system does not do its job well.
    "only the garage matters" would have avoided almost all of it. Worth
    separating a **mask** (ignore the area) from a **required zone** (detect
    everything, but notify only when something enters it).
-2. **System health** (proposto) — if a camera dies at 3 a.m., nothing warns.
+2. **System health** (proposto; the camera-down message decided on 16/10
+   inside item 40) — if a camera dies at 3 a.m., nothing warns.
    There is an automatic restart, but no record of how long it was down.
    **A real case, 14/10 16:32–16:39:** both cameras left the network and the
    log holds no line about it (HISTORY 13.26). A
@@ -94,8 +140,28 @@ It works without them, but is incomplete.
    and whether `HWACCEL` helps (INSTALL 6).
 6. **Search and filter** (proposto) — with ~100 events a day, by date only is
    not enough. By person, camera, label.
-7. **Tracking** (proposto) — keep identity across frames; it solves the person
-   standing still and makes one clip match one person.
+7. **Tracking** (decided by the user, 16/10/2026) — "once one frame
+   recognised me, you do not want my face any more, only the object":
+   turning around does not make the user someone else, and nobody
+   teleports into their place. Today the name belongs to the event, not
+   the body: one good frame names the whole clip, but the name dies when
+   YOLO loses the body for 5 s and the event closes, and with two people
+   nobody knows which body is whom. Measured on the 29 person messages of
+   15–16/10: 4 were one walk cut into two clips 0–7 s apart, the user
+   recognised in one and not the other (`Back/2026-10-15/18-42-31`,
+   `Front/2026-10-15/19-41-18`, `Front/2026-10-16/00-30-11`,
+   `Front/2026-10-16/14-19-58`); 14 had no frame recognising anyone, which
+   tracking cannot name. The identity follows the body, never the clock: a
+   time rule ("Gustavo was here a minute ago") would hide a stranger
+   arriving right after a resident (CONTEXT 3). **It is also R59's and
+   R58's answer** (section 2): a body YOLO calls a dog in most of its
+   frames is a dog, and two boxes nested for a whole track's life are one
+   body. The design, for the session that builds it: a well-regarded
+   tracker (ByteTrack, e.g. through `supervision`) in the live loop; each
+   face of the clip scan bound to a track by the frame's time; a named
+   track not scanned again while other tracks still are; the track
+   surviving the event boundary, for a gap measured on the four clips
+   above, not guessed; the loitering message of item 40.
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -133,7 +199,7 @@ Nest, from the architect's knowledge up to mid-2026:
 | Zones per camera: ignore an area, or alert only when something enters it | 1 |
 | Tracking: the label comes from the object's history, not one frame | 7; R44 and R46 cover the bend |
 | Per-object filters: minimum score, size, ratio, the median score over the track | 31 |
-| A warning when a camera goes down | 2 |
+| A warning when a camera goes down | 2; the message itself in 40 |
 | A timeline and a review of alerts | 11 |
 | Search by person or object; natural-language search; event descriptions by AI | 6 |
 | Audio detection: barking, breaking glass, shouting | 10 |
@@ -160,13 +226,38 @@ in review 25, R53, R56 and R57 in review 26, R55 in review 27.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | open (below) |
-| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | open (below) |
+| R60 | **high** | The per-camera and per-face cooldowns drop what they block: a held faceless person can never reach the phone | open (below); fixed by item 40 |
+| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; waits for item 7 (below) |
+| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
+
+**R60 — The cooldowns drop what they block (high, found 16/10/2026).**
+`notify._faceless` sends a held person's only message when the camera's
+cooldown ran out, and otherwise logs "no face: skipped: cooldown" and
+returns: nothing reaches the phone. So in Home a stranger whose clip comes
+within `notify_cooldown` (120 s) of any message sent on that camera — a
+resident's faceless message, a dog — is lost, against CONTEXT 3; a face
+inside its person's cooldown is dropped the same way. Seen in production
+only on the residents' own walks (`00:01:35`, `00:03:17` on 16/10), but
+nothing in the code tells those from a stranger. **Then:** item 40, which
+silences instead of dropping; reproduce it by a test first.
+
+**Measured by developer 26, no rule built (HISTORY 13.29).** R59: YOLO
+itself drew every dog's `person` box (37 of 37 looked at; R44 one, R46
+none), so R47's bound would change nothing; the dog gallery, the box's
+shape and YOLO's dog score overlap with true people at night, and YOLO run
+again on the zoomed box, the best signal, would lose a person half hidden
+behind the car at night (ARCHITECTURE 7.15). R58: none of 588 production
+events with a person holds two people, so neither counting rule can be
+shown to keep a true pair; rule (a) at 0.9 would remove 15 of 17 one-body
+cases, and could swallow a person standing behind another (ARCHITECTURE
+22.3). **Both wait for tracking** (item 7): the label voted over a track's
+frames, and a count of tracks instead of boxes. A recording of two people
+together would make R58 measurable (`PENDING.md`). Their text as opened:
 
 **R59 — The household's dogs reach the phone as people (high, the user's
 report, 16/10/2026).** "Many notifications in Home": 31 in 23 hours, read
@@ -248,35 +339,64 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 27 is done** (HISTORY 13.28, `v2026.10.15.2`). Then, on 16/10, the
-user's report — many notifications in Home — read message by message
-(ARCHITECTURE 22.3): the user kept the rule (CONTEXT 3), and the false ones
-became R59 and R58.
+**Review 28 is done** (HISTORY 13.29): developer 26 measured R59 and R58
+and built nothing, rightly — both wait for tracking. No release: no
+program code changed.
 
-**Developer 26: R59, then R58.**
+**Developer 27: item 40 (notifications by incident) with R60.** Tracking
+(item 7) comes after it, in sessions of its own.
 
-1. **R59** (section 2), the session's core. Copy the listed clips from
-   production (`C:\JARVIS` only read) and replay each: where each `person`
-   box came from — YOLO, R44 or R46. Fix by cause: R47's bound if R46's
-   chain; otherwise the measured rule on the dog clips and the true-person
-   clips listed, which must keep every true person. If it runs in the live
-   loop, measure its cost per analysed frame on the M900.
-2. **R58** (section 2): both counting rules measured on the false and the
-   true two-person events; build the one that separates them, or none if
-   neither does, and say so.
+1. **R60 first, by a test** (section 2): a held faceless person on a camera
+   that sent a message less than `notify_cooldown` ago reaches the phone.
+   It fails today.
+2. **The incident** (item 40), in `notify.py`: one for the house, under the
+   module's lock; opened by the first message sent while none is open,
+   closed when nothing was sent for `notify_cooldown` seconds; it keeps the
+   last camera, the most people at once and the last loud time. Every path
+   that sends — `event`, `faces_seen`, `_faceless` and the three picture
+   messages — asks it whether the message is loud or silent, and none
+   drops a message any more: the camera's cooldown and the per-face
+   cooldown go. `send()` takes `silent` and passes Telegram's
+   `disable_notification`. The log line says which: `sent`, `sent
+   silently`.
+3. **Loud:** the incident's first message; a camera other than the
+   incident's last; more persons at once than the incident had (at the
+   event's start, the persons among its parts; after the scan, `people`).
+   **Silent:** the rest. **The floor:** a loud one within 30 s
+   (`LOUD_FLOOR_SECONDS`) of the last loud goes out silent at once, and at
+   the 30 s mark one loud text names what came ("Back 21:03:10: person —
+   and 1 more above"); several merge into one; a timer thread, never the
+   capture loop.
+4. **A camera with no picture:** a new case `camera_down`, additive in
+   `modes` (on in Away and Home, off in Silent). A check beside the core
+   loop, every few seconds, on `frame_ages()`: no frame for
+   `CAMERA_DOWN_SECONDS` = 60 sends "Back: no picture since HH:MM:SS",
+   loud; the first frame after it, "Back: picture back, N min without",
+   loud; nothing in the first minute after the service starts; a log line
+   for both, whatever the mode. Black or covered pictures: not this step.
+5. **The page:** Settings → Notifications — the `notify_cooldown` field's
+   label and help say what it now means (the quiet window of an
+   incident), and the new case's switch sits with the others. Check it at
+   375 px.
+6. **Measure:** the production log's sent and "skipped: cooldown" lines
+   since 10/10, replayed through the new rule at production's 120 s — how
+   many loud, silent, and once dropped now sent. The architect's sketch at
+   180 s gave 187 → 75 loud before the modes and 33 → 28 in Home.
 
-**HANDOFF:** per clip, the box's origin; the rule chosen, with its numbers
-on the dog clips and on the true-person clips; its cost; R58's two rules
-and their numbers. If the session runs short, stop after R59 with a
-coherent commit and say what is left.
+`config.json` gains nothing new beyond the case's switches, which
+`modes.normalised` already fills; `check_data` before committing.
+**HANDOFF:** the rule as built, the measurement, R60's test, the page
+checked at 375 px. If the session runs short, stop after step 3 with a
+coherent commit: the camera-down message can be the next session.
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
 hold until then); the policy for unnamed faces (backlog 37, `PENDING.md`);
-the misfiled dog views, thirteen, before the once-only settle of backlog
+a recording of two people together (R58); the misfiled dog views, thirteen, before the once-only settle of backlog
 28 — the new model sees them right, but four sit in Chosen, where every
 match is measured against them; the M900 sleeping at the sign-in screen;
 the checks on the M900 (`PENDING.md`).
 
-**Not planned:** R54 and R47 are watches. R14, R12 and R9 as before. Every
-other open backlog item is **(proposto)**.
+**Not planned:** R54 and R47 are watches. R59 and R58 wait for item 7.
+R14, R12 and R9 as before. Every other open backlog item is
+**(proposto)**.

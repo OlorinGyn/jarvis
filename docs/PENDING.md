@@ -13,6 +13,11 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
+- **A recording of two people together** (R58, 16/10/2026): none of 588
+  production events with a person holds two people, so no rule for
+  counting people at once can be shown to keep a true pair. Walking out of
+  the Front together with Izabel once, by day, would give the first one;
+  tracking (backlog 7) will need it too.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
@@ -118,78 +123,9 @@ grows, decisions are being postponed.
 
 ## Decided, not yet done
 
-- **Tracking: once a face names a body, follow the body** (backlog 7, the
-  user, 16/10/2026). The user's words: once one frame recognised them, stop
-  caring about the face and follow the object — turning around does not
-  make them someone else, nobody teleports into their place. Today the
-  name belongs to the event, not the body: one good frame already names the
-  whole clip, but the name dies when YOLO loses the body for 5 s and the
-  event closes, and with two people nobody knows which body is whom.
-  Measured on the 29 person messages of 15/10 16:00 to 16/10 15:00
-  (production's log): **4** were one walk cut into two clips 0–7 s apart,
-  the user recognised in one and not the other (`Back/2026-10-15/18-42-31`,
-  `Front/2026-10-15/19-41-18`, `Front/2026-10-16/00-30-11`,
-  `Front/2026-10-16/14-19-58`) — what tracking fixes; 7 dogs (R59) and 2
-  false "2 people" (R58), which a track's label history and one track per
-  body would help; **14** had no frame recognising anyone nearby — the
-  backyard at night, six clips from 00:01 to 00:12 — which tracking cannot
-  name; 2 had the user recognised 24 s and 3 min earlier on that camera,
-  reachable only by a rule of time, which the architect advised against: it
-  would hide a stranger arriving right after a resident (CONTEXT 3). The
-  identity must follow the body, never the clock; across a gap of a few
-  seconds it is an inference, so the gap a track survives is measured, not
-  guessed. To plan in the next review, after R59: a well-regarded tracker
-  (ByteTrack, e.g. through `supervision`), each face of the clip scan bound
-  to a track by the frame's time, a named track not scanned again while
-  other tracks still are, and the track surviving the event boundary.
-- **Notifications by incident** (the user's principles, CONTEXT 3; which
-  situations are risk was left to the architect, 16/10/2026). The design
-  below is the architect's; the user may veto any part.
-  **Measured** in production's log: in Home, 15/10 16:00 to 16/10 16:15,
-  33 messages, only 2 within 30 s of the one before — the volume there is
-  the false ones (R59, R58) and residents with no face seen, which no rate
-  rule removes. Before the modes, every case on as in Away (10/10 to 12/10
-  18:00), 187 messages; from 10/10 to 15/10, 91 of 389 came within 30 s of
-  the one before, 80 on the same camera — mostly an event's immediate
-  "person" and its face or best-view follow-up 20–40 s later. **A hole
-  found the same day:** the per-camera cooldown (120 s, ARCHITECTURE 12.3)
-  drops what it blocks — a held faceless person on a camera that sent
-  anything in the last 2 minutes logs "no face: skipped: cooldown" and never
-  reaches the phone (`notify._faceless`), so a stranger arriving right after
-  a resident's faceless message is lost, against CONTEXT 3.
-  **Competitors** (searched 16/10): Frigate has a global and a per-camera
-  cooldown — a rate limit that drops — and its phone apps dedupe to one
-  notification per review item; its zones take a loitering time. UniFi
-  Protect's Alarm Manager has loitering among its triggers and "Ignore
-  Repeated Actions" within a timespan. Ring's Motion Frequency snoozes a
-  camera 1–2 minutes after an event (battery models), with Modes and Motion
-  Schedules. Hikvision raises a video-tampering alarm. Eufy offers only a
-  snooze of 30 min to 12 h. Each drops or snoozes; none merges.
-  **The design:**
-  1. **An incident** opens with the first message while the house is quiet
-     and stays open while messages follow within 3 minutes. Replayed on the
-     log: 187 → 75 loud before the modes; 33 → 28 in Home.
-  2. **Loud** (a push with sound): the incident's first message; the
-     incident on another camera (the user's "new place"); more people at
-     once than the incident had; a person nobody accounts for still there
-     after N minutes, once (loitering, N to measure); a camera with no
-     picture — offline, black or covered — once when it goes and once when
-     it returns (backlog 2, the real case of 14/10).
-  3. **Silent** (Telegram's `disable_notification`: it arrives, with no
-     sound): everything else the mode sends today inside an open incident —
-     the next clips in the same place, the face or best view that completes
-     a message. Silent messages and not edits of one message, because each
-     photo then stays on Telegram's servers: evidence off the M900 if it is
-     stolen or broken in a break-in.
-  4. **The floor:** at most one loud message in 30 s across the house; one
-     that falls inside waits for the 30 s mark and goes merged with any
-     other. **Nothing is dropped**; this replaces the per-camera cooldown.
-  5. **With tracking** (above), "the same place" becomes "the same body":
-     a new person on a camera inside an open incident is a new loud
-     message, not a silent one.
-  **Order** for the next review: after R59 and R58, the incidents and the
-  camera-down message before tracking — they need no track, and a real
-  break-in is where the frequency matters; then tracking.
+- **Tracking and notifications by incident** (16/10/2026) are work now:
+  BACKLOG 1, items 7 and 40. Item 40's design is the architect's, from the
+  user's principles (CONTEXT 3); the user may veto any part of it.
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the

@@ -2317,3 +2317,66 @@ values (`value: (row) => row.distance`) — the strategy pattern without an
 interface. And `#accuracy-table` became the class `.accuracy-table`: an id
 must be unique in a page, so two tables need a class, and each panel finds
 its own parts with `panel.querySelector(...)` inside its form.
+
+## 46. Intersection over the smaller box, a network wrapped by duck typing, and three phases of one rhythm (developer 26)
+
+From one measurement: R59 and R58 (`tools/person_signals.py`,
+ARCHITECTURE 7.15 and 22.3). Nothing was built; what the tool does is worth
+knowing.
+
+**IoU against intersection over the smaller box (R58).** IoU — the shared
+area over the union of the two boxes — says whether two boxes are *the same
+box*. NMS and `drop_duplicates` use it, so they merge twins. It cannot say
+whether one box sits *inside* another: a small box wholly within one four
+times its size shares all of itself and still scores IoU = small / big =
+0.25. Dividing by the smaller box instead gives 1.0 for any box wholly
+inside:
+
+```python
+def inside_smaller(a, b):
+    width = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+    height = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
+    smaller = min(a[2] * a[3], b[2] * b[3])
+    return max(width, 0) * max(height, 0) / smaller if smaller else 0.0
+```
+
+The overlap's width is how far the right edge that comes first lies past
+the left edge that comes last; negative means the boxes do not touch,
+which `max(width, 0)` turns into no area. One body with two boxes — the
+person, and the person with the car door — scored IoU 0.33–0.43, under
+both filters, and 0.96–1.00 here.
+
+**A wrapper that the detector never notices (duck typing).** The tool
+needed YOLO's raw output after each run, which `SubjectDetector` keeps to
+itself. In Java one would extract an interface for the network and inject
+a decorator. Python has no interface to extract: an object is acceptable
+wherever its methods are, so a class with the same two methods is enough.
+
+```python
+class Recording:
+    def __init__(self, net):
+        self.net = net
+        self.output = None
+
+    def setInput(self, blob):
+        self.net.setInput(blob)
+
+    def forward(self):
+        self.output = self.net.forward()
+        return self.output
+```
+
+`detector.model = Recording(detector.model)` swaps it in; the detector
+calls `setInput` and `forward` as before and the tool reads `.output`
+afterwards. "If it walks like a duck": nothing checks the type, only the
+methods called. It is the same move as the tests' stand-in network
+(section 44), used here to watch instead of to replace.
+
+**Three phases of one rhythm.** Live, YOLO runs at most every 0.3 s, so at
+10 analysis frames a second it sees one frame in three, and which third
+depends on when the event began. A replay that runs YOLO on every third
+frame shows one of three possible lives of the clip. The tool keeps three
+detectors and gives frame `i` to detector `i % 3`: each detector sees its
+own third, with its own memories (R44, R46), as a live camera on that
+phase would — every box any live run could have drawn, and each one's
+origin.

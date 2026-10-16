@@ -236,6 +236,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 25 | 14/10/2026 | `18b268c..72e9527`, developer session 23 — R42 (b), backlog 37 (a, b) and 38, R53 step 1, backlog 32 for faces | no code fixed; 284 tests pass, `check_data` reads every file, no comments; the page checked at 375 px and 1024 px (two columns, the selection bar, the accuracy table 301 px of 301, no horizontal scroll); R53's bench run again for DINOv2 and MobileNet on the M900, same numbers; R42 closed; R53 step 2 decided: DINOv2-small; R55, R56 and R57 opened; backlog 39 (decided, UX) added; **release `v2026.10.14.3` tagged, its deploy rolled back on its own**: both cameras left the network between 16:32 and 16:39 — a power cut, the user said the next day — nothing to do with the release; the M900 lost power at 17:13, booted at 21:47 and was put to sleep by Windows 50 s later, asleep until 15:58 on 15/10; **deployed on 15/10 at 16:05**: 977 events, 206 face and 413 dog sightings, 18 reports read before and after; about 10 s stopped, cameras ok 3 s after the start (13.26) |
 | 26 | 15/10/2026 | `bd44c66..756ac12`, developer session 24 — R53 step 2, backlog 39, R56, R57 | no code fixed, one installer message corrected (the models' size); 296 tests pass, `check_data` reads both dog galleries, no comments; the model's pinned SHA-256 checked against Hugging Face's record; two of production's dog reports undone on a scratch copy (both back with 385-number descriptors); the page at 375 px and 1024 px; the live-loop cost found higher than the histograms', not lower, and the documentation corrected; R53, R56 and R57 closed, nothing opened; **release `v2026.10.15`**, deployed at 16:53: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; the model fetched before the stop; 205 of 205 dog views migrated in 21.7 s; about 35 s stopped, cameras ok 3 s after the start; the 44 unnamed dogs' guesses all right on a contact sheet (13.27) |
 | 27 | 15/10/2026 | `8ba7da3..e700b05`, developer session 25 — R55, backlog 32 for dogs | no code fixed; 313 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the event recovery run again on the review's own copy of production's galleries (times kept): the same 81 + 57 face views and 205 dog views, none unknown, and the same face table; overlapping events of one camera measured (3 of 39 sure views at 0.40, no wrong answer, no dog pair): the event stays the unit; the dog panel at 375 px and 1024 px with production's table; R55 closed, backlog 32 done for both halves, nothing opened; **release `v2026.10.15.2`**, deployed at 17:27: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; about 11 s stopped, cameras ok 3 s after the start; the first start recovered 81 + 57 face and 205 dog events, none unknown, and the live tables matched the copy's (13.28) |
+| 28 | 16/10/2026 | `a672890..655faa6`, developer session 26 — R59 and R58 measured | no code fixed, no program code changed, no release; `person_signals.py` read (it only reads); the four two-person events in production's JSON checked, none two people; ARCHITECTURE 22.3 corrected (nested boxes survive NMS and `drop_duplicates`); R59 and R58 wait for tracking; R60 opened (the cooldowns drop what they block); backlog 7 (tracking) and 40 (notifications by incident) decided by the user the same day (13.29) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2006,6 +2007,51 @@ the probe's event. Views whose event cannot be recovered fall back to
 today's rule and are counted on the page. Measure on production's galleries
 the table before and after.
 
+### 13.29 Review 28 — developer session 26 (16/10/2026)
+
+Developer 26 reviewed whole (`a672890..655faa6`, two commits: the tool and
+the HANDOFF; `tools/person_signals.py`, 181 lines). No program code
+changed, so no tests run and no release; no comments in `src/` and
+`tools/`; `check_doc_refs` exits 0. **No code fix.** R59 and R58 measured,
+no rule built — both wait for tracking (backlog 7); R60 opened from the
+architect's reading of production's log the same afternoon; backlog 7 and
+40 decided by the user.
+
+**The tool, read.** It only reads: `DogGallery(path)` loads the file and
+writes nothing on construction (`faces.Gallery.load`), and the clips are
+decoded by `replay.frames`. Three `SubjectDetector`s share one wrapped
+network (`Recording`, PYTHON 46); each moving frame forces its detector's
+run (`last_run = -inf`), so `network.output` is always that run's. The
+relabelled boxes are found in the detector's own trace by the same reasons
+`replay.py` prints. A box's DINOv2 distance is against whatever gallery is
+named; the developer used a copy of production's taken at 16:20.
+
+**The ground truth, checked.** The four events with `most_people` ≥ 2 in
+production's JSON since R42 (b) are the four the HANDOFF lists, each with
+its `.people.jpg`; none is two people. The cause the developer found —
+YOLO drew every dog's `person` box — matches the architect's reading of
+the sent pictures that opened R59 (ARCHITECTURE 22.3). The crops
+themselves — the 37 dog boxes, the night person crops nearest a dog — were
+looked at by the developer, not again by the review.
+
+**The decision.** Both rules fail the plan's condition, which is the
+user's (CONTEXT 3): R59's per-event zoom would lose a person crouching
+behind the car at night, R58's rule (a) a person standing behind another,
+and neither has a true case to show it keeps one. Building nothing was
+right. Both are answered by the tracking the user asked for today: a
+track's label voted over its frames, and a count of tracks — the
+HANDOFF's own suggestion.
+
+**What the documentation claimed and was wrong.** ARCHITECTURE 22.3 said
+NMS and `drop_duplicates` remove two boxes on one body before anything is
+counted; nested boxes survive both (IoU 0.33–0.43). Corrected.
+
+**Also today, outside the review** (the same conversation, before the
+handover): the user's two requests — follow the body once a face names it,
+and notifications that never lose a risk and never shout — measured on
+production's log and written as backlog 7 and 40; reading `notify._faceless`
+for item 40 found that the cooldowns drop what they block (R60).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2074,3 +2120,5 @@ of `CONTEXT.md`.
 | D25 | developer | high | 15/10 16:55–17:16 | session 25: R55 — `view_events`, the recovery, leave-one-event-out — and backlog 32 for dogs (313 tests) | 56% → 72%: R55 9, backlog 32 for dogs 7 | 12% → 14% | about 245k tokens at the end, a new conversation |
 | A35 | architect | ultracode | 15/10 17:17–17:35 | review 27: the diff read whole, the recovery and the face table run again on a copy, overlapping events measured, the dog panel at 375 and 1024 px with production's table served to the test copy; HANDOFF integrated, ARCHITECTURE 10.15–10.16, 19.2 and 20, PYTHON 45, raid log 21; release and deploy `v2026.10.15.2`; nothing planned to hand over | 74% → 84% | 15% → 16% | 74k → 224k tokens, a new conversation (started by the developer's handover) |
 | A36 | architect | ultracode | 16/10 15:30–15:50 | the user's report, many notifications in Home: production's log since 15/10 16:00, the 31 sent pictures on a contact sheet and zoomed, the dog gallery tried on the false person boxes, the hold's delay measured, quiet periods simulated; the user kept the rule (CONTEXT 3); R58, R59; developer 26 planned and started | 4% → 10% (new window) | 17% → 17% | 229k → 288k tokens, review 27's conversation |
+| D26 | developer | high | 16/10 15:50–18:45 | session 26: R59 and R58 measured — every listed clip replayed in three phases, 588 production events scanned for two people (about an hour, four processes) — `person_signals.py`, no rule built | 10% → 40%, shared with A37 from 16:15 | 17% → 21% | about 232k tokens at the end, a new conversation |
+| A37 | architect | ultracode | 16/10 16:15–19:20 | resumed; the user's two requests — follow the body once a face names it, notifications that never lose a risk and never shout — measured on production's log (29 and 33 messages, the cooldown's drops, loud and silent replayed), competitors searched, backlog 7 and 40 written, R60; then review 28, no release; developer 27 planned | 14% → 48%, shared with D26 until 18:45: about 8 points before the review, 8 for it | 18% → 22% | 100k → 270k tokens, a new conversation |

@@ -1115,6 +1115,36 @@ in the form holds a single `<option>`, set to `slider_steps / 2` by
 browser draws a tick under the track there (PYTHON 43). At the default the
 thumb covers the tick, as it should.
 
+### 7.15 A dog YOLO itself calls a person (R59, 16/10/2026)
+
+The household's dogs reached the phone as faceless people (R59). Developer
+26 replayed every listed clip through three detectors, one per phase of the
+live 0.3 s rhythm (`tools/person_signals.py`), and looked at every person
+box as a crop: all 37 were Aurora or Mirana, and **YOLO itself drew them** —
+R44 relabelled one, R46 none, so bounding R46's chain (R47) changes nothing.
+Four signals were measured against 376 boxes of true people, the residents
+with no face seen in nine events:
+
+| Signal | 37 dog boxes | 376 person boxes |
+|---|---|---|
+| DINOv2 distance to the nearest named dog (20) | 0.21–0.52 | 0.30–0.75; 2 sure and 42 probable, at night |
+| Height over width | 0.64–3.11 | 1.30–6.02 |
+| YOLO's own dog score at the spot | 0.00–0.63 | 0.00–0.65 |
+| YOLO again on the box zoomed to fill 640 px: dog above person | 28 | 8 |
+
+None separates them without losing a person. In infrared a standing person
+is as near the dogs' gallery as the dogs' own boxes. The zoomed second
+opinion — the box cut square with half its size of context, so a 150 px dog
+is seen at 640 px instead of about 100 — is the best: as a rule per event,
+"the event's person is a dog when no box is confirmed, zoomed, at person ≥
+0.35", it clears 5 of 6 dog events and keeps every true one, but the
+resident half hidden behind the car at night (`Front/2026-10-15/19-24-49`)
+kept 2 of 16 boxes, and none on full-resolution frames — a shorter visit by
+someone crouching there would be lost (CONTEXT 3). The safe direction,
+positive evidence only, clears one event of seven. **Nothing was built.**
+The answer is tracking (BACKLOG 1, item 7): a body YOLO calls a dog in most
+of its frames is a dog, which no single frame can say.
+
 ---
 
 ## 8. The recording layer — `clips.py`
@@ -2180,6 +2210,12 @@ Two locks prevent the flood that would make the feature unbearable:
   **per camera**: someone walking about in front does not make twenty
   messages, but an event on Back during Front's quiet still gets through.
   Faces have their own per-person interval (12.10).
+
+**Both intervals drop what they block** — the message is never sent, only
+logged as "skipped: cooldown" — so a held faceless person on a camera that
+sent anything in the last two minutes never reaches the phone (R60, found
+16/10/2026). Backlog 40 replaces both with incidents that silence a message
+instead of dropping it.
 
 ### 12.4 It never stalls capture
 
@@ -3886,8 +3922,11 @@ someone the system cannot account for always wins over silence (CONTEXT 3).
   counts — a dog relabelled by R44 or R46 (7.12, 7.13), or YOLO calling a dog
   a person (R18) — and costs one extra message. So do two residents leaving
   together with one face seen: the system cannot tell that from a stranger.
-  Two boxes on one body are what NMS (0.45) and `drop_duplicates` remove
-  before anything is counted.
+  Two boxes on one body are removed by NMS (0.45) and `drop_duplicates` only
+  when they overlap like twins. A smaller box nested in the larger — one
+  taking in the car door, a pillar, a bag — has IoU 0.33–0.43 and survives
+  both: 17 of 34 two-person frames found in 588 events were that, and none
+  of the 34 was two people (R58, HISTORY 13.29).
 - **The picture is the frame where the people were counted** (R56,
   15/10/2026). Until then it was the best single view, chosen by one
   person's confidence × height, and the phone could show only the resident
