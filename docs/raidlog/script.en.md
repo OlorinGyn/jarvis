@@ -1468,3 +1468,71 @@ visit out) · **The Dog Dial** (backlog 32 for dogs). Lurking: thirteen
 misfiled dog photos, four among the Chosen; the sign-in screen that puts the
 house to sleep. Next: the Owner turns the two dials — or leaves them where
 they are.
+
+## Issue #22 — The Silent Bell
+
+`v2026.10.16` · 16 Oct 2026
+
+**Panel 1.** Deep blue night. A phone on a bedside table, buzzing again and
+again, a stack of notification cards spilling off its screen. Every card
+shows the backyard in infrared, or a dog in a box labelled `person`.
+THE OWNER: Many notifications in Home.
+CAPTION: 31 messages in 23 hours. Not one of them a stranger.
+
+**Panel 2.** Dark red. A toll gate with a two-minute hourglass on top: the
+Cooldown. A faceless figure walks up to it; the bar stays down and a
+trapdoor opens under the figure, into a pit lettered `skipped: cooldown`.
+BOSS (the gate): TWO MINUTES PER CAMERA. WHATEVER COMES, FALLS.
+CAPTION: 291 messages fell in a week. A stranger would have fallen the same
+way.
+
+**Panel 3.** Warm cream. The owl reads the Owner's rule from a scroll, by
+lantern light.
+THE OWNER: A risk must never be lost. And more than one notification in 30
+seconds means something is wrong.
+THE OWNER: Every time you see him in a different place, it is worth a new
+one.
+
+**Panel 4.** The owl draws on a blackboard: a big bell and a small bell with
+a muffler. Arrows into the big bell: "first", "another camera", "more
+people". Into the muffled one: "same place again", "the face after".
+ARCHITECT: Nothing is dropped. Each message rings, or arrives with no sound.
+And silent, not edited — every photo stays on Telegram's servers, out of
+reach of whoever takes the M900.
+
+**Panel 5.** The beaver at a test bench. A tiny faceless figure is sent
+through a model of the gate twice; the second time a red light flashes.
+DEV: First the test that fails: two people with no face, a moment apart, in
+Home. Today the second one gets nothing.
+J.A.R.V.I.S.: `returned 0`
+CAPTION: Then the gate came down. The test passes; the second arrives
+silently.
+
+**Panel 6.** The beaver mounts a 30-second hourglass over the big bell.
+Messages that arrive while the sand runs slip in quietly; when the sand
+runs out the bell rings once, with a card.
+J.A.R.V.I.S.: `Back 21:03:10: person — and 1 more, sent silently above`
+CAPTION: One ring in 30 seconds, at most. The Owner's number.
+
+**Panel 7.** Night. Back's drone goes dark and drops a little. On a
+watchtower beside the house, a small sentry with a pocket watch checks both
+drones every five seconds.
+J.A.R.V.I.S.: `Back: no picture since 16:32:10`
+CAPTION: The outage of 14 October left no line in the log. This one would
+have.
+
+**Panel 8.** The owl at a desk, a week of log on a long paper roll, a
+counter in each claw.
+ARCHITECT: Replayed on the real log: in Home, 100 messages instead of 54 —
+the ones that used to fall. 42 rings instead of 54. The chat gets fuller;
+the phone gets quieter.
+
+**Panel 9.** The M900. The parcel `v2026.10.16` goes in; the drones rise.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Closing card.** Abilities: **The Silent Bell** (`disable_notification`) ·
+**The Incident** (one for the house, two minutes of quiet to close) · **The
+Hourglass** (the 30-second floor) · **The Watchtower** (`camera_down`).
+Lurking: the dogs still dressed as people, the twin boxes on one body — and
+at the next door, a library whose first import takes 89 seconds against a
+deploy that waits 90. Next: the Tracker, and a body that keeps its name.

@@ -1525,3 +1525,73 @@ Cortina** (deixar a visita inteira de fora) · **O Ajuste dos Cães** (backlog
 32 para cães). À espreita: treze fotos de cães no lugar errado, quatro entre
 as Escolhidas; a tela de login que põe a casa para dormir. Próxima: o Dono
 gira os dois ajustes — ou deixa onde estão.
+
+## Edição #22 — O Sino Silencioso
+
+`v2026.10.16` · 16 out 2026
+
+**Quadro 1.** Azul profundo, noite. Um celular no criado-mudo vibrando sem
+parar, uma pilha de cartões de notificação escorrendo da tela. Cada cartão
+mostra o quintal em infravermelho, ou um cachorro numa caixa marcada
+`person`.
+O DONO: Muitas notificações em Home.
+LEGENDA: 31 mensagens em 23 horas. Nenhuma de um estranho.
+
+**Quadro 2.** Vermelho escuro. Uma cancela de pedágio com uma ampulheta de
+dois minutos em cima: o Cooldown. Uma figura sem rosto se aproxima; a
+cancela não sobe e um alçapão se abre sob a figura, num poço com as letras
+`skipped: cooldown`.
+CHEFÃO (a cancela): DOIS MINUTOS POR CÂMERA. O QUE VIER, CAI.
+LEGENDA: 291 mensagens caíram em uma semana. Um estranho teria caído do
+mesmo jeito.
+
+**Quadro 3.** Creme quente. A coruja lê a regra do Dono num pergaminho, à
+luz da lanterna.
+O DONO: Um risco nunca pode se perder. E mais de uma notificação em 30
+segundos quer dizer que algo está errado.
+O DONO: Toda vez que você o vê num lugar diferente, vale uma notificação
+nova.
+
+**Quadro 4.** A coruja desenha num quadro-negro: um sino grande e um sino
+pequeno com abafador. Setas para o sino grande: "o primeiro", "outra
+câmera", "mais gente". Para o abafado: "o mesmo lugar de novo", "o rosto
+que vem depois".
+ARQUITETA: Nada se perde. Cada mensagem toca, ou chega sem som. E
+silenciosa, não editada — cada foto fica nos servidores do Telegram, fora
+do alcance de quem levar o M900.
+
+**Quadro 5.** O castor numa bancada de teste. Uma figurinha sem rosto passa
+duas vezes por uma maquete da cancela; na segunda, pisca uma luz vermelha.
+DEV: Primeiro o teste que falha: duas pessoas sem rosto, um instante
+separadas, em Home. Hoje a segunda não recebe nada.
+J.A.R.V.I.S.: `returned 0`
+LEGENDA: Depois a cancela caiu. O teste passa; a segunda chega em silêncio.
+
+**Quadro 6.** O castor monta uma ampulheta de 30 segundos sobre o sino
+grande. As mensagens que chegam enquanto a areia corre entram quietinhas;
+quando a areia acaba, o sino toca uma vez, com um cartão.
+J.A.R.V.I.S.: `Back 21:03:10: person — and 1 more, sent silently above`
+LEGENDA: Um toque em 30 segundos, no máximo. O número do Dono.
+
+**Quadro 7.** Noite. O drone Back se apaga e cai um pouco. Numa torre de
+vigia ao lado da casa, uma sentinela pequena com um relógio de bolso
+confere os dois drones a cada cinco segundos.
+J.A.R.V.I.S.: `Back: no picture since 16:32:10`
+LEGENDA: A queda de 14 de outubro não deixou linha no log. Esta deixaria.
+
+**Quadro 8.** A coruja numa mesa, uma semana de log num rolo de papel
+comprido, um contador em cada garra.
+ARQUITETA: Repassado no log real: em Home, 100 mensagens em vez de 54 — as
+que antes caíam. 42 toques em vez de 54. O chat fica mais cheio; o celular,
+mais quieto.
+
+**Quadro 9.** O M900. O pacote `v2026.10.16` entra; os drones sobem.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Cartão final.** Habilidades: **O Sino Silencioso**
+(`disable_notification`) · **O Incidente** (um para a casa, dois minutos de
+silêncio para fechar) · **A Ampulheta** (o piso de 30 segundos) · **A Torre
+de Vigia** (`camera_down`). À espreita: os cães ainda vestidos de gente, as
+caixas gêmeas num corpo só — e, na próxima porta, uma biblioteca cujo
+primeiro import leva 89 segundos contra um deploy que espera 90. Próxima: o
+Rastreador, e um corpo que guarda o nome.
