@@ -2238,6 +2238,14 @@ measured first (BACKLOG 3).
 
 **Not looked at:** the page did not change.
 
+**The deploy.** `-Action update` to `v2026.10.16.2` took 52 s in all, warm-up
+included; the sync added 23 packages, `check_data` read every file before
+and after, and production was stopped from 20:27:36 to 20:27:54, both
+cameras ok. The warm-up's own line was cut from the captured output: its
+files were already known to Smart App Control on this M900 (review 29,
+developer 28), so this run could not show the 89 s case anyway — the next
+release with a new binary package will.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2311,4 +2319,4 @@ of `CONTEXT.md`.
 | D27 | developer | high | 16/10 evening | session 27: R60 by a test, backlog 40 — the incident, the floor, the camera watch, the page — and `replay_notifications.py` (328 tests) | 49% → 58% | 23% → 24% | 179k tokens at the end, a new conversation |
 | A38 | architect | ultracode | 16/10 19:27–19:50 | review 29: the diff read whole, the replay run again, the log's bursts and failures, the page at 375 and 1000 px, tracking's library probed under Smart App Control; HANDOFF integrated, ARCHITECTURE 12.11–12.12 and 22.2, PYTHON 47, raid log 22; release and deploy `v2026.10.16`; developer 28 planned | 60% → 74% | 24% → 26% | 110k → about 260k tokens, a new conversation (started by the developer's handover) |
 | D28 | developer | high | 16/10 evening | session 28: R61 by three tests, `trackers` and `WarmUp`, `replay_tracks.py`, tracks measured on 25 events (item 7 part 1, step 4 not reached) (338 tests) | 75% → 84%, about 45 minutes of it waiting on two replays | 26% → 27% | 82k → about 205k tokens, a new conversation |
-| A39 | architect | ultracode | 16/10 23:15–ACEND | review 30: the diff read whole, the warm-up's imports run, every tag checked for `.python-version`, the tracker's first box read in the library; HANDOFF integrated, ARCHITECTURE 7.16, 12.11–12.12 and 18.7, PYTHON 48, raid log 23; release and deploy `v2026.10.16.2`; developer 29 planned | 86% → ACUSE | 27% → ACWEEK | 74k → ACCTX, a new conversation (started by the developer's handover) |
+| A39 | architect | ultracode | 16/10 20:17–20:32 | review 30: the diff read whole, the warm-up's imports run, every tag checked for `.python-version`, the tracker's first box read in the library; HANDOFF integrated, ARCHITECTURE 7.16, 12.11–12.12 and 18.7, PYTHON 48, raid log 23; release and deploy `v2026.10.16.2`; developer 29 planned | 86% → 94% (the window reset at 20:30, right after) | 27% → 28% | 74k → about 205k tokens, a new conversation (started by the developer's handover) |
