@@ -239,6 +239,7 @@ tools/
   dog_bench.py    dog descriptors against learned embeddings on a copy of dogs/ (R53; models in models/bench/dogs)
   person_signals.py  per person box of a clip: its origin, the signals that could tell a dog, two people at once (R59, R58)
   replay_notifications.py  a log's notifications through the incident rule: how many ring, how many arrive silently (ARCHITECTURE 12.11)
+  replay_tracks.py  the live detector's boxes through a ByteTrack tracker per phase: what each track saw (item 7, ARCHITECTURE 7.16)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -305,6 +306,7 @@ uv run python tools/face_bench.py [--pipelines ...]     face models compared on 
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
 uv run python tools/person_signals.py <video>... [--gallery FILE]   where each person box came from, and what could tell a dog (ARCHITECTURE 7.15)
 uv run python tools/replay_notifications.py <log> [--quiet 120] [--since ...]   loud and silent messages a log would give (ARCHITECTURE 12.11)
+uv run python tools/replay_tracks.py <video>... [--join] [--lost 3 ...]   each track's life, frames by label and vote; tracks against boxes at once (ARCHITECTURE 7.16)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg

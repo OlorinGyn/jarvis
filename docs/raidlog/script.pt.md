@@ -1595,3 +1595,72 @@ de Vigia** (`camera_down`). À espreita: os cães ainda vestidos de gente, as
 caixas gêmeas num corpo só — e, na próxima porta, uma biblioteca cujo
 primeiro import leva 89 segundos contra um deploy que espera 90. Próxima: o
 Rastreador, e um corpo que guarda o nome.
+
+## Edição #23 — O Rastreador que Nunca Olha
+
+`v2026.10.16.2` · 16 out 2026
+
+**Quadro 1.** Noite, o quintal em infravermelho. Aurora atravessa o
+gramado dentro de uma caixa marcada `person`; no quadro seguinte o mesmo
+cachorro usa uma caixa `dog`; no próximo, `person` de novo. Cada quadro é
+uma foto avulsa presa num mural de cortiça, sem nenhum barbante entre elas.
+LEGENDA: Um quadro de cada vez, ninguém lembra quem era quem.
+
+**Quadro 2.** Um personagem novo sai de um caixote carimbado
+`trackers 2.6.1`: um mensageiro vendado, com prancheta e cronômetro. Ele
+nunca tira a venda.
+J.A.R.V.I.S.: `ByteTrackTracker`
+LEGENDA: O Rastreador. Nunca vê um pixel. Só adivinha onde cada caixa deve
+estar no próximo quadro, e confere.
+
+**Quadro 3.** Vermelho escuro. O caixote espera na porta do M900, e uma
+ampulheta enorme marcada 89 s está ao lado de uma menor marcada 90 s.
+CHEFÃO (a ampulheta): MEU PRIMEIRO OLHAR EM CADA DLL NOVA LEVA 89
+SEGUNDOS. SUA VERSÃO NOVA TEM 90 PARA ACORDAR.
+LEGENDA: Smart App Control, primeiro olhar.
+
+**Quadro 4.** O castor monta um galpão atrás da casa, com a placa
+`%TEMP%`, desembala ali uma cópia do caixote e gira uma vez a chave de cada
+pacote, enquanto o M900 antigo continua vigiando as câmeras.
+DEV: Deixa ele olhar agora, enquanto a versão velha ainda grava. Quando a
+nova começar, ele já viu esses bytes.
+J.A.R.V.I.S.: `Every package imported in 15.6 s.`
+
+**Quadro 5.** A coruja, lupa sobre o `pyproject.toml`, uma linha
+circulada: `link-mode = "copy"`.
+ARQUITETO: Sua nota diz que hardlinks levam isso adiante. Este projeto
+copia.
+DEV: Então por que uma cópia nova importou em 9 segundos?
+ARQUITETO: Porque o que ele lembra são os bytes, não o arquivo. Seu número
+estava certo. O motivo vai corrigido para o livro.
+
+**Quadro 6.** O mensageiro trabalhando numa tela de replay: barbantes
+ligam caixas de quadro em quadro. Um barbante amarra sete caixas: dog, dog,
+person, dog, dog, dog, dog. Uma urna ao lado diz "dog".
+LEGENDA: O voto. Um corpo que o YOLO chama de cachorro na maioria dos
+quadros é um cachorro.
+
+**Quadro 7.** Dois problemas, desenhados como diabinhos. Um segura a
+primeira caixa de cada barbante, sem crachá (`-1`). O outro monta no
+barbante de um morador que saiu de cena e o puxa para cima de um cachorro.
+DEV: A primeira caixa de toda trilha volta sem identidade. E uma vez uma
+trilha levou uma pessoa para dentro de um cachorro.
+ARQUITETO: Então contamos isso direito antes de alguém agir sobre um voto.
+
+**Quadro 8.** Uma caminhada no caminho da frente, cortada em dois clipes
+por um buraco de sete segundos. A caixa prevista pelo mensageiro continua
+deslizando na linha antiga, para fora do quadro, enquanto a pessoa
+reaparece atrás dela.
+LEGENDA: Previsão não é memória. Sete segundos fora de vista, e a
+caminhada vira duas pessoas de novo.
+
+**Quadro 9.** O M900. O pacote `v2026.10.16.2` entra depois que o galpão é
+desmontado; os drones sobem.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Cartão final.** Habilidades: **O Rastreador** (ByteTrack, ainda sem uso
+ao vivo) · **O Aquecimento** (imports antes da parada) · **A Longa
+Ausência** ("picture back, 18 h 5 min without"). À espreita: a primeira
+caixa sem nome, a trilha que escorrega de uma pessoa para um cachorro, a
+caminhada que nenhum buffer junta. Próximo: a primeira caixa ganha nome, e
+as trilhas começam a ser anotadas.

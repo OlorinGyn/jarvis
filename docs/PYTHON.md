@@ -2456,3 +2456,109 @@ before. The value is the string `"true"` because `requests.post(data=fields)`
 sends form fields — URL-encoded for a text, `multipart/form-data` beside a
 photo — and a form field is always text; Telegram reads `"true"` as the
 boolean.
+
+## 48. A tracker that never looks at the image, a library's units read in its source, columns instead of objects, and a script's function tested alone (developer 28)
+
+Item 7's first part (ARCHITECTURE 7.16, 18.7) brought the project's first
+multi-object tracker and a deploy step written in PowerShell.
+
+**Multi-object tracking: predict, then match.** YOLO answers "where are
+the people in this frame?", never "is this the same person as before?".
+ByteTrack answers the second without looking at a pixel. It keeps, per
+object, a **Kalman filter** — a small state (the box's centre, size, and
+their velocities) and how uncertain each value is. Every update has two
+steps, like a physics step in a game loop followed by a correction:
+
+1. **Predict**: move every box by its velocity — "if it kept walking, it
+   should be here now".
+2. **Match**: compare each prediction with each new YOLO box by overlap
+   (IoU, section 46), and pick the pairing with the most total overlap.
+   That pairing is the **assignment problem**, solved by the Hungarian
+   algorithm — `scipy.optimize.linear_sum_assignment(cost)`, one call on a
+   matrix of predictions × detections, O(n³) and exact.
+
+A matched box corrects its filter (the measurement pulls the prediction
+back, weighted by how sure each is); an unmatched prediction is kept, still
+predicted, for `lost_track_buffer`; an unmatched detection starts a new
+track. ByteTrack's own idea is a **second round**: detections too weak to
+start anything are still offered to the tracks left unmatched, so a person
+YOLO hesitated on for one frame keeps their track. Here the detector already
+drops what is under its minimums, so that round is empty.
+
+The constant velocity is also its limit, measured on real walks: a person
+who leaves the view for 7 s is predicted 7 s further along the line they
+were walking, far from where they come back, so no buffer joins the two
+halves. Prediction is not memory.
+
+**A parameter's unit is in the source, not in its name.**
+`lost_track_buffer=30` reads like "30 frames", and with `frame_rate=10/3`
+one would compute 9 s. `trackers/core/base.py` says otherwise: the buffer
+is counted in frames **of 30 FPS** whatever `frame_rate` is, and when
+`update(detections, timestamp=t)` is given times, the budget becomes
+`lost_track_buffer / 30` seconds. So 3 s is `90`. The same reading found
+why a track's first box always comes back with `tracker_id` −1:
+`_spawn_new_tracks` appends −1 for every new track, and the id is allocated
+at its next match. Opening `.venv\Lib\site-packages\<package>` is the
+Python version of "Go to Definition" into a decompiled DLL — except that
+here the source is the real one.
+
+**`supervision.Detections`: columns, not a list of objects.** In Java one
+would write `List<Detection>`, each object holding its box, score and class.
+`Detections` is the other way round — one numpy array per field:
+
+```python
+sv.Detections(xyxy=np.array([[x0, y0, x1, y1], ...]),
+              confidence=np.array([0.62, ...]),
+              class_id=np.array([0, ...]),
+              data={"label": np.array(["person", ...])})
+```
+
+Row *i* of every array is detection *i*: a struct of arrays, like a
+DataFrame without pandas, or a table in a column store. Vector maths runs
+on a whole column at once (section 43), and `detections[idx]` with an
+array of indices reorders **every** column together. The tracker returns
+its detections in its own order — matched first, then new — so the tool
+keeps the label inside `data`, where it travels with its row, instead of
+trusting the order it passed in.
+
+**Importing by name.** The warm-up imports every package installed, without
+knowing their names in advance:
+
+```python
+for name in sorted(importlib.metadata.packages_distributions()):
+    if not name.startswith("_"):
+        importlib.import_module(name)
+```
+
+`packages_distributions()` maps each top-level import name (`cv2`, `PIL`,
+`yaml`) to the distribution that installs it (`opencv-python`, `pillow`,
+`pyyaml`) — the names differ, which is why it exists. `import_module(name)`
+is `import name` with the name in a variable: Java's `Class.forName`, C#'s
+`Assembly.Load`. Importing a package runs its `__init__.py`, which loads
+its compiled `.pyd` files — the DLLs Smart App Control wants to see.
+
+**PowerShell and a native program's bytes.** `git archive --format=zip
+<tag> files > out.zip` would break the zip in Windows PowerShell 5.1: its
+pipeline carries text, so the bytes are decoded and re-encoded on the way.
+`git archive -o out.zip` lets git write the file itself. The function also
+sets `$ErrorActionPreference = 'Continue'` as its first line: in PowerShell
+a variable assigned inside a function is local to that call (dynamic scope),
+so the script's `'Stop'` is back when it returns — section 41's trap, where
+a stderr line became a terminating error, without touching the rest of the
+script.
+
+**Testing one function of a script that acts when it loads.**
+`production.ps1` runs its `-Action` at the bottom, so dot-sourcing it in a
+test would run an update. The developer parsed it instead and defined only
+its functions, in this shape:
+
+```powershell
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$null, [ref]$null)
+$ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) |
+    ForEach-Object { Invoke-Expression $_.Extent.Text }
+```
+
+`ParseFile` returns the syntax tree without running anything — Roslyn's
+`SyntaxTree` in C# — and each function's `Extent.Text` is its source,
+evaluated on its own. The `$WarmUpScript` here-string is a variable, not a
+function, so it has to be defined the same way by hand.

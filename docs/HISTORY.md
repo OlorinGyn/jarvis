@@ -281,6 +281,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 27 | 15/10/2026 | `8ba7da3..e700b05`, developer session 25 — R55, backlog 32 for dogs | no code fixed; 313 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the event recovery run again on the review's own copy of production's galleries (times kept): the same 81 + 57 face views and 205 dog views, none unknown, and the same face table; overlapping events of one camera measured (3 of 39 sure views at 0.40, no wrong answer, no dog pair): the event stays the unit; the dog panel at 375 px and 1024 px with production's table; R55 closed, backlog 32 done for both halves, nothing opened; **release `v2026.10.15.2`**, deployed at 17:27: 979 events, 206 face and 413 dog sightings, 18 reports read before and after; about 11 s stopped, cameras ok 3 s after the start; the first start recovered 81 + 57 face and 205 dog events, none unknown, and the live tables matched the copy's (13.28) |
 | 28 | 16/10/2026 | `a672890..655faa6`, developer session 26 — R59 and R58 measured | no code fixed, no program code changed, no release; `person_signals.py` read (it only reads); the four two-person events in production's JSON checked, none two people; ARCHITECTURE 22.3 corrected (nested boxes survive NMS and `drop_duplicates`); R59 and R58 wait for tracking; R60 opened (the cooldowns drop what they block); backlog 7 (tracking) and 40 (notifications by incident) decided by the user the same day (13.29) |
 | 29 | 16/10/2026 | `0cf58f9..7670811`, developer session 27 — R60, backlog 40: notifications by incident, a camera with no picture | no code fixed; 328 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again on production's log (741 messages, 220 loud and 17 floor texts at 120 s); no send ever failed there and at most 9 messages fall in a minute; the page checked at 375 px and about 1000 px; tracking's library probed on the M900 for the plan (Roboflow's `trackers` imports under Smart App Control); R60 closed, R61 opened (low); **release `v2026.10.16`** (13.30) |
+| 30 | 16/10/2026 | `0d4eeab..dccf519`, developer session 28 — R61, `trackers` and the deploy's warm-up, tracks measured (item 7 part 1) | no code fixed; 338 tests pass, no comments, `check_doc_refs` 0; every release tag holds `.python-version`, the warm-up's imports run locally (55 modules, none failing); the library's first box with −1 read in its source; the HANDOFF's hardlink explanation corrected — the project copies (ARCHITECTURE 18.7); R61 closed; **release `v2026.10.16.2`** (13.31) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -360,6 +361,7 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R57 | low | `production.ps1 -Action update` stops a production whose cameras are down | done `e2165c0`, `v2026.10.15`: refuses unless `-Force`, and every failure says which part failed (ARCHITECTURE 18.7; 13.27 below) |
 | ✓ | R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | done `cde3087`, `v2026.10.15.2`: each view records its event (`view_events`), the views stored before recovered at start, both tables leave out the probe's whole event (ARCHITECTURE 10.15, 10.16; 13.28 below) |
 | ✓ | R60 | **high** | The per-camera and per-face cooldowns drop what they block: a held faceless person can never reach the phone | done `136e9b0`, `v2026.10.16`, with backlog 40: nothing is dropped, a message rings or arrives silently by the house's incident; reproduced first by `test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone` (ARCHITECTURE 12.11; 13.30 below) |
+| ✓ | R61 | low | Item 40's three small things: the floor renews a closed incident, the replay tool misreads camera lines, the return counts minutes only | done `f549760`, `v2026.10.16.2`: the floor renews only an open incident, the camera lines parsed by their own words and forced as live, "18 h 5 min without"; each reproduced by a test first (ARCHITECTURE 12.11, 12.12; 13.31 below) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -2184,6 +2186,58 @@ next 4.2 s. One update with two boxes costs 0.35 ms. Its defaults are not
 this project's: a box under `track_activation_threshold` 0.7 starts no
 track, so the second test box, at 0.6, got none.
 
+### 13.31 Review 30 — developer session 28 (16/10/2026)
+
+Developer 28 reviewed whole (`0d4eeab..dccf519`: R61 in `notify.py`,
+`outage.py` and `replay_notifications.py`; `trackers` added and
+`production.ps1`'s `WarmUp`; `tools/replay_tracks.py`; 10 new tests). 338
+tests pass, no comments in `src/` and `tools/`, `check_doc_refs` exits 0;
+nothing read from or written to disk changed. **No code fix; release
+`v2026.10.16.2`.** R61 closed. Plan step 4, recording tracks live, was not
+reached: the developer stopped after step 3 at 83 % of the window, as the
+plan allowed.
+
+**R61, read against its tests.** `_end_of_floor` renews the incident only
+when `last_loud − last_sent < quiet`, the exact negation of `_loud`'s
+`now − last_sent >= quiet` that opens a fresh one, so the two agree on when
+an incident is open; the test fails at the commit before (one timer, the
+third message silent) and passes after (a second timer: it rang). The
+replay's camera lines now drop the colon only when the text starts with the
+camera words, and are forced loud as `camera_down` is live. `_duration`
+gives "6 min", "1 h", "18 h 5 min".
+
+**The warm-up, read and partly run.** Every release tag, 40 of them, holds
+`.python-version`, so `git archive` of the three paths cannot fail on a
+missing one. `Invoke-ProdGit` throws on a non-zero exit, `Expand-Archive`
+stops on its own, and the catch only warns. The import loop, run here on
+the test copy's environment (with the two dev packages): 55 top-level
+modules, none failing, 8.1 s; `trackers` pulls `scipy.optimize`, so the
+Hungarian algorithm's DLL is among those warmed. Accepted: a module that
+prints when imported would add lines to the "imported in N s" message.
+**One explanation corrected.** The HANDOFF said `uv` hardlinks from its
+cache, so the real `.venv` would land the very files Smart App Control had
+just seen. `pyproject.toml` has `link-mode = "copy"` since the move to
+`src/` (ARCHITECTURE 3.1): every sync copies. The measurement stands — a
+fresh `.venv` of already-seen files imported everything in 9.1 s against
+89 s the first time ever — so what Smart App Control remembers follows the
+bytes, not the file, and the warm-up works for that reason. ARCHITECTURE
+18.7 says so. The update path itself runs for the first time with this
+release.
+
+**The tracker, read in its source.** `trackers/core/bytetrack/tracker.py`
+spawns every new track with `tracker_id` −1 and allocates the id at its
+next match, whatever `minimum_consecutive_frames` says — the developer's
+first limit, confirmed. The tool's parameters are this project's
+(ARCHITECTURE 7.16's table) and its `--join` timeline may be off by up to a
+segment, which does not change (c): gaps of 7–9 s defeat a constant-velocity
+prediction at any buffer. Its reading of (a) counts an untracked person box
+as a person, the safe side. **The plan for part 2 changes from these
+numbers:** the vote alone clears two of seven dog events in some phases;
+the first box joined to its track and a run of person frames must be
+measured first (BACKLOG 3).
+
+**Not looked at:** the page did not change.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2256,3 +2310,5 @@ of `CONTEXT.md`.
 | A37 | architect | ultracode | 16/10 16:15–19:20 | resumed; the user's two requests — follow the body once a face names it, notifications that never lose a risk and never shout — measured on production's log (29 and 33 messages, the cooldown's drops, loud and silent replayed), competitors searched, backlog 7 and 40 written, R60; then review 28, no release; developer 27 planned | 14% → 48%, shared with D26 until 18:45: about 8 points before the review, 8 for it | 18% → 22% | 100k → 270k tokens, a new conversation |
 | D27 | developer | high | 16/10 evening | session 27: R60 by a test, backlog 40 — the incident, the floor, the camera watch, the page — and `replay_notifications.py` (328 tests) | 49% → 58% | 23% → 24% | 179k tokens at the end, a new conversation |
 | A38 | architect | ultracode | 16/10 19:27–19:50 | review 29: the diff read whole, the replay run again, the log's bursts and failures, the page at 375 and 1000 px, tracking's library probed under Smart App Control; HANDOFF integrated, ARCHITECTURE 12.11–12.12 and 22.2, PYTHON 47, raid log 22; release and deploy `v2026.10.16`; developer 28 planned | 60% → 74% | 24% → 26% | 110k → about 260k tokens, a new conversation (started by the developer's handover) |
+| D28 | developer | high | 16/10 evening | session 28: R61 by three tests, `trackers` and `WarmUp`, `replay_tracks.py`, tracks measured on 25 events (item 7 part 1, step 4 not reached) (338 tests) | 75% → 84%, about 45 minutes of it waiting on two replays | 26% → 27% | 82k → about 205k tokens, a new conversation |
+| A39 | architect | ultracode | 16/10 23:15–ACEND | review 30: the diff read whole, the warm-up's imports run, every tag checked for `.python-version`, the tracker's first box read in the library; HANDOFF integrated, ARCHITECTURE 7.16, 12.11–12.12 and 18.7, PYTHON 48, raid log 23; release and deploy `v2026.10.16.2`; developer 29 planned | 86% → ACUSE | 27% → ACWEEK | 74k → ACCTX, a new conversation (started by the developer's handover) |

@@ -1536,3 +1536,68 @@ Hourglass** (the 30-second floor) · **The Watchtower** (`camera_down`).
 Lurking: the dogs still dressed as people, the twin boxes on one body — and
 at the next door, a library whose first import takes 89 seconds against a
 deploy that waits 90. Next: the Tracker, and a body that keeps its name.
+
+## Issue #23 — The Tracker Who Never Looks
+
+`v2026.10.16.2` · 16 Oct 2026
+
+**Panel 1.** Night, the backyard in infrared. Aurora trots across the lawn
+in a box labelled `person`; in the next frame the same dog wears a box
+labelled `dog`; in the next, `person` again. Each frame is a separate
+snapshot pinned to a corkboard, with no string between them.
+CAPTION: One frame at a time, nobody remembers who was who.
+
+**Panel 2.** A new character steps out of a crate stamped `trackers 2.6.1`:
+a blindfolded courier with a clipboard and a stopwatch. It never lifts the
+blindfold.
+J.A.R.V.I.S.: `ByteTrackTracker`
+CAPTION: The Tracker. It never sees a pixel. It only guesses where each box
+should be next, and checks.
+
+**Panel 3.** Dark red. The crate sits outside the M900's door, and a huge
+hourglass labelled 89 s stands beside a smaller one labelled 90 s.
+BOSS (the hourglass): MY FIRST LOOK AT EVERY NEW DLL TAKES 89 SECONDS. YOUR
+NEW VERSION GETS 90 TO WAKE UP.
+CAPTION: Smart App Control, first look.
+
+**Panel 4.** The beaver builds a small shed behind the house, labelled
+`%TEMP%`, unpacks a copy of the crate there and turns every package's key
+once, while the old M900 keeps watching the cameras.
+DEV: Let it look now, while the old version still records. When the real
+one starts, it has seen these bytes already.
+J.A.R.V.I.S.: `Every package imported in 15.6 s.`
+
+**Panel 5.** The owl, magnifier on `pyproject.toml`, a line circled:
+`link-mode = "copy"`.
+ARCHITECT: Your note says hardlinks carry it across. This project copies.
+DEV: Then why did a fresh copy import in 9 seconds?
+ARCHITECT: Because what it remembers is the bytes, not the file. Your number
+was right. The reason goes in the book corrected.
+
+**Panel 6.** The courier at work on a replay screen: strings connect boxes
+across frames. One string ties seven boxes: dog, dog, person, dog, dog,
+dog, dog. A ballot box beside it reads "dog".
+CAPTION: The vote. A body YOLO calls a dog in most of its frames is a dog.
+
+**Panel 7.** Two problems, drawn as small gremlins. One holds the first box
+of every string, with no name tag (`-1`). The other is riding the string of
+a resident who walked off-screen and pulling it onto a dog.
+DEV: Every track's first box comes back unidentified. And once, a track
+carried a person into a dog.
+ARCHITECT: Then we count them right before anyone acts on a vote.
+
+**Panel 8.** A walk on the front path, cut into two clips by a seven-second
+gap. The courier's predicted box keeps sliding along the old line, off the
+edge of the frame, while the person reappears behind it.
+CAPTION: Prediction is not memory. Seven seconds out of view, and the walk
+is two people again.
+
+**Panel 9.** The M900. The parcel `v2026.10.16.2` goes in after the shed is
+cleared; the drones rise.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Closing card.** Abilities: **The Tracker** (ByteTrack, unused live yet) ·
+**The Warm-Up** (imports before the stop) · **The Long Absence** ("picture
+back, 18 h 5 min without"). Lurking: the nameless first box, the track that
+slides from a person to a dog, the walk no buffer can join. Next: the first
+box gets its name, and the tracks start being written down.

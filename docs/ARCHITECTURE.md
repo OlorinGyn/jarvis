@@ -1145,6 +1145,69 @@ positive evidence only, clears one event of seven. **Nothing was built.**
 The answer is tracking (BACKLOG 1, item 7): a body YOLO calls a dog in most
 of its frames is a dog, which no single frame can say.
 
+### 7.16 Tracks, measured before they act (item 7 part 1, 16/10/2026)
+
+**The tracker.** ByteTrack, from Roboflow's `trackers` 2.6.1
+(`ByteTrackTracker`, Apache-2.0), a dependency since `v2026.10.16.2`. It
+never looks at the image: each object is a Kalman filter predicting where
+its box should be, and each update matches the predictions to YOLO's new
+boxes by overlap (PYTHON 48). Nothing in `src/` uses it yet.
+`tools/replay_tracks.py` measures it: the live `SubjectDetector`, memories
+and all, in the three phases of `person_signals.py` (7.15), each phase's
+kept detections, every label, into a tracker of its own; YOLO runs once,
+and the tracker again for each `--lost` buffer asked for. `--join` puts
+several events on one timeline, each at its `started_at` less
+`PRE_SECONDS`, to ask whether one track would cover a walk cut in two.
+
+| Parameter | Value | Why |
+|---|---|---|
+| `track_activation_threshold`, `high_conf_det_threshold` | the lowest live minimum, 0.35 in production (7.14) | the library's 0.7 and 0.6 would start no track for most of the night's people; the detector already drops what is under its minimums, so ByteTrack's second, low round is empty |
+| `frame_rate` | 10/3 | one phase sees every third analysis frame |
+| `lost_track_buffer` | seconds × 30 | the library counts it in frames of 30 FPS whatever `frame_rate` says (`trackers/core/base.py`); with `timestamp=` given to `update` it becomes seconds |
+| `minimum_consecutive_frames` | 1 | the earliest a track can get its id |
+
+**What the numbers support** (developer 28, every clip of R59 and R58 and
+the residents' faceless events of 15–16/10, on the M900):
+
+- **The vote** — a track is a dog only with more dog frames than person
+  frames, a tie a person. Every track holding a person frame of a true
+  person was voted person (the mixed ones 1–1 and 7–1). It clears a dog
+  event only when every person box of the event sits in a dog-majority
+  track: `Front/2026-10-15/22-00-19` in 2 of 3 phases,
+  `Front/2026-10-16/14-51-12` in 1 of 3, never `Front/2026-10-16/00-52-26`,
+  where YOLO says person in 6 of 6 frames.
+- **Tracks at once against boxes at once** (R58): the count of tracks voted
+  person fixes `Front/2026-10-16/14-53-35` in every phase (the second box
+  is a dog track) and `Front/2026-10-15/19-25-05` in 2 of 3; not
+  `Front/2026-10-16/00-12-09`; `Front/2026-10-15/21-47-33`'s nested pair
+  does not reproduce in the replay.
+- **The boundary.** Of the four walks cut in two (item 7), only the one
+  where the person stays in view across the cut is one track; the others,
+  with the body out of view for 6.9–9.0 s, are not joined at any buffer up
+  to 8 s. The constant-velocity prediction carries the lost box on at the
+  walk's last speed, so after 7 s it is far from where the person comes
+  back; only a still body is joined
+  (`test_a_gap_longer_than_the_buffer_starts_a_new_track`). Joining walks across events needs appearance or
+  "the same place within N s", not a longer buffer — and a longer buffer
+  joins wrongly: at 8 s a dog and a later person became one track, at 3 s
+  a resident and then the dog. On production, 119 of 624 consecutive
+  person events on one camera start within 3 s of the previous one's end.
+- **The cost**: one update takes 0.03–0.33 ms against tens of milliseconds
+  for YOLO.
+
+**Two limits that decide part 2.** (1) **The library returns a track's
+first box with `tracker_id` −1**: a new track is spawned unidentified and
+gets its id at its second matched box (`_spawn_new_tracks`, whatever
+`minimum_consecutive_frames`). A person seen once has no track, and the
+first frame of a dog track YOLO called person has no vote —
+`Back/2026-10-15/20-54-37`, `Back/2026-10-16/00-54-05` and 22-00-19's
+third phase fail only through such a box. The first box must be joined to
+its track, and a true person seen once (`Back/2026-10-16/13-23-34`) must
+still reach the phone. (2) **A track can carry a resident into a dog**
+(00-12-09, one phase: 7 person frames, then 11 dog): "voted dog, so no
+person" would drop that person, so a rule must also keep a track with a
+long enough run of its own person frames.
+
 ---
 
 ## 8. The recording layer — `clips.py`
@@ -2519,9 +2582,12 @@ should ring within `LOUD_FLOOR_SECONDS` = 30 of the last loud one goes out
 starts a `threading.Timer` (PYTHON 47) for the 30 s mark, and `_end_of_floor`
 then sends one loud text naming what came: "Back 21:03:10: person — sent
 silently above", or "… — and 2 more, sent silently above". That text is a
-loud one (the floor starts again) and a message sent (the incident is
-renewed). Nothing waits: the silent message has already arrived with its
-photo, the ring only comes later.
+loud one (the floor starts again) and, while the incident is still open, a
+message sent that renews it. An incident that closed in the meantime —
+possible only with a quiet window under 30 s — stays closed, so the next
+message opens a new one and rings (R61, `f549760`). Nothing waits: the
+silent message has already arrived with its photo, the ring only comes
+later.
 
 **All of it under `_lock`, none of it blocking.** `_loud(camera, people,
 what, settings, force)` decides and updates both dicts under the module's
@@ -2571,7 +2637,8 @@ at once (PYTHON 27).
   picture since 16:32:10", the wall time of its last frame. A camera that
   never delivered counts from the watch's start.
 - Its first frame after that is its return: "Back: picture back, 7 min
-  without".
+  without"; from an hour on, "18 h 5 min without" or "1 h without"
+  (`outage._duration`, R61).
 - Nothing in the first `GRACE_SECONDS` = 60 after the watch starts, while
   the streams open.
 - Both are a `WARNING` line in the log whatever the mode (`Camera Back: no
@@ -3416,6 +3483,26 @@ window (the 5-minute trigger) passed the already-running check and migrated
 too. Since R52 the migration holds a lock file, so the second copy waits and
 then finds nothing to do (10.14).
 
+**Imports before the stop (item 7, `v2026.10.16.2`).** Smart App Control
+looks at every new DLL the first time it loads, and on the M900 the first
+import of `trackers` and its packages took **89 s** — against the 90 s a
+new version has to deliver frames (review 29). So after `FetchModels`,
+`WarmUp` builds the target's environment where nothing runs:
+`git archive` of its `pyproject.toml`, `uv.lock` and `.python-version`
+into `%TEMP%\jarvis_warmup`, `uv sync --frozen --no-dev
+--no-install-project`, then a small script that imports every top-level
+module of `importlib.metadata.packages_distributions()` once and prints the
+seconds (15.6 s of the 26.7 s the step took on the M900). The folder is
+deleted after. A failure only prints a warning: the real sync after the
+stop would fail on its own and roll back as always. **Why it works,
+measured, not explained:** the project copies from `uv`'s cache
+(`link-mode = "copy"`, 3.1), so the real `.venv` gets new files with the
+same bytes, and a fresh `.venv` of files Smart App Control had already
+seen imported everything in 9.1 s the first time and 5.0 s the second —
+what it remembers follows the content, not the file. The developer's
+HANDOFF said hardlinks carried it; the project does not hardlink (review
+30).
+
 **Two ways production starts, and they do not look the same** (seen on the
 first night, 09/10/2026):
 
@@ -3450,7 +3537,8 @@ dies silently on an invalid handle.
    failed the health check on cameras no release could reach, and rolled
    back (HISTORY 13.26).
 1. Check the data with the **current** version. Unreadable already → refuse,
-   nothing changed.
+   nothing changed. Fetch the target's models, then warm up its packages
+   (both above), while the old version still records.
 2. Hold, stop cleanly.
 3. `git checkout --force <tag>`, `uv sync --frozen --no-dev` (since 10/10/2026: production carries no test tools, and the sync removes them if present), signature check (`tools/check_python.ps1` on `pythonw.exe`).
 4. Check the data with the **new** version.

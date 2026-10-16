@@ -134,11 +134,18 @@ grows, decisions are being postponed.
   veto any part of it**, and a ring that should not have rung, or a silent
   message that should have, goes to the architect with its time.
 
+- **`v2026.10.16.2` on the M900** (R61, item 7 part 1): nothing to see on
+  the page. A camera back after an hour or more now reads "picture back,
+  18 h 5 min without" instead of minutes. The release carries tracking's
+  library, not used yet; its update ran the new warm-up before stopping
+  production (ARCHITECTURE 18.7).
+
 ## Decided, not yet done
 
-- **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7, planned in
-  BACKLOG 3 (developer 28, its first part). Item 40 is done
-  (`v2026.10.16`).
+- **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Its first
+  part was measured by developer 28 (ARCHITECTURE 7.16); its finish — the
+  first box, tracks recorded live — is planned in BACKLOG 3 (developer 29).
+  Item 40 is done (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the

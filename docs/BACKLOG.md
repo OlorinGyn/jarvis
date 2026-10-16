@@ -124,7 +124,12 @@ It works without them, but is incomplete.
    above, not guessed; the loitering message of item 40 (a person nobody
    accounts for still there after some minutes, once); and "the same
    place" of item 40's incident becoming "the same body", so a new person
-   on the same camera rings again (ARCHITECTURE 12.11).
+   on the same camera rings again (ARCHITECTURE 12.11). **Part 1 measured
+   (developer 28, review 30, ARCHITECTURE 7.16):** `trackers` is a
+   dependency since `v2026.10.16.2`, deployed with its imports warmed
+   before the stop; the vote clears only part of R59, a track's first box
+   comes back unidentified, and no buffer joins a walk whose body left the
+   view for 7–9 s — appearance or place will have to.
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -186,14 +191,13 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
 model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
 in review 25, R53, R56 and R57 in review 26, R55 in review 27, R60 in
-review 29.
+review 29, R61 in review 30.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; waits for item 7 (below) |
+| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; waits for item 7, whose tracks clear it only in part so far (ARCHITECTURE 7.16) |
 | R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 (below) |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
-| R61 | low | Item 40's three small things: the floor renews a closed incident, the replay tool misreads camera lines, the return counts minutes only | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
@@ -275,18 +279,6 @@ match only wins within one view, as `Gallery.match` does), or a resident
 needing two views over the threshold — and keep the one that names the
 stranger right without losing a resident's sure sighting of R51's table.
 
-**R61 — Item 40's three small things (low, review 29).** (a) The floor's
-text renews `_incident["last_sent"]` even when the incident had already
-closed — possible only with a quiet window under 30 s — so the next message
-belongs to an incident that should have ended. (b)
-`tools/replay_notifications.py` reads a camera-down line's camera as
-`Back:`, since that line's subject is its whole text, and counts it as a
-third camera, a ring. (c) "picture back, N min without" counts minutes
-only: the M900's 18 hours asleep on 14–15/10 would read "1080 min
-without". **Then:** renew the incident only while it is open; parse the
-camera lines by their own words; from an hour on, "18 h 5 min without".
-Each by a test first (HISTORY 13.30).
-
 **R47 — R46's chain has no end (low, a watch, 13/10/2026).** Every
 relabelled box renews both memories (ARCHITECTURE 7.13), so a real dog that
 takes the place of a person who vanished — someone stepping out of view right
@@ -304,70 +296,58 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 29 is done** (HISTORY 13.30): developer 27 built item 40 and R60
-as planned; no code fix; **`v2026.10.16` released and deployed**. R61 opened
-(low).
+**Review 30 is done** (HISTORY 13.31): developer 28 built R61 and item 7's
+part 1 through step 3; no code fix; **`v2026.10.16.2` released and
+deployed**. Step 4, recording tracks live, was not reached.
 
-**Developer 28: tracking (item 7), part 1 — the tracker measured, then
-recorded.** Part 2 — the name following the track, the label voted over a
-track (R59), the count of tracks (R58), the incident by body — is the next
-session, built from part 1's numbers, not guessed.
+**Developer 29: tracking (item 7), part 1 finished — the first box joined,
+measured again, and tracks recorded live.** Part 2 — acting on tracks: the
+label voted over a track (R59), the count of person tracks (R58), the name
+following the track, the incident by body — is the session after, built
+from these numbers and a day of production's `tracks`, not guessed.
 
-0. **R61 first** (section 2): its three small fixes, each by a test.
-1. **The dependency.** `uv add trackers` — Roboflow's, 2.6.1, Apache-2.0,
-   `ByteTrackTracker`; `supervision` 0.31 no longer has ByteTrack. Review 29
-   probed it on this M900 (HISTORY 13.30): it brings `supervision`,
-   `scipy`, `matplotlib`, `av` and `pillow`, no second OpenCV, and all
-   import under Smart App Control — **the first import took 89 s**, the
-   next 4 s. `production.ps1` gives a new version `HealthSeconds` = 90 to
-   deliver frames and rolls back otherwise, so that first import must
-   happen **before** it stops the old version: measure the first import
-   after `uv sync` into a fresh `.venv`, as an update makes it, and make
-   the new environment import `trackers` once before the stop (with
-   `check_data`, or on its own). Say in the HANDOFF how long it took.
-2. **A replay of tracks**, `tools/replay_tracks.py` (or `person_signals.py`
-   extended): the live `SubjectDetector` with its memories, in three
-   phases as `person_signals.py` runs it, each phase's detections into a
-   `ByteTrackTracker` of its own. Its parameters are this project's, not
-   the library's defaults — its `track_activation_threshold` of 0.7 would
-   start no track for most of the night's people: activation at the live
-   minimums (Settings → Detection, ARCHITECTURE 7.14), `frame_rate` from
-   YOLO's real rate (`MIN_INTERVAL` 0.3 s: about 3 a second),
-   `lost_track_buffer` from seconds. Per track: its life, its frames by
-   label (`person`, `dog`), its largest box, whether it sat nested in
-   another track (intersection over the smaller box, PYTHON 46).
-3. **Measure, and say what each number supports** — no rule in the live
-   loop yet:
-   - (a) **R59:** on the dog clips (section 2: `Back/2026-10-15/20-54-37`,
-     `21-01-08`, `Front/2026-10-15/22-00-19`, `Front/2026-10-16/00-52-26`,
-     `Back/2026-10-16/00-54-05`, `Front/2026-10-16/14-51-12`,
-     `Front/2026-10-16/00-12-09`) and on the residents' true faceless
-     events listed with them, the share of each track's frames YOLO
-     called a dog. Does a vote turn every dog track into a dog and keep
-     every true person a person? A tie, or any doubt, keeps a person
-     (CONTEXT 3).
-   - (b) **R58:** on `Front/2026-10-15/21-47-33`, `Front/2026-10-16/
-     00-12-09` and the four events with `most_people` ≥ 2 (HISTORY 13.29),
-     the most tracks at once against the most boxes at once.
-   - (c) **The boundary:** on the four walks cut in two (item 7:
-     `Back/2026-10-15/18-42-31`, `Front/2026-10-15/19-41-18`,
-     `Front/2026-10-16/00-30-11`, `Front/2026-10-16/14-19-58`, each with
-     the clip 0–7 s before or after it), whether one track would cover
-     both clips, the `lost_track_buffer` that bridges them, and what that
-     buffer would join wrongly — two people one after the other on one
-     camera.
-   - (d) The cost of one update on the M900.
-4. **If the session has room: record, do not act.** One tracker per camera
-   in the live loop, on the detections it already has; each event's JSON
-   gains an optional `tracks` — id, first and last time, frames per label,
-   the most at once — additive, `check_data` before committing. Nothing
-   that notifies or names changes. A day of production then measures the
-   boundary on real walks.
+0. **One module, `src/jarvis/tracks.py`,** used by `tools/replay_tracks.py`
+   and by the live loop, so what the tool measures is what production
+   records. Its tracker is built as ARCHITECTURE 7.16's table says.
+1. **The first box joined to its track.** The library returns a new
+   track's first box with `tracker_id` −1 and gives the id at its next
+   match (`_spawn_new_tracks`, ARCHITECTURE 7.16). Credit that box's label
+   to the track it starts — hold it until the next update and give it to
+   the id that then appears for the tracklet spawned from it, or another
+   way the source allows; say in the HANDOFF which, and why. A box never
+   matched again stays a track of one frame, so a person seen once still
+   counts (`Back/2026-10-16/13-23-34`). By a test first: a track of N boxes
+   counts N labels.
+2. **Measure again with the first box joined,** `replay_tracks.py` on the
+   clips of ARCHITECTURE 7.16, three phases:
+   - (a) R59's seven dog events — which ones the vote now clears in every
+     phase — and every true person still voted person;
+   - (b) per track, the longest run of consecutive person frames: on the
+     true people's tracks, and on the dog-majority tracks. That is the
+     number a rule "voted dog, but a run of N person frames keeps a
+     person" needs — the resident carried into a dog in
+     `Front/2026-10-16/00-12-09` must stay a person. Say which N, if any,
+     keeps every true person and still clears the dogs;
+   - (c) R58's events again, tracks voted person at once against boxes at
+     once.
+3. **Record, do not act.** One tracker per camera in the live loop, fed
+   the detections the event already gets (after R44 and R46), with the
+   frame's time. Each event's JSON gains an optional `tracks`: per track
+   its id, first and last second from the event's start, frames per label
+   with the first box counted, the longest person run, and the most tracks
+   voted person at once — additive; a test that a JSON without it still
+   reads; `check_data` before committing. A tracker id seen in two events
+   of one camera is a walk joined across the cut, so the ids stay unique
+   per camera for the process's life. **Nothing that notifies or names
+   changes.**
+4. **The start on the M900:** the test copy started with `trackers`
+   imported — how long until both cameras deliver frames, against
+   production's 90 s.
 
-Copies only; `C:\JARVIS` is read, never written. **HANDOFF:** the numbers
-of step 3, the parameters chosen and why, the first import's time and how
-the deploy keeps it out of the 90 s. If the session runs short, stop after
-step 3 with a coherent commit.
+Copies only; `C:\JARVIS` is read, never written. **HANDOFF:** the first
+box's method, step 2's numbers and what each supports, the JSON's shape,
+the start time. If the session runs short, stop after step 2 with a
+coherent commit.
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
@@ -375,8 +355,8 @@ hold until then); the policy for unnamed faces (backlog 37, `PENDING.md`);
 a recording of two people together (R58); the misfiled dog views, thirteen,
 before the once-only settle of backlog 28 — the new model sees them right,
 but four sit in Chosen, where every match is measured against them; the
-M900 sleeping at the sign-in screen; the checks on the M900, `v2026.10.16`
-among them (`PENDING.md`).
+M900 sleeping at the sign-in screen; the checks on the M900,
+`v2026.10.16` among them (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R59 and R58 wait for item 7's
 part 2. R14, R12 and R9 as before. Every other open backlog item is
