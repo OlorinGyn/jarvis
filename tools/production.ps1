@@ -149,6 +149,46 @@ function FetchModels([string]$Version) {
     } finally { Remove-Item $script -ErrorAction SilentlyContinue }
 }
 
+$WarmUpScript = @'
+import importlib
+import importlib.metadata
+import time
+
+start = time.monotonic()
+for name in sorted(importlib.metadata.packages_distributions()):
+    if not name.startswith("_"):
+        try:
+            importlib.import_module(name)
+        except Exception:
+            pass
+print(f"{time.monotonic() - start:.1f}")
+'@
+
+function WarmUp([string]$Version) {
+    $dir = Join-Path $env:TEMP 'jarvis_warmup'
+    $zip = "$dir.zip"
+    $ErrorActionPreference = 'Continue'
+    Remove-Item $dir, $zip -Recurse -Force -ErrorAction SilentlyContinue
+    Say "Importing every package $Version installs once, before stopping anything..."
+    try {
+        Invoke-ProdGit archive --format=zip -o $zip $Version pyproject.toml uv.lock .python-version
+        Expand-Archive -Path $zip -DestinationPath $dir -ErrorAction Stop
+        Set-Content -Path (Join-Path $dir 'warm_up.py') -Value $WarmUpScript -Encoding ASCII
+        Push-Location $dir
+        try {
+            uv sync --frozen --no-dev --no-install-project --quiet
+            if ($LASTEXITCODE) { throw 'uv sync failed' }
+            $seconds = & (Join-Path $dir '.venv\Scripts\python.exe') -W ignore warm_up.py
+            if ($LASTEXITCODE) { throw 'the imports failed' }
+            Say "Every package imported in $seconds s."
+        } finally { Pop-Location }
+    } catch {
+        Say "Warming up $Version failed ($_); its first import may then count against the $HealthSeconds s."
+    } finally {
+        Remove-Item $dir, $zip -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Sync {
     Push-Location $ProdDir
     try {
@@ -310,6 +350,7 @@ function Update {
 
     if (-not (CheckData 'before, current version')) { throw 'Data already unreadable before updating; nothing changed. Investigate first.' }
     FetchModels $target
+    WarmUp $target
     Hold "update $previous -> $target"
     StopService
     $good = $false

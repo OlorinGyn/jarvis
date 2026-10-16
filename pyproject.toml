@@ -11,6 +11,7 @@ dependencies = [
     "opencv-python>=5.0.0.93",
     "python-dotenv>=1.2.4",
     "requests>=2.34.2",
+    "trackers>=2.6.1",
     "uvicorn>=0.54.0",
 ]
 
