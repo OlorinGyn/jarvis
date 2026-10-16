@@ -140,6 +140,14 @@ one message per camera per 15 minutes, no faceless message in Home, or the
 front camera only, the user chose **every faceless person still reaches the
 phone in Home**; only the false ones go (R58, R59).
 
+**Notifying is a weighing: risk never lost, nobody shouted at** (the user,
+16/10/2026). An event that may mean risk must never be lost, and a message
+every ten seconds is unbearable: **more than one notification in 30 s means
+something is wrong.** A subject seen in a new place — at the Front, then at
+the Back — deserves a new message; the same subject in the same place does
+not. The user left to the architect which situations count as risk, looking
+at the competitors; the design is in `PENDING.md`, "Decided, not yet done".
+
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 
