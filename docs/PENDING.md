@@ -140,12 +140,17 @@ grows, decisions are being postponed.
   library, not used yet; its update ran the new warm-up before stopping
   production (ARCHITECTURE 18.7).
 
+- **`v2026.10.16.3` on the M900** (item 7 part 1): nothing to see on the
+  page, no message changes. Each new event's JSON records its tracks — what
+  the next session measures R59's rule on, after a day of them.
+
 ## Decided, not yet done
 
-- **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Its first
-  part was measured by developer 28 (ARCHITECTURE 7.16); its finish — the
-  first box, tracks recorded live — is planned in BACKLOG 3 (developer 29).
-  Item 40 is done (`v2026.10.16`).
+- **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
+  done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
+  rule from the tracks, is planned in BACKLOG 3 (developer 30) and waits
+  for a day of production's tracks, from about 21:45 on 17/10. Item 40 is
+  done (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the

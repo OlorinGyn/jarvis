@@ -2562,3 +2562,86 @@ $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefin
 `SyntaxTree` in C# — and each function's `Extent.Text` is its source,
 evaluated on its own. The `$WarmUpScript` here-string is a variable, not a
 function, so it has to be defined the same way by hand.
+
+
+## 49. An object as its own key, an immutable tuple copied with one field changed, a library read before working around it, and a guard on what nothing depends on (developer 29)
+
+Item 7's part 1 finished (ARCHITECTURE 7.16): tracks are recorded live, in
+each event's JSON, and act on nothing yet.
+
+**An object as a `dict` key, by identity.** `Tracks` needs to follow a
+ByteTrack tracklet from the update that spawns it, before the library gives
+it any id. It does so with a `dict` whose keys are the tracklet objects
+themselves:
+
+```python
+self.ids = {}
+...
+if tracklet not in self.ids:
+    self.ids[tracklet] = self.next_id
+    self.next_id += 1
+```
+
+A `dict` key must be **hashable**. A class that defines neither `__eq__`
+nor `__hash__` inherits both from `object`, where equality *is* identity
+and the hash comes from it — exactly Java's `Object.equals` and
+`hashCode()` without an override, or a C# class used as a `Dictionary` key
+without overriding `Equals`/`GetHashCode`. So the same tracklet is the
+same key for its whole life, whatever its box does, and two tracklets with
+the same box stay two keys. The review checked the library first: neither
+`BaseTracklet` nor `ByteTrackTracklet` overrides them, and neither is a
+`@dataclass`, which with its default `eq=True` would set `__hash__` to
+`None` and make the object unhashable. Two traps of the alternatives:
+a key `id(tracklet)` — the object's address in CPython — can be reused by
+a new object once the old one dies, so a dead tracklet's number could pass
+to a stranger; and a class whose `__eq__` compares fields would make two
+tracklets at the same spot one key. `Tracks` also removes the keys of
+tracklets the library pruned, so the `dict` does not keep dead objects
+alive — a strong reference in a `dict` stops the garbage collector, as in
+Java.
+
+**`namedtuple._replace`: a copy with one field changed.** `Detection` is a
+`namedtuple`, immutable like a C# `record`. The test moves a box with
+
+```python
+PERSON._replace(x=PERSON.x + 5 * step)
+```
+
+which returns a **new** tuple with `x` changed and every other field
+copied — C#'s `person with { X = person.X + 5 }`. The leading underscore
+is not "private" here: `namedtuple` names its own methods `_replace`,
+`_asdict`, `_fields` so they never clash with a field the user might call
+`replace`.
+
+**Read the library before working around it.** The plan suggested holding
+a track's first box until the library named it. Reading
+`trackers/core/bytetrack/tracker.py` changed the method: the spawned
+tracklet object is already in `tracker.tracks` after the update, so the
+box can be credited at once. It also showed why the "obvious" fix —
+giving the library's id at spawn — was wrong: `_get_alive_tracklets` keeps
+any tracklet with `tracker_id != -1` alive through misses, so that change
+would have changed which tracks survive, not only how they are counted.
+Section 48 read the same source for a unit; this time it decided a design.
+
+**A guard on what nothing depends on.** `Camera.detect` wraps the
+tracker's update:
+
+```python
+try:
+    return subjects, (self.subjects.last_run, self.tracks.update(subjects, self.subjects.last_run))
+except Exception:
+    logger.exception("Tracking failed on %s; this run goes untracked", self.label)
+    return subjects, None
+```
+
+`except Exception` catches every ordinary error (not `KeyboardInterrupt`
+or `SystemExit`, which derive from `BaseException`), and
+`logger.exception` logs at ERROR with the traceback — Java's
+`log.error(msg, e)`. A catch this broad is usually a smell, because it
+hides bugs. It is acceptable here because the tracks are only recorded:
+losing one run's tracks costs a line of a JSON, while an exception reaching
+the camera loop would stop recording. Around the detector the same guard
+would be wrong — a detector that fails silently is a camera that records
+nothing. The review found its one cost: a tracker that failed on *every*
+run would write a traceback three times a second per camera into a log
+that keeps 6 MB (R62).

@@ -282,6 +282,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 28 | 16/10/2026 | `a672890..655faa6`, developer session 26 — R59 and R58 measured | no code fixed, no program code changed, no release; `person_signals.py` read (it only reads); the four two-person events in production's JSON checked, none two people; ARCHITECTURE 22.3 corrected (nested boxes survive NMS and `drop_duplicates`); R59 and R58 wait for tracking; R60 opened (the cooldowns drop what they block); backlog 7 (tracking) and 40 (notifications by incident) decided by the user the same day (13.29) |
 | 29 | 16/10/2026 | `0cf58f9..7670811`, developer session 27 — R60, backlog 40: notifications by incident, a camera with no picture | no code fixed; 328 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again on production's log (741 messages, 220 loud and 17 floor texts at 120 s); no send ever failed there and at most 9 messages fall in a minute; the page checked at 375 px and about 1000 px; tracking's library probed on the M900 for the plan (Roboflow's `trackers` imports under Smart App Control); R60 closed, R61 opened (low); **release `v2026.10.16`** (13.30) |
 | 30 | 16/10/2026 | `0d4eeab..dccf519`, developer session 28 — R61, `trackers` and the deploy's warm-up, tracks measured (item 7 part 1) | no code fixed; 338 tests pass, no comments, `check_doc_refs` 0; every release tag holds `.python-version`, the warm-up's imports run locally (55 modules, none failing); the library's first box with −1 read in its source; the HANDOFF's hardlink explanation corrected — the project copies (ARCHITECTURE 18.7); R61 closed; **release `v2026.10.16.2`** (13.31) |
+| 31 | 16/10/2026 | `dccf519..81f1db5`, developer session 29 — item 7 part 1 finished: the first box joined, tracks recorded live | no code fixed; 348 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the first-box method read against `_spawn_new_tracks` and `_get_alive_tracklets`, the tracks aged by seconds before matching, the JSON written in the loop before the next event; three clips replayed again, the numbers as reported; the JSON holds no place, so part 2 replays for it; R62 opened (low); **release `v2026.10.16.3`** (13.32) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2245,6 +2246,68 @@ cameras ok. The warm-up's own line was cut from the captured output: its
 files were already known to Smart App Control on this M900 (review 29,
 developer 28), so this run could not show the 89 s case anyway — the next
 release with a new binary package will.
+
+### 13.32 Review 31 — developer session 29 (16/10/2026)
+
+Developer 29 reviewed whole (`dccf519..81f1db5`: `src/jarvis/tracks.py`,
+`Camera.detect`, the recorder's `Record` and the JSON's two keys,
+`replay_tracks.py` moved onto the module; 10 new tests). 348 tests pass, no
+comments in `src/` and `tools/`, `check_data` reads every file,
+`check_doc_refs` exits 0. **No code fix; release `v2026.10.16.3`.** R62
+opened (low). The plan's four steps were all done.
+
+**The first box, read against the library.** In `trackers` 2.6.1,
+`_spawn_new_tracks` returns every unmatched box with −1 and appends a
+`ByteTrackTracklet` built from it; the tracker's last step,
+`_get_alive_tracklets`, keeps a just-spawned tracklet (`time_since_update`
+0), so it is in `tracker.tracks` when `Tracks.update` looks — the method's
+premise holds. With `minimum_consecutive_frames` 1 a new tracklet starts
+its counter at 1 and so counts as mature through one missed update; the
+next predict zeroes it and the prune drops it: a body seen once can still
+be matched one run later, about 0.3 s, and then never. The −1 boxes in a
+result are only the freshly spawned ones (a matched tracklet gets its id in
+the same update; the low round is empty at threshold 0), so `_born_from`
+never sees an older one. `BaseTracklet` is an `ABC` with no `__eq__` or
+`__hash__`, so the `dict` keyed by tracklets keys by identity (PYTHON 49).
+
+**Time, not runs.** The tracker is fed only when YOLO ran, so it can go a
+minute without an update — no motion, or analysis Off. With `timestamp=`
+the library ages tracks by seconds and prunes the expired ones **before**
+matching (`_prune_lost_tracks`), so a body gone for more than 3 s is never
+joined to a new box in its place, however long the silence. A frame where
+YOLO found nothing returns an empty result with an empty `tracker_id`, so
+`zip` gets three empty columns.
+
+**Where the JSON is written.** `_write_metadata` runs inside `stop()`, in
+the camera loop, before the next event can replace `self.tracks`: no race
+with the assembly thread. The two read-modify-writes of an event JSON
+(`reports.py`, a reported label and its Undo) keep unknown keys; the page's
+`_event` picks its own fields, so the tracks never reach the API; and
+`v2026.10.16.2` after a rollback reads these files as dicts, ignoring the
+new keys.
+
+**The measurements, spot-checked.** Three of the 19 clips replayed here
+with the new tool: `Front/2026-10-16/00-12-09` phase 2 holds the carried
+resident exactly as the HANDOFF says (dog 11, person 8, cat 1, run 8);
+`Back/2026-10-16/13-23-34` is one person track in every phase;
+`Front/2026-10-15/22-00-19` has no track voted person in any phase (phase 1:
+dog 20, cat 5, person 1). **R58's worse numbers are the honest ones**: the
+second "person" was a −1 box, not counted, and the same blind spot had
+dropped 13-23-34's real person.
+
+**One gap for part 2, found here.** The JSON's tracks hold seconds and
+labels but no place, so "the relation in place and time between a short
+person track and the dog track near it" cannot be read from production's
+JSON alone. Not worth another release before the day is collected: the
+clips stay 30 days, and `replay_tracks.py` gives the boxes. The plan uses
+the day's JSON as the index and the replay for the places (BACKLOG 3).
+
+**R62, low.** The broad `except Exception` around the tracker is right
+while nothing reads the tracks, but a failure that repeats would log a
+traceback three times a second per camera into a log of 6 MB. It goes with
+part 2, when a failed run must fall back to the boxes (BACKLOG 2).
+
+**Not looked at:** the page did not change.
 
 ## 14.3 Usage log
 

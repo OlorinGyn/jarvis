@@ -124,12 +124,17 @@ It works without them, but is incomplete.
    above, not guessed; the loitering message of item 40 (a person nobody
    accounts for still there after some minutes, once); and "the same
    place" of item 40's incident becoming "the same body", so a new person
-   on the same camera rings again (ARCHITECTURE 12.11). **Part 1 measured
-   (developer 28, review 30, ARCHITECTURE 7.16):** `trackers` is a
-   dependency since `v2026.10.16.2`, deployed with its imports warmed
-   before the stop; the vote clears only part of R59, a track's first box
-   comes back unidentified, and no buffer joins a walk whose body left the
-   view for 7–9 s — appearance or place will have to.
+   on the same camera rings again (ARCHITECTURE 12.11). **Part 1 done
+   (developers 28 and 29, reviews 30 and 31, `v2026.10.16.3`,
+   ARCHITECTURE 7.16):** `trackers` is a dependency, deployed with its
+   imports warmed before the stop; `src/jarvis/tracks.py` gives every track
+   an id from its first box and runs in the live loop, and each event's
+   JSON records its tracks (ARCHITECTURE 8.4), acting on nothing. The vote
+   with a run of 2 person frames clears dog-majority tracks without losing
+   a true person; a short track that starts as person — R58's false bodies,
+   the rest of R59 — needs another signal, and no buffer joins a walk whose
+   body left the view for 7–9 s — appearance or place will have to. **Part
+   2** acts on tracks, R59 first (section 3).
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -191,12 +196,13 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
 model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
 in review 25, R53, R56 and R57 in review 26, R55 in review 27, R60 in
-review 29, R61 in review 30.
+review 29, R61 in review 30; R62 opened in review 31.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; waits for item 7, whose tracks clear it only in part so far (ARCHITECTURE 7.16) |
-| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 (below) |
+| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; item 7 part 2 builds it (section 3) |
+| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 part 2 — tracks at once are no better than boxes once the first box counts (ARCHITECTURE 7.16) |
+| R62 | low | A tracker that failed on every run would fill the log in minutes | open (below); with item 7 part 2 |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
@@ -260,6 +266,20 @@ without losing a true pair; a person in front of another also makes one box
 sit inside the other, and the user's rule is that one extra message beats a
 hidden person (CONTEXT 3), so a tie keeps today's count.
 
+**R62 — A tracker that failed on every run would flood the log (low,
+review 31).** `Camera.detect` logs a traceback each time `Tracks.update`
+raises, and the camera goes on (ARCHITECTURE 7.16). A failure that
+repeats — a bad state inside the library, carried from run to run — would
+write one about three times a second per camera, and `logs/jarvis.log`
+keeps 1 MB × 6: the history every review reads (messages, outages, scans)
+would be gone in minutes. Not seen: the tests and the 19 replayed clips
+never raised. **Then,** with item 7 part 2, when the tracks start to act:
+log a camera's first failure with its traceback and then at most a line a
+minute with a count, and decide whether a failed tracker is replaced by a
+fresh one — keeping the id counter, so ids stay unique. A run or an event
+with no tracks falls back to today's behaviour, the boxes — never to "no
+person".
+
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
 face group and keeps the best, with `Gallery.match`'s preference — a named
@@ -296,58 +316,58 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 30 is done** (HISTORY 13.31): developer 28 built R61 and item 7's
-part 1 through step 3; no code fix; **`v2026.10.16.2` released and
-deployed**. Step 4, recording tracks live, was not reached.
+**Review 31 is done** (HISTORY 13.32): developer 29 finished item 7's
+part 1 — the first box joined, measured again, tracks recorded live; no
+code fix; **`v2026.10.16.3` released and deployed** at 21:45 on 16/10.
 
-**Developer 29: tracking (item 7), part 1 finished — the first box joined,
-measured again, and tracks recorded live.** Part 2 — acting on tracks: the
-label voted over a track (R59), the count of person tracks (R58), the name
-following the track, the incident by body — is the session after, built
-from these numbers and a day of production's `tracks`, not guessed.
+**Developer 30: tracking (item 7), part 2 — R59's rule from the tracks.**
+**Precondition: 24 hours of production with `tracks`**, so not before
+about 21:45 on 17/10 — a night and a day, the dogs' hours and the
+residents'. Earlier, stop at the resume and say so. Only the R59 piece of
+part 2: the name following the track, the incident by body, the
+loitering message and R58's count are sessions after, from what this one
+measures.
 
-0. **One module, `src/jarvis/tracks.py`,** used by `tools/replay_tracks.py`
-   and by the live loop, so what the tool measures is what production
-   records. Its tracker is built as ARCHITECTURE 7.16's table says.
-1. **The first box joined to its track.** The library returns a new
-   track's first box with `tracker_id` −1 and gives the id at its next
-   match (`_spawn_new_tracks`, ARCHITECTURE 7.16). Credit that box's label
-   to the track it starts — hold it until the next update and give it to
-   the id that then appears for the tracklet spawned from it, or another
-   way the source allows; say in the HANDOFF which, and why. A box never
-   matched again stays a track of one frame, so a person seen once still
-   counts (`Back/2026-10-16/13-23-34`). By a test first: a track of N boxes
-   counts N labels.
-2. **Measure again with the first box joined,** `replay_tracks.py` on the
-   clips of ARCHITECTURE 7.16, three phases:
-   - (a) R59's seven dog events — which ones the vote now clears in every
-     phase — and every true person still voted person;
-   - (b) per track, the longest run of consecutive person frames: on the
-     true people's tracks, and on the dog-majority tracks. That is the
-     number a rule "voted dog, but a run of N person frames keeps a
-     person" needs — the resident carried into a dog in
-     `Front/2026-10-16/00-12-09` must stay a person. Say which N, if any,
-     keeps every true person and still clears the dogs;
-   - (c) R58's events again, tracks voted person at once against boxes at
-     once.
-3. **Record, do not act.** One tracker per camera in the live loop, fed
-   the detections the event already gets (after R44 and R46), with the
-   frame's time. Each event's JSON gains an optional `tracks`: per track
-   its id, first and last second from the event's start, frames per label
-   with the first box counted, the longest person run, and the most tracks
-   voted person at once — additive; a test that a JSON without it still
-   reads; `check_data` before committing. A tracker id seen in two events
-   of one camera is a walk joined across the cut, so the ids stay unique
-   per camera for the process's life. **Nothing that notifies or names
-   changes.**
-4. **The start on the M900:** the test copy started with `trackers`
-   imported — how long until both cameras deliver frames, against
-   production's 90 s.
+1. **Read the day.** A tool, `tools/day_tracks.py`, read-only: every
+   production event JSON with `tracks` since the release, per camera —
+   events with a person-voted track; events whose every person frame sits
+   in tracks voted dog with no run of 2 person frames (the rule's
+   candidates); short person tracks (at most 2 frames) alive at the same
+   seconds as a dog-voted track; `most_person_tracks` against
+   `most_people`. Then the truth by eye, as review 28 did: each candidate
+   event's `.best.jpg` or `.jpg`, a dog or a person; and for the day's
+   faceless-person messages in production's log (`C:\JARVIS\logs`), which
+   ones the rule would have turned into a dog event, and whether each was
+   a dog. Run one candidate clip through `replay_tracks.py` and say
+   whether the live tracks look like one of its phases.
+2. **The place of a short person track** — the JSON holds no boxes, so
+   replay the clips of step 1's short person tracks (`replay_tracks.py`
+   gives boxes): for each one beside a dog-voted track at the same moment,
+   the overlap with the dog's box (IoU and intersection over the smaller)
+   and their sizes, on the dogs' and on the true people's — a resident
+   walking with the dogs, `Back/2026-10-16/13-23-34`, the edge track of
+   `Back/2026-10-16/00-05-30`. Say whether any value separates them, or
+   that none does.
+3. **The rule, by tests first, only where steps 1 and 2 support it.** At
+   the held faceless-person decision in Home (`notify.after_scan`): the
+   tracks are complete by then, so no delay is added, and the immediate
+   messages of other modes do not change. An event whose every person
+   frame sits in tracks voted dog with no run of 2 person frames — plus
+   step 2's signal, if one separated — is a dog event, by its own case
+   (`resident_dog`, off in Home), not a faceless person. The tests: the
+   carried resident (`Front/2026-10-16/00-12-09`'s run of 8) stays a
+   person; a person seen once still reaches the phone; a dog-majority
+   track is a dog; an event with no `tracks`, or a run the tracker failed,
+   decides as today. R62 with it: a camera's first failure logged with its
+   traceback, then a line a minute.
+4. **Measure the rule** on the day of step 1 and on the 19 clips of
+   ARCHITECTURE 7.16: messages it removes, each one a dog; every true
+   person kept. If the session runs short, stop after step 2 with a
+   coherent commit — the rule waits for the numbers, not the other way.
 
-Copies only; `C:\JARVIS` is read, never written. **HANDOFF:** the first
-box's method, step 2's numbers and what each supports, the JSON's shape,
-the start time. If the session runs short, stop after step 2 with a
-coherent commit.
+Copies only; `C:\JARVIS` is read, never written. **HANDOFF:** the day's
+counts, the place measurement and what it supports, the rule as built (or
+why not), its measured effect.
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
@@ -358,6 +378,6 @@ but four sit in Chosen, where every match is measured against them; the
 M900 sleeping at the sign-in screen; the checks on the M900,
 `v2026.10.16` among them (`PENDING.md`).
 
-**Not planned:** R54 and R47 are watches. R59 and R58 wait for item 7's
-part 2. R14, R12 and R9 as before. Every other open backlog item is
+**Not planned:** R54 and R47 are watches. R59 and R62 are developer 30's;
+R58 waits for part 2's later sessions. R14, R12 and R9 as before. Every other open backlog item is
 **(proposto)**.

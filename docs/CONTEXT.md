@@ -212,6 +212,7 @@ src/jarvis/
   capture.py      one ffmpeg per camera: original segments + analysis frames
   motion.py       layer 1: MOG2 + temporal confirmation
   people.py       layer 2: YOLO through cv2.dnn, people and animals
+  tracks.py       one ByteTrack tracker per camera, an id from each track's first box; what an event's tracks saw
   clips.py        layer 3: events, lossless assembly, metadata, the held person
   faces.py        layer 4: YuNet, SCRFD + ArcFace, the gallery and its migration, naming
   downloads.py    the face and dog models' files, fetched once, the dogs' pinned by SHA-256; standard library only (production.ps1 runs it)
@@ -239,7 +240,7 @@ tools/
   dog_bench.py    dog descriptors against learned embeddings on a copy of dogs/ (R53; models in models/bench/dogs)
   person_signals.py  per person box of a clip: its origin, the signals that could tell a dog, two people at once (R59, R58)
   replay_notifications.py  a log's notifications through the incident rule: how many ring, how many arrive silently (ARCHITECTURE 12.11)
-  replay_tracks.py  the live detector's boxes through a ByteTrack tracker per phase: what each track saw (item 7, ARCHITECTURE 7.16)
+  replay_tracks.py  the live detector's boxes through the live tracker (jarvis.tracks), per phase: what each track saw (item 7, ARCHITECTURE 7.16)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips

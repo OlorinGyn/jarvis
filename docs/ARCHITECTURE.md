@@ -57,6 +57,11 @@ The face is one more layer, run afterwards, on the clip (section 10).
    │ people.py │  YOLO11: person/animal    │
    └─────┬─────┘                           │
          │ Detection(x,y,w,h,conf,label)   │
+         ▼                                 │
+   ┌───────────┐                           │
+   │ tracks.py │  ByteTrack: a track id    │
+   └─────┬─────┘  per box (7.16)           │
+         │ (track id, Detection)           │
          ▼                                 ▼
    ┌───────────────────────────────────────────────┐
    │ clips.py   concat -c copy + thumbnail + JSON  │──► notify.py (first message)
@@ -86,6 +91,7 @@ one before and runs only if the one before found something.
 | Capture + decode | low | every frame |
 | MOG2 + lighting filter | ~3 ms | every frame |
 | YOLO11 | 50–62 ms (dev) | only with motion, at most 4×/s per camera |
+| Tracker (ByteTrack) | 0.03–0.34 ms (M900) | each time YOLO ran (7.16) |
 | Recording | ~2 ms | only with a person or an animal |
 | Dog naming (DINOv2-small) | ~120 ms per dog (M900) | once per dog event, in the live loop (section 20) |
 | Faces | 9–17 s per clip (M900) | only on clips with a person, off the live loop |
@@ -101,11 +107,14 @@ jarvis/
 │   ├── capture.py        one ffmpeg per camera: original segments + frames
 │   ├── motion.py         layer 1: motion detection
 │   ├── people.py         layer 2: people and animals
+│   ├── tracks.py         one ByteTrack tracker per camera; what each event's tracks saw (7.16)
 │   ├── clips.py          layer 3: events, lossless assembly, metadata
 │   ├── faces.py          layer 4: face detection, embedding, gallery
 │   ├── dogs.py           the dog gallery and matching (section 20)
+│   ├── downloads.py      the face and dog models' files, fetched once (10.2)
 │   ├── archive.py        layer 5: moves to the external drive (section 11)
 │   ├── notify.py         Telegram messages (section 12)
+│   ├── outage.py         a camera with no picture for a minute, and its return (12.12)
 │   ├── modes.py          the notification cases and modes (section 22)
 │   ├── bot.py            commands from the phone (22.5)
 │   ├── analysis.py       analysis On or Off, the bot's /on and /off (22.7)
@@ -123,6 +132,10 @@ jarvis/
 │   ├── replay.py         why each frame of a video was kept or dropped (12.10)
 │   ├── face_tuning.py, dog_tuning.py   measure the matching thresholds
 │   ├── face_bench.py     candidate face pipelines on a copy of faces/ (10.14)
+│   ├── dog_bench.py      dog descriptors compared on a copy of dogs/ (20)
+│   ├── person_signals.py where each person box came from, what could tell a dog (7.15)
+│   ├── replay_notifications.py  a log's messages through the incident rule (12.11)
+│   ├── replay_tracks.py  the live detector's boxes through the live tracker, per phase (7.16)
 │   ├── dog_crops.py      crops past dog events into the dog gallery (20)
 │   ├── diagnose.py       variants of the capture command; --local without a camera
 │   ├── probe_rtsp.py     raw RTSP (DESCRIBE → SETUP → PLAY)
@@ -1145,68 +1158,144 @@ positive evidence only, clears one event of seven. **Nothing was built.**
 The answer is tracking (BACKLOG 1, item 7): a body YOLO calls a dog in most
 of its frames is a dog, which no single frame can say.
 
-### 7.16 Tracks, measured before they act (item 7 part 1, 16/10/2026)
+### 7.16 Tracks, recorded before they act (item 7 part 1, 16/10/2026)
 
 **The tracker.** ByteTrack, from Roboflow's `trackers` 2.6.1
 (`ByteTrackTracker`, Apache-2.0), a dependency since `v2026.10.16.2`. It
 never looks at the image: each object is a Kalman filter predicting where
 its box should be, and each update matches the predictions to YOLO's new
-boxes by overlap (PYTHON 48). Nothing in `src/` uses it yet.
-`tools/replay_tracks.py` measures it: the live `SubjectDetector`, memories
-and all, in the three phases of `person_signals.py` (7.15), each phase's
-kept detections, every label, into a tracker of its own; YOLO runs once,
-and the tracker again for each `--lost` buffer asked for. `--join` puts
-several events on one timeline, each at its `started_at` less
-`PRE_SECONDS`, to ask whether one track would cover a walk cut in two.
+boxes by overlap (PYTHON 48). **`src/jarvis/tracks.py`** wraps it, and the
+same module serves the live loop and `tools/replay_tracks.py`, so what the
+tool measures is what production records:
+
+- `Tracks` — one camera's tracker, with ids of its own (below).
+  `update(found, moment)` returns `(track id, detection)` for every
+  detection; the id is `None` only for a box the tracker did not take,
+  which these parameters never leave.
+- `Record` — what one stretch of time saw: per track its first and last
+  moment, frames per label, the longest person run; `most_person_tracks()`
+  and `summary()`, the event JSON's form (8.4).
+- `voted(labels)` — a track is a dog only with more dog frames than person
+  frames; a tie is a person.
 
 | Parameter | Value | Why |
 |---|---|---|
-| `track_activation_threshold`, `high_conf_det_threshold` | the lowest live minimum, 0.35 in production (7.14) | the library's 0.7 and 0.6 would start no track for most of the night's people; the detector already drops what is under its minimums, so ByteTrack's second, low round is empty |
-| `frame_rate` | 10/3 | one phase sees every third analysis frame |
-| `lost_track_buffer` | seconds × 30 | the library counts it in frames of 30 FPS whatever `frame_rate` says (`trackers/core/base.py`); with `timestamp=` given to `update` it becomes seconds |
-| `minimum_consecutive_frames` | 1 | the earliest a track can get its id |
+| `track_activation_threshold`, `high_conf_det_threshold` | 0.0 | the detector already drops every box under its label's minimum (7.14), so every box the tracker gets clears the lowest one: 0 is the same as 0.35, ByteTrack's second, low round stays empty, and a minimum changed in Settings → Detection needs no new tracker. The library's 0.7 and 0.6 would start no track for most of the night's people |
+| `frame_rate` | 10/3 | YOLO runs at most every `MIN_INTERVAL` (0.25 s), so on every third analysis frame of 10 per second (`RUN_EVERY`) |
+| `lost_track_buffer` | 3 s × 30 | the library counts it in frames of 30 FPS whatever `frame_rate` says (`trackers/core/base.py`); with `timestamp=` given to `update` it becomes seconds, so a track also ages while YOLO does not run |
+| `minimum_consecutive_frames` | 1 | the earliest a track can get the library's id |
 
-**What the numbers support** (developer 28, every clip of R59 and R58 and
-the residents' faceless events of 15–16/10, on the M900):
+**The first box.** The library spawns a tracklet for every unmatched box
+and returns that box with `tracker_id` −1; the tracklet gets its library id
+only at its next match (`_spawn_new_tracks`). Developer 28's measurement
+lost those boxes: a person seen once had no track, and the first frame of
+a dog track YOLO called person had no vote. The tracklet *object*, though,
+is the same from birth to death, and sits in `tracker.tracks` right after
+the update that spawned it. So `Tracks.update` notes the tracklets it
+already knows; after the library's update it finds each returned box's
+tracklet — by the library id, or, for a −1 box, the tracklet this update
+spawned whose state box equals it (`_born_from`: the Kalman state is the
+initial box until the next predict, `XYXYStateEstimator`); the first time
+it sees a tracklet it gives it the next number of its own counter, in a
+`dict` keyed by the object itself (PYTHON 49); and it forgets the
+tracklets the library pruned. The box is credited **in the same update**,
+which matters live: an event that closes right after a body's first box
+still has it. Two other ways were weighed and dropped. Holding the box
+until the library names it needs the same bookkeeping plus a pending
+state. Giving the library's id at spawn makes every box a confirmed track
+(`_get_alive_tracklets` takes `tracker_id != -1` as mature), so a one-frame
+glitch would live through the whole buffer and could absorb a later box —
+the tracking itself would change. Here the library is untouched and only
+the counting differs: the tracks are developer 28's boxes plus their first
+ones.
 
-- **The vote** — a track is a dog only with more dog frames than person
-  frames, a tie a person. Every track holding a person frame of a true
-  person was voted person (the mixed ones 1–1 and 7–1). It clears a dog
-  event only when every person box of the event sits in a dog-majority
-  track: `Front/2026-10-15/22-00-19` in 2 of 3 phases,
-  `Front/2026-10-16/14-51-12` in 1 of 3, never `Front/2026-10-16/00-52-26`,
-  where YOLO says person in 6 of 6 frames.
-- **Tracks at once against boxes at once** (R58): the count of tracks voted
-  person fixes `Front/2026-10-16/14-53-35` in every phase (the second box
-  is a dog track) and `Front/2026-10-15/19-25-05` in 2 of 3; not
-  `Front/2026-10-16/00-12-09`; `Front/2026-10-15/21-47-33`'s nested pair
-  does not reproduce in the replay.
-- **The boundary.** Of the four walks cut in two (item 7), only the one
-  where the person stays in view across the cut is one track; the others,
-  with the body out of view for 6.9–9.0 s, are not joined at any buffer up
-  to 8 s. The constant-velocity prediction carries the lost box on at the
-  walk's last speed, so after 7 s it is far from where the person comes
-  back; only a still body is joined
-  (`test_a_gap_longer_than_the_buffer_starts_a_new_track`). Joining walks across events needs appearance or
-  "the same place within N s", not a longer buffer — and a longer buffer
-  joins wrongly: at 8 s a dog and a later person became one track, at 3 s
-  a resident and then the dog. On production, 119 of 624 consecutive
-  person events on one camera start within 3 s of the previous one's end.
-- **The cost**: one update takes 0.03–0.33 ms against tens of milliseconds
-  for YOLO.
+**Live, recording only** (since `v2026.10.16.3`). The loop of each camera
+is motion → `SubjectDetector` → tracker → `EventRecorder`. `Camera`
+(`cameras.py`) holds one `Tracks` for the process's life, so ids are
+unique per camera and an id in two events is a walk joined across the cut;
+a restart begins at 1 again. `Camera.detect` feeds the tracker **only when
+YOLO ran** on that frame — `SubjectDetector.last_run` moved; between runs
+`detect` returns the cached subjects — with the subjects the event gets
+(after R44, R46, duplicates and scenery) and `last_run` as the moment, the
+detector's monotonic clock. A run where YOLO found nothing is fed too: the
+tracks age, and the run counts for "at once". While an event records,
+`EventRecorder.update` adds each run to the event's `Record`, the starting
+frame included; runs before the event are not in it, so a track that began
+earlier starts at second 0.0 with the event's frames only. A tracker that
+raises is logged ("Tracking failed on …") and that run goes untracked:
+nothing depends on the result yet, and recording must never stop the
+camera loop — unlike the detector, whose failure must be seen (R62).
+**Nothing that notifies or names reads the tracks yet**: `most_people`, the
+messages and the face scan read the same subjects as before.
 
-**Two limits that decide part 2.** (1) **The library returns a track's
-first box with `tracker_id` −1**: a new track is spawned unidentified and
-gets its id at its second matched box (`_spawn_new_tracks`, whatever
-`minimum_consecutive_frames`). A person seen once has no track, and the
-first frame of a dog track YOLO called person has no vote —
-`Back/2026-10-15/20-54-37`, `Back/2026-10-16/00-54-05` and 22-00-19's
-third phase fail only through such a box. The first box must be joined to
-its track, and a true person seen once (`Back/2026-10-16/13-23-34`) must
-still reach the phone. (2) **A track can carry a resident into a dog**
-(00-12-09, one phase: 7 person frames, then 11 dog): "voted dog, so no
-person" would drop that person, so a rule must also keep a track with a
-long enough run of its own person frames.
+**What the numbers support** (developer 29, first box joined, lost buffer
+3 s, the three phases of 7.15 on the 19 clips of developer 28 — R59's and
+R58's events and the residents' faceless events of 15–16/10 — on the M900):
+
+| R59's dog event | Phases with no track voted person, before → now | Why |
+|---|---|---|
+| `Back/2026-10-15/20-54-37` | 2 → 2 of 3 | phase 1: the one person box, upright, 1.2 s before the dog's lying box, is now its own one-frame person track |
+| `Back/2026-10-15/21-01-08` | 3 → 3 | the replay's YOLO never says person here |
+| `Front/2026-10-15/22-00-19` | 2 → **3** | phase 1's person box joined the dog track (dog 20, cat 5, person 1) |
+| `Front/2026-10-16/00-52-26` | 0 → 0 | person in every frame (runs of 5, 7 and 4) |
+| `Back/2026-10-16/00-54-05` | 0 → **2** | dog 4/person 2 and dog 3/person 2; phase 1 a person-only track of 4 |
+| `Front/2026-10-16/14-51-12` | 1 → 1 | phases 0 and 1: a two-frame track, dog 1 and person 1, a tie |
+
+- **The vote** clears **11 of 18 phases, against 8**, and two events in
+  every phase. Every true person is kept: in each of the residents' events
+  every track holding a person frame is voted person, in every phase, and
+  `Back/2026-10-16/13-23-34`, a person seen once, is a person track in all
+  three phases (before, two had none).
+- **The longest person run.** On every dog-majority track with a person
+  frame it is **1**; on the resident carried into a dog
+  (`Front/2026-10-16/00-12-09` phase 2: dog 11, person 8, cat 1) it is
+  **8**; on the true people's own tracks, 1 to 23. So "voted dog, but a run
+  of N person frames keeps a person" keeps the carried resident and clears
+  every dog-majority track for any N from 2 to 8, **2 the cautious end** —
+  measured on eight dog events and one carry, which is little.
+- **What neither fixes: a short track that starts as person.** The dog
+  events still failing are a one-frame person track (20-54-37), a 1–1 tie
+  (14-51-12) and a dog YOLO calls person in every frame (00-52-26). A
+  one-frame person track is also a true person — 13-23-34 is the whole
+  event, 00-05-30 opens with one at the frame's edge — so no rule on a
+  track's length alone tells them apart.
+- **Tracks at once against boxes at once** (R58) — joining the first box
+  **undoes most of developer 28's gain**: the false second body, gone
+  before in 4 of the 5 phases with two boxes, is gone now in 1.
+  `Front/2026-10-16/14-53-35` reads 1, 2, 2 tracks voted person (boxes 1,
+  2, 2), `Front/2026-10-15/19-25-05` 1, 2, 2 (boxes 2, 2, 2),
+  `Front/2026-10-16/00-12-09` 2, 2, 2; `Front/2026-10-15/21-47-33`'s nested
+  pair still does not reproduce. The second "person" is a short track whose
+  first box is person, which was −1 before and simply not counted: that
+  looked like a fix and was a blind spot, the same one that dropped
+  13-23-34's real person. **This is the honest number** (review 31).
+- **The boundary**, unchanged by the first box. Of the four walks cut in
+  two (item 7), only the one where the person stays in view across the cut
+  is one track; the others, the body out of view for 6.9–9.0 s, are not
+  joined at any buffer up to 8 s. The constant-velocity prediction carries
+  the lost box on at the walk's last speed, so after 7 s it is far from
+  where the person comes back; only a still body is joined
+  (`test_a_gap_longer_than_the_buffer_starts_a_new_track`). Joining walks
+  across events needs appearance or "the same place within N s", not a
+  longer buffer — and a longer buffer joins wrongly: at 8 s a dog and a
+  later person became one track, at 3 s a resident and then the dog. On
+  production, 119 of 624 consecutive person events on one camera start
+  within 3 s of the previous one's end.
+- **The cost**: one update takes 0.03–0.34 ms, against tens of
+  milliseconds for YOLO. **The start**, the test copy on the M900 with
+  `trackers` imported: the page answers after 6.8–7.4 s and both cameras
+  deliver after 9.4–10.2 s, against production's 90 s health check — a
+  warm start; the first start after a fresh `.venv` is the deploy warm-up's
+  case (18.7).
+
+**What decides part 2.** (1) The first box: solved, above. (2) A track can
+carry a resident into a dog: the run of N ≥ 2 keeps them. (3) **A short
+person track beside a dog track** — a body that is a dog for ten frames
+and "person" for one next to it — is what R58's false bodies and the
+remaining R59 events have in common, and a track's length cannot decide
+it; the next signal is the relation in place and time between that short
+track and the dog track near it, measured on a day of production's
+`tracks` (8.4), not on these nineteen clips alone.
 
 ---
 
@@ -1290,6 +1379,34 @@ only when a person was seen, is the most person boxes YOLO kept in one
 analysis frame of the event — what the face scan's count is weighed against
 (22.3, R42 (b)). `people_thumbnail`, **optional since 15/10/2026**, names the
 `.people.jpg` written when that count reached two or more (22.3, R56).
+
+`tracks` and `most_person_tracks`, **optional since 16/10/2026**
+(`v2026.10.16.3`), are written only when the event saw a track (7.16), and
+nothing reads them yet — they are what part 2 of tracking is measured on:
+
+```json
+"tracks": [
+  {"id": 12, "first": 0.0, "last": 4.2, "frames": {"person": 7, "dog": 2}, "longest_person_run": 5}
+],
+"most_person_tracks": 1
+```
+
+- `id` — unique per camera for the service's life; a restart begins at 1
+  again, so ids compare only between events of one run, and the same id in
+  two events of a camera is one walk across the cut.
+- `first`, `last` — seconds from the event's start (`started_at`, not the
+  clip's start, which is `PRE_SECONDS` earlier), one decimal, never
+  negative: the tracker's moment is a few milliseconds before the
+  recorder's.
+- `frames` — the YOLO runs of that track in this event, per label, its
+  first box counted; other labels (`cat`, `bird`…) as YOLO gave them, R44's
+  and R46's relabelling already applied.
+- `longest_person_run` — the most consecutive person frames among the
+  track's own frames; a run where the track was missed in between is not
+  broken.
+- `most_person_tracks` — the most tracks voted person in one YOLO run, the
+  vote over this event's frames: the number to set beside `most_people`,
+  which counts boxes.
 
 One JSON per clip is deliberately simple and inspectable — the next step is
 SQLite, once there is search by person and period (backlog 13).
@@ -3635,7 +3752,7 @@ the old one, which stays untouched for a rollback (10.14).
 |---|---|---|---|
 | `clips/<cam>/<day>/HH-MM-SS.mp4` | `clips._concat` | the user, the face scan, `tools/check_clips.py` | the camera's own H.264, never re-encoded (8.1) |
 | `clips/<cam>/<day>/HH-MM-SS.jpg` | `EventRecorder._start` | Records, web, notification | first frame with the subject, boxes drawn (8.5) |
-| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026**; `most_people` **optional since 14/10/2026**; `people_thumbnail` **optional since 15/10/2026** (8.4) |
+| `clips/<cam>/<day>/HH-MM-SS.json` | `EventRecorder._write_metadata` | Records, web, archive, `check_data` | `camera`, `started_at`, `time`, `seconds`, `labels`, `best_confidence`, `video`, `thumbnail`, `reason`; `best_thumbnail` **optional since 10/10/2026**; `most_people` **optional since 14/10/2026**; `people_thumbnail` **optional since 15/10/2026**; `tracks` and `most_person_tracks` **optional since 16/10/2026** (7.16) (8.4) |
 | `clips/<cam>/<day>/HH-MM-SS.alert.jpg` | `EventRecorder._notify_late` | the Telegram message | **optional, since 09/10/2026**: only when the notification went out after the event began (12.8) |
 | `clips/<cam>/<day>/HH-MM-SS.best.jpg` | `EventRecorder.stop` | web, the follow-up message | **optional, since 10/10/2026**: the best view of a person in the event (12.9) |
 | `clips/<cam>/<day>/HH-MM-SS.side.jpg` | `scan_clip` | the follow-up message | **optional, since 11/10/2026**: the best face seen from the side when none was recognisable (10.12) |
