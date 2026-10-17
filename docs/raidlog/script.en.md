@@ -1601,3 +1601,77 @@ J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
 back, 18 h 5 min without"). Lurking: the nameless first box, the track that
 slides from a person to a dog, the walk no buffer can join. Next: the first
 box gets its name, and the tracks start being written down.
+
+
+## Issue #24 — The First Footprint
+
+`v2026.10.16.3` · 16 Oct 2026, night
+
+**Panel 1.** The replay screen from last issue. The blindfolded courier ties
+strings between boxes, but the first box of every string stands apart, with
+a blank name tag reading `-1`. A gremlin sits on it, grinning.
+CAPTION: The Tracker names a body only at its second step. The first one
+walks off unnamed.
+
+**Panel 2.** The beaver in the library's basement, a lamp over an open
+crate stamped `trackers/core/bytetrack/tracker.py`. Inside, a newborn
+tracklet in a cradle, already on the shelf labelled `tracker.tracks`.
+DEV: It has no number yet, but it is already here — the same object from
+birth to death. I don't have to wait for the library to name it.
+
+**Panel 3.** A coat-check counter. The beaver hands a numbered ticket to
+the newborn tracklet the moment it comes through the door; a ledger beside
+him pairs each ticket with a face, not with a coat hook.
+DEV: My own number, from the first box. Keyed by the object itself, so it
+follows the body whatever the box does.
+CAPTION: `self.ids[tracklet] = self.next_id`
+
+**Panel 4.** A shortcut door marked "give the library's badge at birth".
+Behind it, a one-frame glitch wears a CONFIRMED badge and lives on for
+three seconds, then swallows the next box that wanders by.
+DEV: That door changes who survives. This one only changes who is
+counted.
+
+**Panel 5.** A ballot board. The courier's strings now include their first
+boxes. Two dog strings that once leaked a `person` vote turn to "dog".
+J.A.R.V.I.S.: `11 of 18 phases cleared, against 8.`
+CAPTION: And the person seen once, in the backyard at 13:23, is a track
+now, in every phase.
+
+**Panel 6.** Dark red. A second gremlin pulls a curtain off a
+scoreboard: "people at once". Where last issue read 1, it reads 2 again.
+DEV: The false second body is back. It was hiding in the `-1` box.
+ARCHITECT: Then it never was a fix. It was a blind spot — the same one that
+lost a real person. This is the honest number.
+
+**Panel 7.** The owl with a measuring tape along a string: dog, dog,
+person, dog. One person step in a row, never more. Beside it, the resident
+carried into a dog: eight person steps in a row.
+ARCHITECT: A dog never showed two person frames running. Two is where a
+person stays a person.
+
+**Panel 8.** The beaver installs a logbook in each event's folder; the
+courier writes in it after every step: id, seconds, frames per label.
+Nothing else in the house reads it.
+J.A.R.V.I.S.: `"tracks": [{"id": 12, "first": 0.0, "last": 4.2, ...}]`
+CAPTION: Written down, acting on nothing.
+
+**Panel 9.** The owl leafs through the logbook and taps an empty margin.
+ARCHITECT: Seconds and labels, but no place. The book will tell us when;
+the replay will tell us where.
+She pins a small card under the counter, "R62": a gremlin with a megaphone
+standing on the log's six pages.
+ARCHITECT: And if the courier ever trips on every step, he must not shout
+three times a second into the diary.
+
+**Panel 10.** The M900. The parcel `v2026.10.16.3` goes in; twenty-one
+seconds dark, then the drones rise.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Closing card.** Abilities: **The First Footprint** (every track's first
+box counted) · **The Coat-Check Ticket** (ids of its own, per camera) ·
+**The Logbook** (`tracks` in each event's JSON). Lurking: the short
+"person" step beside a dog; the false second body; the walk no buffer
+joins; the megaphone gremlin (R62). Next: a day of footprints, then the
+first rule — a body that is a dog in most of its steps does not reach the
+phone as a person.

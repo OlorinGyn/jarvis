@@ -1177,7 +1177,7 @@ conta própria, por escolha do Dono.
 **Quadro 1.** Cinza frio. Uma parede de fotos de 300 px. Sete delas nem são
 rostos: o topo de uma cabeça, uma risca, um coque — cada uma com um adesivo
 "Gustavo, certeza". A coruja ergue uma contra a lanterna.
-ARQUITETA: Os olhos antigos chamam o topo da cabeça de rosto, e depois dão
+ARQUITETO: Os olhos antigos chamam o topo da cabeça de rosto, e depois dão
 um nome a ele.
 
 **Quadro 2.** Uma bancada de lentes. O castor testa uma depois da outra no
@@ -1195,7 +1195,7 @@ deixou.
 
 **Quadro 4.** A coruja, lupa sobre uma linha de PowerShell, uma faísca
 vermelha de erro saltando do `2>$null`.
-ARQUITETA: Pedida uma versão antiga, esta linha devia sair da frente. Em vez
+ARQUITETO: Pedida uma versão antiga, esta linha devia sair da frente. Em vez
 disso, explodiu. Consertada antes de fazer falta.
 
 **Quadro 5.** Um portão diante da casa. Um pacote marcado `buffalo_l.zip`
@@ -1207,7 +1207,7 @@ rede.
 **Quadro 6.** Interior azul-noite. As sete fotos de topo de cabeça estão na
 bandeja de Espera. Uma máquina de regras marcada "28" estica o braço para
 elas — e a coruja cobre a bandeja com a asa.
-ARQUITETA: A regra guarda o que é mais diferente. Uma vista da pessoa errada
+ARQUITETO: A regra guarda o que é mais diferente. Uma vista da pessoa errada
 é a mais diferente de todas. Estas esperam a mão do Dono.
 
 **Quadro 7.** O M900. Um pacote marcado `v2026.10.14` entra; o J.A.R.V.I.S.
@@ -1276,14 +1276,14 @@ Agora a linha está no log.
 **Quadro 7.** Azul-noite. A coruja à mesa com duas fotos dos moradores e uma
 moldura vazia com um ponto de interrogação. Ela escreve um cartão: "R54 —
 vigiar".
-ARQUITETA: As duas mudanças foram medidas nas duas pessoas que moram aqui.
+ARQUITETO: As duas mudanças foram medidas nas duas pessoas que moram aqui.
 Um estranho agora tem mais chances de parecer um deles. Ninguém mediu um
 estranho, porque nenhum veio ainda.
 
 **Quadro 8.** A coruja diante de uma janela do tamanho de um celular, 375 px
 de largura, rolando uma coluna comprida de fotos de cães que escorre para
 fora do quadro.
-ARQUITETA: Quarenta e seis cães, nove mil pixels. Duas colunas, e vinte e
+ARQUITETO: Quarenta e seis cães, nove mil pixels. Duas colunas, e vinte e
 quatro de cada vez.
 
 **Quadro 9.** O M900. Um pacote marcado `v2026.10.14.2` entra.
@@ -1325,7 +1325,7 @@ moradores com só um rosto visto também. Aceito.
 
 **Quadro 4.** A coruja ergue a foto que foi para o celular: só o morador
 nela, sorrindo. Ela franze a testa e prende um cartão ao lado: "R56".
-ARQUITETA: A mensagem diz duas pessoas e a foto mostra uma. Da próxima vez,
+ARQUITETO: A mensagem diz duas pessoas e a foto mostra uma. Da próxima vez,
 mande o quadro em que elas foram contadas.
 
 **Quadro 5.** Creme quente. Um mostrador na parede escrito "sure", o
@@ -1336,7 +1336,7 @@ nas fotos que o próprio Dono nomeou.
 
 **Quadro 6.** A coruja levanta o placar e encontra, atrás de cada foto, a
 gêmea do mesmo clipe, soprando a resposta para ela.
-ARQUITETA: Cada vista é testada contra todas as outras — inclusive os
+ARQUITETO: Cada vista é testada contra todas as outras — inclusive os
 quadros do próprio evento. Uma garante a outra. A tabela é boazinha demais
 na ponta de baixo.
 Ela prende "R55" na moldura do placar.
@@ -1353,7 +1353,7 @@ enxergam forma. Duas delas acertaram todo cachorro, de dia e de noite.
 **Quadro 8.** A coruja pesa a DINOv2 e a MobileNet numa balança: empate
 perfeito. Ela solta um cartãozinho no prato da DINOv2 — "dois labradores,
 alguma outra casa" — e a balança pende.
-ARQUITETA: A MobileNet aprendeu a pôr uma raça inteira numa caixa só. A
+ARQUITETO: A MobileNet aprendeu a pôr uma raça inteira numa caixa só. A
 DINOv2 aprendeu a distinguir imagens. Para uma casa com dois cachorros da
 mesma raça, é ela.
 
@@ -1401,7 +1401,7 @@ horas sem gravar e sem mensagem.
 **Quadro 3.** A coruja, lanterna erguida, lê um pergaminho comprido — o log
 do sistema — e circula duas palavras: "ScreenOffGracePeriod",
 "SetSuspendState". Ela prende um cartão no pergaminho: "para o Dono".
-ARQUITETA: Uma configuração do sistema. Não sou eu quem muda: o Dono aplica,
+ARQUITETO: Uma configuração do sistema. Não sou eu quem muda: o Dono aplica,
 e testa reiniciando sem ninguém entrar.
 
 **Quadro 4.** Creme quente. Uma bancada de laboratório. A lente de roda de
@@ -1422,7 +1422,7 @@ melhor em todos os 167 recortes.
 **Quadro 6.** A coruja com um cronômetro ao lado do loop ao vivo, uma esteira
 de quadros. Um quadro espera enquanto a foto de um cachorro passa pela lente
 nova.
-ARQUITETA: A bancada disse que a lente nova era mais barata que a velha. Não
+ARQUITETO: A bancada disse que a lente nova era mais barata que a velha. Não
 nas caixas pequenas do loop ao vivo: 121 milissegundos por cachorro, contra
 37. Uma vez por evento de cachorro, nada se acumula. Aceito — e o livro
 corrigido.
@@ -1454,7 +1454,7 @@ J.A.R.V.I.S.: `Dog gallery rebuilt for dinov2_small from gallery.json: {'people'
 **Quadro 11.** A coruja separa as 44 fotos sem nome em três pilhas:
 cachorros brancos sob "Aurora", pretos sob "Mirana", e uma pilha pequena,
 "sem palpite", com duas pessoas e um recorte com as duas cadelas.
-ARQUITETA: Vinte e dois palpites de Aurora: vinte e duas cadelas brancas.
+ARQUITETO: Vinte e dois palpites de Aurora: vinte e duas cadelas brancas.
 Dezessete de Mirana: dezessete pretas. E as pessoas não são cachorro de
 ninguém.
 
@@ -1479,7 +1479,7 @@ LEGENDA: A tabela da edição passada: 66 de 80 com certeza a 0.40.
 
 **Quadro 2.** A coruja se debruça sobre a carteira e levanta o gêmeo preso
 com duas garras.
-ARQUITETA: Você não estava reconhecendo ele. Estava reconhecendo o quadro
+ARQUITETO: Você não estava reconhecendo ele. Estava reconhecendo o quadro
 que acabou de ver. Prova com o gabarito na mesa.
 
 **Quadro 3.** O castor num arquivo, escrevendo uma etiqueta no verso de cada
@@ -1503,7 +1503,7 @@ LEGENDA: O número honesto. Menor, e ainda sem erro.
 
 **Quadro 6.** A coruja com um cronômetro e dois clipes numa linha do tempo,
 as pontas se sobrepondo por alguns segundos.
-ARQUITETA: Mais um gêmeo podia se esconder onde dois clipes se sobrepõem.
+ARQUITETO: Mais um gêmeo podia se esconder onde dois clipes se sobrepõem.
 Contei: três de trinta e nove, e nenhuma resposta errada. A visita continua
 sendo a unidade.
 
@@ -1556,7 +1556,7 @@ nova.
 pequeno com abafador. Setas para o sino grande: "o primeiro", "outra
 câmera", "mais gente". Para o abafado: "o mesmo lugar de novo", "o rosto
 que vem depois".
-ARQUITETA: Nada se perde. Cada mensagem toca, ou chega sem som. E
+ARQUITETO: Nada se perde. Cada mensagem toca, ou chega sem som. E
 silenciosa, não editada — cada foto fica nos servidores do Telegram, fora
 do alcance de quem levar o M900.
 
@@ -1581,7 +1581,7 @@ LEGENDA: A queda de 14 de outubro não deixou linha no log. Esta deixaria.
 
 **Quadro 8.** A coruja numa mesa, uma semana de log num rolo de papel
 comprido, um contador em cada garra.
-ARQUITETA: Repassado no log real: em Home, 100 mensagens em vez de 54 — as
+ARQUITETO: Repassado no log real: em Home, 100 mensagens em vez de 54 — as
 que antes caíam. 42 toques em vez de 54. O chat fica mais cheio; o celular,
 mais quieto.
 
@@ -1664,3 +1664,82 @@ Ausência** ("picture back, 18 h 5 min without"). À espreita: a primeira
 caixa sem nome, a trilha que escorrega de uma pessoa para um cachorro, a
 caminhada que nenhum buffer junta. Próximo: a primeira caixa ganha nome, e
 as trilhas começam a ser anotadas.
+
+
+## Edição #24 — A Primeira Pegada
+
+`v2026.10.16.3` · 16 out 2026, noite
+
+**Quadro 1.** A tela de replay da edição passada. O mensageiro vendado
+amarra barbantes entre as caixas, mas a primeira caixa de cada barbante
+fica de lado, com um crachá em branco escrito `-1`. Um diabinho senta em
+cima dela, rindo.
+LEGENDA: O Rastreador só dá nome a um corpo no segundo passo. O primeiro
+sai andando sem nome.
+
+**Quadro 2.** O castor no porão da biblioteca, uma luminária sobre um
+caixote aberto carimbado `trackers/core/bytetrack/tracker.py`. Dentro, um
+tracklet recém-nascido num berço, já na prateleira etiquetada
+`tracker.tracks`.
+DEV: Ainda não tem número, mas já está aqui — o mesmo objeto do nascimento
+à morte. Não preciso esperar a biblioteca batizar.
+
+**Quadro 3.** Um balcão de chapelaria. O castor entrega um tíquete
+numerado ao tracklet recém-nascido no instante em que ele passa pela
+porta; um livro-caixa ao lado liga cada tíquete a um rosto, não a um
+cabide.
+DEV: Um número meu, desde a primeira caixa. A chave é o próprio objeto,
+então ele segue o corpo, faça a caixa o que fizer.
+LEGENDA: `self.ids[tracklet] = self.next_id`
+
+**Quadro 4.** Uma porta de atalho com a placa "dar o crachá da biblioteca
+no nascimento". Atrás dela, um tropeço de um quadro só usa um crachá
+CONFIRMADO e sobrevive por três segundos, depois engole a próxima caixa
+que passa por perto.
+DEV: Essa porta muda quem sobrevive. Esta aqui só muda quem é contado.
+
+**Quadro 5.** Um quadro de votação. Os barbantes do mensageiro agora
+incluem a primeira caixa. Dois barbantes de cachorro que antes vazavam um
+voto `person` viram "dog".
+J.A.R.V.I.S.: `11 of 18 phases cleared, against 8.`
+LEGENDA: E a pessoa vista uma vez só, no quintal às 13:23, agora é uma
+trilha, em todas as fases.
+
+**Quadro 6.** Vermelho escuro. Um segundo diabinho arranca a cortina de um
+placar: "pessoas de uma vez". Onde a edição passada marcava 1, volta a
+marcar 2.
+DEV: O segundo corpo falso voltou. Estava escondido na caixa `-1`.
+ARQUITETO: Então nunca foi conserto. Era um ponto cego — o mesmo que perdia
+uma pessoa de verdade. Este é o número honesto.
+
+**Quadro 7.** A coruja com uma fita métrica ao longo de um barbante: dog,
+dog, person, dog. Um passo de pessoa seguido, nunca mais. Ao lado, o
+morador levado para dentro de um cachorro: oito passos de pessoa seguidos.
+ARQUITETO: Nenhum cachorro mostrou dois quadros de pessoa em sequência.
+Dois é onde uma pessoa continua pessoa.
+
+**Quadro 8.** O castor instala um diário de bordo na pasta de cada evento;
+o mensageiro escreve nele a cada passo: id, segundos, quadros por rótulo.
+Mais ninguém na casa lê.
+J.A.R.V.I.S.: `"tracks": [{"id": 12, "first": 0.0, "last": 4.2, ...}]`
+LEGENDA: Anotado, sem agir sobre nada.
+
+**Quadro 9.** A coruja folheia o diário e bate o dedo numa margem vazia.
+ARQUITETO: Segundos e rótulos, mas nenhum lugar. O diário diz quando; o
+replay diz onde.
+Ela prende um cartãozinho embaixo do balcão, "R62": um diabinho com um
+megafone em pé sobre as seis páginas do log.
+ARQUITETO: E se um dia o mensageiro tropeçar em todo passo, ele não pode
+gritar três vezes por segundo no diário.
+
+**Quadro 10.** O M900. O pacote `v2026.10.16.3` entra; vinte e um segundos
+no escuro, e os drones sobem.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Cartão final.** Habilidades: **A Primeira Pegada** (a primeira caixa de
+cada trilha contada) · **O Tíquete da Chapelaria** (ids próprios, por
+câmera) · **O Diário de Bordo** (`tracks` no JSON de cada evento). À
+espreita: o passo curto de "pessoa" ao lado de um cachorro; o segundo corpo
+falso; a caminhada que nenhum buffer junta; o diabinho do megafone (R62).
+Próximo: um dia de pegadas, e então a primeira regra — um corpo que é
+cachorro na maioria dos passos não chega ao celular como pessoa.

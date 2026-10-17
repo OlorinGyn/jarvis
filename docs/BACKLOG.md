@@ -318,11 +318,11 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 **Review 31 is done** (HISTORY 13.32): developer 29 finished item 7's
 part 1 — the first box joined, measured again, tracks recorded live; no
-code fix; **`v2026.10.16.3` released and deployed** at 21:45 on 16/10.
+code fix; **`v2026.10.16.3` released and deployed** at 21:27 on 16/10.
 
 **Developer 30: tracking (item 7), part 2 — R59's rule from the tracks.**
 **Precondition: 24 hours of production with `tracks`**, so not before
-about 21:45 on 17/10 — a night and a day, the dogs' hours and the
+about 21:30 on 17/10 — a night and a day, the dogs' hours and the
 residents'. Earlier, stop at the resume and say so. Only the R59 piece of
 part 2: the name following the track, the incident by body, the
 loitering message and R58's count are sessions after, from what this one

@@ -149,7 +149,7 @@ grows, decisions are being postponed.
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is planned in BACKLOG 3 (developer 30) and waits
-  for a day of production's tracks, from about 21:45 on 17/10. Item 40 is
+  for a day of production's tracks, from about 21:30 on 17/10. Item 40 is
   done (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the

@@ -2309,6 +2309,17 @@ part 2, when a failed run must fall back to the boxes (BACKLOG 2).
 
 **Not looked at:** the page did not change.
 
+**The deploy.** `-Action update` to `v2026.10.16.3`: `check_data` read
+1220 events, 247 face and 551 dog sightings and 18 reports before and
+after; the warm-up imported every package in 12.3 s, nothing new to Smart
+App Control; production stopped at 21:27:24 and both cameras were ok at
+21:27:45. No event came in the next minutes — the evening had none since
+19:33 — so the first production JSON with `tracks` is developer 30's
+step 1 to read. **Next:** no handover — developer 30 needs a day of
+production's tracks first (BACKLOG 3). One text fix in passing: the
+Portuguese raid log named the owl ARQUITETA in issues 19–22 against its
+bible's "O Arquiteto".
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2383,3 +2394,5 @@ of `CONTEXT.md`.
 | A38 | architect | ultracode | 16/10 19:27–19:50 | review 29: the diff read whole, the replay run again, the log's bursts and failures, the page at 375 and 1000 px, tracking's library probed under Smart App Control; HANDOFF integrated, ARCHITECTURE 12.11–12.12 and 22.2, PYTHON 47, raid log 22; release and deploy `v2026.10.16`; developer 28 planned | 60% → 74% | 24% → 26% | 110k → about 260k tokens, a new conversation (started by the developer's handover) |
 | D28 | developer | high | 16/10 evening | session 28: R61 by three tests, `trackers` and `WarmUp`, `replay_tracks.py`, tracks measured on 25 events (item 7 part 1, step 4 not reached) (338 tests) | 75% → 84%, about 45 minutes of it waiting on two replays | 26% → 27% | 82k → about 205k tokens, a new conversation |
 | A39 | architect | ultracode | 16/10 20:17–20:32 | review 30: the diff read whole, the warm-up's imports run, every tag checked for `.python-version`, the tracker's first box read in the library; HANDOFF integrated, ARCHITECTURE 7.16, 12.11–12.12 and 18.7, PYTHON 48, raid log 23; release and deploy `v2026.10.16.2`; developer 29 planned | 86% → 94% (the window reset at 20:30, right after) | 27% → 28% | 74k → about 205k tokens, a new conversation (started by the developer's handover) |
+| D29 | developer | high | 16/10 evening | session 29: item 7 part 1 finished — `jarvis.tracks`, the first box joined, measured again on 19 clips, tracks recorded live, the start timed (348 tests) | 0% → 13% (new window) | 29% → 30% | 77k → 210k tokens, a new conversation |
+| A40 | architect | ultracode | 16/10 21:10–21:35 | review 31: the diff read whole, the first-box method and the time budget read in the library, three clips replayed again; HANDOFF integrated, ARCHITECTURE 2, 3, 7.16, 8.4 and 19.2, PYTHON 49, R62, raid log 24; release and deploy `v2026.10.16.3`; developer 30 planned, not handed over (it needs a day of tracks) | 13% → 26% | 30% → 32% | 74k → about 255k tokens, a new conversation (started by the developer's handover) |
