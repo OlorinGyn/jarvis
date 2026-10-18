@@ -13,11 +13,6 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **A recording of two people together** (R58, 16/10/2026): none of 588
-  production events with a person holds two people, so no rule for
-  counting people at once can be shown to keep a true pair. Walking out of
-  the Front together with Izabel once, by day, would give the first one;
-  tracking (backlog 7) will need it too.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason

@@ -219,8 +219,12 @@ events with a person holds two people, so neither counting rule can be
 shown to keep a true pair; rule (a) at 0.9 would remove 15 of 17 one-body
 cases, and could swallow a person standing behind another (ARCHITECTURE
 22.3). **Both wait for tracking** (item 7): the label voted over a track's
-frames, and a count of tracks instead of boxes. A recording of two people
-together would make R58 measurable (`PENDING.md`). Their text as opened:
+frames, and a count of tracks instead of boxes. **R58 is measurable
+since 17/10:** production now holds true pairs — 13 events of 17–18/10
+count two or more person tracks at once; two read by eye, both true:
+`Back/2026-10-17/19-50-59` (two people on the porch at night) and
+`Front/2026-10-17/05-33-16` (two at the door, plus two boxes side by side
+at the gate that may be one body). Their text as opened:
 
 **R59 — The household's dogs reach the phone as people (high, the user's
 report, 16/10/2026).** "Many notifications in Home": 31 in 23 hours, read
@@ -372,7 +376,7 @@ why not), its measured effect.
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
 hold until then); the policy for unnamed faces (backlog 37, `PENDING.md`);
-a recording of two people together (R58); the misfiled dog views, thirteen,
+the misfiled dog views, thirteen,
 before the once-only settle of backlog 28 — the new model sees them right,
 but four sit in Chosen, where every match is measured against them; the
 M900 sleeping at the sign-in screen; the checks on the M900,
