@@ -4,7 +4,8 @@ The tracker never looks at the image: it matches YOLO's boxes run after run by
 where each track's Kalman filter predicts it. The library gives a track its id
 only at its second matched box; here each track has an id of its own from its
 first box, so a body seen once is a track of one frame and the first frame of
-every track has its vote. Recorded in each event's JSON, acting on nothing yet.
+every track has its vote. Recorded in each event's JSON; in Home an event whose
+person frames are all a dog's sends no person message (backlog 41).
 See docs/ARCHITECTURE.md section 7.16.
 """
 
@@ -23,6 +24,7 @@ RUN_EVERY = math.ceil(MIN_INTERVAL * ANALYSIS_FPS)
 FRAME_RATE = ANALYSIS_FPS / RUN_EVERY
 LIBRARY_FPS = 30
 LOST_SECONDS = 3.0
+PERSON_RUN = 2
 
 
 def as_detections(found):
@@ -41,6 +43,13 @@ def voted(labels):
     if labels["person"] and labels["person"] >= labels["dog"]:
         return "person"
     return "dog" if labels["dog"] else "other"
+
+
+def dog_only(summary):
+    """Whether an event's every person frame sits in tracks voted dog with no run of PERSON_RUN person frames."""
+    persons = [track for track in summary or () if track["frames"].get("person")]
+    return bool(persons) and all(voted(Counter(track["frames"])) == "dog" and track["longest_person_run"] < PERSON_RUN
+                                 for track in persons)
 
 
 class Tracks:

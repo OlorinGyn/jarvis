@@ -24,6 +24,7 @@ import requests
 from . import modes
 from .faces import learn_threshold
 from .settings import load
+from .tracks import dog_only
 
 API = "https://api.telegram.org/bot{token}/{method}"
 TIMEOUT = 15
@@ -32,11 +33,14 @@ TOO_MANY_REQUESTS = 429
 QUIET_SECONDS = 120
 LOUD_FLOOR_SECONDS = 30
 MAX_FACES = 3
+VISIT_SECONDS = 300
 TOKEN_IN_URL = re.compile(r"bot\d+(?::|%3A)[\w-]+", re.IGNORECASE)
 
 _incident = {}
 _floor = {"last_loud": None, "held_back": [], "timer": None}
 _lock = threading.Lock()
+_visits = {}
+_visit_lock = threading.Lock()
 _clock = time.monotonic
 _sleep = time.sleep
 logger = logging.getLogger(__name__)
@@ -259,13 +263,14 @@ def _failed(subject, attempt, detail, wait):
     return pause
 
 
-def faces_seen(camera, started_at, sightings, settings=None, people=1):
+def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=()):
     """Announce each face the clip scan found, named when known, if the active mode wants its case.
 
     Runs in the clip-assembly thread, after the event, so it can block on the
     network without touching capture. Sent whether or not the event's own
     message went out, since a face is rare and the most useful message (R25);
-    people is the most persons seen at once, for the incident.
+    people is the most persons seen at once, for the incident. A face entry
+    in repeats was already seen in a visit that sent, and is not news.
     """
     settings = settings or load()
     if not configured(settings):
@@ -275,11 +280,14 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1):
     wanted = []
     for sighting in sightings:
         case = person_case(sighting, settings)
-        if modes.allowed(case, settings):
-            wanted.append(sighting)
-        else:
+        if not modes.allowed(case, settings):
             logger.info("Notification %s face, %s: skipped: %s mode", camera, _who(sighting, settings),
                         modes.mode_of(settings))
+        elif sighting.get("person_id") in repeats:
+            logger.info("Notification %s face, %s: skipped: visit (the same face again)", camera,
+                        _who(sighting, settings))
+        else:
+            wanted.append(sighting)
     for sighting in wanted[:MAX_FACES]:
         who = _who(sighting, settings)
         sent += _deliver(camera, people, f"{camera} face, {who}", f"{camera} {when}: {who}",
@@ -288,7 +296,7 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1):
 
 
 def after_scan(camera, started_at, found, held, notified, side_view=None, best=None,
-               settings=None, people=0, people_view=None):
+               settings=None, people=0, people_view=None, ended_at=None, tracks=None):
     """Every message a finished face scan sends. Returns how many went out.
 
     Faces are announced each by its case. With no face, the side view, else
@@ -298,29 +306,101 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     YOLO saw in one frame: when the held person's faces were all silenced and
     YOLO saw more people than faces, the frame where YOLO counted them,
     people_view, goes out as the same case (R42 (b), R56); the best view when
-    that frame was not kept.
+    that frame was not kept. In Home the held decision also weighs the
+    camera's visit (backlog 41): an event whose person frames all sit in dog
+    tracks sends no person message; a resident recognised in the visit
+    explains one faceless body; after the visit's first message only news
+    goes out.
     """
     settings = settings or load()
     if not configured(settings):
         return 0
     seen = max(people, 1)
-    if found:
-        sent = faces_seen(camera, started_at, found, settings, seen)
-        silenced = not any(modes.allowed(person_case(s, settings), settings) for s in found)
-        picture = people_view if people_view and Path(people_view).exists() else best
-        if held and silenced and people > len(found) and picture:
-            return sent + _faceless(camera, held, notified, settings,
-                                    lambda: hidden_person(camera, started_at, picture, people,
-                                                          len(found), settings))
-        return sent
+    rules = held and modes.mode_of(settings) == "home"
     side = Path(side_view) if side_view and Path(side_view).exists() else None
+    picture = people_view if people_view and Path(people_view).exists() else best
+    faceless = f"{camera} side view" if side is not None else f"{camera} best view"
+    if not found and rules and dog_only(tracks):
+        if side is not None or best:
+            logger.info("Notification %s: skipped: dog tracks", faceless)
+        return 0
+    can_faceless = modes.allowed("faceless_person", settings) and (held or notified)
+    wanted = [s for s in found if modes.allowed(person_case(s, settings), settings)]
+    hidden = bool(held and found and not wanted and people > len(found) and picture)
+    with _visit_lock:
+        visit = _visit(camera, started_at, ended_at or started_at)
+        quiet = rules and visit["sent"] and seen <= visit["people"]
+        repeats = set(visit["faces"]) if rules and visit["sent"] else set()
+        _remember(visit, found, seen, started_at, settings)
+        resident = visit["resident"] if rules and not found and seen <= 1 else None
+        if resident:
+            reason = f"visit ({resident[0]} recognized at {resident[1]:%H:%M:%S})"
+        elif quiet and (hidden or not found):
+            reason = f"visit (no news, {_people(seen)} at once)"
+        else:
+            reason = None
+        if found:
+            planned = any(s.get("person_id") not in repeats for s in wanted) or (
+                hidden and can_faceless and reason is None)
+        else:
+            planned = (side is not None or bool(best)) and can_faceless and reason is None
+        visit["sent"] |= bool(planned)
+    if found:
+        sent = faces_seen(camera, started_at, found, settings, seen, repeats)
+        if not hidden:
+            return sent
+        if reason:
+            logger.info("Notification %s hidden person: skipped: %s", camera, reason)
+            return sent
+        return sent + _faceless(camera, held, notified, settings,
+                                lambda: hidden_person(camera, started_at, picture, people,
+                                                      len(found), settings))
     if side is None and not best:
+        return 0
+    if reason:
+        logger.info("Notification %s: skipped: %s", faceless, reason)
         return 0
     if side is not None:
         return _faceless(camera, held, notified, settings,
                          lambda: side_face(camera, started_at, side, settings, seen))
     return _faceless(camera, held, notified, settings,
                      lambda: best_view(camera, started_at, best, settings, seen))
+
+
+def _people(count):
+    """1 person, 2 people."""
+    return f"{count} person" if count == 1 else f"{count} people"
+
+
+def _visit(camera, started_at, ended_at):
+    """The camera's visit an event belongs to: person events less than VISIT_SECONDS apart, end to start.
+
+    A scan finishing late for an event older than the current visit gets a
+    visit of its own and leaves the current one alone.
+    """
+    visit = _visits.get(camera)
+    joins = (visit is not None and (started_at - visit["end"]).total_seconds() < VISIT_SECONDS
+             and (visit["start"] - ended_at).total_seconds() < VISIT_SECONDS)
+    if not joins:
+        fresh = {"start": started_at, "end": ended_at, "resident": None, "sent": False, "people": 0,
+                 "faces": set()}
+        if visit is not None and started_at < visit["start"]:
+            return fresh
+        _visits[camera] = visit = fresh
+    visit["start"] = min(visit["start"], started_at)
+    visit["end"] = max(visit["end"], ended_at)
+    return visit
+
+
+def _remember(visit, found, seen, started_at, settings):
+    """Add one event to its visit: the faces it saw, its people at once, the last resident recognised."""
+    visit["people"] = max(visit["people"], seen)
+    for sighting in found:
+        if sighting.get("person_id"):
+            visit["faces"].add(sighting["person_id"])
+        if person_case(sighting, settings) == "resident_person" and (
+                visit["resident"] is None or started_at >= visit["resident"][1]):
+            visit["resident"] = (sighting.get("name"), started_at)
 
 
 def _faceless(camera, held, notified, settings, message):
@@ -411,7 +491,9 @@ def _who(sighting, settings=None):
 
 
 def reset_incident():
-    """Forget the incident and the floor, cancelling a pending loud text."""
+    """Forget the incident, the floor and the visits, cancelling a pending loud text."""
+    with _visit_lock:
+        _visits.clear()
     with _lock:
         _incident.clear()
         if _floor["timer"] is not None:

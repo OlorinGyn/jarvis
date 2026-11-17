@@ -1,7 +1,7 @@
 """Who gets notified, in which mode, loud or silent, and that the bot token never leaks into a message."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pytest
@@ -14,6 +14,8 @@ SETTINGS = {"notify_token": TOKEN, "notify_chat": "1", "notify_labels": ["person
             "notify_cooldown": 120, "notify_mode": "away"}
 HOME = {**SETTINGS, "notify_mode": "home"}
 START = datetime(2026, 10, 10, 12, 0, 0)
+LATER = START + timedelta(minutes=10)
+LATEST = START + timedelta(minutes=20)
 SEND = notify.send
 POST = notify._post
 
@@ -162,9 +164,9 @@ def test_another_camera_rings(sent):
 def test_more_people_at_once_than_the_incident_had_rings(sent, best):
     assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=1) == 1
     Clock.now += 40
-    assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=1) == 1
+    assert notify.after_scan("Front", LATER, [], True, False, None, best, HOME, people=1) == 1
     Clock.now += 40
-    assert notify.after_scan("Front", START, [], True, False, None, best, HOME, people=2) == 1
+    assert notify.after_scan("Front", LATEST, [], True, False, None, best, HOME, people=2) == 1
     assert sent.silent == [False, True, False]
 
 
@@ -404,8 +406,8 @@ def test_the_hidden_person_answers_to_the_faceless_switch_and_is_never_dropped(s
     off = {**HOME, "notify_modes": {"home": {"faceless_person": False}}}
     assert notify.after_scan("Front", START, resident, True, False, None, best, off, people=2) == 0
     assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 1
-    assert notify.after_scan("Front", START, resident, True, False, None, best, HOME, people=2) == 1
-    assert notify.after_scan("Front", START, resident, True, True, None, best, HOME, people=2) == 1
+    assert notify.after_scan("Front", LATER, resident, True, False, None, best, HOME, people=2) == 1
+    assert notify.after_scan("Front", LATEST, resident, True, True, None, best, HOME, people=2) == 1
     assert sent.silent == [False, True, True]
 
 
@@ -490,8 +492,9 @@ def test_the_hidden_person_message_carries_the_counted_frame(tmp_path, monkeypat
 
 def test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone(sent, best):
     assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
-    assert notify.after_scan("Front", START, [], True, False, None, best, HOME) == 1
-    assert sent == ["Front 12:00:00: no face seen, best view"] * 2 and sent.silent == [False, True]
+    assert notify.after_scan("Front", LATER, [], True, False, None, best, HOME) == 1
+    assert sent == ["Front 12:00:00: no face seen, best view", "Front 12:10:00: no face seen, best view"]
+    assert sent.silent == [False, True]
 
 
 def test_the_floor_text_does_not_reopen_an_incident_that_closed(sent):
@@ -524,6 +527,7 @@ def test_an_event_records_its_tracks_and_acts_on_nothing(tmp_path, monkeypatch, 
     assert sorted((item["frames"] for item in meta["tracks"]), key=str) == [{"dog": 3}, {"person": 3}]
     assert [item["first"] for item in meta["tracks"]] == [0.0, 0.0]
     assert meta["most_person_tracks"] == 1 and meta["most_people"] == 1 and captured["people"] == 1
+    assert captured["tracks"] == meta["tracks"]
     assert sent == []
 
 

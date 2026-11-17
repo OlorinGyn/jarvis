@@ -90,7 +90,7 @@ def _clip_moments(segments, spans):
 
 
 def _assemble(camera, start, end, destination, labels, notified=False, best_view=None,
-              person_spans=(), dog_view=None, held=False, people=0, people_view=None):
+              person_spans=(), dog_view=None, held=False, people=0, people_view=None, tracks=None):
     """Wait for the final segment to close, build the clip, then read faces.
 
     When no face was found, the phone gets the side view or the best view of
@@ -104,7 +104,7 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     if not segments:
         if "person" in labels:
             notify.after_scan(camera.label, start, [], held, notified, None, best_view,
-                              people=people)
+                              people=people, ended_at=end, tracks=tracks)
         return
     _concat(segments, destination)
     found = []
@@ -118,7 +118,7 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     if "person" in labels:
         notify.after_scan(camera.label, start, found, held, notified,
                           faces.side_view_path(destination), best_view, people=people,
-                          people_view=people_view)
+                          people_view=people_view, ended_at=end, tracks=tracks)
     if dog_view:
         try:
             dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
@@ -422,7 +422,8 @@ class EventRecorder:
                                      destination, set(self.labels), self.notified,
                                      followup, [tuple(s) for s in self.person_spans],
                                      self.dog_view, self.person_held),
-                               kwargs={"people": self.most_people, "people_view": people_view})
+                               kwargs={"people": self.most_people, "people_view": people_view,
+                                       "tracks": meta.get("tracks")})
         job.start()
         _jobs.append(job)
 
