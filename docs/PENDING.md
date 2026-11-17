@@ -13,6 +13,15 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
+- **The cleaning's rule** (backlog 43, review 33; the table is in BACKLOG
+  3). On production's data the evidence of one body moves 23 views: 21
+  right, **2 wrong** — two of the user's views to Izabel, both from
+  `Back/2026-10-27/00-39-23`, whose "sure" Izabel is a 36 px face seen
+  in one frame (HISTORY 13.35). (a) apply as decided; (b) the sure
+  sighting seen in at least 2 frames — 21 moves, none wrong; (c) a sure
+  face at least 40 px — the same. The architect recommends (b). Until
+  the answer nothing is applied on production and no release goes out;
+  "Visitor N" waits with it.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
@@ -154,6 +163,9 @@ grows, decisions are being postponed.
 
 ## Decided, not yet done
 
+- **The cleaning on production** (backlog 43, applied directly with a
+  backup — the user's choice of 17/11): built; waits for the rule above,
+  then the architect applies it at the deploy (BACKLOG 3).
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40

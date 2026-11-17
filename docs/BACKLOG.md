@@ -58,6 +58,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **39.** On a phone, an unnamed card is its photo and its name; the empty accuracy table hidden (decided, UX, `a9b8c32`, review 26, `v2026.10.15`) | ARCHITECTURE 17.17 |
 | ✓ | **40.** Notifications by incident: nothing dropped, loud or silent, one ring in 30 s at most; a camera with no picture, and its return (decided 16/10, `136e9b0`–`dc86e89`, review 29, `v2026.10.16`); its "later, with tracking" part is item 7's | ARCHITECTURE 12.11, 12.12 |
 | ✓ | **41.** Notifications by visit in Home: dog tracks, a resident explains one body, then only news — 98 messages a day to 35 on the month (decided 17/11, `071e55b`, review 32 `7709f94`, `v2026.11.17`); with R63, a failed send tried again | ARCHITECTURE 12.13, 12.14 |
+| ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33); released with the cleaning of item 43 | ARCHITECTURE 10.17 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–41 and 32, in `PENDING.md`.
 
@@ -87,7 +88,10 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     labels before anything is applied (HISTORY 13.33). Then the same
     evidence at scan time, so a resident's bad views join him instead of
     forming a new unnamed entry — only if the month shows no view given to
-    the wrong person.
+    the wrong person. **The evidence and `tools/clean_gallery.py` are built**
+    (`7c80e4d`, review 33, ARCHITECTURE 10.17); on production's data they
+    move 2 views of 23 to the wrong person, so nothing is applied until the
+    user chooses the rule (section 3), and the scan-time step is not built.
 44. **New people grouped under a temporary name** (decided 17/11, the
     user's idea: "they can group themselves before being named; give a
     temporary name and I only rename it") — every unnamed face entry gets
@@ -101,7 +105,8 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     in three), and the user into thirteen. Measured first on the month's
     47 entries: which merges the evidence makes, none of two different
     people. Fewer groups for one person also means fewer "a face not yet
-    seen in the visit" messages (item 41).
+    seen in the visit" messages (item 41). **Built** (`92e36a3`, review 33,
+    above).
 
 ### Decided on 16/10/2026, to build
 
@@ -317,91 +322,63 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 32 is done** (HISTORY 13.34): developer 30 delivered R63, backlog
-41, the month replayed and R62; the review fixed four holes by tests first
-(`7709f94`) — the second body beside a face already seen, a resident
-recognised only after the event, errors `requests` does not wrap, a person
-box with no track. **`v2026.11.17` released and deployed.** On the month:
-98 messages a day → 35.
+**Review 33 is done** (HISTORY 13.35): developer 31 delivered backlog 43's
+evidence with `tools/clean_gallery.py`, and backlog 44, "Visitor N"; the
+review made the cleaning refuse an event with untracked boxes, as the scan
+does (`2154a68`). **No release yet**: the next deploy is the one that
+applies the cleaning, and its rule waits for the user.
 
-**Developer 31: the photos — backlog 43, then 44, then 42.** One tool,
-`tools/clean_gallery.py`, and the scan-time rules after it. **Copies
-only**: `C:\JARVIS` is read, never written — the architect applies the
-cleaning on production at the deploy, after reading its dry run.
+**Waits for the user: the cleaning's rule** (`PENDING.md`). On production's
+data the evidence of one body moves 23 views, 2 of them wrong — two of the
+user's views to Izabel, from one night event whose "sure" Izabel is a
+36 px face seen in one frame (HISTORY 13.35). The choices:
 
-1. **Backlog 43, the evidence, by tests first.** A face view belongs to a
-   resident when its own event — the view's `view_events` entry (R55,
-   ARCHITECTURE 10.16) — has **exactly one track voted person** in the
-   event JSON's `tracks` (`tracks.voted`, ARCHITECTURE 7.16) and **exactly
-   one resident recognised for sure** among that event's face sightings
-   (`resident_person`'s rule: named, resident, score at or above the
-   user's sure threshold, `learn_threshold`). An event without `tracks`
-   (before 16/10 21:28) is no evidence. Tests: a view of an unnamed entry
-   whose event had one body and Gustavo sure goes to Gustavo; the same
-   with two person tracks, or with Gustavo and Izabel both sure, or with
-   only "probably Gustavo", stays; a view of Izabel's whose event had one
-   body and Gustavo sure goes to Gustavo; a view with no event stays.
-2. **`tools/clean_gallery.py <folder> [--apply]`.** The dry run (the
-   default) reads `faces/` and `clips/` and prints every move it would
-   make — view, from, to, its event — with a contact sheet per
-   destination (a JPEG beside the output, as the review's), and
-   **checks itself against HISTORY 13.33's labels**: how many views of the
-   13 entries labelled Gustavo and the 3 labelled Izabel go to that
-   resident, and **any view of any other unnamed entry that moves to a
-   resident — the number that must be 0**. `--apply` refuses while a
-   service answers on the folder's port (as `settle_waiting.py` does),
-   copies `faces/` to `backups/` first, and moves each view through the
-   40-view rule (ARCHITECTURE 17.14) under the gallery's lock; an entry
-   left with no view is removed, its sightings repointed to the resident
-   (`_repoint_sightings`). Then `tools/check_data.py` on the result.
-   Run it on a **copy** of production's `faces/` and `clips/` and put its
-   numbers in the HANDOFF: moves per resident, against the labels.
-3. **Backlog 43, at scan time — only if step 2's count of wrong moves is
-   0.** In `_scan_clip`'s naming, a face group of an event with one
-   person track and one sure resident recognised joins that resident
-   (through the 40-view rule, so it waits in Waiting) instead of forming
-   a new unnamed entry. `_assemble` already has the tracks
-   (`Record.decided()`); pass them on. If step 2 shows a wrong move, do
-   not build this; say why in the HANDOFF.
-4. **Backlog 44, "Visitor N", by tests first.** A new optional field on a
-   face entry, `temporary_name` ("Visitor 12"), given when an unnamed
-   entry forms, N from a counter kept in the gallery file (a new optional
-   key) that only grows — never reused, also after a deletion. **It is
-   not a name**: `person_case` stays `unknown_face`, Home still sends it,
-   the sure and probable rules do not apply; the message reads "Front
-   12:00:00: Visitor 12, unknown face"; People shows it on the card;
-   renaming the entry on the page names it — views and sightings kept,
-   the temporary name dropped. Existing unnamed entries get theirs in
-   order of first sighting, once, at load (a migration that only adds a
-   field — older versions ignore it). The grouping: two unnamed entries
-   with views in **one event with one person track** are one person and
-   merge (the existing `_merge`); measure it first on the copy, against
-   the labels — which merges it makes, none of two people labelled
-   different; if any, do not build the merge, only the name.
-5. **Backlog 42, if the session has room**, by tests first: (a) an
-   unnamed face entry not seen for 60 days (its last sighting) is
-   forgotten with its view photos; its sightings stay and read "?" on
-   Recordings, as a forgotten dog's do; a named entry is never touched;
-   checked once a day by the service. (b) a dog crop that is probably a
-   named dog (ARCHITECTURE 20's probable distance and ratio) stays a
-   sighting with that name and makes no unnamed card. Otherwise it is
-   developer 32's, first.
+| | The sure resident's sighting | Moves | Wrong | Right lost |
+|---|---|---|---|---|
+| (a) | as decided | 23 | 2 | — |
+| (b) | seen in at least 2 frames, as an unnamed entry needs 2 to form | 21 | 0 | 1 |
+| (c) | a face at least 40 px wide | 21 | 0 | 1 |
 
-**HANDOFF:** the dry run's numbers against the labels, the moves it would
-make on production, what was built of steps 3 to 5 and what was not, and
-the data-format impact field by field (`tools/check_data.py` on the copy
-before and after).
+The architect recommends **(b)**: it reuses a rule the scan already has
+(`MIN_VIEWS_FOR_NEW`); (c) would be a new number fitted to one event.
 
-**The architect, next:** the late messages of 18/10 (`PENDING.md`) —
-measure the delays on the month again and propose.
+**Developer 32: backlog 42, then the user's rule.**
 
-**Waits for the user:** choosing the sure threshold for faces and the sure
-distance for dogs from the two tables in Settings → Detection (the defaults
-hold until then); the misfiled dog views, thirteen, before the once-only
-settle of backlog 28 — the new model sees them right, but four sit in
-Chosen, where every match is measured against them; the M900 sleeping at
-the sign-in screen; the checks on the M900, `v2026.11.17` among them
-(`PENDING.md`).
+1. **Backlog 42**, by tests first: (a) an unnamed face entry not seen for
+   60 days (its last sighting) is forgotten with its view photos; its
+   sightings stay and read "?" on Recordings, as a forgotten dog's do; a
+   named entry is never touched; checked once a day by the service. A
+   forgotten visitor's number is never given again (`_next_visitor` reads
+   the header's counter; a test). (b) a dog crop that is probably a named
+   dog (ARCHITECTURE 20's probable distance and ratio) stays a sighting
+   with that name and makes no unnamed card.
+2. **If the user chose (b) or (c)**: that rule in `sure_resident`, by a
+   test (a sure sighting of one frame, or under 40 px, is no evidence);
+   then the dry run of `tools/clean_gallery.py` on a fresh copy of
+   production's `faces/` and `clips/`, its numbers in the HANDOFF, the
+   wrong moves read on the contact sheets.
+3. **Backlog 43 at scan time — only if step 2's dry run shows no wrong
+   move**: in `_scan_clip`'s naming, a face group of an event with one
+   person track and one sure resident (the same rule) joins that resident
+   through the 40-view rule — chosen, replacing or discarded; it never
+   queues (ARCHITECTURE 17.14) — instead of forming a new unnamed entry.
+   `scan_clip` already receives the tracks. Under (a) it is not built.
+
+**HANDOFF:** as always, with the dry run's numbers.
+
+**The architect, at the release after developer 32:** the deploy; on
+production the dry run read against the contact sheets, `--apply` with the
+service stopped, `check_data`; People at 375 px and on a desktop with the
+visitors named; raid log 26. Then the late messages of 18/10
+(`PENDING.md`) — measure the delays on the month again and propose.
+
+**Waits for the user:** the cleaning's rule (above); choosing the sure
+threshold for faces and the sure distance for dogs from the two tables in
+Settings → Detection (the defaults hold until then); the misfiled dog
+views, thirteen, before the once-only settle of backlog 28 — the new model
+sees them right, but four sit in Chosen, where every match is measured
+against them; the M900 sleeping at the sign-in screen; the checks on the
+M900, `v2026.11.17` among them (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later
 sessions. R14, R12 and R9 as before. Every other open backlog item is

@@ -268,6 +268,7 @@ tools/
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
   settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
+  clean_gallery.py once: each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
   check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
@@ -325,6 +326,7 @@ uv run python tools/probe_rtsp.py <ip> <user> <pw> stream1   raw RTSP
 powershell Test-NetConnection <ip> -Port 554            does the camera answer on that IP?
 uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
+uv run python tools/clean_gallery.py <folder> [--apply]   once: the galleries cleaned by the evidence of one body; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)

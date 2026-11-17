@@ -141,6 +141,7 @@ jarvis/
 │   ├── probe_rtsp.py     raw RTSP (DESCRIBE → SETUP → PLAY)
 │   ├── rebuild_faces.py  rebuilds faces/ from the clips
 │   ├── settle_waiting.py once: the old Waiting queues through the 40-view rule (17.14)
+│   ├── clean_gallery.py once: each face view to the resident its own event shows; "Visitor N" (10.17)
 │   ├── check_clips.py    image damage coming from the cameras
 │   ├── make_epub.py      joins the .md files into an EPUB for an e-reader
 │   ├── check_doc_refs.py every "<DOC> <section>" reference lands on a heading
@@ -2280,6 +2281,82 @@ every photo got one time within 2 s of a sighting. So production's **first
 start of `v2026.10.15.2`**, on its original files, is the moment that
 counts; after it every view has a key, and later copies do not matter.
 
+### 10.17 The evidence of one body, and "Visitor N" (backlogs 43 and 44, 17/11/2026)
+
+**The evidence.** A month left alone filled the residents' galleries with
+each other's views and the unnamed list with the user's own bad views
+(HISTORY 13.33). A view's own event (`view_events`, 10.16) can tell whose
+it is: `faces.evidence_owner` names a resident when that event had
+**exactly one track voted person** (`person_tracks`, over the event JSON's
+`tracks`, 7.16) and **exactly one resident recognised for sure** among its
+face sightings (`sure_resident`: named, resident, score at or above the
+user's sure threshold, 10.15). A track voted dog is not a second body. An
+event recorded before tracks (16/10 21:28), or with a run the tracker
+failed on or a person box left without a track (`untracked_runs`,
+`untracked_people` in the event JSON — what `Record.decided()` refuses;
+review 33), is no evidence.
+
+**The cleaning, once.** `cleaning_moves(gallery, clips, sure)` gives one
+move per view — chosen or waiting — of an unnamed entry or a resident whose
+event names another resident; a named visitor's views are never moved, a
+view with no event stays. `Gallery.apply_cleaning` applies them under one
+lock and one save: each view leaves its entry by its photo name and enters
+the resident through the 40-view rule (17.14: chosen, replacing a closer
+pair, or discarded with its photo). A named entry never gives up its last
+chosen view. An unnamed entry left with no chosen view moves its queue up,
+or with none leaves the gallery, its sightings pointed at the resident that
+took most of its views — the repointing every merge does, so they keep the
+score they had against the unnamed entry and may read as a sure sighting of
+the resident. `tools/clean_gallery.py <folder> [--apply] [--sheets DIR]`
+runs it on any J.A.R.V.I.S. folder: the dry run, the default, prints every
+move, writes one contact sheet per destination outside the folder and
+counts the moves against HISTORY 13.33's labels; `--apply` refuses while
+the folder's service answers on its port, copies `faces/` to
+`backups/clean_gallery_<stamp>/`, cleans, merges the unnamed entries of one
+body and names the visitors. `Gallery._forget_view` resolves a relative
+view against the gallery's own project folder instead of `ROOT`, so a
+gallery opened from another folder deletes its own discarded photos — and
+still only files in its own `views/`.
+
+**Measured on production's data, 17/11 (HISTORY 13.35).** 23 moves from 19
+events: 21 right by eye on the contact sheets, **2 wrong** — two of the
+user's views given to Izabel, both from `Back/2026-10-27/00-39-23`, whose
+"sure" Izabel is a 36 px face seen in one frame at 0.452: the user's face
+matching the user's own views that sit in Izabel's Chosen. The evidence
+trusts a sure match the mixed gallery made. Asking the sure sighting for
+two frames, as `MIN_VIEWS_FOR_NEW` asks to form an entry, or for a 40 px
+face leaves 21 moves, none wrong, one right lost. The rule is the user's:
+the cleaning waits for their choice before it runs on production
+(`PENDING.md`), and **the same evidence at scan time, backlog 43's last
+step, is not built** — the plan made it conditional on no wrong move.
+
+**"Visitor N".** Every unnamed face entry gets a `temporary_name`,
+"Visitor N", when it forms (`Gallery.add`). `_next_visitor` takes N past
+the gallery header's counter (`"visitors"`, the last number given) and
+every temporary name held, so a number is never reused, also after a
+deletion or on a file without the counter. Entries older than this get
+theirs once per start, in order of first sighting (`name_visitors`, from
+`cameras.main()`, logged "Temporary names given to N unnamed face
+entries"). **It is not a name**: `person_case` stays `unknown_face`, the
+sure and probable rules do not apply, Home still sends it. The message
+reads "Visitor 12, unknown face" (`notify._who`); People shows it on the
+card and the entry's page (`web._card`, `app.js`). Naming the entry
+(`rename`, or `assign` with a name) drops it, views and sightings kept.
+Dogs get none (`DogGallery.temporary_names = False`). Recordings still read
+"Unknown" for an unnamed sighting (`Gallery.label`).
+
+**One body, one visitor.** `scan_clip` receives the event's decided tracks
+from `clips._assemble`. When a clip of one person track recorded two or
+more unnamed sightings, `_one_visitor` merges their entries into the first
+seen (`merge_unnamed`, through `_merge`, so their sightings are repointed)
+and keeps one sighting per entry: one "unknown face" message instead of
+two (12.14). The merge runs inside the scan lock with the gallery lock, and
+its repointing reads every sighting file once, as every merge does. For the
+entries that already exist, `one_body_groups` joins the unnamed entries
+sharing an event of one person track, transitively; the tool merges them.
+On production's data: 3 groups before the cleaning, 2 after, each two
+entries labelled the user — none of two people.
+
 ---
 
 ## 11. Tiered storage — `archive.py`
@@ -3955,6 +4032,11 @@ Every event file shares the basename `HH-MM-SS`, and that is load-bearing: the
 archive moves an event with `glob(f"{base.name}.*")` (11.2). That is why the
 late alert photo is `HH-MM-SS.alert.jpg` and not `HH-MM-SS_alert.jpg` — the
 second name would be left behind when the event moves to the external drive.
+
+**Optional fields of 17/11/2026** (backlog 44, review 33): a face entry's
+`temporary_name` and the face gallery header's `visitors` counter (10.17);
+an event JSON's `untracked_people`. Older versions keep the first two —
+entries and the header are written back whole — and ignore all three.
 
 ### 19.3 Two traps already met
 

@@ -2782,3 +2782,67 @@ checks that it reproduces the log event by event — 0 events differ —
 which proves the replay's inputs are right; only then does it switch the
 visit on and count. A rule measured through a copy of itself measures the
 copy.
+
+## 51. Assigning inside an expression, a whole-string match, groups joined by shared sets, and the most common item (developer 31)
+
+### 51.1 `:=`, the walrus operator
+
+```python
+held = [int(found.group(1)) for p in self.people
+        if (found := VISITOR_PATTERN.fullmatch(p.get("temporary_name") or ""))]
+```
+
+The comprehension needs the match twice: to filter (is this a "Visitor N"?)
+and to read its number. `found := ...` stores the match in `found` **and**
+yields it, so the `if` tests it and the expression before `for` uses it.
+C# does the same with `out var`: `if (dict.TryGetValue(key, out var v))
+Use(v);`. Without it, the code would call `fullmatch` twice or need a loop
+with a temporary. Inside an `if` of a comprehension the parentheses are
+required. It is called the walrus for its look, `:=` on its side.
+
+### 51.2 `re.fullmatch` against `re.match`
+
+`re.match` anchors only at the start: `re.match(r"Visitor (\d+)",
+"Visitor 12b")` matches "Visitor 12". `re.fullmatch` wants the whole string,
+like `^...$`, so "Visitor 12 (aunt)" typed by someone is never read as a
+number. In C#: `Regex.IsMatch(s, @"^Visitor (\d+)$")`. The pattern is
+compiled once, at import (`re.compile`), as a `static readonly Regex`.
+
+### 51.3 Groups joined by shared sets
+
+`one_body_groups` joins entries transitively: A and B share one event, B
+and C another, so A, B and C are one person. It keeps `group_of`, a dict
+from each id to **the same `set` object** shared by its whole group:
+
+```python
+joined = set(ids).union(*(group_of.get(i, set()) for i in ids))
+for i in joined:
+    group_of[i] = joined
+```
+
+Joining builds a new set with every member of every group touched and
+points each member at it, so the old sets are left with no one pointing at
+them. It is the simplest form of union-find (disjoint sets); the textbook
+one keeps a parent per element and is faster for millions of elements,
+which fifty entries do not need. At the end each group sits in `group_of`
+once per member: `{id(g): g for g in group_of.values()}` keeps each set
+once, keyed by `id()` — the object's identity, like C#'s
+`ReferenceEquals` — because a `set` is mutable and so cannot itself be a
+dict key or the member of another set.
+
+### 51.4 `Counter.most_common`
+
+`received[source][target] += 1` counts, per emptied entry, the residents
+that took its views; `targets.most_common(1)[0][0]` is the one that took
+most. `most_common(n)` returns the n `(key, count)` pairs with the highest
+counts, ties in insertion order — LINQ's
+`GroupBy(...).OrderByDescending(g => g.Count()).First().Key`, without the
+grouping, because a `Counter` is already a dict from key to count.
+
+### 51.5 A commit message from a file
+
+Windows PowerShell 5.1 passes arguments to a native program by rebuilding
+its command line, and double quotes inside an argument are lost:
+`git commit -m "the "Visitor N" name"` reaches git as several arguments,
+which git reads as paths. `git commit -F message.txt` reads the message
+from a file and needs no quoting at all.

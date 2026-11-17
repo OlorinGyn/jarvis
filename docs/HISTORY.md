@@ -303,6 +303,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 30 | 16/10/2026 | `0d4eeab..dccf519`, developer session 28 — R61, `trackers` and the deploy's warm-up, tracks measured (item 7 part 1) | no code fixed; 338 tests pass, no comments, `check_doc_refs` 0; every release tag holds `.python-version`, the warm-up's imports run locally (55 modules, none failing); the library's first box with −1 read in its source; the HANDOFF's hardlink explanation corrected — the project copies (ARCHITECTURE 18.7); R61 closed; **release `v2026.10.16.2`** (13.31) |
 | 31 | 16/10/2026 | `dccf519..81f1db5`, developer session 29 — item 7 part 1 finished: the first box joined, tracks recorded live | no code fixed; 348 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the first-box method read against `_spawn_new_tracks` and `_get_alive_tracklets`, the tracks aged by seconds before matching, the JSON written in the loop before the next event; three clips replayed again, the numbers as reported; the JSON holds no place, so part 2 replays for it; R62 opened (low); **release `v2026.10.16.3`** (13.32) |
 | 32 | 17/11/2026 | `81f1db5..aaa2a06`, developer session 30 — R63, backlog 41 (the visit), the month replayed, R62 | **four code fixes, each by a test first (`7709f94`)**: a face already seen with a second body beside it sent nothing; a resident recognised only after the event explained it; an `OSError` or `ValueError` from `requests.post` escaped `_call`; a person box left without a track was ignored by `dog_only`; 388 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again: 1,028 person messages, 35 a day; none of 4,106 person events scanned out of order; R63, R62 and R59 closed; **release `v2026.11.17`** (13.34) |
+| 33 | 17/11/2026 | `2ef8562..186a52e`, developer session 31 — backlog 43 (the evidence of one body, `clean_gallery.py`), backlog 44 ("Visitor N") | **one code fix, by tests first (`2154a68`)**: the cleaning's evidence took an event with untracked boxes, which the scan refuses; the event JSON records `untracked_people`; 423 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the dry run read again on production itself: 23 moves, 2 wrong — the rule goes to the user; **no release** (13.35) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2522,6 +2523,78 @@ The plan's four steps were all done, in its order.
 photos (BACKLOG 3). The late messages of 18/10 are the architect's next
 measurement (`PENDING.md`).
 
+### 13.35 Review 33 — developer session 31 (17/11/2026)
+
+Developer 31 reviewed whole (`2ef8562..186a52e`: `faces.py` — the
+evidence, `apply_cleaning`, `_forget_view`, "Visitor N", `_one_visitor` —
+`tools/clean_gallery.py`, `notify._who`, `web._card`, `app.js`; 33 new
+tests). **One code fix, by tests first (`2154a68`); 423 tests pass**, no
+comments in `src/` and `tools/`, `check_data` reads every file,
+`check_doc_refs` exits 0. Backlog 44 built, 43 half (ARCHITECTURE 10.17).
+**No release:** the next deploy is the one that applies the cleaning, and
+its rule waits for the user.
+
+**The fix.** `faces.event_tracks` read an event's tracks from its JSON
+whatever else the event saw, while the scan-time evidence
+(`Record.decided()`, review 32) refuses an event with a run the tracker
+failed on or a person box left without a track — that box can be a second
+body. The cleaning and the grouping now refuse the same events, and the
+event JSON records `untracked_people` (a new optional field) so a later
+reading can tell. Of production's 5,999 tracked events none has an
+untracked run, and each of the 19 events behind the moves counted one
+person box at most (`most_people` 1): the dry run is unchanged.
+
+**The dry run, read again on production itself** (read-only, 17/11):
+the same 23 moves from 19 events and the same 3 groups as developer 31's
+copy. Developer 31's reading of the contact sheets: all 15 to the user are
+the user, the 4 out of Izabel's entries are women, 2 of `p_208373ee`'s go
+to Izabel and are a woman — 21 right. **2 wrong**: `c1cbb25d1a6f.jpg` of
+`p_9d3c46dc` and `3225bc93eed1.jpg` of `p_ec19f444`, the user with
+headphones, both from `Back/2026-10-27/00-39-23`, whose sure Izabel is a
+36 px face in one frame at 0.452 against 0.40 — the user's face matching
+the four of the user's views that sit in Izabel's Chosen (13.33). Variants
+measured: the sure sighting in at least 2 frames → 21 moves, 0 wrong, 1
+right lost (`Front/2026-10-27/14-30-20`, Izabel, 1 frame, 69 px); a face at
+least 40 px → 21, 0 wrong, 1 right lost (`Back/2026-10-29/19-23-39`, the
+user, 39 px). 23 moves is a small sample for a rule; the two-frame one
+reuses a rule the scan already has (`MIN_VIEWS_FOR_NEW`), the size one would
+be a new number fitted to one event. What `--apply` would do: 52 entries →
+49 (16 views replace a chosen one, 7 are discarded, 3 unnamed entries
+emptied) → 47 (two merges; the third group is the wrong event's and is gone
+after the cleaning) → 42 visitors named. Applied twice, the second run
+moves nothing. The cleaning also leaves the four of the user's views in
+Izabel's Chosen: their events have no tracks.
+
+**Read and left.**
+
+- `_forget_view` resolves a relative view against the gallery's own
+  project folder; it still deletes only a file inside that gallery's own
+  `views/`, so a gallery opened elsewhere can only fail to delete, never
+  delete another folder's photo. Production's and the test copy's
+  galleries resolve as before.
+- An emptied entry's sightings keep the score they had against it when
+  repointed to the resident: one at 0.6 against an unnamed entry reads as a
+  sure sighting of the resident in Recordings and for any later evidence.
+  Every merge since the gallery began does the same; the cleaning makes it
+  common. Left: the second dry run moves nothing, and the scan-time
+  evidence, the reader that would compound it, is not built.
+- `merge_unnamed` at scan time holds the scan and gallery locks while it
+  repoints every sighting file, as every merge does; rare — two unnamed
+  faces on one body.
+- `_one_visitor` merges the unnamed faces of one body also when a resident
+  is recognised beside them: they are the resident's own bad views, which
+  the scan-time evidence would have given to the resident.
+- Recordings still read "Unknown" for an unnamed sighting where People
+  reads "Visitor N". The page change is two texts; checked in the CSS (the
+  name has no fixed width), **not in the browser** — that is the release's
+  step, with the visitors named.
+- The tool's gallery lock is a thread lock, so `--apply` is safe only with
+  the service stopped, which it checks on the folder's port.
+
+**For the next session.** The user chooses the cleaning's rule
+(`PENDING.md`, BACKLOG 3); then the architect releases, deploys and applies
+it. Developer 32: backlog 42.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2602,3 +2675,5 @@ of `CONTEXT.md`.
 | A42 | architect | ultracode | 17/11 12:29–12:55 | Remote Control turned on; a month left alone read for the user — 3,020 messages joined to events and faces, contact sheets of the unnamed faces, the residents' Chosen and the unnamed dogs, rules simulated, 75 failed sends (R63); the user's answers, backlog 41–44, HISTORY 13.33; developer 30 planned and started | 7% → 20% | 1% → 3% | 315k → about 435k tokens, the same conversation (a month later) |
 | D30 | developer | high | 17/11 12:55–13:12 | session 30: R63 by a fake Telegram, backlog 41 — the visit, its three rules — `replay_visits.py` on the month (98 → 35 a day), R62 (384 tests) | 20% → 35%: R63 6, backlog 41 4, the replay 3, R62 1 | 3% → 5% | 77k → about 230k tokens, a new conversation |
 | A43 | architect | ultracode | 17/11 13:15–13:35 | review 32: the diff read whole, four holes fixed by tests first, the month replayed again and in scan order; HANDOFF integrated, ARCHITECTURE 7.16, 8.4, 12.11, 12.13, 12.14 and 22.3, PYTHON 50, the labels of 13.33 saved; release and deploy `v2026.11.17`, raid log 25; developer 31 planned | 35% → 52% | 5% → 7% | 72k → about 270k tokens, a new conversation |
+| D31 | developer | high | 17/11 13:33–13:52 | session 31: backlog 43 steps 1–2 — the evidence, `apply_cleaning`, `clean_gallery.py`, the dry run on a copy (23 moves, 2 wrong) — and backlog 44, "Visitor N" and one body's unnamed faces merged; the scan-time step not built, 42 not started (421 tests) | 51% → 65% | 7% → 9% | 77k → about 230k tokens, a new conversation |
+| A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule goes to the user; not handed over (the window and the decision) | 67% → 74% before the last commit | 9% → 10% | 72k → about 200k tokens, a new conversation (started by the developer's handover) |
