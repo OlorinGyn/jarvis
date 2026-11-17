@@ -137,11 +137,26 @@ grows, decisions are being postponed.
   that clearly repeats one of the same visit. The log names every message
   not sent and why (`skipped: visit (…)`).
 
+- **`v2026.11.17.2` on the phone and the M900** (backlogs 42 and 44): the
+  Dogs tab stops filling with Aurora and Mirana — a crop that is probably
+  one of them is a sighting that reads "probably Aurora" in Recordings and
+  makes no card; a card is now a dog the gallery cannot place. New people
+  read "Visitor N" on People and in the message ("Front: Visitor 12,
+  unknown face"); renaming the card is naming them. A visitor not seen for
+  60 days is forgotten with its photos, its recordings kept (the first
+  ones in December). Since review 34, 14 of the user's photos are no
+  longer in Izabel's entry, so "Izabel recognized" for the user should
+  stop. **What goes to the architect:** a dog card that is clearly Aurora
+  or Mirana, or "Izabel" named for the user, with its time.
+
 ## Decided, not yet done
 
 - **The cleaning on production** (backlog 43, applied directly with a
   backup — the user's choice of 17/11): built; waits for backlog 45's
   quality cut, the user's answer to its two wrong moves (BACKLOG 3).
+  The cut itself waits for one more measurement, a face-quality model
+  (the user's choice in review 34, HISTORY 13.36); the 18 views of
+  someone else are already gone.
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40

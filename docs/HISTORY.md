@@ -108,6 +108,30 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+44. **Done 17/11 (`92e36a3`, review 33; ARCHITECTURE 10.17).** **New people grouped under a temporary name** (decided 17/11, the
+    user's idea: "they can group themselves before being named; give a
+    temporary name and I only rename it") — every unnamed face entry gets
+    a temporary name when it forms, **"Visitor N"**, N counting up and never
+    reused, kept in a new optional field; People and the message show it
+    ("Front: Visitor 12, unknown face"), and renaming it on the page is
+    naming it, its views and sightings kept. The grouping gets better with
+    item 43's evidence: two unnamed entries found on one body — one event,
+    one person track — are one person and merge. The month shows why: one
+    visitor split into several entries on 31/10 (Ana Claudia's other faces
+    in three), and the user into thirteen. Measured first on the month's
+    47 entries: which merges the evidence makes, none of two different
+    people. Fewer groups for one person also means fewer "a face not yet
+    seen in the visit" messages (item 41). **Built** (`92e36a3`, review 33,
+    above).
+42. **Done 17/11 (`c3b0dd2`, review 34; ARCHITECTURE 10.19).** **The photos manage themselves** (decided 17/11) — (a) an unnamed face
+    entry not seen for **60 days** is forgotten with its view photos; its
+    sightings stay and read "?" on Recordings, as a forgotten dog's do; a
+    named entry is never touched. (b) The household's dogs stop filling the
+    unnamed list: a crop that is probably a named dog (ARCHITECTURE 20's
+    probable distance and ratio) stays a sighting with that name and makes
+    no card; an unnamed card is for an animal the gallery cannot place —
+    the 60 unnamed dogs of 17/11 were Aurora and Mirana, 59 of 60, all from
+    the last 24 hours. Closes backlog 37's self-cleaning part.
 41. **Done 17/11 (`071e55b`, review 32's `7709f94`, `v2026.11.17`; ARCHITECTURE 12.14).** **Notifications by visit** (decided 17/11) — per camera, a **visit** is
     person events less than 5 minutes apart (the end of one to the start of
     the next). In Home, at the held decision after the face scan
@@ -304,6 +328,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 31 | 16/10/2026 | `dccf519..81f1db5`, developer session 29 — item 7 part 1 finished: the first box joined, tracks recorded live | no code fixed; 348 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the first-box method read against `_spawn_new_tracks` and `_get_alive_tracklets`, the tracks aged by seconds before matching, the JSON written in the loop before the next event; three clips replayed again, the numbers as reported; the JSON holds no place, so part 2 replays for it; R62 opened (low); **release `v2026.10.16.3`** (13.32) |
 | 32 | 17/11/2026 | `81f1db5..aaa2a06`, developer session 30 — R63, backlog 41 (the visit), the month replayed, R62 | **four code fixes, each by a test first (`7709f94`)**: a face already seen with a second body beside it sent nothing; a resident recognised only after the event explained it; an `OSError` or `ValueError` from `requests.post` escaped `_call`; a person box left without a track was ignored by `dog_only`; 388 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again: 1,028 person messages, 35 a day; none of 4,106 person events scanned out of order; R63, R62 and R59 closed; **release `v2026.11.17`** (13.34) |
 | 33 | 17/11/2026 | `2ef8562..186a52e`, developer session 31 — backlog 43 (the evidence of one body, `clean_gallery.py`), backlog 44 ("Visitor N") | **one code fix, by tests first (`2154a68`)**: the cleaning's evidence took an event with untracked boxes, which the scan refuses; the event JSON records `untracked_people`; 423 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the dry run read again on production itself: 23 moves, 2 wrong — the rule goes to the user; **no release** (13.35) |
+| 34 | 17/11/2026 | `2154a68..59ec29f`, developer session 32 — backlog 45 step 1 (the quality cut measured, `view_quality.py`), backlog 42 | no code fixed; 440 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the verdicts read on the contact sheets — the poor and someone-else's right, the "good" ones recognisable rather than impeccable; no cheap cut reaches 0 wrong, so the cut went to the user: a face-quality model measured first; the 18 views of someone else deleted from production with a backup; **release `v2026.11.17.2`** (backlogs 42 and 44) (13.36) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2605,6 +2630,70 @@ collections" — no quality cut exists yet, so it is recorded in backlog
 **For the next session.** Developer 32: backlog 45 measured, then 42
 (BACKLOG 3).
 
+### 13.36 Review 34 — developer session 32 (17/11/2026)
+
+Developer 32 reviewed whole (`2154a68..59ec29f`: `tools/view_quality.py`
+and its verdicts, `faces.forget_unseen`, `seen_since`, `keep_gallery`, the
+"gallery-keeper" thread, `dogs.record`; 17 new tests). **No code fixed;
+440 tests pass**, no comments in `src/` and `tools/`, `check_data` reads
+every file, `check_doc_refs` exits 0. Backlog 42 built; backlog 45 step 1
+measured, no rule built, as planned (ARCHITECTURE 10.18, 10.19).
+
+**The verdicts, read on the contact sheets.** The 102 poor face views are
+what the file says — head-tops, heads down, motion blur, side views with
+headphones, two faces in one crop, dark night blurs. The 18 someone else's
+are right: 14 of the user's views in Izabel's entry (one with a motorcycle
+helmet), a woman and a man in profile in the user's, a face printed on a
+T-shirt as an unnamed entry. **The 204 "good" views are recognisable, not
+impeccable**: the cameras look down, and many of the user's good views
+look down too; a stricter eye would leave fewer. The 41 views the pair
+keeps are all clear frontal faces. The dog sheets as reported; the box cut
+also drops clear day views of a small dog (`4fea37`).
+
+**The reading: the user's rule cannot be met cheaply with these signals.**
+The only face cut at 0 wrong, SCRFD ≥ 0.70 and sharpness ≥ 75, keeps 41 of
+324 views and drops the sure recognitions from 71 to 15, and it was chosen
+from many pairs to dodge these 102 labels (PYTHON 52.3). Applying it
+"without asking again" would have honoured the letter of the user's
+answer of 17/11 and not its purpose, so it went back to them. What the
+measurement lacked is a signal made for the question — a face image
+quality model, which is what PROCESS 5's rule (a well-regarded ready-made
+tool before a hand-made one) points to: eDifFIQA(T) in OpenCV Zoo, an
+ONNX model `cv2.dnn` runs, and ArcFace's own embedding norm. For dogs the
+box at least 120 px is 0 poor at a small price; it stands, fitted on five
+views.
+
+**Read and left.**
+
+- `forget_unseen` reads the sightings before taking the lock: a scan that
+  matches an old unseen entry in that second writes a sighting the
+  forgetting then orphans ("?"). Once a day, at most a second; written in
+  ARCHITECTURE 10.19.
+- An entry with no `first_seen` would count as old. `Gallery.add` has
+  always written one; all 45 of production's entries hold it (34 unnamed
+  after the deletion below), and none would be forgotten today.
+- The forgetting deletes only the view photos, in the gallery's own
+  `views/`; the entry's thumbnail is the sighting's photo in its day
+  folder and stays, so Recordings keeps its picture.
+- A probable dog crop can no longer be named on the Dogs tab: the gallery
+  learns only from sure matches and from crops no named dog explains.
+  Accepted with the item; the night, where sure matches are fewer, learns
+  more slowly.
+- The log line "N crop(s) added … M probable kept" counts a sure match as
+  added, as before.
+
+**The user's answers, the same evening.** Shown the pair's price, the
+user chose to **measure a face-quality model first** (the next developer
+session), and to **delete the 18 views of someone else now**. Done at
+18:03 on production, after a copy of `faces/` in
+`C:\JARVIS\backups\misfiled_faces_20261117-180350` (5,524 files), through
+the page's own API from the M900: 14 views out of Izabel's Chosen (40 →
+26), 2 out of the user's (40 → 38), each removal checked by its photo
+name; the T-shirt's entry, `p_3e4bc1c1`, filed as a bad detection, so
+Settings can undo it. None of the 18 is left in the gallery or on disk.
+The three dog crops read as people stay unnamed cards for the user to
+report.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2687,3 +2776,5 @@ of `CONTEXT.md`.
 | A43 | architect | ultracode | 17/11 13:15–13:35 | review 32: the diff read whole, four holes fixed by tests first, the month replayed again and in scan order; HANDOFF integrated, ARCHITECTURE 7.16, 8.4, 12.11, 12.13, 12.14 and 22.3, PYTHON 50, the labels of 13.33 saved; release and deploy `v2026.11.17`, raid log 25; developer 31 planned | 35% → 52% | 5% → 7% | 72k → about 270k tokens, a new conversation |
 | D31 | developer | high | 17/11 13:33–13:52 | session 31: backlog 43 steps 1–2 — the evidence, `apply_cleaning`, `clean_gallery.py`, the dry run on a copy (23 moves, 2 wrong) — and backlog 44, "Visitor N" and one body's unnamed faces merged; the scan-time step not built, 42 not started (421 tests) | 51% → 65% | 7% → 9% | 77k → about 230k tokens, a new conversation |
 | A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule went to the user; then the user's answers: backlog 45 (the quality cut), three misfiled dog views deleted on production through the page's API; not handed over (the window) | 67% → 79% | 9% → 11% | 72k → about 235k tokens, a new conversation (started by the developer's handover) |
+| D32 | developer | high | 17/11 afternoon | session 32: backlog 45 step 1 — `view_quality.py`, 324 face and 139 dog views read by eye, the cuts and recognition per cut — and backlog 42 (440 tests) | 1% → 21% (new window) | 12% → 14% | 78k → about 310k tokens, a new conversation |
+| A45 | architect | ultracode | 17/11 17:35– | review 34: the diff read whole, the contact sheets read, the user's two answers, the 18 views deleted on production; release `v2026.11.17.2` | 23% → | 14% → | 72k → |

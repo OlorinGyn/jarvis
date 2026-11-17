@@ -2846,3 +2846,59 @@ its command line, and double quotes inside an argument are lost:
 `git commit -m "the "Visitor N" name"` reaches git as several arguments,
 which git reads as paths. `git commit -F message.txt` reads the message
 from a file and needs no quoting at all.
+
+## 52. Sharpness as the variance of the Laplacian, a photo's real resolution, a threshold fitted to its labels, and a sleep a stop interrupts (developer 32)
+
+### 52.1 The variance of the Laplacian
+
+```python
+def sharpness(grey):
+    return float(cv2.Laplacian(grey, cv2.CV_64F).var())
+```
+
+The Laplacian is a second derivative: at each pixel it says how much the
+brightness bends compared with its neighbours. On a flat area it is near
+zero; on an edge it swings hard positive and negative. Its **variance** over
+a region is therefore large when the region holds many sharp edges and
+small when it is smooth — and a blurred photo is a photo whose edges were
+smoothed. `cv2.CV_64F` asks for 64-bit floats, because the result is
+negative as often as positive and would be clipped in 8-bit pixels.
+
+Why it fails at night (ARCHITECTURE 10.18): it measures edges, not focus.
+An infrared picture is grey on grey, with little contrast, so a sharp dog at
+night scores 3–4 while a blurred dog by day scores more. A measure is only
+good for what it measures; "sharp" and "has strong edges" coincide only
+when the lighting is the same.
+
+### 52.2 A photo's real resolution, by shrinking and enlarging
+
+The gallery stores every face at 300 px, but a 40 px face enlarged to 300
+holds no more detail than 40 px. `effective_side` finds the side it came
+from: shrink the photo to each candidate side (`INTER_AREA`, the averaging
+resize) and enlarge it back (`INTER_CUBIC`), then measure how far the
+round trip moved the pixels. A side at or above the original resolution
+loses almost nothing; below it, detail is lost. The smallest side whose
+error is still close to the floor is the estimate. It is how one checks a
+JPEG for upscaling. Measured against the 140 views whose real width is
+known, the correlation is 0.86 — good enough to rank, not to measure.
+
+### 52.3 A threshold fitted to its own labels
+
+The pair "SCRFD ≥ 0.70 and sharpness ≥ 75" was chosen because, of all the
+pairs tried, it dodges every one of the 102 photos marked poor. Tried on
+those same 102, it cannot fail — it was picked for that. The real test is
+photos it has never seen, next month's. In Java or C# terms it is a unit
+test written after reading the bug's input: green on that input proves
+little about the next one. The more combinations are tried, the more
+likely one fits the labels by chance. R55 fixed the same mistake for the
+face table (leave each view's whole visit out); here the honest version is
+to fit the cut on some views and count the errors on the others.
+
+### 52.4 The daily loop, once more
+
+`keep_gallery` ends each pass with `if stop.wait(KEEP_SECONDS): return` —
+section 27's `Event.wait(timeout)`, the camera watch's pattern of section
+47: a 24-hour sleep that returns `True` the moment the service sets
+`stop`, where `time.sleep(86400)` would hold the thread for a day. The
+test replaces `stop.wait` on the instance with a lambda that records the
+timeout, so a "day" passes in no time.

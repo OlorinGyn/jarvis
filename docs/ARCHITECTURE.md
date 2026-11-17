@@ -142,6 +142,7 @@ jarvis/
 │   ├── rebuild_faces.py  rebuilds faces/ from the clips
 │   ├── settle_waiting.py once: the old Waiting queues through the 40-view rule (17.14)
 │   ├── clean_gallery.py once: each face view to the resident its own event shows; "Visitor N" (10.17)
+│   ├── view_quality.py   per stored view its quality signals, and the cut that is never wrong (10.18)
 │   ├── check_clips.py    image damage coming from the cameras
 │   ├── make_epub.py      joins the .md files into an EPUB for an e-reader
 │   ├── check_doc_refs.py every "<DOC> <section>" reference lands on a heading
@@ -2357,6 +2358,123 @@ sharing an event of one person track, transitively; the tool merges them.
 On production's data: 3 groups before the cleaning, 2 after, each two
 entries labelled the user — none of two people.
 
+### 10.18 The quality of a reference photo (backlog 45, measured 17/11/2026)
+
+**The user's rule** (CONTEXT 3): a view enters a face or dog gallery only
+when its photo passes a quality cut measured never to fail; detection,
+matching and the messages stay as they are. **Step 1 is the measurement;
+no rule is built yet.**
+
+**The tool.** `tools/view_quality.py <folder> [--sheets DIR] [--verdicts
+FILE]` reads any J.A.R.V.I.S. folder — on 17/11 a copy of production's
+`faces/`, `dogs/` and event JSONs — and writes nothing in it. Per stored
+view, chosen and waiting, it gathers the signals the photo or its sighting
+holds. Faces: YuNet run again on the stored 300 px photo (score, nose
+offset, eye spread over width), SCRFD's score, the face's width in its
+frame — the sighting's own when the photo is the sighting's (140 of 266
+chosen), otherwise `effective_side`, an estimate from the photo itself
+(correlation 0.86 with the known widths; PYTHON 52) — the frames of its
+sighting, sharpness as the variance of the Laplacian over the face, day or
+night. Dogs: the box in its frame, sharpness, day or night, and YOLO run on
+the crop padded twice its size. A view is **wrong** two ways: flagged by
+leave-one-event-out (R55; its nearest view outside its own event belongs to
+another known identity at `MATCH_THRESHOLD`; for dogs, `dogs.match`'s rule
+names another dog), or read wrong by eye. The verdicts by eye live in
+`tools/view_quality_verdicts.json`, `{photo name: "poor" | "other" |
+"ok"}`: poor is a head down or the top of a head, a blur, a damaged frame,
+a side view, two faces, a very dark night; other is someone else's photo in
+the entry; ok is a flag that is only a look-alike. The tool reads the file
+again on every run, so a softer or stricter reading changes every table.
+
+**Faces: 324 views, 102 poor, 18 someone else's.** No single signal
+reaches 0 poor short of emptying the gallery: YuNet ≥ 0.92 keeps 18 views,
+SCRFD ≥ 0.85 keeps 5. The best pair, **SCRFD ≥ 0.70 and sharpness ≥ 75,
+keeps 41 with 0 poor and 0 someone else's** — the user 5 views of 63,
+Izabel 4 of 75, Dhaniel 3, Heley 3, Luan 4, Manu 4, Natália 3, four
+named visitors none. Recognition by leave-one-event-out (sure at 0.40),
+with each set of views as the references:
+
+| References | right, sure | right, probable | wrong (sure / probable) | no name |
+|---|---|---|---|---|
+| today's chosen views | 71 | 85 | 3 / 2 | 67 |
+| the pair's 41 views | 15 | 54 | 0 / 0 | 159 |
+| YuNet ≥ 0.92 (18) | 4 | 17 | 0 / 0 | 207 |
+| the 204 views read good by eye | 58 | 91 | 0 / 1 | 78 |
+
+**The reading (review 34).** The signals the photos carry do not measure
+what the eye sees: a head down, a man in Izabel's entry, motion blur all
+pass detector and landmark scores a clean frontal face also gets. The pair
+is fitted to 102 labels, so "0 poor" on them is optimistic, and it costs
+four in five sure recognitions. The eye's selection keeps most of them with
+no wrong sure name — but the eye's "good" is *recognisable*, not
+impeccable: the cameras look down on heads, and many of the user's good
+views look down too. What the measurement did not try is a signal **made
+for this**: a face image quality model, trained to predict how useful a
+face photo is to a recogniser (head pose, blur, occlusion) — eDifFIQA(T)
+in OpenCV Zoo, an ONNX model `cv2.dnn` can run — and ArcFace's own
+embedding norm before normalisation, which grows with a face's quality (the
+idea behind MagFace). The choice went to the user (HISTORY 13.36).
+
+**Someone else's views are a filing problem, not a quality one**: 14 of the
+user's views sit in Izabel's entry (HISTORY 13.33 had counted four), a
+woman and another man in the user's, and a printed face on a T-shirt formed
+an unnamed entry. Leave-one-event-out found 13 flags, 9 truly wrong; the
+other 3 were good views of the user whose nearest neighbour was one of his
+own views filed under Izabel.
+
+**Dogs: 139 views (79 named), 5 poor, 3 someone else's.**
+Leave-one-event-out names no dog view wrong at any cut. By eye: one of
+Aurora's views holds two dogs, three are night motion blurs, one unnamed
+crop is only a tail, and three unnamed crops are **people** — YOLO's false
+dogs, not a photo's quality. The lowest cut with no poor view is **the box
+at least 120 px**: Aurora keeps 17 of 39 views, Mirana 25 of 40;
+recognition right-sure 14 → 12, right-probable 34 → 28, no name 31 → 39,
+no wrong either way. Fitted on five poor views, and it drops clear day
+views of small dogs too. Sharpness does not separate at night — an
+infrared picture has little contrast, so a sharp night dog scores 3–4 and
+the blurs 7–15 — nor does sharpness over contrast, nor the distance to the
+dog's own views; YOLO on a crop calls good dogs "person" and one person
+crop "dog" at 0.79.
+
+### 10.19 The photos manage themselves (backlog 42, 17/11/2026)
+
+**An unnamed face unseen for 60 days is forgotten.**
+`Gallery.forget_unseen(days=FORGET_DAYS, today=None)` removes, under the
+gallery lock, every unnamed entry whose `first_seen` is older than
+`FORGET_DAYS` = 60 and that no sighting of the last 60 days' day folders
+points to (`Gallery.seen_since`, which reads only the folders from that
+day on). Its views, chosen and waiting, go to `dropped`, so `save()`
+deletes their photos after the write — only files in the gallery's own
+`views/`; the thumbnail, which is the sighting's photo in its day folder,
+stays. Its sightings stay and Recordings reads "?" for an id that is gone,
+as a forgotten dog's does. A named entry is never touched, and a forgotten
+"Visitor N" keeps its number taken: `_next_visitor` reads the header's
+counter (10.17). `faces.keep_gallery(stop)` runs it at start and then every
+`KEEP_SECONDS` (24 h) in a daemon thread, "gallery-keeper", started in
+`cameras.main()` beside "camera-watch" — sixty days of sightings, about
+5,000 small JSON files and a second on production, would stall the camera
+loop (the `Housekeeper` runs there). The wait is `stop.wait(KEEP_SECONDS)`,
+so a stop ends it at once (PYTHON 52); a failure is logged as a warning and
+the loop goes on. On production's copy, 17/11: 35 unnamed entries, none
+would go today (the faces start on 10/10), 12 in December and 23 in
+January if not seen again. **A race left as it is:** the sightings are read
+before the lock, so a scan that matches an old unseen entry in that second
+writes a sighting the forgetting then orphans — "?" in Recordings, once a
+day at most.
+
+**A dog that is probably a named one makes no card.** `dogs.record`: a
+crop whose match is `probable` (the probable distance and ratio, 20) writes
+its sighting with `dog_id` `""`, `certainty` `"probable"` and `match` the
+name, keeps its photo in the day folder, and adds nothing to the gallery.
+`current_words` words it "probably <name>", in this version and every older
+one; every reader of `dog_id` takes an id the gallery does not hold (`get`
+→ None, `appearances` by equality). The log line counts them: "N crop(s)
+added to the gallery, M probable kept as sightings only". On production's
+copy, 58 of the 157 sightings of 16–17/11 were probable — cards no more;
+the 36 with no name still make one. The price, accepted with the item: a
+probable crop can no longer be named on the Dogs tab, so the gallery learns
+only from sure matches and from crops no named dog explains.
+
 ---
 
 ## 11. Tiered storage — `archive.py`
@@ -4037,6 +4155,10 @@ second name would be left behind when the event moves to the external drive.
 `temporary_name` and the face gallery header's `visitors` counter (10.17);
 an event JSON's `untracked_people`. Older versions keep the first two —
 entries and the header are written back whole — and ignore all three.
+**And a value of 17/11 (backlog 42, review 34):** a dog sighting's `dog_id`
+may be `""`, with `certainty` `"probable"` and `match` the name (10.19) —
+the field and its type unchanged; every version reads an id the gallery
+does not hold as no dog and words the sighting "probably <name>".
 
 ### 19.3 Two traps already met
 
@@ -4210,7 +4332,8 @@ whenever `dog` is an alert label; certainty only changes the words: the name,
 The first message names the dogs of the triggering frame, once per dog event
 and once more if "dog" arrives late; the Recordings card shows the event's
 best dog frame, so the two can differ. A sure match reinforces that dog with
-one more view; anything less becomes an unnamed crop (R27 caps them).
+one more view; a probable one stays a sighting with that name and no card
+(backlog 42, 10.19); anything less becomes an unnamed crop (R27 caps them).
 `tools/dog_crops.py [--days N]` gives crops to events recorded before the
 feature (~21 s per event on the M900).
 
@@ -4224,7 +4347,7 @@ was on the stored 320 px crops. So in the live loop DINOv2 is about 85 ms
 one to three frames once per dog event; nothing queues, since the loop
 takes the newest frame (5.4). Accepted in review 26.
 
-**Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs; named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop had a **Dismiss**, replaced on 11/10 by **Bad detection** (section 21). `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's gallery (since 15/10/2026 `dogs/gallery_dinov2_small.json`, its default).
+**Keeping the Dogs tab small (R27, 11/10/2026).** `DogGallery.add` keeps only the newest `MAX_UNNAMED` = 60 unnamed dogs — since backlog 42 only crops no named dog explains, sure or probable (10.19); named dogs are never touched, and a dropped entry's photos go with it. Sightings stay, so calendars keep their history (a dropped `dog_id` reads as "?"). Each unnamed crop had a **Dismiss**, replaced on 11/10 by **Bad detection** (section 21). `tools/dog_tuning.py [--gallery PATH]` measures the thresholds by **leave-one-out** — each named view matched against all the others, the honest test with few labels — and prints right-sure, right-probable, wrong and no-name per lighting, then a grid of thresholds; it only reads, so it can run on production's gallery (since 15/10/2026 `dogs/gallery_dinov2_small.json`, its default).
 
 **Dogs gather their look-alikes (R29, 11/10/2026).** Naming or merging a dog re-examines every unnamed crop against the dog's updated views with the *sure* rule only, same lighting only, repeating until nothing joins; past recordings show the dog's current name from `dog_id` instead of the words frozen when they were recorded.
 

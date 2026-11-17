@@ -58,25 +58,17 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **39.** On a phone, an unnamed card is its photo and its name; the empty accuracy table hidden (decided, UX, `a9b8c32`, review 26, `v2026.10.15`) | ARCHITECTURE 17.17 |
 | ✓ | **40.** Notifications by incident: nothing dropped, loud or silent, one ring in 30 s at most; a camera with no picture, and its return (decided 16/10, `136e9b0`–`dc86e89`, review 29, `v2026.10.16`); its "later, with tracking" part is item 7's | ARCHITECTURE 12.11, 12.12 |
 | ✓ | **41.** Notifications by visit in Home: dog tracks, a resident explains one body, then only news — 98 messages a day to 35 on the month (decided 17/11, `071e55b`, review 32 `7709f94`, `v2026.11.17`); with R63, a failed send tried again | ARCHITECTURE 12.13, 12.14 |
-| ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33); released with the cleaning of item 43 | ARCHITECTURE 10.17 |
+| ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33, `v2026.11.17.2`) | ARCHITECTURE 10.17 |
+| ✓ | **42.** The photos manage themselves: an unnamed face unseen for 60 days forgotten, a probable dog makes no card (decided 17/11, `c3b0dd2`, review 34, `v2026.11.17.2`); closes backlog 37's self-cleaning part | ARCHITECTURE 10.19 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–41 and 32, in `PENDING.md`.
 
 ### Decided on 17/11/2026, to build
 
 After a month left alone (HISTORY 13.33). The user's three answers are in
-CONTEXT 3. Item 41 is done (above, review 32); its full text is in
-`HISTORY.md` 8.
+CONTEXT 3. Items 41, 42 and 44 are done (above, reviews 32 to 34); their
+full text is in `HISTORY.md` 8.
 
-42. **The photos manage themselves** (decided 17/11) — (a) an unnamed face
-    entry not seen for **60 days** is forgotten with its view photos; its
-    sightings stay and read "?" on Recordings, as a forgotten dog's do; a
-    named entry is never touched. (b) The household's dogs stop filling the
-    unnamed list: a crop that is probably a named dog (ARCHITECTURE 20's
-    probable distance and ratio) stays a sighting with that name and makes
-    no card; an unnamed card is for an animal the gallery cannot place —
-    the 60 unnamed dogs of 17/11 were Aurora and Mirana, 59 of 60, all from
-    the last 24 hours. Closes backlog 37's self-cleaning part.
 43. **The residents' galleries cleaned photo by photo, and look-alikes
     stopped** (decided 17/11; applied directly, with a backup) — a view
     belongs to a resident when its own event (`view_events`, R55) had
@@ -94,21 +86,6 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     user answered with item 45: the cleaning moves only views at its
     quality cut, on the evidence of a sure sighting at the cut. The
     scan-time step is not built.
-44. **New people grouped under a temporary name** (decided 17/11, the
-    user's idea: "they can group themselves before being named; give a
-    temporary name and I only rename it") — every unnamed face entry gets
-    a temporary name when it forms, **"Visitor N"**, N counting up and never
-    reused, kept in a new optional field; People and the message show it
-    ("Front: Visitor 12, unknown face"), and renaming it on the page is
-    naming it, its views and sightings kept. The grouping gets better with
-    item 43's evidence: two unnamed entries found on one body — one event,
-    one person track — are one person and merge. The month shows why: one
-    visitor split into several entries on 31/10 (Ana Claudia's other faces
-    in three), and the user into thirteen. Measured first on the month's
-    47 entries: which merges the evidence makes, none of two different
-    people. Fewer groups for one person also means fewer "a face not yet
-    seen in the visit" messages (item 41). **Built** (`92e36a3`, review 33,
-    above).
 45. **Reference photos only of impeccable quality** (decided 17/11, the
     user: "find a cut-off level that never fails in terms of face quality,
     and work only with photos at that level; detection can stay as it is,
@@ -131,6 +108,17 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     no view can match nobody). The cleaning
     (43) runs after it, and its evidence counts only a sure sighting at
     the cut (the architect's reading of "what the cleaning trusts").
+    **Step 1 measured** (`627c5bc`, review 34, ARCHITECTURE 10.18): no
+    signal the photos carry reaches 0 wrong cheaply — the one clean pair,
+    SCRFD ≥ 0.70 and sharpness ≥ 75, keeps 41 of 324 face views and drops
+    the sure recognitions from 71 to 15; for dogs the box at least 120 px
+    keeps 42 of 79 named views with 0 poor and little lost. **The user's
+    answer, 17/11:** measure first a model made for face quality (eDifFIQA
+    from OpenCV Zoo, and ArcFace's embedding norm); one that reaches 0
+    wrong keeping more is the cut, applied without asking again; if none
+    does, the pair goes back to the user. The 18 views of someone else
+    were deleted from production the same day, with a backup
+    (HISTORY 13.36).
 
 ### Decided on 16/10/2026, to build
 

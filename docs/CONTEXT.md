@@ -248,7 +248,7 @@ src/jarvis/
   people.py       layer 2: YOLO through cv2.dnn, people and animals
   tracks.py       one ByteTrack tracker per camera, an id from each track's first box; what an event's tracks saw
   clips.py        layer 3: events, lossless assembly, metadata, the held person
-  faces.py        layer 4: YuNet, SCRFD + ArcFace, the gallery and its migration, naming
+  faces.py        layer 4: YuNet, SCRFD + ArcFace, the gallery and its migration, naming; the gallery-keeper thread
   downloads.py    the face and dog models' files, fetched once, the dogs' pinned by SHA-256; standard library only (production.ps1 runs it)
   dogs.py         the dog gallery: crops, the DINOv2-small descriptor, matching, its migration
   archive.py      layer 5: moves to the external drive, deletes only there when full
@@ -281,6 +281,7 @@ tools/
   rebuild_faces.py rebuilds faces/ from the recorded clips
   settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
   clean_gallery.py once: each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
+  view_quality.py per stored face and dog view its quality signals, the cuts against the verdicts read by eye (view_quality_verdicts.json)
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
   check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
@@ -340,6 +341,7 @@ uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/clean_gallery.py <folder> [--apply]   once: the galleries cleaned by the evidence of one body; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
+uv run python tools/view_quality.py <folder> [--sheets DIR]   each stored view's quality, the cuts and contact sheets; only reads (ARCHITECTURE 10.18)
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
 uv run python tools/person_signals.py <video>... [--gallery FILE]   where each person box came from, and what could tell a dog (ARCHITECTURE 7.15)
@@ -376,7 +378,8 @@ ARCHITECTURE 7.14), `motion.py` (`MIN_AREA`,
 threshold, ARCHITECTURE 10.15 — `SURE_SWEEP`, `COPY_SIMILARITY`, `SAME_FACE_THRESHOLD`, `IDENTITY_SCORE`, `MAX_NOSE_OFFSET`,
 `MIN_EYE_SPREAD`, `MIN_VIEWS_FOR_NEW`, `LANDMARK_SIZE`, `LANDMARK_SCORE`;
 `TINY_SIDE`, `SAME_PICTURE`, `WRITTEN_TOGETHER_SECONDS`: recovering each
-view's event, ARCHITECTURE 10.16),
+view's event, ARCHITECTURE 10.16; `FORGET_DAYS`, `KEEP_SECONDS`: the
+unseen unnamed faces forgotten, 10.19),
 `dogs.py` (`SURE_DISTANCE` — since backlog 32 only the default of the
 user's sure distance — `SURE_RATIO`, `PROBABLE_DISTANCE`, `PROBABLE_RATIO`,
 `SURE_SWEEP`, `COPY_DISTANCE`, `MARGIN`, `CROP_SIDE`, `MAX_UNNAMED`,
