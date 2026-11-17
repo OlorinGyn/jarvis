@@ -118,7 +118,15 @@ full text is in `HISTORY.md` 8.
     wrong keeping more is the cut, applied without asking again; if none
     does, the pair goes back to the user. The 18 views of someone else
     were deleted from production the same day, with a backup
-    (HISTORY 13.36).
+    (HISTORY 13.36). **Step 2 measured** (`14404df`, review 35,
+    ARCHITECTURE 10.18): eDifFIQA(T) (CC-BY-4.0, 9.8 ms a face) ranks the
+    poor views down far better than any photo signal, but its clean cut,
+    0.392, keeps 36 of 306 views — the user 2 of 61, Izabel 1 — with 9
+    right-sure, and chosen on one half of the days it lets 3 poor views
+    through on the other; ArcFace's norm has no clean cut; step 1's pair
+    does not hold on unseen days either. For dogs the box ≥ 120 px no
+    longer holds (3 poor of 80, rear views). **No signal meets the rule,
+    so the choice went back to the user** (review 35); no gate is built.
 
 ### Decided on 16/10/2026, to build
 
@@ -334,74 +342,27 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 34 is done** (HISTORY 13.36): developer 32 measured backlog 45's
-cut and built backlog 42. No signal the photos carry reaches "never
-wrong" cheaply — the one clean pair, SCRFD ≥ 0.70 and sharpness ≥ 75,
-keeps 41 of 324 face views and drops sure recognitions from 71 to 15 — so
-the cut went to the user, who chose **a model made for face quality,
-measured first**. The 18 views of someone else were deleted from
-production (with a backup). **Release `v2026.11.17.2`** carries backlogs
-42 and 44; the cleaning (43) and the cut (45) wait for this measurement.
+**Review 35 is done** (HISTORY 13.37): developer 33 measured backlog 45
+step 2 — eDifFIQA(T) and ArcFace's norm — and, as planned, built nothing:
+no signal meets the rule. eDifFIQA's clean cut keeps 36 of 306 face views,
+the residents almost none (the cameras look down on them, and a quality
+model rightly trusts a frontal face), with 9 right-sure recognitions
+against today's 72; the dogs' box ≥ 120 px no longer holds. The price of
+each option is ARCHITECTURE 10.18's last table. **No release**: the range
+changed only a tool.
 
-**Developer 33: backlog 45 step 2 — a face-quality model measured, then
-the gate if it passes.**
+**Nothing is planned for the developer until the user chooses** the face
+cut and the dog cut (`PENDING.md`). The order after the choice stays
+review 34's: the gate by tests first, its once-only `--apply` with a
+backup, the cleaning (43) at the cut, the once-only settle of backlog 28;
+People and Dogs at 375 px and on a desktop; then the late messages of
+18/10 (`PENDING.md`).
 
-1. **The measurement, in `tools/view_quality.py`, on a fresh copy of
-   production's `faces/`, `dogs/` and event JSONs** (`C:\JARVIS` only
-   read; the 18 views are gone from it). Views new since 17/11 have no
-   verdict: read them by eye and add them to
-   `tools/view_quality_verdicts.json`, as strictly as before. Two new
-   face signals:
-   (a) **eDifFIQA(T)**, OpenCV Zoo's face image quality model
-   (`face_image_quality_assessment_ediffiqa`, `ediffiqa_tiny_jun2024.onnx`),
-   through `cv2.dnn`, on the face aligned as for ArcFace (112×112, the same
-   `align_crop`) unless its own demo aligns otherwise. **Read its LICENSE
-   first** and write it in the HANDOFF: a licence that does not allow a
-   private home system goes to the user before anything else (the
-   InsightFace precedent, CONTEXT 3). The file goes to `models/bench`
-   for now.
-   (b) **ArcFace's embedding norm**: the gallery stores the raw output of
-   the R50 (`embed_view` does not normalise; `cosine` divides by the
-   norms), so it is the norm of each stored embedding — free.
-   Per signal, the same tables: kept / poor / someone else's per cut, the
-   lowest cut with 0 poor and 0 someone else's, what it keeps per named
-   entry by day and at night, and leave-one-event-out recognition with
-   only those views. **Then the honest check** (PYTHON 52.3): choose the
-   cut on the views of half the events and count the wrong ones on the
-   other half, both ways. Time the model per face on the M900.
-2. **The rule** (the user, 17/11, review 34): a signal whose clean cut,
-   checked on the other half, still finds 0 wrong and keeps **more
-   right-sure recognitions than the pair's 15** is the face cut — built
-   without asking again. If neither does, stop after step 1: the pair's
-   price goes back to the user.
-3. **Only if step 2 found the cut — the gate, by tests first.** A view
-   enters a face gallery (a new entry, a sure match's `reinforce`, naming,
-   `assign`, a merge, the waiting queue, the cleaning's moves) only when it
-   passes the face cut; a dog view (a sure match, naming, a merge, an
-   unnamed crop) only when its box in the frame is at least 120 px (ARCHITECTURE 10.18:
-   0 poor, measured on 17/11). The scan, the matching and the messages do
-   not change. The model, if (a), is fetched like the dog model — pinned by
-   SHA-256 in `downloads.py`, before the deploy stops anything. A
-   once-only `--apply` (in `view_quality.py` or its own tool, as
-   `clean_gallery.py` does: a dry run by default, refuses while the
-   folder's service answers, a backup of `faces/` and `dogs/` first)
-   deletes the stored views below the cut; a named entry keeps its last
-   view. `check_data` reads everything afterwards.
-
-**HANDOFF:** the licence; the two signals' tables and the half-and-half
-check; the cut, if any, and what it keeps per entry; the time per face;
-the contact sheets' paths.
-
-**The architect, at review 35:** read the cut on the sheets; then the
-release with the gate, the deploy, the `--apply` on production after the
-stop, the cleaning (43) at the cut and the once-only settle of backlog 28
-— in that order; People and Dogs at 375 px and on a desktop; raid log 27.
-After that, the late messages of 18/10 (`PENDING.md`).
-
-**Waits for the user:** choosing the sure threshold for faces and the sure
-distance for dogs from the two tables in Settings → Detection (the defaults
-hold until then); the M900 sleeping at the sign-in screen; the checks on
-the M900, `v2026.11.17.2` among them (`PENDING.md`).
+**Waits for the user:** the quality cut (above); choosing the sure
+threshold for faces and the sure distance for dogs from the two tables in
+Settings → Detection (the defaults hold until then); the M900 sleeping at
+the sign-in screen; the checks on the M900, `v2026.11.17.2` among them
+(`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later
 sessions. R14, R12 and R9 as before. Every other open backlog item is

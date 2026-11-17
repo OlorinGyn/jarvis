@@ -281,7 +281,7 @@ tools/
   rebuild_faces.py rebuilds faces/ from the recorded clips
   settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
   clean_gallery.py once: each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
-  view_quality.py per stored face and dog view its quality signals, the cuts against the verdicts read by eye (view_quality_verdicts.json)
+  view_quality.py per stored face and dog view its quality signals, eDifFIQA(T) and ArcFace's norm among them; the cuts against the verdicts read by eye (view_quality_verdicts.json), checked on unseen days
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
   check_doc_refs.py  every "<DOC> <section>" reference lands on a heading
@@ -341,7 +341,7 @@ uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/clean_gallery.py <folder> [--apply]   once: the galleries cleaned by the evidence of one body; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
-uv run python tools/view_quality.py <folder> [--sheets DIR]   each stored view's quality, the cuts and contact sheets; only reads (ARCHITECTURE 10.18)
+uv run python tools/view_quality.py <folder> [--sheets DIR] [--unread ISO-TIME]   each stored view's quality, the cuts and contact sheets; only reads (ARCHITECTURE 10.18)
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
 uv run python tools/person_signals.py <video>... [--gallery FILE]   where each person box came from, and what could tell a dog (ARCHITECTURE 7.15)

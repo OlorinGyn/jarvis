@@ -2362,11 +2362,12 @@ entries labelled the user — none of two people.
 
 **The user's rule** (CONTEXT 3): a view enters a face or dog gallery only
 when its photo passes a quality cut measured never to fail; detection,
-matching and the messages stay as they are. **Step 1 is the measurement;
-no rule is built yet.**
+matching and the messages stay as they are. **Steps 1 and 2 are
+measurements; no rule is built yet**: no signal met the rule, and the
+choice went back to the user (review 35, below).
 
 **The tool.** `tools/view_quality.py <folder> [--sheets DIR] [--verdicts
-FILE]` reads any J.A.R.V.I.S. folder — on 17/11 a copy of production's
+FILE] [--unread ISO-TIME]` reads any J.A.R.V.I.S. folder — on 17/11 a copy of production's
 `faces/`, `dogs/` and event JSONs — and writes nothing in it. Per stored
 view, chosen and waiting, it gathers the signals the photo or its sighting
 holds. Faces: YuNet run again on the stored 300 px photo (score, nose
@@ -2438,6 +2439,89 @@ infrared picture has little contrast, so a sharp night dog scores 3–4 and
 the blurs 7–15 — nor does sharpness over contrast, nor the distance to the
 dog's own views; YOLO on a crop calls good dogs "person" and one person
 crop "dog" at 0.79.
+
+**Step 2: two signals made for the question** (developer 33, 17/11/2026,
+on a copy of production taken at 18:19: 306 face views, 102 poor, none
+someone else's after the 18 were deleted; 139 dog views, 9 poor).
+
+- **eDifFIQA(T)**, OpenCV Zoo's face image quality model
+  (`face_image_quality_assessment_ediffiqa`, `ediffiqa_tiny_jun2024.onnx`,
+  7,272,678 bytes, SHA-256 `9426c899…bfc6a`, **CC-BY-4.0**: any use with
+  attribution). A MobileFaceNet with a quality head trained by the
+  eDifFIQA procedure (Babnik et al., IEEE TBIOM 2024): it predicts how
+  useful a photo is to a recogniser, not how it looks (PYTHON 53.1).
+  `face_quality` runs it through `cv2.dnn` on the face SCRFD finds in the
+  stored photo, aligned by `faces.align_crop` as for ArcFace, with the Zoo
+  demo's preprocessing — RGB, `(x/255 − 0.5)/0.5`, the same blob as
+  ArcFace's. Higher is better; **9.8 ms a face on the M900**, alignment
+  included. The demo aligns with `estimateAffinePartial2D` (LMEDS) onto the
+  same five-point template; measured in review 35 on the 306 views, the
+  two alignments correlate at 0.995 and give the same clean cut and the
+  same 36 views.
+- **ArcFace's norm**: of each stored embedding, which is ArcFace's raw
+  output (PYTHON 53.2).
+- **The honest check** (PYTHON 52.3, 53.3): `halves` splits the views by
+  their event's day, alternate days to each half, so one visit never sits
+  in both; `honest_check` chooses a signal's clean cut — the lowest value
+  above every wrong view — on one half and counts the poor and someone
+  else's views passing it on the other, both ways; `honest_pairs` does the
+  same for the best pair of cuts. A new signal's table cuts are its views'
+  deciles (`quantile_cuts`), its scale being unknown in advance.
+  `--unread` writes a sheet of the views of events after a time that hold
+  no verdict yet, to read by eye.
+
+| Face signal | Clean cut | Keeps | Right sure / probable | Chosen on half 0, counted on half 1 | Chosen on half 1, counted on half 0 |
+|---|---|---|---|---|---|
+| eDifFIQA(T) | ≥ 0.392 | 36 of 306 | 9 / 24 | 0.392: 9 kept, 0 poor | 0.313: 42 kept, **3 poor** |
+| ArcFace's norm | none reaches 0 poor | — | — | — | — |
+
+**eDifFIQA ranks the poor views down far better than any photo signal**
+— at 0.30 it keeps 86 views with 6 poor (7 %, against a third of all
+views), where SCRFD ≥ 0.75 kept 80 with 8 — and every view at its clean
+cut is a clear frontal face. But it scores a face seen from above low,
+which is right for a recogniser, and the cameras look down on the
+residents: **at 0.392 the user keeps 2 views of 61 and Izabel 1 of 61.**
+The clean cut is set by a single view, a visitor's sharp face with the
+head bowed, read poor (0.392); without it the next cut is 0.344, 59
+views, right-sure 16. The norm barely separates (≥ 24.8 keeps 31 with 5
+poor): ArcFace's plain loss does not tie the norm to quality.
+
+**Step 1's pair does not hold on unseen days.** The best pair of step 1's
+signals chosen on one half lets 9 poor views through on the other, and 5
+the other way; with the two new signals, 3. "SCRFD ≥ 0.70 and sharpness
+≥ 75, 0 poor" was fitted to its own labels.
+
+**Dogs: the box at least 120 px no longer holds.** Four new views read
+poor — a white dog blurred mid-jump, and a black dog from behind, as a
+body with no head, as a tail — make it 80 views with 3 poor: what makes
+those poor is pose, which no signal measured sees, not size. The lowest
+clean box is 223 px (4 of 139); YOLO's dog score on the padded crop ≥ 0.8
+keeps 21 and drops right-sure from 14 to 2.
+
+**The price of each option** (review 35, the same copy; leave-one-event-out
+at 0.40 for faces, 0.33 for dogs):
+
+| Face references | Views | Poor | Right sure | Right probable | Wrong sure / probable | No name | The user / Izabel keep (of 61 / 61) |
+|---|---|---|---|---|---|---|---|
+| today's chosen | 248 | 94 | 72 | 89 | 1 / 2 | 71 | 38 / 26 |
+| the views read good by eye | 204 | 0 | 58 | 93 | 0 / 1 | 83 | 47 / 50 |
+| eDifFIQA ≥ 0.392 | 36 | 0 | 9 | 24 | 0 / 0 | 202 | 2 / 1 |
+| eDifFIQA ≥ 0.30 | 86 | 6 | 29 | 75 | 0 / 0 | 131 | 13 / 6 |
+
+| Dog references | Views | Poor | Right sure | Right probable | Wrong | No name |
+|---|---|---|---|---|---|---|
+| today's | 139 | 9 | 14 | 34 | 0 | 31 |
+| the views read good by eye | 127 | 0 | 13 | 34 | 0 | 32 |
+| the box ≥ 120 px | 80 | 3 | 13 | 27 | 0 | 39 |
+
+**The reading (review 35).** The rule of 17/11 — 0 wrong on unseen days
+and more right-sure recognitions than the pair's 15 — is met by no
+signal. On these cameras "impeccable" and "the residents recognised"
+pull apart: the photo a quality model trusts is a frontal face, and the
+residents are seen from above. A visit is explained only by a **sure**
+resident (12.14), so a cut that leaves the residents two views brings
+Home's messages back toward the month before backlog 41. The choice went
+back to the user (backlog 45).
 
 ### 10.19 The photos manage themselves (backlog 42, 17/11/2026)
 

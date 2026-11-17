@@ -329,6 +329,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 32 | 17/11/2026 | `81f1db5..aaa2a06`, developer session 30 — R63, backlog 41 (the visit), the month replayed, R62 | **four code fixes, each by a test first (`7709f94`)**: a face already seen with a second body beside it sent nothing; a resident recognised only after the event explained it; an `OSError` or `ValueError` from `requests.post` escaped `_call`; a person box left without a track was ignored by `dog_only`; 388 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again: 1,028 person messages, 35 a day; none of 4,106 person events scanned out of order; R63, R62 and R59 closed; **release `v2026.11.17`** (13.34) |
 | 33 | 17/11/2026 | `2ef8562..186a52e`, developer session 31 — backlog 43 (the evidence of one body, `clean_gallery.py`), backlog 44 ("Visitor N") | **one code fix, by tests first (`2154a68`)**: the cleaning's evidence took an event with untracked boxes, which the scan refuses; the event JSON records `untracked_people`; 423 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the dry run read again on production itself: 23 moves, 2 wrong — the rule goes to the user; **no release** (13.35) |
 | 34 | 17/11/2026 | `2154a68..59ec29f`, developer session 32 — backlog 45 step 1 (the quality cut measured, `view_quality.py`), backlog 42 | no code fixed; 440 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the verdicts read on the contact sheets — the poor and someone-else's right, the "good" ones recognisable rather than impeccable; no cheap cut reaches 0 wrong, so the cut went to the user: a face-quality model measured first; the 18 views of someone else deleted from production with a backup; **release `v2026.11.17.2`** (backlogs 42 and 44) (13.36) |
+| 35 | 17/11/2026 | `6d141ac..cb20ae2`, developer session 33 — backlog 45 step 2 (eDifFIQA(T) and ArcFace's norm, the halves check) | no code fixed; 446 tests pass, no comments, `check_doc_refs` 0; the alignment measured (the same cut both ways), the four dog verdicts upheld; no signal meets the rule — the cut went to the user with the price of each option; **no release** (13.37) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2711,6 +2712,62 @@ Raid log 26.
 **For the next session.** Developer 33: backlog 45 step 2, eDifFIQA and
 ArcFace's norm measured, then the gate only if one passes (BACKLOG 3).
 
+### 13.37 Review 35 — developer session 33 (17/11/2026)
+
+Developer 33 reviewed whole (`6d141ac..cb20ae2`: `tools/view_quality.py`
+— eDifFIQA(T), the embedding norm, the halves check, `--unread` — its
+verdicts and six new tests). **No code fixed; 446 tests pass**, no
+comments in `src/` and `tools/`, `check_doc_refs` exits 0; `check_data`
+was not needed, since nothing that reads or writes the data changed. The
+model file's SHA-256 matches the HANDOFF's. Backlog 45 step 2 measured; no
+gate built, as planned (ARCHITECTURE 10.18).
+
+**The developer's three questions.**
+
+- **"Both ways."** Yes: a cut chosen on one half must hold on the other in
+  both directions, or the way of choosing it does not generalise. It
+  decides nothing here: eDifFIQA's 9 right-sure fail the rule's "more than
+  15" anyway.
+- **The four new dog verdicts**, read on the sheet: the blur mid-jump, the
+  black body with no head, Mirana from behind, the tail and rear — all
+  poor under "impeccable": a black dog's back is any black dog's.
+  `944065`, a black dog walking with its head low but in profile, stays
+  ok.
+- **The alignment, measured.** SFace's `alignCrop` against the Zoo demo's
+  `estimateAffinePartial2D` (LMEDS) on the 306 views: Pearson 0.995,
+  Spearman 0.992, median difference 0, the same clean cut and the same 36
+  views; one view more passes the cut chosen on half 1. Settled.
+
+**Read on the sheets.** The 36 views at eDifFIQA's cut are all clear
+frontal faces; Izabel's one, `6e51d4`, checked against her other views, is
+hers. The 95 views from 0.28 up hold 7 poor, all blurs or dark night
+faces except the one that sets the cut: a visitor's sharp face, head
+bowed, read poor, at 0.392. Without it the cut would be 0.344 — 59 views,
+16 right-sure, one more than the rule asks, but chosen on its own labels.
+
+**Read and left.**
+
+- A photo with no SCRFD face scores eDifFIQA 0.0, above the 9 real scores
+  below zero. No stored view lacks one (its embedding needed SCRFD), so it
+  changes nothing.
+- The halves' recognition is counted over all events by
+  leave-one-event-out, as step 1's tables are; only the poor and someone
+  else's views are counted on the held-out half. Right for the rule as
+  written.
+
+**The reading.** No signal meets the rule of 17/11. On these cameras
+"impeccable" and "the residents recognised" pull apart: a quality model
+trusts a frontal face, and the cameras look down on the residents. A visit
+is explained only by a sure resident (ARCHITECTURE 12.14), so the strict
+cut would bring Home's messages back toward the month before backlog 41.
+The price of each option was computed on the same copy (ARCHITECTURE
+10.18, the last table) and the choice went to the user: the views read
+good by eye (204, right-sure 58, no wrong sure name), eDifFIQA ≥ 0.392
+(36, 9), eDifFIQA ≥ 0.30 (86 with 6 poor, 29), against today's chosen
+(248 with 94 poor, 72, one wrong sure name).
+
+**No release:** only a tool changed. No raid log issue.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2795,3 +2852,5 @@ of `CONTEXT.md`.
 | A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule went to the user; then the user's answers: backlog 45 (the quality cut), three misfiled dog views deleted on production through the page's API; not handed over (the window) | 67% → 79% | 9% → 11% | 72k → about 235k tokens, a new conversation (started by the developer's handover) |
 | D32 | developer | high | 17/11 afternoon | session 32: backlog 45 step 1 — `view_quality.py`, 324 face and 139 dog views read by eye, the cuts and recognition per cut — and backlog 42 (440 tests) | 1% → 21% (new window) | 12% → 14% | 78k → about 310k tokens, a new conversation |
 | A45 | architect | ultracode | 17/11 17:35–18:15 | review 34: the diff read whole, the contact sheets read, the quality model searched, the user's two answers, the 18 views deleted on production; release and deploy `v2026.11.17.2`, People at 375 and 1280 px, raid log 26; developer 33 planned | 23% → 37% | 14% → 16% | 72k → about 265k tokens, a new conversation (started by the developer's handover) |
+| D33 | developer | high | 17/11 evening | session 33: backlog 45 step 2 — eDifFIQA(T) and ArcFace's norm measured, every cut checked on unseen days, nine dog views read; no signal passes, no gate built (446 tests) | 39% → 46% | 17% → 17% | 73k → 176k tokens, a new conversation |
+| A46 | architect | ultracode | 17/11 18:34–18:50 | review 35: the diff read whole, the alignment measured, the sheets and the band around the cut read, the price of each option computed; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 53; no release; the cut to the user | 46% → 55% | 17% → 19% | 74k → about 200k tokens, a new conversation (started by the developer's handover) |

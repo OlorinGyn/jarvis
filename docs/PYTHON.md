@@ -2902,3 +2902,58 @@ section 27's `Event.wait(timeout)`, the camera watch's pattern of section
 `stop`, where `time.sleep(86400)` would hold the thread for a day. The
 test replaces `stop.wait` on the instance with a lambda that records the
 timeout, so a "day" passes in no time.
+
+## 53. A network that grades a photo, the length of an embedding, and holding data out by day (developer 33)
+
+### 53.1 Face image quality assessment
+
+A recogniser such as ArcFace turns a face into a vector; a **face image
+quality** model (FIQA) answers a different question: *how much should a
+recogniser trust this photo?* It is not "is it pretty" — a sharp photo of
+the top of a head is useless to a recogniser, a soft frontal one is fine.
+eDifFIQA learns that answer without anyone labelling quality: during
+training each face is noised and denoised by a diffusion model many
+times, and the photos whose ArcFace-style embedding barely moves are the
+good ones. A small network (eDifFIQA(T), the "tiny" one) is then taught to
+predict that stability from the photo alone, so at run time it is one
+forward pass, about 10 ms on the M900. That is why it scores the
+cameras' downward views low: a face seen from above *is* unstable for a
+recogniser. In `tools/view_quality.py`:
+
+```python
+@lru_cache(maxsize=1)
+def quality_net():
+    return cv2.dnn.readNetFromONNX(str(QUALITY_MODEL))
+```
+
+`@lru_cache(maxsize=1)` on a function with no arguments is section 12.2's
+cache used as a lazy singleton: the file is read on the first call and the
+same `Net` returned after — C#'s `Lazy<T>`, Java's holder idiom.
+
+### 53.2 The length of an embedding as a quality signal
+
+ArcFace's raw output is a 512-number vector; the gallery stores it as it
+comes, and `cosine` divides by both lengths (norms) before comparing, so
+only the direction names a person. **MagFace** trained a recogniser whose
+loss ties the length to quality — a clear face gets a long vector — and
+the idea is that any recogniser might do it a little. Measured here, it
+barely does: ArcFace's plain loss never asked the length to mean anything.
+`np.linalg.norm(v)` is the length, `sqrt(sum(v*v))`.
+
+### 53.3 Holding data out by day, not by row
+
+To check a threshold honestly (section 52.3) you choose it on some views
+and count its mistakes on others. Picking the others at random by row
+would be too kind: two views of one visit, a second apart, are near
+copies, and one would land in each half — the test would see the answer.
+`halves` gives each *day* to one half, alternating, so every visit stays
+whole on one side, as leave-one-event-out does (R55):
+
+```python
+order = {day: index % 2 for index, day in enumerate(sorted({day_of(r) for r in rows}))}
+```
+
+A set comprehension collects the days, `sorted` orders them,
+`enumerate` numbers them and `index % 2` alternates 0 and 1 — a dictionary
+comprehension building `{day: half}` in one line. In Java it is a `Stream`
+of distinct sorted days collected with an index into a `Map`.
