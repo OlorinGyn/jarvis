@@ -1010,6 +1010,62 @@ class Gallery:
                 self.save()
         return dict(tally)
 
+    def drop_views(self, names, best=None, dry_run=False):
+        """Delete every view, chosen or waiting, whose photo is in names, under one lock and one save (backlog 45).
+
+        An entry left with no chosen view moves its queue up; a named one with
+        no queue keeps its best view by best(view), higher is better, and an
+        unnamed one with none leaves the gallery as forget_unseen removes it,
+        its sightings kept. Returns one line per entry touched; with dry_run
+        nothing is written.
+        """
+        names = set(names)
+        found = []
+        with _GALLERY_LOCK:
+            self.load()
+            for person in list(self.people):
+                chosen = list(zip(person["embeddings"], views_of(person)))
+                waiting = list(person.get("pending") or [])
+                gone = [(e, v) for e, v in chosen if v and photo_name(v) in names]
+                gone_waiting = [w for w in waiting if w.get("view") and photo_name(w["view"]) in names]
+                if not gone and not gone_waiting:
+                    continue
+                chosen = [(e, v) for e, v in chosen if not (v and photo_name(v) in names)]
+                waiting = [w for w in waiting if w not in gone_waiting]
+                line = {"id": person["id"], "name": person["name"] or person.get("temporary_name", ""),
+                        "named": bool(person["name"]), "chosen": len(chosen) + len(gone),
+                        "waiting": len(waiting) + len(gone_waiting), "deleted": len(gone) + len(gone_waiting),
+                        "moved up": 0, "spared": None, "removed": False}
+                if not chosen and waiting:
+                    line["moved up"] = min(len(waiting), MAX_EMBEDDINGS)
+                    chosen = [(w["embedding"], w.get("view")) for w in waiting[:MAX_EMBEDDINGS]]
+                    waiting = waiting[MAX_EMBEDDINGS:]
+                elif not chosen and person["name"]:
+                    pool = gone + [(w["embedding"], w["view"]) for w in gone_waiting]
+                    spare = max(pool, key=lambda pair: best(pair[1])) if best else pool[0]
+                    chosen = [spare]
+                    gone = [pair for pair in gone if pair is not spare]
+                    gone_waiting = [w for w in gone_waiting if w["view"] is not spare[1]]
+                    line["spared"] = photo_name(spare[1])
+                    line["deleted"] -= 1
+                self.dropped.extend([v for _, v in gone] + [w["view"] for w in gone_waiting])
+                line["chosen after"] = [photo_name(v) for _, v in chosen if v]
+                found.append(line)
+                if not chosen:
+                    self.people.remove(person)
+                    line["removed"] = True
+                    continue
+                person["embeddings"] = [e for e, _ in chosen]
+                person["views"] = [v for _, v in chosen]
+                if "pending" in person or waiting:
+                    person["pending"] = waiting
+                _fix_cover(person)
+            if dry_run:
+                self.load()
+            elif found:
+                self.save()
+        return found
+
     def recover_events(self):
         """Find the event of every view stored before views recorded one, by recovered_event (R55).
 
