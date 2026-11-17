@@ -108,6 +108,25 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+41. **Done 17/11 (`071e55b`, review 32's `7709f94`, `v2026.11.17`; ARCHITECTURE 12.14).** **Notifications by visit** (decided 17/11) — per camera, a **visit** is
+    person events less than 5 minutes apart (the end of one to the start of
+    the next). In Home, at the held decision after the face scan
+    (`notify.after_scan`), in this order: (a) an event whose every person
+    frame sits in tracks voted dog with no run of 2 person frames is a dog
+    event, no person message (R59; ARCHITECTURE 7.16); (b) a resident
+    recognised in the visit — in this event or an earlier one — explains
+    **one** body: a faceless message (best view, side view) of an event with
+    at most one person at once is not sent; two bodies are never explained
+    by names, because a mixed gallery can give one body two names (108
+    events of the month did); (c) after the visit's first message only news
+    sends again — more people at once than the visit has seen, or a face
+    entry not yet seen in it; a repeat goes nowhere but Recordings. What is
+    sent rings by the incident and the floor as today; each message not
+    sent leaves a log line with its reason. Away and Silent are unchanged.
+    Measured on the month: 96 a day → 34 with the galleries as they are, 27
+    once item 43 cleans them. **Delivered:** 98 → 35 a day replayed through
+    `after_scan` itself (`tools/replay_visits.py`, `a044b6b`).
+
 40. **Done 16/10 (`136e9b0`, `dcbdeb4`, `217b61d`, `dc86e89`, `v2026.10.16`; ARCHITECTURE 12.11, 12.12), except its "later, with tracking" part, which is backlog 7's.** **Notifications by incident** (decided 16/10: the user's principles,
     CONTEXT 3; which situations are risk was left to the architect, and the
     design is the architect's). Measured on production's log the same day:
@@ -283,6 +302,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 29 | 16/10/2026 | `0cf58f9..7670811`, developer session 27 — R60, backlog 40: notifications by incident, a camera with no picture | no code fixed; 328 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again on production's log (741 messages, 220 loud and 17 floor texts at 120 s); no send ever failed there and at most 9 messages fall in a minute; the page checked at 375 px and about 1000 px; tracking's library probed on the M900 for the plan (Roboflow's `trackers` imports under Smart App Control); R60 closed, R61 opened (low); **release `v2026.10.16`** (13.30) |
 | 30 | 16/10/2026 | `0d4eeab..dccf519`, developer session 28 — R61, `trackers` and the deploy's warm-up, tracks measured (item 7 part 1) | no code fixed; 338 tests pass, no comments, `check_doc_refs` 0; every release tag holds `.python-version`, the warm-up's imports run locally (55 modules, none failing); the library's first box with −1 read in its source; the HANDOFF's hardlink explanation corrected — the project copies (ARCHITECTURE 18.7); R61 closed; **release `v2026.10.16.2`** (13.31) |
 | 31 | 16/10/2026 | `dccf519..81f1db5`, developer session 29 — item 7 part 1 finished: the first box joined, tracks recorded live | no code fixed; 348 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the first-box method read against `_spawn_new_tracks` and `_get_alive_tracklets`, the tracks aged by seconds before matching, the JSON written in the loop before the next event; three clips replayed again, the numbers as reported; the JSON holds no place, so part 2 replays for it; R62 opened (low); **release `v2026.10.16.3`** (13.32) |
+| 32 | 17/11/2026 | `81f1db5..aaa2a06`, developer session 30 — R63, backlog 41 (the visit), the month replayed, R62 | **four code fixes, each by a test first (`7709f94`)**: a face already seen with a second body beside it sent nothing; a resident recognised only after the event explained it; an `OSError` or `ValueError` from `requests.post` escaped `_call`; a person box left without a track was ignored by `dog_only`; 388 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the replay run again: 1,028 person messages, 35 a day; none of 4,106 person events scanned out of order; R63, R62 and R59 closed; **release `v2026.11.17`** (13.34) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -363,6 +383,9 @@ the text of R11 onwards is in the review section that opened it, below.
 | ✓ | R55 | medium | The accuracy tables leave out only exact copies: a view's own event vouches for it | done `cde3087`, `v2026.10.15.2`: each view records its event (`view_events`), the views stored before recovered at start, both tables leave out the probe's whole event (ARCHITECTURE 10.15, 10.16; 13.28 below) |
 | ✓ | R60 | **high** | The per-camera and per-face cooldowns drop what they block: a held faceless person can never reach the phone | done `136e9b0`, `v2026.10.16`, with backlog 40: nothing is dropped, a message rings or arrives silently by the house's incident; reproduced first by `test_a_held_faceless_person_inside_the_quiet_window_still_reaches_the_phone` (ARCHITECTURE 12.11; 13.30 below) |
 | ✓ | R61 | low | Item 40's three small things: the floor renews a closed incident, the replay tool misreads camera lines, the return counts minutes only | done `f549760`, `v2026.10.16.2`: the floor renews only an open incident, the camera lines parsed by their own words and forced as live, "18 h 5 min without"; each reproduced by a test first (ARCHITECTURE 12.11, 12.12; 13.31 below) |
+| ✓ | R63 | **high** | A message that fails to send is lost: 75 in a month, 11 of them unknown faces | done `ac24be1`, `v2026.11.17`: a failure that may pass is tried again in a thread of its own, pauses 5, 15, 30 and 60 s, a 429 waiting Telegram's `retry_after`, any other 4xx not retried; the first attempt stays the caller's; an error `requests` does not wrap counts as a failed attempt since review 32 (ARCHITECTURE 12.13; 13.34 below) |
+| ✓ | R62 | low | A tracker that failed on every run would fill the log in minutes | done `dfd38de`, `v2026.11.17`: the first failure with its traceback, then a line a minute with a count; the failed tracker replaced by a fresh one, ids kept unique; an untracked run makes the event decide by its boxes (ARCHITECTURE 7.16; text in 13.32 below) |
+| ✓ | R59 | **high** | The household's dogs reach the phone as people, boxed `person` by YOLO | done `071e55b`, `v2026.11.17`, as backlog 41 (a): in Home an event whose every person frame sits in tracks voted dog, with no run of 2 person frames, sends no person message — 14 in the month; a short track that *starts* as person stays a person (ARCHITECTURE 7.15, 7.16, 12.14) |
 
 **R1 — Notify a person who appears in the middle of an event (high).**
 `EventRecorder._start()` tried to notify **only on the event's first frame**,
@@ -2383,6 +2406,19 @@ faces, more people than residents. The next cut, later and measured first:
 faceless events after one recognised face are his — 443 of the 622
 faceless messages left had a resident within 30 minutes.
 
+**The labels, by entry id** (saved here in review 32 from the review's
+scratch file, which a reboot clears; the measurement backlog 43 and 44 are
+checked against). Unnamed entries of production's
+`gallery_arcface_w600k_r50.json` read by eye as **Gustavo**: `p_0617ae61`,
+`p_208373ee`, `p_ec19f444`, `p_d5c917e4`, `p_9d3c46dc`, `p_ed4f0e41`,
+`p_8813a6ae`, `p_8aaf7430`, `p_b7b4a582`, `p_7b8fdcfb`, `p_9ad9967c`,
+`p_d2fd6da4`, `p_07240896`; as **Izabel**: `p_8c966052`, `p_8c8b4691`,
+`p_4be68085`; **uncertain**, probably Gustavo: `p_cfb78815`, `p_8d6db3cc`,
+`p_e875600e`. Every other unnamed entry of 17/11 is a visitor. In the
+residents' Chosen, by eye on a contact sheet: four of Gustavo's views in
+Izabel's (headphones, beard), one woman's in Gustavo's — not recorded by
+file; a cleaning's dry run is read against these counts.
+
 **The photos, proposed**: unnamed dog crops that are probably a household
 dog stop becoming cards (they stay sightings); an unnamed face entry not
 seen for 30 days is forgotten with its photos, its sightings kept as the
@@ -2397,6 +2433,94 @@ forgotten after 60 days, not 30; the cleaning applied directly, with a
 backup (CONTEXT 3; backlog 41–43). The 18/10 latency stays as measured
 then: in Home every message waits for the clip's face scan, median about
 30 s, minutes when scans queue; the visit cuts the messages, not the scan.
+
+### 13.34 Review 32 — developer session 30 (17/11/2026)
+
+Developer 30 reviewed whole (`81f1db5..aaa2a06`, after the architect's
+documentation commits of 17/11: `notify.py` — the retry, the visit —
+`tracks.py`, `Camera.detect`, the recorder's `decided()`,
+`tools/replay_visits.py`; 36 new tests). **Four code fixes, each
+reproduced by a test first (`7709f94`); 388 tests pass**, no comments in
+`src/` and `tools/`, `check_data` reads every file, `check_doc_refs` exits
+0. R63, R62 and R59 closed; backlog 41 done. **Release `v2026.11.17`.**
+The plan's four steps were all done, in its order.
+
+**What the review fixed.**
+
+1. **A face already seen in the visit, with a second body beside it, sent
+   nothing.** `after_scan` skipped the face as a repeat (rule (c)), and
+   the hidden-person message still required every face to be silenced by
+   its *case* — a repeat is not silenced by its case, so the second body
+   went unannounced, although "more people at once than the visit has
+   seen" is the rule's own news. Now the hidden-person message goes when
+   **no face of the event is news** and YOLO counted more people than
+   faces. Test: `test_a_second_body_beside_a_face_already_seen_is_news`.
+   One event of the month: `Front/2026-10-29/23-06-26`, Dhaniel seen again
+   with a second body — before backlog 41 his face message went out
+   ringing for two people; with the developer's code, nothing; now the
+   hidden-person message.
+2. **A resident recognised only after the event explained it.** The
+   decided rule says "in this event or an earlier one"; the visit kept the
+   latest resident whatever the event's time. Scans run under
+   `faces._SCAN_LOCK`, a `threading.Lock`, which promises no order: a
+   later event scanned first would explain a stranger alone just before
+   the user came home. Measured: **none** of the month's 4,106 person
+   events was scanned after a later event of its camera (scan lines
+   against event starts), so this is a guard; an event older than the
+   resident is no longer explained, so a mistake now sends a message.
+   Test: `test_a_resident_recognised_only_after_the_event_explains_nothing`.
+3. **`_call` narrowed what it catches.** The old `_call` caught
+   `RequestException`, `ValueError` and `OSError` around the post; the new
+   one only `RequestException`. Anything else — an error `requests` does
+   not wrap — would leave `_call`, end the assembly thread, and lose the
+   event's other messages and its dog crops. Both count as a failed
+   attempt again, retried. Test:
+   `test_an_error_requests_does_not_wrap_is_a_failed_attempt_not_a_crash`.
+4. **A person box left without a track was ignored by `dog_only`.**
+   `Record.add` skips a detection with no id, so a person box the tracker
+   left out could not stop a dog verdict. The HANDOFF named it; these
+   parameters never leave one (ARCHITECTURE 7.16), but the rule acts on
+   the user's risk, so `decided()` now returns `None` when a person box
+   went untracked, as for a failed run: the event decides by its boxes.
+   Not written to the JSON. Test:
+   `test_a_person_box_left_without_a_track_makes_the_event_decide_as_today`.
+
+**What was checked and holds.**
+
+- `after_scan`'s decision block: `quiet`, `repeats` and `news` read the
+  visit **before** this event is added, `resident` after (this event adds
+  none, having no face). A stranger's face is silenced only when its own
+  entry was already seen in a visit that sent; a second body never by
+  (b), and by (c) only when the visit has already seen as many at once.
+  Accepted by the decided rule, and worth knowing: a visit's "people at
+  once" counts events that sent nothing — two residents' faces at once
+  set it to 2, so a later faceless pair in that visit is not news.
+- The visit's lock is apart from `_lock`, the decision is one step under
+  it, the sending outside; a dog event returns before the visit and does
+  not extend it; the late-scan visit is thrown away; Away and Silent see
+  `rules` false and decide as before, though the visit still records
+  their events (switching to Home within 5 minutes inherits them).
+- `datetime`s: `started_at` and `ended_at` are both naive `datetime.now()`
+  of the recorder, so the subtraction cannot raise.
+- The retry: `_failed` gives five attempts; `wait or RETRY_PAUSES[…]`
+  uses the policy's pause for a time-out and for a 429 with no
+  `retry_after`; the photo is read again on every attempt, so a file
+  deleted in between ends the retries as "not tried again"; the token is
+  redacted in every detail. A very long `retry_after` would keep its
+  thread asleep that long — Telegram's are seconds.
+- The replay: the visit-off run reproduces the log event by event, 0
+  differing; run again after the fixes, 1,027 → **1,028** person messages
+  (the hidden person above), still 35 a day; hidden person "no news" 92 →
+  115, the repeats now weighed as the rule says.
+- `Failures`: one traceback, then one line a minute. Its count line says
+  "in the last 60 s" even when the failures it counts span longer — a
+  failure an hour after the last line reports the hour's count as a
+  minute's. Left: the line is a rate only while the failures go on, which
+  is the case it exists for.
+
+**For the next session.** Developer 31: backlog 43, 44, then 42 — the
+photos (BACKLOG 3). The late messages of 18/10 are the architect's next
+measurement (`PENDING.md`).
 
 ## 14.3 Usage log
 
@@ -2476,3 +2600,5 @@ of `CONTEXT.md`.
 | A40 | architect | ultracode | 16/10 21:10–21:35 | review 31: the diff read whole, the first-box method and the time budget read in the library, three clips replayed again; HANDOFF integrated, ARCHITECTURE 2, 3, 7.16, 8.4 and 19.2, PYTHON 49, R62, raid log 24; release and deploy `v2026.10.16.3`; developer 30 planned, not handed over (it needs a day of tracks) | 13% → 26% | 30% → 32% | 74k → about 255k tokens, a new conversation (started by the developer's handover) |
 | A41 | architect | ultracode | 18/10 18:45–19:20 | resumed in review 31's conversation: production rebooted by Windows at 15:01 and back in 80 s, 277 events with tracks, true pairs for R58; the user's "worst of both worlds" measured on 41.5 h — 150 messages, delays to 9 min — and the visit proposed; no answer then | 5% → about 12% (new window) | 33% → 34% | 263k → about 300k tokens, review 31's conversation |
 | A42 | architect | ultracode | 17/11 12:29–12:55 | Remote Control turned on; a month left alone read for the user — 3,020 messages joined to events and faces, contact sheets of the unnamed faces, the residents' Chosen and the unnamed dogs, rules simulated, 75 failed sends (R63); the user's answers, backlog 41–44, HISTORY 13.33; developer 30 planned and started | 7% → 20% | 1% → 3% | 315k → about 435k tokens, the same conversation (a month later) |
+| D30 | developer | high | 17/11 12:55–13:12 | session 30: R63 by a fake Telegram, backlog 41 — the visit, its three rules — `replay_visits.py` on the month (98 → 35 a day), R62 (384 tests) | 20% → 35%: R63 6, backlog 41 4, the replay 3, R62 1 | 3% → 5% | 77k → about 230k tokens, a new conversation |
+| A43 | architect | ultracode | 17/11 13:15– | review 32: the diff read whole, four holes fixed by tests first, the month replayed again and in scan order; HANDOFF integrated, ARCHITECTURE 7.16, 8.4, 12.11, 12.13, 12.14 and 22.3, PYTHON 50, the labels of 13.33 saved; release and deploy `v2026.11.17`, raid log 25; developer 31 planned | 35% → | 5% → | 72k → |

@@ -57,31 +57,16 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **32.** The sure threshold chosen from measured accuracy: faces (decided 13/10, `9fc5592`, review 25, `v2026.10.14.3`), dogs' sure distance (`bc94747`, review 27, `v2026.10.15.2`), both measured by leave-one-event-out (R55) | ARCHITECTURE 10.15, 20 |
 | ✓ | **39.** On a phone, an unnamed card is its photo and its name; the empty accuracy table hidden (decided, UX, `a9b8c32`, review 26, `v2026.10.15`) | ARCHITECTURE 17.17 |
 | ✓ | **40.** Notifications by incident: nothing dropped, loud or silent, one ring in 30 s at most; a camera with no picture, and its return (decided 16/10, `136e9b0`–`dc86e89`, review 29, `v2026.10.16`); its "later, with tracking" part is item 7's | ARCHITECTURE 12.11, 12.12 |
+| ✓ | **41.** Notifications by visit in Home: dog tracks, a resident explains one body, then only news — 98 messages a day to 35 on the month (decided 17/11, `071e55b`, review 32 `7709f94`, `v2026.11.17`); with R63, a failed send tried again | ARCHITECTURE 12.13, 12.14 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–40 and 32, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–41 and 32, in `PENDING.md`.
 
 ### Decided on 17/11/2026, to build
 
 After a month left alone (HISTORY 13.33). The user's three answers are in
-CONTEXT 3.
+CONTEXT 3. Item 41 is done (above, review 32); its full text is in
+`HISTORY.md` 8.
 
-41. **Notifications by visit** (decided 17/11) — per camera, a **visit** is
-    person events less than 5 minutes apart (the end of one to the start of
-    the next). In Home, at the held decision after the face scan
-    (`notify.after_scan`), in this order: (a) an event whose every person
-    frame sits in tracks voted dog with no run of 2 person frames is a dog
-    event, no person message (R59; ARCHITECTURE 7.16); (b) a resident
-    recognised in the visit — in this event or an earlier one — explains
-    **one** body: a faceless message (best view, side view) of an event with
-    at most one person at once is not sent; two bodies are never explained
-    by names, because a mixed gallery can give one body two names (108
-    events of the month did); (c) after the visit's first message only news
-    sends again — more people at once than the visit has seen, or a face
-    entry not yet seen in it; a repeat goes nowhere but Recordings. What is
-    sent rings by the incident and the floor as today; each message not
-    sent leaves a log line with its reason. Away and Silent are unchanged.
-    Measured on the month: 96 a day → 34 with the galleries as they are, 27
-    once item 43 cleans them.
 42. **The photos manage themselves** (decided 17/11) — (a) an unnamed face
     entry not seen for **60 days** is forgotten with its view photos; its
     sightings stay and read "?" on Recordings, as a forgotten dog's do; a
@@ -192,7 +177,9 @@ It works without them, but is incomplete.
    a true person; a short track that starts as person — R58's false bodies,
    the rest of R59 — needs another signal, and no buffer joins a walk whose
    body left the view for 7–9 s — appearance or place will have to. **Part
-   2** acts on tracks, R59 first (section 3).
+   2** acts on tracks: its R59 piece is done as backlog 41 (a) —
+    `tracks.dog_only`, Home only (`v2026.11.17`, ARCHITECTURE 12.14); next,
+    the name following the body.
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -254,63 +241,28 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
 model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
 in review 25, R53, R56 and R57 in review 26, R55 in review 27, R60 in
-review 29, R61 in review 30; R62 opened in review 31, R63 on 17/11.
+review 29, R61 in review 30, R59, R62 and R63 in review 32.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured; its track rule is backlog 41 (a) — 12 messages in the month (HISTORY 13.33) |
 | R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 part 2 — tracks at once are no better than boxes once the first box counts (ARCHITECTURE 7.16) |
-| R63 | **high** | A message that fails to send is lost: 75 in a month, 11 of them unknown faces | open (below) |
-| R62 | low | A tracker that failed on every run would fill the log in minutes | open (below); with item 7 part 2 |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
 | R14 | low | Live MJPEG is encoded once per viewer | open (HISTORY 13.5) |
 | R9 | verification | `python-preference = "system"` on the development PC | open (HISTORY 13.4) |
 
-**Measured by developer 26, no rule built (HISTORY 13.29).** R59: YOLO
-itself drew every dog's `person` box (37 of 37 looked at; R44 one, R46
-none), so R47's bound would change nothing; the dog gallery, the box's
-shape and YOLO's dog score overlap with true people at night, and YOLO run
-again on the zoomed box, the best signal, would lose a person half hidden
-behind the car at night (ARCHITECTURE 7.15). R58: none of 588 production
+**Measured by developer 26, no rule built (HISTORY 13.29).** R58: none of 588 production
 events with a person holds two people, so neither counting rule can be
 shown to keep a true pair; rule (a) at 0.9 would remove 15 of 17 one-body
 cases, and could swallow a person standing behind another (ARCHITECTURE
-22.3). **Both wait for tracking** (item 7): the label voted over a track's
-frames, and a count of tracks instead of boxes. **R58 is measurable
+22.3). **It waits for tracking** (item 7): a count of tracks instead of
+boxes. **R58 is measurable
 since 17/10:** production now holds true pairs — 13 events of 17–18/10
 count two or more person tracks at once; two read by eye, both true:
 `Back/2026-10-17/19-50-59` (two people on the porch at night) and
 `Front/2026-10-17/05-33-16` (two at the door, plus two boxes side by side
-at the gate that may be one body). Their text as opened:
-
-**R59 — The household's dogs reach the phone as people (high, the user's
-report, 16/10/2026).** "Many notifications in Home": 31 in 23 hours, read
-one by one (ARCHITECTURE 22.3). About 6 were Aurora or Mirana in a `person`
-box (0.40–0.88), five of them at night, each sent as a faceless person —
-the case the user keeps on in Home for every event (CONTEXT 3). The clips,
-in production's `clips/`: `Back/2026-10-15/20-54-37` (likely), `Back/
-2026-10-15/21-01-08`, `Front/2026-10-15/22-00-19`, `Front/2026-10-16/
-00-52-26`, `Back/2026-10-16/00-54-05` (likely), `Front/2026-10-16/14-51-12`
-(by day), and the dog counted as a second person in `Front/2026-10-16/
-00-12-09` (R58); `Back/2026-10-15/20-59-24` is unclear. The architect's
-quick probe on the sent pictures — boxes drawn, not the clean frames — had
-the dog gallery name only one (Mirana at 0.256). Not known: whether YOLO
-itself said `person`, or R44 or R46 relabelled a dog box (ARCHITECTURE 7.12,
-7.13) — R47's trigger. **Then:** replay each clip (`tools/replay.py`) and
-say, box by box, where the `person` came from. From R46's chain: R47's bound
-is the fix. From YOLO: measure on these clips, and on the residents' true
-faceless events of the same days (`Back/2026-10-15/18-30-12` and
-`18-42-31`, `Back/2026-10-16/00-01-03`, `00-05-30` and `00-11-41`,
-`Front/2026-10-15/19-24-49` and `19-41-18`, `Front/2026-10-16/11-31-51`,
-`Back/2026-10-16/13-23-34`), the candidate signals — the dog gallery's
-match on the box in the clean frame, YOLO's own dog score in that box, the
-box's shape — and build the rule that turns these into dogs **without
-losing one true person**: an unknown person always reaches the phone in
-Home (CONTEXT 3). A dog so found is a dog by its own case (`resident_dog`,
-off in Home). Measure its cost on the M900 if it runs in the live loop.
-Copies only; `C:\JARVIS` is read, never written.
+at the gate that may be one body). Its text as opened:
 
 **R58 — One body with two boxes counts as two people (medium,
 16/10/2026).** R42 (b)'s hidden-person message fired twice in those 23
@@ -328,32 +280,6 @@ more than one analysis frame. Keep the one that removes the false ones
 without losing a true pair; a person in front of another also makes one box
 sit inside the other, and the user's rule is that one extra message beats a
 hidden person (CONTEXT 3), so a tie keeps today's count.
-
-**R63 — A message that fails to send is lost (high, 17/11/2026).** From
-16/10 to 17/11 production logged 75 failed sends — 67 Telegram read
-time-outs (15 s), the rest a reset connection or a Telegram 500 — among
-them 37 best views, 15 side views, 10 unknown faces, 5 hidden persons.
-`notify._call` tries once and logs; nothing retries, against the user's
-rule that a risk is never lost (CONTEXT 3). **Then:** a failed send is
-tried again with a growing pause (a few attempts over a minute or two),
-and a read time-out is retried too — Telegram may have received the
-first, so a rare duplicate is the accepted price. Measured on the log: how
-many of the 75 a retry policy would have delivered is unknowable after the
-fact; the test is a fake Telegram that fails once and then answers.
-
-**R62 — A tracker that failed on every run would flood the log (low,
-review 31).** `Camera.detect` logs a traceback each time `Tracks.update`
-raises, and the camera goes on (ARCHITECTURE 7.16). A failure that
-repeats — a bad state inside the library, carried from run to run — would
-write one about three times a second per camera, and `logs/jarvis.log`
-keeps 1 MB × 6: the history every review reads (messages, outages, scans)
-would be gone in minutes. Not seen: the tests and the 19 replayed clips
-never raised. **Then,** with item 7 part 2, when the tracks start to act:
-log a camera's first failure with its traceback and then at most a line a
-minute with a count, and decide whether a failed tracker is replaced by a
-fresh one — keeping the id counter, so ids stay unique. A run or an event
-with no tracks falls back to today's behaviour, the boxes — never to "no
-person".
 
 **R54 — Best of N and a looser gate give a stranger more chances to pass
 as a resident (medium, a watch, review 24).** R51 matches every view of a
@@ -391,67 +317,92 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 31 is done** (HISTORY 13.32): developer 29 finished item 7's
-part 1 — the first box joined, measured again, tracks recorded live; no
-code fix; **`v2026.10.16.3` released and deployed** at 21:27 on 16/10.
+**Review 32 is done** (HISTORY 13.34): developer 30 delivered R63, backlog
+41, the month replayed and R62; the review fixed four holes by tests first
+(`7709f94`) — the second body beside a face already seen, a resident
+recognised only after the event, errors `requests` does not wrap, a person
+box with no track. **`v2026.11.17` released and deployed.** On the month:
+98 messages a day → 35.
 
-**17/11: a month left alone, read** (HISTORY 13.33), and the user's three
-answers (CONTEXT 3) — backlog 41–43 and R63. Item 7's part 2 as planned
-before gives way: its R59 piece is backlog 41 (a).
+**Developer 31: the photos — backlog 43, then 44, then 42.** One tool,
+`tools/clean_gallery.py`, and the scan-time rules after it. **Copies
+only**: `C:\JARVIS` is read, never written — the architect applies the
+cleaning on production at the deploy, after reading its dry run.
 
-**Developer 30: messages that are never lost, and notifications by visit —
-R63, backlog 41, R62.**
+1. **Backlog 43, the evidence, by tests first.** A face view belongs to a
+   resident when its own event — the view's `view_events` entry (R55,
+   ARCHITECTURE 10.16) — has **exactly one track voted person** in the
+   event JSON's `tracks` (`tracks.voted`, ARCHITECTURE 7.16) and **exactly
+   one resident recognised for sure** among that event's face sightings
+   (`resident_person`'s rule: named, resident, score at or above the
+   user's sure threshold, `learn_threshold`). An event without `tracks`
+   (before 16/10 21:28) is no evidence. Tests: a view of an unnamed entry
+   whose event had one body and Gustavo sure goes to Gustavo; the same
+   with two person tracks, or with Gustavo and Izabel both sure, or with
+   only "probably Gustavo", stays; a view of Izabel's whose event had one
+   body and Gustavo sure goes to Gustavo; a view with no event stays.
+2. **`tools/clean_gallery.py <folder> [--apply]`.** The dry run (the
+   default) reads `faces/` and `clips/` and prints every move it would
+   make — view, from, to, its event — with a contact sheet per
+   destination (a JPEG beside the output, as the review's), and
+   **checks itself against HISTORY 13.33's labels**: how many views of the
+   13 entries labelled Gustavo and the 3 labelled Izabel go to that
+   resident, and **any view of any other unnamed entry that moves to a
+   resident — the number that must be 0**. `--apply` refuses while a
+   service answers on the folder's port (as `settle_waiting.py` does),
+   copies `faces/` to `backups/` first, and moves each view through the
+   40-view rule (ARCHITECTURE 17.14) under the gallery's lock; an entry
+   left with no view is removed, its sightings repointed to the resident
+   (`_repoint_sightings`). Then `tools/check_data.py` on the result.
+   Run it on a **copy** of production's `faces/` and `clips/` and put its
+   numbers in the HANDOFF: moves per resident, against the labels.
+3. **Backlog 43, at scan time — only if step 2's count of wrong moves is
+   0.** In `_scan_clip`'s naming, a face group of an event with one
+   person track and one sure resident recognised joins that resident
+   (through the 40-view rule, so it waits in Waiting) instead of forming
+   a new unnamed entry. `_assemble` already has the tracks
+   (`Record.decided()`); pass them on. If step 2 shows a wrong move, do
+   not build this; say why in the HANDOFF.
+4. **Backlog 44, "Visitor N", by tests first.** A new optional field on a
+   face entry, `temporary_name` ("Visitor 12"), given when an unnamed
+   entry forms, N from a counter kept in the gallery file (a new optional
+   key) that only grows — never reused, also after a deletion. **It is
+   not a name**: `person_case` stays `unknown_face`, Home still sends it,
+   the sure and probable rules do not apply; the message reads "Front
+   12:00:00: Visitor 12, unknown face"; People shows it on the card;
+   renaming the entry on the page names it — views and sightings kept,
+   the temporary name dropped. Existing unnamed entries get theirs in
+   order of first sighting, once, at load (a migration that only adds a
+   field — older versions ignore it). The grouping: two unnamed entries
+   with views in **one event with one person track** are one person and
+   merge (the existing `_merge`); measure it first on the copy, against
+   the labels — which merges it makes, none of two people labelled
+   different; if any, do not build the merge, only the name.
+5. **Backlog 42, if the session has room**, by tests first: (a) an
+   unnamed face entry not seen for 60 days (its last sighting) is
+   forgotten with its view photos; its sightings stay and read "?" on
+   Recordings, as a forgotten dog's do; a named entry is never touched;
+   checked once a day by the service. (b) a dog crop that is probably a
+   named dog (ARCHITECTURE 20's probable distance and ratio) stays a
+   sighting with that name and makes no unnamed card. Otherwise it is
+   developer 32's, first.
 
-1. **R63 by a test first**: a fake Telegram that fails once (a read
-   time-out, then a 500, then a refused connection) and then answers; the
-   message arrives. A failed send is tried again with a growing pause —
-   a few attempts over a minute or two, off the camera loop; a 429 waits
-   what Telegram's `retry_after` says; any other 4xx is not retried. Each
-   attempt that fails leaves a line; the last failure says it gave up.
-2. **Backlog 41 by tests first**, one per rule: the visit (5 minutes from
-   the end of one person event to the start of the next, per camera); the
-   dog track (an event whose person frames all sit in dog-voted tracks
-   with no run of 2 sends no person message); a resident in the visit
-   explains one body (a faceless event with one person at once sends
-   nothing after Gustavo was recognised four minutes before on that
-   camera; the same event with two people at once still sends the hidden
-   person; Gustavo recognised on the *other* camera explains nothing — a
-   new place deserves a message, CONTEXT 3); only news (a second faceless
-   event in a visit that already sent stays quiet; one with more people
-   than the visit has seen sends; an unknown face not yet seen in the
-   visit sends, the same unknown face again does not). The visit state
-   lives in `notify`, per camera, under a lock: scans finish on assembly
-   threads. An event with no `tracks` decides as today on (a). A line per
-   message not sent: "Notification Back best view: skipped: visit (…)".
-3. **The month replayed** — `tools/replay_visits.py`, read-only: production's
-   event JSONs, face sightings and log from 16/10 21:28, each sent message
-   joined to its event (the scan's clip name on its assembly thread),
-   through the new rules. It must land near the review's numbers: 96 a day
-   → about 34 (HISTORY 13.33); say where it differs and why, and how many
-   messages with a face of a non-resident it drops (only repeats of the
-   same face in the same visit may go).
-4. **R62** with it: a camera's first tracking failure with its traceback,
-   then at most a line a minute with a count.
+**HANDOFF:** the dry run's numbers against the labels, the moves it would
+make on production, what was built of steps 3 to 5 and what was not, and
+the data-format impact field by field (`tools/check_data.py` on the copy
+before and after).
 
-Copies only; `C:\JARVIS` is read, never written. **HANDOFF:** the retry
-policy, the rules as built, the replay's numbers and every difference from
-the review's.
-
-**Developer 31: the photos — backlog 43, 44, then 42.** Planned in the
-review of developer 30, from its numbers; it builds `tools/clean_gallery.py` (dry
-run with a contact sheet, apply refusing while the service answers and
-backing `faces/` up first), measured against HISTORY 13.33's labels, which
-the architect then applies on production at the deploy.
+**The architect, next:** the late messages of 18/10 (`PENDING.md`) —
+measure the delays on the month again and propose.
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
-hold until then); the policy for unnamed faces (backlog 37, `PENDING.md`);
-the misfiled dog views, thirteen,
-before the once-only settle of backlog 28 — the new model sees them right,
-but four sit in Chosen, where every match is measured against them; the
-M900 sleeping at the sign-in screen; the checks on the M900,
-`v2026.10.16` among them (`PENDING.md`).
+hold until then); the misfiled dog views, thirteen, before the once-only
+settle of backlog 28 — the new model sees them right, but four sit in
+Chosen, where every match is measured against them; the M900 sleeping at
+the sign-in screen; the checks on the M900, `v2026.11.17` among them
+(`PENDING.md`).
 
-**Not planned:** R54 and R47 are watches. R63, R62 and R59's rule are
-developer 30's; R58 waits for item 7's later sessions. R14, R12 and R9 as before. Every other open backlog item is
+**Not planned:** R54 and R47 are watches. R58 waits for item 7's later
+sessions. R14, R12 and R9 as before. Every other open backlog item is
 **(proposto)**.

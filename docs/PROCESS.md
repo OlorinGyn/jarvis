@@ -188,14 +188,14 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 31, covers
-up to `81f1db5`** (developer 29's handoff; release `v2026.10.16.3`); the next
-starts from the commit after it.
+The table of every review is `HISTORY.md` 13.2. **The last review, 32, covers
+up to `aaa2a06`** (developer 30's handoff; its own fixes `7709f94`; release
+`v2026.11.17`); the next starts from the commit after the review's last.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.33, one section per review (13.16 is the reading of
-the bad-detection reports, 13.33 the month left alone); the next one is 13.34.
+`HISTORY.md` 13.3 to 13.34, one section per review (13.16 is the reading of
+the bad-detection reports, 13.33 the month left alone); the next one is 13.35.
 
 ---
 
@@ -353,3 +353,4 @@ review and commits.
 | 22 | `v2026.10.16` | The Silent Bell / O Sino Silencioso | written |
 | 23 | `v2026.10.16.2` | The Tracker Who Never Looks / O Rastreador que Nunca Olha | written |
 | 24 | `v2026.10.16.3` | The First Footprint / A Primeira Pegada | written |
+| 25 | `v2026.11.17` | The Month Nobody Watched / O Mês que Ninguém Viu | written |

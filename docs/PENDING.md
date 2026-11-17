@@ -139,13 +139,25 @@ grows, decisions are being postponed.
   page, no message changes. Each new event's JSON records its tracks — what
   the next session measures R59's rule on, after a day of them.
 
+- **`v2026.11.17` on the phone** (backlog 41, R63, R62): in Home **about a
+  third of the messages** — 98 a day to 35 on the month. Per camera, person
+  events less than 5 minutes apart are one visit: once you are recognised,
+  a faceless person alone in that visit sends nothing (only a recording);
+  after the visit's first message only news goes — more people at once, a
+  face not yet seen in it; the household's dogs boxed as people send
+  nothing. A stranger whose face shows, or who comes beside someone, still
+  does. A message that fails to send is tried again for about two
+  minutes, so a rare one may arrive twice. **What goes to the architect,
+  with its time:** a stranger who did not reach the phone, or a message
+  that clearly repeats one of the same visit. The log names every message
+  not sent and why (`skipped: visit (…)`).
+
 ## Decided, not yet done
 
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
-  rule from the tracks, is planned in BACKLOG 3 (developer 30) and waits
-  for a day of production's tracks, from about 21:30 on 17/10. Item 40 is
-  done (`v2026.10.16`).
+  rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
+  is done (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the
   architect runs it after the misfiled dog views above are deleted (the
@@ -159,8 +171,8 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 In Home every message waits for the clip to close and its face scan:
 median about 30 s from the event's start, minutes when scans queue behind
 a busy visit (9 min at worst on 17–18/10; HISTORY 13.33). Backlog 41 cuts
-the messages, not the scan. **The architect's next step:** after developer
-30, measure the delays on the month again and propose — the face checked
+the messages, not the scan (built, `v2026.11.17`). **The architect's next
+step:** measure the delays on the month again and propose — the face checked
 on the first closed segment while the event still records, and no scan for
 an event whose visit can no longer change a message. Not work yet.
 

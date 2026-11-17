@@ -2645,3 +2645,140 @@ would be wrong — a detector that fails silently is a camera that records
 nothing. The review found its one cost: a tracker that failed on *every*
 run would write a traceback three times a second per camera into a log
 that keeps 6 MB (R62).
+
+## 50. Retry with backoff, the slow path in a thread, decide under a lock and act outside it, patching a module's globals, and a replay that runs the shipped code (developer 30)
+
+Developer 30 made a failed message try again (R63, ARCHITECTURE 12.13),
+built the visit (backlog 41, 12.14) and replayed a month of production
+through it.
+
+**Retry with a growing pause.** Every reliable network client does the
+same thing: try, and on a failure that may pass, wait and try again, a
+little longer each time, a bounded number of times.
+
+```python
+RETRY_PAUSES = (5, 15, 30, 60)
+
+def _retry(subject, text, image, settings, silent, pause):
+    attempt = 1
+    while pause is not None:
+        _sleep(pause)
+        attempt += 1
+        ok, detail, wait = _post(text, image, settings, silent)
+        if ok:
+            return True
+        pause = _failed(subject, attempt, detail, wait)
+    return False
+```
+
+The growing pause gives a server that is struggling room to recover; a
+fixed one hammers it at the same rate. Which failures to retry is the real
+design: a time-out or a 500 may pass; a 400 "chat not found" never will,
+and retrying it only fills the log; a 429 says how long to wait in its own
+body. `_call` encodes that in its third value, `wait` — `None` for "do not
+try again", a number for "try again after this". Returning a tuple of three
+and unpacking it, `ok, detail, wait = …`, is Python's way to return several
+values; Java would need a small record class, C# a tuple `(bool, string,
+double?)` — and `None` here plays the role of C#'s `null` in a `double?`.
+
+**Idempotency, and why a duplicate is accepted.** A request is idempotent
+when doing it twice is the same as doing it once — `PUT` a value, `DELETE`
+an id. `sendPhoto` is not: when the read times out, Telegram may already
+have the photo, and the retry posts it again. The choice is between a rare
+duplicate and a lost message; the user's rule (a risk is never lost)
+decides it.
+
+**The first attempt inline, the slow path in a thread.** `_send_logged`
+tries once on the caller's own thread, so the caller gets its answer as
+before; only a failure starts a thread:
+
+```python
+ok, detail, wait = _post(text, image, settings, silent)
+if ok:
+    return True
+pause = _failed(subject, 1, detail, wait)
+if pause is not None:
+    threading.Thread(target=_retry, args=(subject, text, image, settings, silent, pause),
+                     daemon=True).start()
+return False
+```
+
+It is the shape of C#'s `if (!TrySend()) _ = Task.Run(() => RetryLoop())`:
+the common case costs nothing extra, and the two minutes of pauses never
+block a camera's assembly thread. `daemon=True` means the thread does not
+keep the process alive at shutdown — a retry left over is abandoned, like
+a background `Thread` in .NET with `IsBackground = true`.
+
+**A module-level dict under a lock.** The visit state is a plain `dict`
+at module level, `_visits`, shared by every assembly thread, with its own
+`threading.Lock`:
+
+```python
+with _visit_lock:
+    visit = _visit(camera, started_at, ended_at or started_at)
+    quiet = rules and visit["sent"] and seen <= visit["people"]
+    ...
+    _remember(visit, found, seen, started_at, settings)
+    ...
+    visit["sent"] |= bool(planned)
+```
+
+`with lock:` is Java's `synchronized (lock) { … }` and C#'s `lock (obj)
+{ … }`: acquired on entry, released on exit even if an exception leaves
+the block. The GIL does not make this unnecessary. It makes each bytecode
+step atomic, not a sequence: two threads can both read `visit["sent"]` as
+`False`, both decide to send, and both set it — two "first" messages. The
+read, the decision and the write must be one step, so they share one
+lock.
+
+**Decide under the lock, act outside it.** The sending happens after the
+`with` block ends. Holding a lock across a network call would make every
+other thread wait for Telegram's 15 s time-out, and a lock held while
+calling code that takes *another* lock is how deadlocks are made. The
+same pattern has a sharper edge here: `threading.Lock` is **not
+re-entrant** — the same thread taking it twice waits for itself forever
+(PYTHON 31). `_deliver` calls `_loud`, which takes `_lock`; had the visit
+used `_lock` too, deciding a visit while delivering would hang. That is
+why there are two locks, and why the test fixture that first fired the
+floor's timer inline did deadlock until it stopped doing so. Java's
+`synchronized` and C#'s `lock` are re-entrant, so this trap does not exist
+there; Python's `threading.RLock` is the re-entrant one.
+
+**Patching a module's globals in a test.** The tests replace module-level
+names with pytest's `monkeypatch`, which puts every one back after the
+test:
+
+```python
+monkeypatch.setattr(notify, "_post", fake_post)
+monkeypatch.setattr(notify, "_sleep", pauses.append)
+monkeypatch.setattr(notify.threading, "Thread", Inline)
+```
+
+A function looks up a global name **when it runs**, not when it was
+defined, so `_send_logged` calls whatever `notify._post` is at that
+moment. `_sleep = time.sleep` exists only so a test can swap it for
+`pauses.append` and see the pauses without waiting two minutes. The third
+line has a catch: `notify.threading` is not a copy, it **is** the
+`threading` module, the same object every module imported. Patching
+`notify.threading.Thread` patches `threading.Thread` for every module in
+the process during that test — which is why the thread test of the visit
+puts the real class back (`REAL_THREAD`) before using a pool. In Java
+terms it is replacing a static field of a shared class, not of one
+instance.
+
+**A replay that runs the shipped function.** `tools/replay_visits.py`
+does not re-implement the visit rules to estimate their effect; it calls
+`notify.after_scan` itself on each of the month's events, with the
+sending replaced by a list:
+
+```python
+notify._send_logged = lambda subject, text, image, values, silent=False: \
+    sent[current["key"]].append(subject) or True
+```
+
+(`list.append` returns `None`, so `… or True` makes the lambda return
+`True`, as a successful send does.) First it runs with the visit off and
+checks that it reproduces the log event by event — 0 events differ —
+which proves the replay's inputs are right; only then does it switch the
+visit on and count. A rule measured through a copy of itself measures the
+copy.

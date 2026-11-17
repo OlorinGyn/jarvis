@@ -148,7 +148,8 @@ visit; a resident recognised in it explains one body, so a faceless person
 alone in a visit where a resident was recognised sends nothing — only a
 recording; after the visit's first message only news sends again (more
 people at once, a face not yet seen in it). A stranger whose face shows, or
-who comes beside someone, still reaches the phone (backlog 41).
+who comes beside someone, still reaches the phone (backlog 41, **built in
+`v2026.11.17`**, ARCHITECTURE 12.14).
 
 **Notifying is a weighing: risk never lost, nobody shouted at** (the user,
 16/10/2026). An event that may mean risk must never be lost, and a message
@@ -240,7 +241,7 @@ src/jarvis/
   dogs.py         the dog gallery: crops, the DINOv2-small descriptor, matching, its migration
   archive.py      layer 5: moves to the external drive, deletes only there when full
   settings.py     settings editable from the page (config.json)
-  notify.py       Telegram messages: thumbnail, face, the cases; loud or silent by the house's incident
+  notify.py       Telegram messages: thumbnail, face, the cases; loud or silent by the house's incident; the visit in Home; a failed send tried again
   outage.py       a camera with no picture for a minute, and its return: the camera-watch thread
   modes.py        notification cases, the Home/Away/Silent modes and their switches
   bot.py          commands from the phone: long polling, switches the mode and On/Off only
@@ -262,6 +263,7 @@ tools/
   person_signals.py  per person box of a clip: its origin, the signals that could tell a dog, two people at once (R59, R58)
   replay_notifications.py  a log's notifications through the incident rule: how many ring, how many arrive silently (ARCHITECTURE 12.11)
   replay_tracks.py  the live detector's boxes through the live tracker (jarvis.tracks), per phase: what each track saw (item 7, ARCHITECTURE 7.16)
+  replay_visits.py  a month of production's person events through notify.after_scan, visit off and on (backlog 41, ARCHITECTURE 12.14)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -329,6 +331,7 @@ uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared
 uv run python tools/person_signals.py <video>... [--gallery FILE]   where each person box came from, and what could tell a dog (ARCHITECTURE 7.15)
 uv run python tools/replay_notifications.py <log> [--quiet 120] [--since ...]   loud and silent messages a log would give (ARCHITECTURE 12.11)
 uv run python tools/replay_tracks.py <video>... [--join] [--lost 3 ...]   each track's life, frames by label and vote; tracks against boxes at once (ARCHITECTURE 7.16)
+uv run python tools/replay_visits.py C:\JARVIS [--since 2026-10-16T21:28]   production's person events through the visit rules, read-only (ARCHITECTURE 12.14)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
@@ -365,7 +368,7 @@ user's sure distance — `SURE_RATIO`, `PROBABLE_DISTANCE`, `PROBABLE_RATIO`,
 `SURE_SWEEP`, `COPY_DISTANCE`, `MARGIN`, `CROP_SIDE`, `MAX_UNNAMED`,
 `DECIMALS`; ARCHITECTURE 20),
 `settings.py` (`CONFIDENCE_RANGE`, `SLIDER_STEPS`: the detection sliders,
-ARCHITECTURE 7.14; `FACE_SURE_RANGE`, 10.15; `DOG_SURE_RANGE`, 20), `app.js` (`PAGE_STEP`, 17.17), `notify.py` (`MAX_FACES`, `QUIET_SECONDS` — only the default of the page's quiet window — `LOUD_FLOOR_SECONDS`; 12.11), `outage.py` (`CAMERA_DOWN_SECONDS`, `CHECK_SECONDS`, `GRACE_SECONDS`; 12.12), `bot.py` (`LONG_POLL_SECONDS`,
+ARCHITECTURE 7.14; `FACE_SURE_RANGE`, 10.15; `DOG_SURE_RANGE`, 20), `app.js` (`PAGE_STEP`, 17.17), `notify.py` (`MAX_FACES`, `QUIET_SECONDS` — only the default of the page's quiet window — `LOUD_FLOOR_SECONDS`; 12.11; `RETRY_PAUSES`, 12.13; `VISIT_SECONDS`, 12.14), `tracks.py` (`LOST_SECONDS`, `PERSON_RUN`, `FAILURE_LOG_SECONDS`; 7.16), `outage.py` (`CAMERA_DOWN_SECONDS`, `CHECK_SECONDS`, `GRACE_SECONDS`; 12.12), `bot.py` (`LONG_POLL_SECONDS`,
 `STALE_SECONDS`, `REMINDER_SECONDS`).
 
 ---

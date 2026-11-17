@@ -1174,9 +1174,15 @@ tool measures is what production records:
   which these parameters never leave.
 - `Record` — what one stretch of time saw: per track its first and last
   moment, frames per label, the longest person run; `most_person_tracks()`
-  and `summary()`, the event JSON's form (8.4).
+  and `summary()`, the event JSON's form (8.4); `decided()`, the summary
+  the notification may act on — `None` when a run went untracked or a
+  person box got no track (review 32), so the event decides by its boxes.
 - `voted(labels)` — a track is a dog only with more dog frames than person
   frames; a tie is a person.
+- `dog_only(summary)` — every track with person frames voted dog, none
+  with a run of `PERSON_RUN` = 2 person frames: R59's rule, backlog 41 (a)
+  (12.14).
+- `Failures(label)` — one camera's tracking failures in the log (below).
 
 | Parameter | Value | Why |
 |---|---|---|
@@ -1221,12 +1227,24 @@ detector's monotonic clock. A run where YOLO found nothing is fed too: the
 tracks age, and the run counts for "at once". While an event records,
 `EventRecorder.update` adds each run to the event's `Record`, the starting
 frame included; runs before the event are not in it, so a track that began
-earlier starts at second 0.0 with the event's frames only. A tracker that
-raises is logged ("Tracking failed on …") and that run goes untracked:
-nothing depends on the result yet, and recording must never stop the
-camera loop — unlike the detector, whose failure must be seen (R62).
-**Nothing that notifies or names reads the tracks yet**: `most_people`, the
-messages and the face scan read the same subjects as before.
+earlier starts at second 0.0 with the event's frames only.
+
+**A tracker that raises** (R62, `v2026.11.17`). Recording must never stop
+the camera loop, so `Camera.detect` catches it — unlike the detector,
+whose failure must be seen. The run returns `(moment, None)`, which
+`Record.add` counts in `untracked_runs` (8.4), and the camera's tracker is
+**replaced by a fresh one**: `Tracks.restart()` builds a new
+`ByteTrackTracker` and forgets the id map but keeps `next_id`, so ids stay
+unique and a bad state inside the library lasts one run. `Failures` keeps
+the log readable: the first failure with its traceback, then at most one
+WARNING a minute with a count — "Tracking failed 180 more time(s) on Front
+in the last 60 s" — and a failure after a quiet minute has its traceback
+again. Before, a tracker failing on every run would have written three
+tracebacks a second per camera into a log of 6 MB.
+
+**What reads the tracks** (since `v2026.11.17`): only Home's visit rule
+(a), through `decided()` (12.14). `most_people`, the face scan and every
+other message read the same subjects as before.
 
 **What the numbers support** (developer 29, first box joined, lost buffer
 3 s, the three phases of 7.15 on the 19 clips of developer 28 — R59's and
@@ -1381,8 +1399,11 @@ analysis frame of the event — what the face scan's count is weighed against
 `.people.jpg` written when that count reached two or more (22.3, R56).
 
 `tracks` and `most_person_tracks`, **optional since 16/10/2026**
-(`v2026.10.16.3`), are written only when the event saw a track (7.16), and
-nothing reads them yet — they are what part 2 of tracking is measured on:
+(`v2026.10.16.3`), are written only when the event saw a track (7.16).
+They are what part 2 of tracking is measured on; the live notification
+reads the tracks in memory, not this file (12.14). `untracked_runs`,
+**optional since 17/11/2026** (`v2026.11.17`), is written only when above
+0: the YOLO runs of the event the tracker failed on (R62):
 
 ```json
 "tracks": [
@@ -2736,6 +2757,10 @@ best-view follow-up in the log, and now sends it too. No send ever failed in
 that log, and at most 9 messages fall in one minute, far under Telegram's
 limits.
 
+**"Nothing dropped" doubled the chat** — a silent message is still a
+message. Since `v2026.11.17`, in Home, the visit (12.14) decides which
+messages go at all; this section decides how each one that goes arrives.
+
 **Open, for tracking (backlog 7):** "the same place" becoming "the same
 body", so a new person on the same camera rings again; and a person nobody
 accounts for still there after some minutes, once.
@@ -2775,6 +2800,159 @@ picture still delivers frames; telling it needs a measurement on night
 frames first. Nothing in the log before this told how often the cameras
 went silent — `capture.py` logs nothing on a restart — so the watch's
 lines are the first measurement.
+
+### 12.13 A failed send is tried again (R63, `v2026.11.17`)
+
+**The case.** From 16/10 to 17/11 production logged 76 failed sends — 67
+Telegram read time-outs (15 s), the rest a reset connection or a Telegram
+500 — 10 of them unknown faces. `_call` tried once, against the user's
+rule that a risk is never lost (CONTEXT 3).
+
+**One attempt, three parts.** `_call(token, method, fields, …)` returns
+`(ok, detail, wait)`. `wait` is `None` when trying again cannot help, else
+the seconds to wait before the next attempt — 0 meaning "the policy's
+pause":
+
+| Answer | `wait` |
+|---|---|
+| `ok: true` | `None` (sent) |
+| a time-out, a refused or reset connection — any `requests.RequestException`, and an `OSError` or `ValueError` it does not wrap (review 32) | 0 |
+| a 5xx, or an answer that is not JSON with a 5xx | 0 |
+| 429 Too Many Requests | Telegram's `parameters.retry_after` |
+| any other 4xx — a bad chat, a bad token | `None`: the same request would fail the same way |
+| a photo that cannot be read | `None` |
+
+`_post(text, image, settings, silent)` is one attempt with the settings'
+token, chat and prefix; `send` keeps its old `(ok, detail)` and stays one
+attempt — the page's test button, which should answer now, not in two
+minutes.
+
+**The first attempt is the caller's, the rest are not.** `_send_logged`
+makes the first attempt on the thread that called it, as before, so the
+capture loop's `event` thread, the assembly threads and the camera watch
+keep their timing and their return values. A failure that may pass starts
+`_retry` in a daemon thread of its own: pauses `RETRY_PAUSES = (5, 15, 30,
+60)`, five attempts in about 110 s, plus up to 15 s of time-out each (PYTHON
+50). Every failed attempt leaves a WARNING:
+
+```
+Notification Back best view: failed, attempt 1 of 5, trying again in 5 s: Read timed out. (read timeout=15)
+Notification Back best view: sent, attempt 2
+Notification Back best view: failed, attempt 5 of 5, gave up: Internal Server Error
+Notification Back best view: failed, attempt 1, not tried again: Bad Request: chat not found
+```
+
+The loud or silent decision is made once, before the first attempt; a
+retry keeps it, and the floor's text (12.11) names the message whether or
+not it has arrived yet. The token never reaches the log: every detail
+passes `_redact` (12.9).
+
+**A read time-out is retried although Telegram may have received the
+first.** `sendPhoto` is not idempotent: a time-out after Telegram got the
+photo, and the retry, give two copies in the chat. The user's rule makes
+that the accepted price — one duplicate is better than a stranger's face
+lost. In the month's log a time-out was 67 of 76 failures.
+
+**Written by hand, not urllib3's `Retry`**, which `requests` already
+carries: urllib3 logs each retry with the request's URL, which holds the
+bot token, and Telegram's `retry_after` is in the JSON body, not in a
+`Retry-After` header urllib3 would read. Not a bias (PROCESS 5): the
+library does not do this job here.
+
+**What is open.** One thread per failed message, each alive at most about
+3 minutes: with Telegram down for an hour, about 35 messages a day means a
+handful of threads at once. No cap, and none needed at this rate.
+
+### 12.14 Notifications by visit (backlog 41, `v2026.11.17`)
+
+**The user's decision, 17/11/2026** (CONTEXT 3), after a month left alone
+at 96 messages a day, three in four a faceless person, 84 % of them near a
+resident recognised on the same camera (HISTORY 13.33). **In Home only**,
+at the held decision after the face scan — `notify.after_scan` with
+`held` and the mode Home; Away, Silent and every case switch are as
+before.
+
+**The visit.** Per camera, `_visits[camera]`: person events less than
+`VISIT_SECONDS` = 300 apart, from the end of one to the start of the
+next, are one visit. It holds its start and end, the last **sure**
+resident recognised (name, the event's start), whether it has sent, the
+most people at once so far, and the face entries (`person_id`) seen.
+`clips._assemble` hands `after_scan` the event's end (`ended_at=`) and its
+tracks (`tracks=`, `Record.decided()`, 7.16). An event joins the visit
+when it starts less than 300 s after the visit's end and ends less than
+300 s before its start; otherwise a new visit replaces it — except a scan
+finishing late for an event older than the current visit, which gets a
+visit of its own, thrown away, and leaves the current one alone.
+
+**Three rules, in this order:**
+
+| Rule | Not sent | Log line |
+|---|---|---|
+| **(a)** every track with person frames is voted dog (`voted`, 7.16) and none has a run of `PERSON_RUN` = 2 person frames (`tracks.dog_only`) — and the scan found no face | the event's faceless message; **the event does not extend the visit** | `Notification Back best view: skipped: dog tracks` |
+| **(b)** a sure resident (`resident_person`) was recognised in the visit, on this camera, in this event or **an earlier one**, and the event shows at most one person at once | the faceless message: best view or side view | `… best view: skipped: visit (Gustavo recognized at 12:00:05)` |
+| **(c)** the visit has already sent a message | a faceless or hidden-person message with no more people at once than the visit has seen; a face whose entry the visit has already seen | `… best view: skipped: visit (no news, 1 person at once)`, `Notification Front face, unknown face: skipped: visit (the same face again)` |
+
+What each rule leaves alone is the point of it:
+
+- **(a)** an event with no tracks — `None` or `[]` — is not a dog event;
+  `decided()` gives `None` when a run went untracked or a person box got
+  no track, so the event decides by its boxes, never "no person". An
+  event whose scan found a face is never judged by (a): a face is a
+  person.
+- **(b)** a **probable** resident explains nothing; **two bodies are never
+  explained by names** — a mixed gallery can give one body two names, as
+  108 events of the month did. A resident recognised on the other camera
+  explains nothing: a new place deserves a message. A resident recognised
+  only *after* the event — a later event whose scan finished first —
+  explains nothing either (review 32): a stranger alone just before the
+  user came home is not the user.
+- **(c)** news always goes: more people at once than the visit has seen,
+  or a face entry not yet seen in it. A face already seen with a second
+  body beside it is news too: the hidden-person message ("2 people seen,
+  1 face found") goes when no face of the event is news and YOLO counted
+  more people than faces (review 32; until then only when every face was
+  silenced by its case, so the second body went unannounced — one event of
+  the month, `Front/2026-10-29/23-06-26`).
+
+What is sent rings or arrives silently by the incident and the floor, as
+before (12.11): the visit decides **whether**, the incident **how**.
+
+**Decide under the lock, send after it.** Scans finish on assembly
+threads, so the visit is shared state: `_visit_lock`, apart from `_lock`,
+guards it. Inside it, in one step: find the visit, read `sent`, `people`
+and `faces` as they were **before** this event, add the event
+(`_remember`), decide each message, and mark `sent` if any is planned.
+The messages go after the lock is released — never a lock held across the
+network (PYTHON 50). `_lock` is a different lock because `_loud` takes it
+while delivering, and a `threading.Lock` taken twice by one thread
+deadlocks. A planned message that fails, and is retried (12.13), still
+counts as the visit's first. `reset_incident` forgets the visits too.
+
+**Measured on the month** (`tools/replay_visits.py`, read-only over
+`C:\JARVIS`, 16/10 21:28 to 17/11 13:06, 31.7 days, 4,106 person
+events). Each logged message is joined to its event by the face scan's
+clip name on its assembly thread, and every person event goes through
+`notify.after_scan` itself, Home, held — once with the visit off, which
+reproduces the log event by event (0 differ), then on:
+
+| | Messages | A day |
+|---|---|---|
+| log, every message (sent and failed, floor and camera texts) | 3,104 | 98 |
+| replay, visit off, about a person | 3,024 | 95 |
+| replay, visit on, about a person | **1,028** | **32** |
+| everything, with the visit (the 80 floor and camera texts kept) | 1,108 | **35** |
+
+By kind, off → on: best view 1,816 → 464, side view 558 → 140, hidden
+person 181 → 90, faces 469 → 334. Not sent, by rule: best view no news
+680, best view a resident 658, side view a resident 266, side view no news
+152, the same face again 139, hidden person no news 115, dog tracks 14.
+**Every face dropped is the same entry again in its visit**, and every one
+is a non-resident's — Home silences the residents' faces — most of them
+the user's own bad views (backlog 43). The review's estimate was 96 → 34
+(HISTORY 13.33); the 2 a day more on each side are the 76 failed sends,
+counted here and not there. The replay orders the events by their start;
+production scans them in that order too — none of the 4,106 was scanned
+after a later event of its camera (review 32).
 
 ---
 
@@ -4220,7 +4398,8 @@ out. `notify.after_scan` sends everything that follows the scan:
 Until `v2026.10.16` faces had a cooldown per person and a held person's
 first message answered to the camera's cooldown, both dropping what they
 blocked (R60); since backlog 40 every one of these goes out, loud or silent
-by the incident (12.11).
+by the incident (12.11). Since `v2026.11.17`, in Home, the camera's visit
+decides first which of them go (12.14).
 
 **Fixed in review 15 (`5224983`).** The first version checked the camera
 cooldown for every held faceless message, so in Home with a dog switch on, a
