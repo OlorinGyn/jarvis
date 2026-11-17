@@ -152,6 +152,15 @@ instead of handing over when:** BACKLOG 3 is empty; something needs the
 user's decision (scope, a (proposto) item, deleting their data); a deploy
 failed or rolled back; the 5-hour window has less left than the next session costs (a developer session has cost 10–20 points; above 85 % always stop); or the weekly limit is
 above 90 %. Each stop ends with a short summary for the user.
+**When the only reason to stop is the 5-hour window** (the plan is ready
+and nothing waits for the user), the session that stops schedules a
+one-time wake-up of itself (`CronCreate`, one-shot, a few minutes after
+the reset `get_usage` gives) and says so in its summary; on waking it
+pulls, reads the usage and the plan again, and hands over as above if they
+still allow it (the user's request, 17/11/2026). Never for the weekly limit
+or for a stop that waits for the user. The wake-up lives only in that
+session while the app runs: if the app is closed at that time it never
+fires, and the user hands over by hand.
 
 **Parallel sessions share one folder (the user's rule, 11/10/2026).** The user
 often talks to the architect while a developer session works in another
