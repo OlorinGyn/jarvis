@@ -196,12 +196,13 @@ The closed ones, with their commits and texts: `HISTORY.md` 13.4. **R50 is
 not used**, so that it is never read as the name of ArcFace R50, the face
 model; R48 and R49 closed in review 23, R30, R51 and R52 in review 24, R42
 in review 25, R53, R56 and R57 in review 26, R55 in review 27, R60 in
-review 29, R61 in review 30; R62 opened in review 31.
+review 29, R61 in review 30; R62 opened in review 31, R63 on 17/11.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
 | R59 | **high** — the user's report | The household's dogs reach the phone as people, boxed `person` by YOLO | measured, no rule; item 7 part 2 builds it (section 3) |
 | R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 part 2 — tracks at once are no better than boxes once the first box counts (ARCHITECTURE 7.16) |
+| R63 | **high** | A message that fails to send is lost: 75 in a month, 11 of them unknown faces | open (below) |
 | R62 | low | A tracker that failed on every run would fill the log in minutes | open (below); with item 7 part 2 |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
@@ -269,6 +270,18 @@ more than one analysis frame. Keep the one that removes the false ones
 without losing a true pair; a person in front of another also makes one box
 sit inside the other, and the user's rule is that one extra message beats a
 hidden person (CONTEXT 3), so a tie keeps today's count.
+
+**R63 — A message that fails to send is lost (high, 17/11/2026).** From
+16/10 to 17/11 production logged 75 failed sends — 67 Telegram read
+time-outs (15 s), the rest a reset connection or a Telegram 500 — among
+them 37 best views, 15 side views, 10 unknown faces, 5 hidden persons.
+`notify._call` tries once and logs; nothing retries, against the user's
+rule that a risk is never lost (CONTEXT 3). **Then:** a failed send is
+tried again with a growing pause (a few attempts over a minute or two),
+and a read time-out is retried too — Telegram may have received the
+first, so a rare duplicate is the accepted price. Measured on the log: how
+many of the 75 a retry policy would have delivered is unknowable after the
+fact; the test is a fake Telegram that fails once and then answers.
 
 **R62 — A tracker that failed on every run would flood the log (low,
 review 31).** `Camera.detect` logs a traceback each time `Tracks.update`

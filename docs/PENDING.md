@@ -155,34 +155,76 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
-**"The worst of both worlds" — the user, 18/10/2026: messages arrive late
-and never stop.** Measured on production from 17/10 01:18 to 18/10 18:44
-(41.5 h, `v2026.10.16.3`): 150 messages, 48 of them loud; from the event's
-start, median 34 s, but 41 took over 2 min and 23 over 5 (9 min at worst).
-The worst: the Back porch, 17/10 19:40–20:05, the user with a visitor —
-32 messages, 24 of them "hidden person"; the Front door, 17/10
-02:30–06:00, someone on the phone with no face seen — 63. Two causes: one
-message per event, and a person who stays makes a new event every minute
-or two, with the repeats sent silently since `v2026.10.16` — the
-architect's choice, against the user's own "the same subject in the same
-place does not deserve a new message" (CONTEXT 3); and in Home every
-message waits for the clip's face scan, which queues when events pile up.
-**The architect's proposal: one visit, one message.** Per camera, a visit
-lasts while person events come less than 5 min apart; its first message
-rings; within it, only a change sends another, and rings — an unknown face
-not yet seen in the visit, or more people at once than before; the rest
-stays on Recordings. Scans that can no longer change anything are skipped,
-so the queue stops growing; Home keeps a floor of about 30 s (the clip
-closing and the face check), lowered later only by checking faces while
-the event records. Simulated on the same 41.5 h: 150 → 41 messages (87 →
-24 a day; 52 at 2 min, 37 at 10); the porch 32 → 3, the Front night
-63 → 11. **The price, the user's to accept:** within a visit, a faceless
-person who arrives alone less than 5 min after another left sends no new
-message, only a recording — it reverses part of the rule reconfirmed on
-16/10 (CONTEXT 3); tracking cannot close it, since anyone out of view for
-over ~7 s comes back as a new track. If accepted, it goes before R59 in
-developer 30's plan. **No answer yet** (asked 18/10; 17/11: nothing has
-changed since, production still on `v2026.10.16.3`).
+**A month of messages and photos — the user, 17/11/2026: "many, many
+notifications every day, of myself"; eliminate the unnecessary ones and
+let the photos manage themselves.** The 18/10 complaint ("the worst of
+both worlds") is the same problem, measured now on a month. The scripts
+and contact sheets were the architect's, in its scratchpad; the numbers:
+
+*The messages* (16/10 21:28 → 17/11 12:25, 31.6 days, `v2026.10.16.3`,
+Home all along): 5,972 events, **3,020 messages sent — 96 a day, 44 of
+them loud** (median 64 a day, 310 at most). By kind: faceless person
+(`best view` 1,770, `side view` 538, `hidden person` 176) 2,484; unknown
+face 425; floor texts 72; named visitors 31; camera outages 8. **84 % of
+the faceless messages had a resident recognised on the same camera within
+30 minutes, 62 % within 5.** **The unknown faces are mostly the user**:
+the 425 come from 50 unnamed entries, and by eye on a contact sheet 13 of
+them are Gustavo (headphones, head down, night) — the five largest alone
+behind 369 mentions — 3 more probably him, 3 are Izabel; the rest are true
+visitors (a party on 31/10, a child, Dhaniel's and Ana Claudia's other
+faces). How: a resident's bad views never reach "sure", so they never
+enter his Chosen; two of them in one clip become an unnamed entry; from
+then on his bad views match that entry better than him — a loop that
+feeds itself. **The residents' galleries are mixed too**: Izabel's Chosen
+holds four of Gustavo's views (headphones, beard), his holds one woman's;
+the unnamed entry behind 103 messages holds Gustavo *and* two of Izabel's
+views — so merging whole entries would spread the mix. 108 events with a
+single person track recognised both residents. **75 messages failed to
+send** (Telegram read time-outs mostly, 11 of them unknown faces) and
+nothing retries (R63).
+
+*The photos*: 47 unnamed face entries (248 views) since 15/10; the
+residents' Chosen full (40 each), Waiting 23 and 35. **The 60 unnamed dogs
+are Aurora and Mirana, 59 of 60** (the other a person's crop), all first
+seen in the last 24 hours: the cap of 60 keeps one day of crops the
+matcher was not sure of, so the Dogs tab's unnamed list is the household's
+own dogs, renewed daily. Sightings: about 2,500 faces and 3,000 dogs a
+month, ~3 MB a day — the record, kept. Clips: 20 GB in 39 days, 356 GB
+free — not urgent.
+
+*Rules simulated on the month* (per camera, a **visit** is person events
+less than N minutes apart):
+
+| Rule | Messages a day |
+|---|---|
+| today | 96 |
+| R59's dog tracks alone | 95 |
+| a resident in the visit explains one body (one at a time only) + only news in a visit (more bodies at once, a face not yet seen in the visit) + dog tracks, 5 min | 34 |
+| the same with the galleries cleaned, 5 min | 27 |
+| the same with the galleries cleaned, 10 min | 23 |
+
+The floor's 72 texts sit in those numbers and would mostly go. "One body
+at a time" is on purpose: with the galleries mixed, two names can be one
+person, so two names never explain two bodies. **The price, the user's:**
+inside a visit where a resident was recognised, a faceless person who
+comes alone, less than N minutes after, sends nothing — only a recording;
+a stranger whose face shows, or who comes beside someone, still does. It
+changes the rule reconfirmed on 16/10 (CONTEXT 3). What is left (~25 a
+day): faceless people with no resident recognised in the visit, visitors'
+faces, more people than residents. The next cut, later and measured first:
+**a body recognised by its clothes** within the day, so a resident's
+faceless events after one recognised face are his — 443 of the 622
+faceless messages left had a resident within 30 minutes.
+
+*The photos, proposed*: unnamed dog crops that are probably a household
+dog stop becoming cards (they stay sightings); an unnamed face entry not
+seen for 30 days is forgotten with its photos, its sightings kept as the
+record (the user's); the mixed galleries cleaned **photo by photo**, by
+evidence — a view whose own event (`view_events`) had one body and one
+resident recognised is that resident's — checked against this review's
+labels, shown once to the user before it is applied, and then the same
+rule at scan time so look-alikes stop forming. **Waiting for the user's
+answer** (asked 17/11).
 
 **Self-cleaning People and Dogs — the architect's proposal, review 24**
 (backlog 37; the user, 14/10: "perhaps clean themselves now and then").
