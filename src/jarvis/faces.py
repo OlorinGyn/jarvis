@@ -1289,12 +1289,14 @@ def sightings_by_event(folder):
 
 
 def event_tracks(clips, event):
-    """The tracks an event's JSON in clips recorded, or None: no file, or recorded before tracks (16/10/2026)."""
+    """The tracks an event's JSON in clips recorded, or None: no file, recorded before tracks (16/10/2026), or a run or person box untracked, as decided() does."""
     try:
         meta = json.loads((Path(clips) / f"{event}.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
-    return meta.get("tracks") if isinstance(meta, dict) else None
+    if not isinstance(meta, dict) or meta.get("untracked_runs") or meta.get("untracked_people"):
+        return None
+    return meta.get("tracks")
 
 
 def cleaning_moves(gallery, clips, sure):

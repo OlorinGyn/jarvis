@@ -299,3 +299,34 @@ def test_the_labels_check_counts_wrong_moves(home):
     check = clean_gallery.against_labels(moves, names, {"Gustavo": ("p_gus_label",)})
     assert check["Gustavo"] == {"right": 1, "wrong": 1}
     assert check["unlabelled"] == 1
+
+
+def test_an_event_with_untracked_boxes_is_no_evidence_as_at_scan_time(home):
+    file_view(home, STRANGER, 0, ONE)
+    event(home, ONE, [(8, 0)])
+    sighting(home, ONE, GUSTAVO, 0.62)
+    path = home / "clips" / f"{ONE}.json"
+    for key in ("untracked_runs", "untracked_people"):
+        meta = json.loads(path.read_text(encoding="utf-8"))
+        path.write_text(json.dumps({**meta, key: 1}), encoding="utf-8")
+        assert faces.event_tracks(home / "clips", ONE) is None and moves_of(home) == []
+        path.write_text(json.dumps(meta), encoding="utf-8")
+    assert moves_of(home) == [(STRANGER, GUSTAVO)]
+
+
+def test_the_event_json_records_a_person_box_left_without_a_track(tmp_path):
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    from jarvis import clips
+    from jarvis.geometry import Detection
+    from jarvis.tracks import Record
+
+    record = Record()
+    record.add(0.5, [(1, Detection(0, 0, 60, 150, 0.8, "person"))])
+    record.add(1.0, [(None, Detection(200, 0, 60, 150, 0.7, "person"))])
+    started = datetime(2026, 11, 17, 10, 0, 0)
+    recorder = SimpleNamespace(label="Back", started_at=started, labels={"person"}, best_confidence=0.8,
+                               base=tmp_path / "10-00-00", most_people=2, tracks=record)
+    meta = clips.EventRecorder._write_metadata(recorder, started, "ended")
+    assert meta["untracked_people"] == 1 and "untracked_runs" not in meta

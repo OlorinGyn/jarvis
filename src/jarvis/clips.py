@@ -403,6 +403,8 @@ class EventRecorder:
             meta["most_person_tracks"] = self.tracks.most_person_tracks()
         if self.tracks.untracked_runs:
             meta["untracked_runs"] = self.tracks.untracked_runs
+        if self.tracks.untracked_people:
+            meta["untracked_people"] = self.tracks.untracked_people
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
