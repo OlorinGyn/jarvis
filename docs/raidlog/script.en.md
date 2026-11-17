@@ -1675,3 +1675,81 @@ box counted) · **The Coat-Check Ticket** (ids of its own, per camera) ·
 joins; the megaphone gremlin (R62). Next: a day of footprints, then the
 first rule — a body that is a dog in most of its steps does not reach the
 phone as a person.
+
+## Issue #25 — The Month Nobody Watched
+
+`v2026.11.17` · 17 Nov 2026
+
+**Panel 1.** A month of calendar pages blowing across the porch. The
+phone on the kitchen table is buried under a drift of envelopes, all of
+them with the owner's own silhouette on the stamp.
+CAPTION: A month left alone. Ninety-six messages a day.
+THE OWNER (off-panel, a speech bubble from a phone): Many, many
+notifications. Of myself.
+
+**Panel 2.** The owl at a long table, envelopes sorted into piles. The
+tallest pile is labelled "a resident was here, five minutes before".
+ARCHITECT: Three in four are a person with no face. Most of them walk
+right after you were recognised, on the same camera.
+A smaller pile, "unknown faces", has a mirror leaning on it.
+ARCHITECT: And most of the strangers are you, looking down.
+
+**Panel 3.** The owner's hand placing a sign on the porch: "VISIT — 5 MIN".
+CAPTION: The owner's rule: events less than five minutes apart are one
+visit. Once you are recognised, a faceless body alone in it is you. After
+the first message, only news.
+
+**Panel 4.** The beaver at the post office window. A courier comes back
+soaked, envelope in hand, "TIMED OUT" stamped on it. The beaver turns a
+dial: 5 s, 15 s, 30 s, 60 s.
+DEV: Seventy-six letters lost in a month because nobody knocked twice.
+Now he knocks again — five times, in about two minutes.
+CAPTION: If the first knock was heard after all, the house gets two
+letters. One too many beats one lost.
+
+**Panel 5.** Three turnstiles at the front gate, each with a small sign.
+The first: a dog in a person's coat bounces off it — "dog tracks". The
+second: a faceless shadow behind the owner — "Gustavo recognized at
+12:00:05". The third: the same shadow again — "no news".
+DEV: Every letter not sent leaves a line saying why.
+
+**Panel 6.** A film projector running the month backwards onto a wall.
+The beaver holds two counters.
+DEV: The month again, through the very gate the house will use. Gate open
+first: every event sends exactly what the log says it sent.
+J.A.R.V.I.S.: `0 events differ.`
+DEV: Gate closed: ninety-eight a day, down to thirty-five.
+
+**Panel 7.** The megaphone gremlin from issue 24, now with a muzzle and a
+tally sheet. Behind him, a fresh courier steps in to replace one who
+tripped.
+DEV: One shout with the whole story, then one line a minute with a count.
+And a courier who trips is replaced, keeping the numbers going.
+
+**Panel 8.** Night, the front door, 29 October, 23:06. Dhaniel, already
+announced earlier, stands under the lamp — and beside him a second
+figure, unlit. The third turnstile clicks shut on both.
+ARCHITECT (magnifying glass): His face was a repeat, so it was skipped.
+And the second body waited for every face to be silenced by its switch.
+Nobody told the phone there were two.
+CAPTION: More people than the visit had seen is news. Now it goes:
+"2 people seen, 1 face found".
+
+**Panel 9.** The owl at a queue of film cans waiting for the scanner, one
+can jumping ahead of an older one.
+ARCHITECT: And a name found later must not vouch for a body seen before
+it. The lock does not promise the order.
+J.A.R.V.I.S.: `0 of 4,106 scanned out of order.`
+ARCHITECT: Then it is a guard. If it ever trips, a letter goes, not
+silence.
+
+**Panel 10.** The M900. The parcel `v2026.11.17` goes in; twenty-five
+seconds dark, then the drones rise.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Closing card.** Abilities: **The Visit** (five minutes, one body
+explained by a name, then only news) · **The Second Knock** (a failed
+message tried again) · **The Muzzle** (a failing tracker logged once a
+minute). Lurking: the owner's own bad views posing as strangers; the
+mixed galleries; the scan that makes every message late. Next: the album
+cleans itself — each photo moved by the evidence of one body.

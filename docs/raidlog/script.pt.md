@@ -1743,3 +1743,85 @@ espreita: o passo curto de "pessoa" ao lado de um cachorro; o segundo corpo
 falso; a caminhada que nenhum buffer junta; o diabinho do megafone (R62).
 Próximo: um dia de pegadas, e então a primeira regra — um corpo que é
 cachorro na maioria dos passos não chega ao celular como pessoa.
+
+## Edição #25 — O Mês que Ninguém Viu
+
+`v2026.11.17` · 17 nov 2026
+
+**Quadro 1.** Um mês de folhas de calendário voando pela varanda. O
+celular na mesa da cozinha está soterrado por um monte de envelopes, todos
+com a silhueta do próprio dono no selo.
+LEGENDA: Um mês sozinha. Noventa e seis mensagens por dia.
+O DONO (fora do quadro, um balão saindo de um celular): Muitas, muitas
+notificações. De mim mesmo.
+
+**Quadro 2.** A coruja numa mesa comprida, envelopes separados em pilhas.
+A pilha mais alta tem a etiqueta "um morador esteve aqui, cinco minutos
+antes".
+ARQUITETA: Três em cada quatro são uma pessoa sem rosto. A maioria anda
+logo depois de você ser reconhecido, na mesma câmera.
+Uma pilha menor, "rostos desconhecidos", tem um espelho apoiado nela.
+ARQUITETA: E a maioria dos estranhos é você, olhando para baixo.
+
+**Quadro 3.** A mão do dono colocando uma placa na varanda: "VISITA —
+5 MIN".
+LEGENDA: A regra do dono: eventos a menos de cinco minutos um do outro são
+uma visita. Depois que você é reconhecido, um corpo sem rosto sozinho nela
+é você. Depois da primeira mensagem, só novidade.
+
+**Quadro 4.** O castor no guichê dos correios. Um carteiro volta
+encharcado, envelope na mão, carimbado "TEMPO ESGOTADO". O castor gira um
+botão: 5 s, 15 s, 30 s, 60 s.
+DEV: Setenta e seis cartas perdidas num mês porque ninguém bateu duas
+vezes. Agora ele bate de novo — cinco vezes, em uns dois minutos.
+LEGENDA: Se a primeira batida foi ouvida, afinal, a casa recebe duas
+cartas. Uma a mais é melhor que uma perdida.
+
+**Quadro 5.** Três catracas no portão da frente, cada uma com uma
+plaquinha. Na primeira, um cachorro de casaco de gente quica para trás —
+"trilhas de cachorro". Na segunda, uma sombra sem rosto atrás do dono —
+"Gustavo reconhecido às 12:00:05". Na terceira, a mesma sombra de novo —
+"nada de novo".
+DEV: Cada carta não enviada deixa uma linha dizendo por quê.
+
+**Quadro 6.** Um projetor passando o mês de trás para frente numa parede.
+O castor segura dois contadores.
+DEV: O mês de novo, pela mesma catraca que a casa vai usar. Catraca aberta
+primeiro: cada evento manda exatamente o que o log diz que mandou.
+J.A.R.V.I.S.: `0 eventos diferem.`
+DEV: Catraca fechada: noventa e oito por dia, caindo para trinta e cinco.
+
+**Quadro 7.** O diabinho do megafone da edição 24, agora com uma
+focinheira e uma folha de contagem. Atrás dele, um carteiro novo entra no
+lugar de um que tropeçou.
+DEV: Um grito com a história inteira, depois uma linha por minuto com a
+contagem. E um carteiro que tropeça é trocado, mantendo a numeração.
+
+**Quadro 8.** Noite, a porta da frente, 29 de outubro, 23:06. Dhaniel, já
+anunciado antes, de pé sob a lâmpada — e ao lado dele uma segunda figura,
+no escuro. A terceira catraca se fecha sobre os dois.
+ARQUITETA (lupa): O rosto dele era repetido, então foi pulado. E o segundo
+corpo esperava que todo rosto fosse silenciado pelo seu botão. Ninguém
+contou ao celular que eram dois.
+LEGENDA: Mais gente do que a visita já tinha visto é novidade. Agora vai:
+"2 pessoas vistas, 1 rosto encontrado".
+
+**Quadro 9.** A coruja diante de uma fila de latas de filme esperando o
+scanner, uma lata furando a fila na frente de uma mais antiga.
+ARQUITETA: E um nome encontrado depois não pode responder por um corpo
+visto antes dele. A tranca não promete a ordem.
+J.A.R.V.I.S.: `0 de 4.106 escaneados fora de ordem.`
+ARQUITETA: Então é uma proteção. Se um dia disparar, vai uma carta, não o
+silêncio.
+
+**Quadro 10.** O M900. O pacote `v2026.11.17` entra; vinte e cinco
+segundos no escuro, e os drones sobem.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` `Surveillance running.`
+
+**Cartão final.** Habilidades: **A Visita** (cinco minutos, um corpo
+explicado por um nome, depois só novidade) · **A Segunda Batida** (uma
+mensagem que falhou tentada de novo) · **A Focinheira** (um rastreador
+com defeito registrado uma vez por minuto). À espreita: as fotos ruins do
+próprio dono se passando por estranhos; as galerias misturadas; o scan que
+atrasa toda mensagem. Próxima: o álbum se limpa sozinho — cada foto movida
+pela evidência de um corpo só.
