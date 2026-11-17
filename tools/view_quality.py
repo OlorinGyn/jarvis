@@ -298,7 +298,7 @@ def passes(row, signal, cut):
 
 
 def cut_table(rows, cuts):
-    """Per signal and cut: views passing, poor and other among them; the lowest cut with none poor, and with none wrong."""
+    """Per signal and cut: views passing, poor and other among them; the lowest cut with none poor, and none wrong."""
     table = {}
     for signal, values in cuts.items():
         lines = []
