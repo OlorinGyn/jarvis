@@ -472,7 +472,7 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
     folder.mkdir(parents=True, exist_ok=True)
     stamp = started_at.strftime("%H-%M-%S")
     sure = sure_distance()
-    added, small = [], 0
+    added, probable, small = [], 0, 0
     for box in boxes:
         descriptor, crop = describe(frame, box)
         name = f"{stamp}_{uuid.uuid4().hex[:6]}"
@@ -487,6 +487,7 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
                 gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))
         elif result["certainty"] == "probable" or not keeps:
             dog_id = ""
+            probable += result["certainty"] == "probable"
         else:
             dog_id = gallery.add([descriptor], thumbnail, [crop], faces.event_of(clip))
         sighting = {
@@ -505,9 +506,8 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
         (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2), encoding="utf-8")
         if dog_id:
             added.append(dog_id)
-    logger.info("  dogs %s %s: %d crop(s) added to the gallery, %d probable kept as sightings only, "
-                "%d under %d px with no view kept", camera, stamp, len(added), len(boxes) - len(added), small,
-                MIN_VIEW_BOX)
+    logger.info("  dogs %s %s: %d crop(s) named or added to the gallery, %d probable kept as sightings only, "
+                "%d under %d px with no view kept", camera, stamp, len(added), probable, small, MIN_VIEW_BOX)
     return added
 
 

@@ -1844,6 +1844,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
     recorded = []
 
     seen_here = set()
+    new_here = []
     sure = learn_threshold()
     for group in sorted(_group(observations), key=lambda g: g["weight"], reverse=True):
         embedding = group["embedding"]
@@ -1852,6 +1853,8 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         if person_id is None and group["count"] < MIN_VIEWS_FOR_NEW:
             continue
         if person_id is not None and person_id in seen_here:
+            continue
+        if _earlier_new_face(gallery, new_here, group, person_id, score):
             continue
         stamp = started_at.strftime("%H-%M-%S")
         name = f"{stamp}_{uuid.uuid4().hex[:6]}"
@@ -1865,6 +1868,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
             person_id = gallery.add(references, thumbnail, [group["crop"], *(c for _, c in others[:3])],
                                     event_of(clip)) or ""
             memory = {"views": group["views"], "references": references}
+            new_here.extend(references)
             if not person_id:
                 logger.info("  face scan %s: a new face with no view at the quality cut: a sighting of no entry",
                             clip.name)
@@ -1896,6 +1900,20 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
                          "resident": bool(person.get("resident")), **memory})
 
     return _one_visitor(gallery, recorded, tracks)
+
+
+def _earlier_new_face(gallery, new_here, group, person_id, score):
+    """Whether a group not named is a face this clip already found new, matched by the views it was given (backlog 45).
+
+    Before the quality cut the first group's entry held those views, so a
+    second group of the same face matched it and was skipped; with the cut
+    that entry may hold fewer, or not exist.
+    """
+    person = gallery.get(person_id) if person_id is not None else None
+    if person and person["name"]:
+        return False
+    best = max((cosine(view, known) for view in group["views"] for known in new_here), default=0.0)
+    return best >= MATCH_THRESHOLD and best > score
 
 
 def _one_visitor(gallery, recorded, tracks):

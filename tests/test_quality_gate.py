@@ -211,3 +211,25 @@ def test_recordings_and_people_read_a_sighting_of_no_entry_as_an_unknown_face(tm
     assert notify._who(sighting) == "unknown face"
     assert notify.person_case(sighting) == "unknown_face"
     assert gallery.label("p_gone") == "?"
+
+
+def test_one_strangers_face_split_in_two_groups_sends_once_with_no_view_at_the_cut(tmp_path, monkeypatch, gallery,
+                                                                                    sent):
+    split = vector(1.0, 3.0)
+    assert faces.MATCH_THRESHOLD <= faces.cosine(STRANGER, split) < faces.SAME_FACE_THRESHOLD
+    frames = [[seen(STRANGER, POOR), seen(split, POOR)], [seen(STRANGER, POOR), seen(split, POOR)]]
+    start, found = scan(tmp_path, monkeypatch, gallery, frames)
+    assert [s["person_id"] for s in found] == [""]
+    after(start, found)
+    assert len(sent) == 1
+
+
+def test_a_group_closer_to_an_older_unnamed_entry_than_to_the_clips_new_face_is_that_entry(tmp_path, monkeypatch,
+                                                                                            gallery):
+    older_id = gallery.add([vector(1.0, 3.0, 1.5)], "t.jpg", [GOOD])
+    older = faces.Gallery(gallery.path).get(older_id)["embeddings"][0]
+    closer = vector(1.0, 3.0, 0.9)
+    assert faces.cosine(STRANGER, older) < faces.MATCH_THRESHOLD <= faces.cosine(STRANGER, closer)
+    frames = [[seen(STRANGER, POOR), seen(closer, POOR)]] * 2
+    _, found = scan(tmp_path, monkeypatch, gallery, frames)
+    assert sorted(s["person_id"] for s in found) == sorted(["", older_id])
