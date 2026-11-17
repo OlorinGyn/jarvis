@@ -352,6 +352,7 @@ def _card(entry):
     return {
         "id": entry["id"],
         "name": entry["name"],
+        "temporary_name": entry.get("temporary_name", ""),
         "photo": _photo_url(photo or entry.get("thumbnail")),
         "views": len(entry["embeddings"]),
         "pending": len(entry.get("pending") or []),

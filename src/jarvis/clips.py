@@ -112,7 +112,7 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
         try:
             found = faces.scan_clip(destination, camera.label, start,
                                     moments=_clip_moments(segments, person_spans),
-                                    busy=recording_now)
+                                    busy=recording_now, tracks=tracks)
         except Exception as problem:
             logger.exception("  face scan failed on %s: %s", destination.name, problem)
     if "person" in labels:

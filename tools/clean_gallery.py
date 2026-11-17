@@ -9,7 +9,9 @@ default, writes nothing in the folder: it prints every move, puts one contact
 sheet per resident in --sheets (a new temporary folder when not given) and
 checks the moves against the labels read by eye on 17/11/2026, HISTORY 13.33.
 --apply refuses while the folder's J.A.R.V.I.S. answers on its port, copies
-faces/ to backups/ first, then moves the views through the 40-view rule.
+faces/ to backups/ first, then moves the views through the 40-view rule,
+merges the unnamed entries that share an event of one body and gives each
+unnamed entry its "Visitor N" (backlog 44).
 """
 
 import json
@@ -146,11 +148,17 @@ def main(argv=None):
             print(f"Contact sheet: {path}")
     if not apply:
         print(f"Dry run: nothing written. Through the 40-view rule: {gallery.apply_cleaning(moves, dry_run=True)}")
+        print("Unnamed entries on one body, before the cleaning (backlog 44):")
+        for group in faces.one_body_groups(gallery, folder / "clips"):
+            print(f"  merge {', '.join(who(gallery, i) for i in group)}")
         return 0
     backup = folder / "backups" / f"clean_gallery_{datetime.now():%Y%m%d-%H%M%S}"
     shutil.copytree(folder / "faces", backup / "faces")
     print(f"Copied faces/ to {backup}")
     print(f"Applied: {gallery.apply_cleaning(moves)}")
+    for group in faces.one_body_groups(gallery, folder / "clips"):
+        print(f"Merged {', '.join(who(gallery, i) for i in group)} into {gallery.merge_unnamed(group)}")
+    print(f"Temporary names given: {gallery.name_visitors()}")
     return 0
 
 

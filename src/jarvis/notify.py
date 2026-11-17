@@ -487,7 +487,8 @@ def _who(sighting, settings=None):
     """
     name = sighting.get("name") or ""
     if not name:
-        return "unknown face"
+        visitor = sighting.get("temporary_name")
+        return f"{visitor}, unknown face" if visitor else "unknown face"
     if sighting.get("score", 0) < learn_threshold(settings):
         return f"probably {name}"
     return f"{name} recognized"

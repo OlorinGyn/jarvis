@@ -477,7 +477,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
     }
     const name = node.querySelector(".name");
     name.setAttribute("href", `#${tab}/${entry.id}`);
-    name.textContent = entry.name || unnamedLabel;
+    name.textContent = entry.name || entry.temporary_name || unnamedLabel;
     name.classList.toggle("person", Boolean(entry.name));
     node.querySelector(".count").textContent =
       plural(entry.views, "view", "views") + (entry.pending ? ` +${entry.pending}` : "");
@@ -808,7 +808,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
   function showEntry(entry) {
     analyse.hidden = entry.views + entry.pending <= 40;
     spreadBox.hidden = true;
-    section.querySelector(".page-name").textContent = entry.name || unnamedLabel;
+    section.querySelector(".page-name").textContent = entry.name || entry.temporary_name || unnamedLabel;
     renameForm.querySelector("input").value = entry.name;
     renameForm.querySelector("button").textContent = entry.name ? "Rename" : "Save name";
     residentToggle.hidden = !entry.name;

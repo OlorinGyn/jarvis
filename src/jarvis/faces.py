@@ -61,6 +61,9 @@ MATCH_THRESHOLD = 0.30
 LEARN_THRESHOLD = settings.DEFAULTS[settings.FACE_SURE_KEY]
 SURE_SWEEP = tuple(round(0.30 + 0.025 * step, 3) for step in range(13))
 COPY_SIMILARITY = 0.9999
+VISITORS_KEY = "visitors"
+VISITOR_NAME = "Visitor {}"
+VISITOR_PATTERN = re.compile(r"Visitor (\d+)")
 SAME_FACE_THRESHOLD = 0.35
 SAMPLE_EVERY = 6
 MAX_SAMPLES = 60
@@ -572,6 +575,7 @@ class Gallery:
     id_prefix = "p"
     sighting_key = "person_id"
     model = EMBEDDING_MODEL
+    temporary_names = True
 
     def __init__(self, path=None):
         self.path = Path(path or GALLERY_FILE)
@@ -698,9 +702,47 @@ class Gallery:
             self._take(person, embedding, view)
         with _GALLERY_LOCK:
             self.load()
+            if self.temporary_names:
+                person["temporary_name"] = self._next_visitor()
             self.people.append(person)
             self.save()
         return person["id"]
+
+    def _next_visitor(self):
+        """The next "Visitor N": N past the counter and every temporary name held, never reused (backlog 44)."""
+        held = [int(found.group(1)) for p in self.people
+                if (found := VISITOR_PATTERN.fullmatch(p.get("temporary_name") or ""))]
+        number = max([self.header.get(VISITORS_KEY, 0), *held]) + 1
+        self.header[VISITORS_KEY] = number
+        return VISITOR_NAME.format(number)
+
+    def name_visitors(self):
+        """Give every unnamed entry without one its "Visitor N", in order of first sighting; how many were named."""
+        if not self.temporary_names:
+            return 0
+        with _GALLERY_LOCK:
+            self.load()
+            waiting = sorted((p for p in self.people if not p["name"] and not p.get("temporary_name")),
+                             key=lambda p: p.get("first_seen", ""))
+            for person in waiting:
+                person["temporary_name"] = self._next_visitor()
+            if waiting:
+                self.save()
+        return len(waiting)
+
+    def merge_unnamed(self, ids):
+        """Merge unnamed entries found on one body into the first seen of them; its id, or None with fewer than two."""
+        with _GALLERY_LOCK:
+            self.load()
+            entries = [p for p in (self.get(i) for i in dict.fromkeys(ids)) if p and not p["name"]]
+            if len(entries) < 2:
+                return None
+            target = min(entries, key=lambda p: p.get("first_seen", ""))
+            for source in entries:
+                if source is not target:
+                    self._merge(source, target)
+            self.save()
+        return target["id"]
 
     def reinforce(self, person_id, embedding, crop=None, event=None):
         """Keep one more view of a person; past MAX_EMBEDDINGS, only one that makes them more varied."""
@@ -1041,6 +1083,7 @@ class Gallery:
                 self._merge(person, existing)
                 person, merged = existing, 1
             person["name"] = full_name
+            person.pop("temporary_name", None)
             merged += self._absorb(person)
             self.save()
         return merged
@@ -1074,6 +1117,7 @@ class Gallery:
                         return None
                     target = sources.pop(0)
                     target["name"] = full_name
+                    target.pop("temporary_name", None)
                     joined.append(target["id"])
             for source in sources:
                 self._merge(source, target)
@@ -1277,6 +1321,30 @@ def cleaning_moves(gallery, clips, sure):
                 moves.append({"view": view, "from": person["id"], "to": owners[event], "event": event,
                               "waiting": waiting})
     return moves
+
+
+def one_body_groups(gallery, clips):
+    """The unnamed entries that share an event of one track voted person, joined into groups: one person each (backlog 44)."""
+    by_event = {}
+    for person in gallery.people:
+        if person["name"]:
+            continue
+        known = person.get("view_events") or {}
+        for view in _all_views(person):
+            event = known.get(photo_name(view), "") if view else ""
+            if event:
+                by_event.setdefault(event, []).append(person["id"])
+    group_of = {}
+    for event, ids in sorted(by_event.items()):
+        ids = list(dict.fromkeys(ids))
+        if len(ids) < 2 or person_tracks(event_tracks(clips, event)) != 1:
+            continue
+        joined = set(ids).union(*(group_of.get(i, set()) for i in ids))
+        for i in joined:
+            group_of[i] = joined
+    groups = {id(g): g for g in group_of.values()}.values()
+    order = {p["id"]: index for index, p in enumerate(gallery.people)}
+    return sorted((sorted(g, key=order.get) for g in groups), key=lambda g: order[g[0]])
 
 
 def _tiny(path):
@@ -1553,17 +1621,17 @@ def _wait_while(busy, budget):
     return time.monotonic() - began
 
 
-def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None):
+def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None, tracks=None):
     """Find every distinct face in a finished clip and record the sightings.
 
     moments are (start, end) seconds into the clip where persons were seen;
-    the scan reads those densely. One scan at a time: each event assembles in
-    its own thread, and the face and YOLO networks are shared objects that
-    cannot run concurrently.
+    the scan reads those densely. tracks are the event's decided tracks, or
+    None. One scan at a time: each event assembles in its own thread, and the
+    face and YOLO networks are shared objects that cannot run concurrently.
     """
     with _SCAN_LOCK:
         sides = []
-        found = _scan_clip(clip, camera, started_at, gallery, moments, busy, sides)
+        found = _scan_clip(clip, camera, started_at, gallery, moments, busy, sides, tracks)
         if not found and sides:
             _save_side_view(Path(clip), sides)
         return found
@@ -1584,7 +1652,7 @@ def _save_side_view(clip, sides):
                 clip.name, best["box"][2], best["offset"])
 
 
-def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None):
+def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None, tracks=None):
     clip = Path(clip)
     if not clip.exists():
         return []
@@ -1659,9 +1727,30 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         person = gallery.get(person_id) or {}
         recorded.append({**sighting, "thumbnail_path": thumbnail,
                          "name": person.get("name", ""),
+                         "temporary_name": person.get("temporary_name", ""),
                          "resident": bool(person.get("resident"))})
 
-    return recorded
+    return _one_visitor(gallery, recorded, tracks)
+
+
+def _one_visitor(gallery, recorded, tracks):
+    """Merge the unnamed entries a clip of one body saw into one, and keep one sighting of it (backlog 44)."""
+    unnamed = [s["person_id"] for s in recorded if not s["name"]]
+    if len(unnamed) < 2 or person_tracks(tracks) != 1:
+        return recorded
+    target = gallery.merge_unnamed(unnamed)
+    if target is None:
+        return recorded
+    visitor = (gallery.get(target) or {}).get("temporary_name", "")
+    logger.info("  face scan: %d unnamed faces on one body merged into %s", len(unnamed), visitor or target)
+    kept, seen = [], set()
+    for sighting in recorded:
+        if not sighting["name"]:
+            sighting = {**sighting, "person_id": target, "temporary_name": visitor}
+        if sighting["person_id"] not in seen:
+            seen.add(sighting["person_id"])
+            kept.append(sighting)
+    return kept
 
 
 def list_sightings(day=None):

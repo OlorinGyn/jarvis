@@ -89,6 +89,7 @@ class DogGallery(faces.Gallery):
     id_prefix = "d"
     sighting_key = "dog_id"
     model = EMBEDDING_MODEL
+    temporary_names = False
 
     def __init__(self, path=None):
         super().__init__(path or GALLERY_FILE)
