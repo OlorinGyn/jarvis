@@ -31,6 +31,7 @@ from filelock import FileLock
 
 from jarvis import ROOT, downloads, people, settings
 from jarvis.capture import NO_WINDOW, ffmpeg_exe
+from jarvis.tracks import voted
 
 MODEL_DIR = ROOT / "models"
 DETECTOR_MODEL = MODEL_DIR / downloads.YUNET
@@ -651,7 +652,7 @@ class Gallery:
         """Delete a view's crop, but only a file this gallery stored itself."""
         if not view:
             return
-        path = Path(view) if Path(view).is_absolute() else ROOT / view
+        path = Path(view) if Path(view).is_absolute() else self.path.parent.parent / view
         if path.parent.resolve() == self.view_dir.resolve():
             path.unlink(missing_ok=True)
 
@@ -837,6 +838,52 @@ class Gallery:
             else:
                 self.save()
         return rows
+
+    def apply_cleaning(self, moves, dry_run=False):
+        """Move each view of cleaning_moves into its resident through the rule of _take, under one lock and one save.
+
+        A named entry never gives up its last chosen view. An unnamed entry
+        left with no chosen view moves its queue up, or, with none, leaves
+        the gallery, its sightings pointed at the resident that took most of
+        its views. Returns the counts; with dry_run nothing is written.
+        """
+        tally, received = Counter(), {}
+        with _GALLERY_LOCK:
+            self.load()
+            for move in moves:
+                source, target = self.get(move["from"]), self.get(move["to"])
+                taken = _take_out_view(source, move["view"]) if source and target else None
+                if taken is None:
+                    tally["gone"] += 1
+                    continue
+                if taken == "last":
+                    tally["last view kept"] += 1
+                    continue
+                embedding, view, event = taken
+                _note_event(target, view, event)
+                tally[self._take(target, embedding, view)] += 1
+                received.setdefault(source["id"], Counter())[target["id"]] += 1
+            for source_id, targets in received.items():
+                source = self.get(source_id)
+                _fix_cover(source)
+                if source["name"] or source["embeddings"]:
+                    continue
+                waiting = source.get("pending") or []
+                if waiting:
+                    source["embeddings"] = [w["embedding"] for w in waiting[:MAX_EMBEDDINGS]]
+                    source["views"] = [w.get("view") for w in waiting[:MAX_EMBEDDINGS]]
+                    source["pending"] = waiting[MAX_EMBEDDINGS:]
+                    continue
+                self.people.remove(source)
+                self.repoints = {old: targets.most_common(1)[0][0] if new == source_id else new
+                                 for old, new in self.repoints.items()}
+                self.repoints[source_id] = targets.most_common(1)[0][0]
+                tally["entries removed"] += 1
+            if dry_run:
+                self.load()
+            elif received:
+                self.save()
+        return dict(tally)
 
     def recover_events(self):
         """Find the event of every view stored before views recorded one, by recovered_event (R55).
@@ -1138,6 +1185,98 @@ def _prune_events(person):
         kept = {photo_name(view) for view in _all_views(person)}
         person["view_events"] = {name: event for name, event in person["view_events"].items()
                                  if name in kept}
+
+
+def _take_out_view(person, view):
+    """Take one view out of an entry by its photo: (embedding, view, event), "last" for a named entry's last chosen one, None when absent."""
+    name = photo_name(view)
+    event = (person.get("view_events") or {}).get(name, "")
+    views = views_of(person)
+    for index, held in enumerate(views):
+        if held and photo_name(held) == name:
+            if person["name"] and len(views) == 1:
+                return "last"
+            embedding = person["embeddings"].pop(index)
+            views.pop(index)
+            person["views"] = views
+            return embedding, held, event
+    waiting = person.get("pending") or []
+    for index, held in enumerate(waiting):
+        if held.get("view") and photo_name(held["view"]) == name:
+            waiting.pop(index)
+            return held["embedding"], held["view"], event
+    return None
+
+
+def person_tracks(tracks):
+    """How many of an event's tracks are voted person; None for an event recorded without tracks."""
+    if not isinstance(tracks, list):
+        return None
+    return sum(1 for track in tracks if voted(Counter(track.get("frames") or {})) == "person")
+
+
+def sure_resident(gallery, sightings, sure):
+    """The one resident recognised for sure among an event's face sightings; None for none, or for two."""
+    found = set()
+    for sighting in sightings:
+        person = gallery.get(sighting.get("person_id"))
+        if person and person["name"] and person.get("resident") and sighting.get("score", 0) >= sure:
+            found.add(person["id"])
+    return found.pop() if len(found) == 1 else None
+
+
+def evidence_owner(gallery, tracks, sightings, sure):
+    """The resident every face of an event is: one track voted person and one resident sure, else None (backlog 43)."""
+    return sure_resident(gallery, sightings, sure) if person_tracks(tracks) == 1 else None
+
+
+def sightings_by_event(folder):
+    """Every face sighting under folder's day folders, grouped by its event (event_of its clip)."""
+    found = {}
+    for path in Path(folder).glob("*/*.json"):
+        try:
+            sighting = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        event = event_of(sighting.get("clip")) if isinstance(sighting, dict) else ""
+        if event:
+            found.setdefault(event, []).append(sighting)
+    return found
+
+
+def event_tracks(clips, event):
+    """The tracks an event's JSON in clips recorded, or None: no file, or recorded before tracks (16/10/2026)."""
+    try:
+        meta = json.loads((Path(clips) / f"{event}.json").read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    return meta.get("tracks") if isinstance(meta, dict) else None
+
+
+def cleaning_moves(gallery, clips, sure):
+    """Every view whose own event gives it to another resident: unnamed entries' and residents' views (backlog 43).
+
+    One move per view, chosen or waiting: view, from, to, event, waiting. A
+    named visitor's views are never moved; a view with no event stays.
+    """
+    by_event = sightings_by_event(gallery.path.parent)
+    owners, moves = {}, []
+    for person in gallery.people:
+        if person["name"] and not person.get("resident"):
+            continue
+        known = person.get("view_events") or {}
+        held = [(view, False) for view in views_of(person)]
+        held += [(w.get("view"), True) for w in person.get("pending") or []]
+        for view, waiting in held:
+            event = known.get(photo_name(view), "") if view else ""
+            if not event:
+                continue
+            if event not in owners:
+                owners[event] = evidence_owner(gallery, event_tracks(clips, event), by_event.get(event, []), sure)
+            if owners[event] and owners[event] != person["id"]:
+                moves.append({"view": view, "from": person["id"], "to": owners[event], "event": event,
+                              "waiting": waiting})
+    return moves
 
 
 def _tiny(path):
