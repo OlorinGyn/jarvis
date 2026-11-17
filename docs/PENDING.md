@@ -13,15 +13,6 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **The cleaning's rule** (backlog 43, review 33; the table is in BACKLOG
-  3). On production's data the evidence of one body moves 23 views: 21
-  right, **2 wrong** — two of the user's views to Izabel, both from
-  `Back/2026-10-27/00-39-23`, whose "sure" Izabel is a 36 px face seen
-  in one frame (HISTORY 13.35). (a) apply as decided; (b) the sure
-  sighting seen in at least 2 frames — 21 moves, none wrong; (c) a sure
-  face at least 40 px — the same. The architect recommends (b). Until
-  the answer nothing is applied on production and no release goes out;
-  "Visitor N" waits with it.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
@@ -57,31 +48,16 @@ grows, decisions are being postponed.
   DHCP).
 - **Backlog 26 and 27 on the phone** (`v2026.10.12.2`): select many unnamed
   dogs and name them at once; Notifications is now inside Settings.
-- **Misfiled dog views** (R53, 14/10): thirteen, all still in production
-  at review 25 (14/10, 17:30). Positions as the page shows them from
-  `v2026.10.14.3` on — Chosen in stored order, **Waiting newest first** (the
-  photo names start with the six characters given):
-  - **Aurora** — Chosen 5 (`89848c`, both dogs at the door) and 6
-    (`7221b7`, a person with a bag); Waiting 11 (`f530c0`, a man), 19
-    (`257e9a`, both dogs), 28 (`282a53`, both dogs) and 30 (`d6bb2c`,
-    Mirana) — of 34, so 28 and 30 are behind "Show 10 more".
-  - **Mirana** — Chosen 31 (`6b3d84`, brown fur in sunlight: unclear, check
-    it) and 37 (`583bd4`, both dogs); Waiting 19 (`cc29b3`, both dogs), 22
-    (`108df8`, someone in red), 23 (`557fa0`, shoes and a hand), 26
-    (`6f8002`, dark clothing) and 46 (`554245`, both dogs) — of 47, so 46
-    is behind "Show 23 more".
-  `257e9a`, `282a53`, `583bd4` and `554245` were found by developer 23's
-  bench: each is the same picture as a sighting of the two dogs together.
-  **Since `v2026.10.15` the new model sees each of them right** — every
-  person crop is no dog, the Mirana filed under Aurora is "probably
-  Mirana", no two-dog crop is sure (ARCHITECTURE 20) — but they were
-  migrated as they are and still sit in the galleries, **four of them in
-  Chosen** (`89848c`, `7221b7`, `6b3d84`, `583bd4`), where every match is
-  measured against them. Deleting them still matters. **The once-only settle waits
-  for these too**: it would put the Waiting ones into Chosen first. Done on
-  the faces side: the seven head-tops deleted and the unnamed entries named
-  (the user, 14/10). Gustavo's own five head-tops in his Chosen stay (they
-  match Izabel at 0.29 at most); deleting them is optional.
+- **Misfiled dog views** (R53): **done, 17/11** — the user said "delete
+  them". Of the thirteen, ten had already left the current gallery
+  (`gallery_dinov2_small.json`; Aurora and Mirana held 40 chosen, none
+  waiting — the list was read from the old `gallery.json`, kept for a
+  rollback). The three left, `257e9a` (Aurora) and `554245` (Mirana),
+  both dogs in one crop, and `6b3d84` (Mirana), a dark dog from behind
+  blurred in sunlight, were deleted through the page's own API, after a
+  copy of `dogs/` in `C:\JARVIS\backups\misfiled_dogs_20261117-143202`.
+  Gustavo's own five head-tops in his Chosen stay; backlog 45 decides
+  them.
 - **`v2026.10.14` on the M900**: the next person events should name Gustavo
   and Izabel more often, sometimes as "probably" (R51); a face message that
   names the wrong person goes to the architect. Read in review 24: 6 face
@@ -164,16 +140,18 @@ grows, decisions are being postponed.
 ## Decided, not yet done
 
 - **The cleaning on production** (backlog 43, applied directly with a
-  backup — the user's choice of 17/11): built; waits for the rule above,
-  then the architect applies it at the deploy (BACKLOG 3).
+  backup — the user's choice of 17/11): built; waits for backlog 45's
+  quality cut, the user's answer to its two wrong moves (BACKLOG 3).
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
   is done (`v2026.10.16`).
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
-  the user's choice of 13/10: what the rule leaves is deleted): the
-  architect runs it after the misfiled dog views above are deleted (the
-  faces are ready since 14/10). The EPUB's documents were chosen by the user on 14/10/2026 —
+  the user's choice of 13/10: what the rule leaves is deleted): the dog
+  views are gone (above), and the user said to run it on 17/11; held by
+  the architect until backlog 45's cut, because the 40-view rule keeps
+  the most varied views, not the best, and could drop an impeccable view
+  for a poor one. The EPUB's documents were chosen by the user on 14/10/2026 —
 ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 10); the EPUB itself is built when the user asks.
 

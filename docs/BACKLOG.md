@@ -90,8 +90,10 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     forming a new unnamed entry — only if the month shows no view given to
     the wrong person. **The evidence and `tools/clean_gallery.py` are built**
     (`7c80e4d`, review 33, ARCHITECTURE 10.17); on production's data they
-    move 2 views of 23 to the wrong person, so nothing is applied until the
-    user chooses the rule (section 3), and the scan-time step is not built.
+    move 2 views of 23 to the wrong person, so nothing is applied. The
+    user answered with item 45: the cleaning moves only views at its
+    quality cut, on the evidence of a sure sighting at the cut. The
+    scan-time step is not built.
 44. **New people grouped under a temporary name** (decided 17/11, the
     user's idea: "they can group themselves before being named; give a
     temporary name and I only rename it") — every unnamed face entry gets
@@ -107,6 +109,28 @@ CONTEXT 3. Item 41 is done (above, review 32); its full text is in
     people. Fewer groups for one person also means fewer "a face not yet
     seen in the visit" messages (item 41). **Built** (`92e36a3`, review 33,
     above).
+45. **Reference photos only of impeccable quality** (decided 17/11, the
+    user: "find a cut-off level that never fails in terms of face quality,
+    and work only with photos at that level; detection can stay as it is,
+    but stored as reference the photos must be impeccable; the same for
+    the dogs") — a view enters a face or dog gallery (a new entry, a sure
+    match, naming, merging, the cleaning) only when its photo passes a
+    quality cut; the scan, the matching and the messages keep today's
+    rules. **The cut is measured, not guessed**: from the signals each view
+    has or its photo gives (face width, frames, the detector's and the
+    landmarks' scores, the frontal gate, sharpness; for dogs crop size,
+    sharpness, day or night, one dog in the crop), the lowest cut at which
+    no view of the month is wrong — matched to the wrong person by another
+    visit's views (leave-one-event-out, R55), or a head-top, someone else,
+    two dogs by eye on the contact sheets. **The views already stored below
+    the cut, people's and dogs', are deleted as soon as it is measured**
+    (the user, 17/11: "already remove the photos that do not obey the
+    threshold in the current collections"), with a backup first, as the
+    cleaning; what it keeps per entry and what recognition loses are
+    reported, not asked. A named entry keeps its last view (a person with
+    no view can match nobody). The cleaning
+    (43) runs after it, and its evidence counts only a sure sighting at
+    the cut (the architect's reading of "what the cleaning trusts").
 
 ### Decided on 16/10/2026, to build
 
@@ -326,25 +350,32 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 evidence with `tools/clean_gallery.py`, and backlog 44, "Visitor N"; the
 review made the cleaning refuse an event with untracked boxes, as the scan
 does (`2154a68`). **No release yet**: the next deploy is the one that
-applies the cleaning, and its rule waits for the user.
+applies the cleaning. Shown its two wrong moves, **the user answered with
+backlog 45**: only photos of impeccable quality are kept as references, at
+a cut measured never to fail; the cleaning waits for that cut. The three
+misfiled dog views still in the gallery were deleted (17/11, with a
+backup); the other ten had already left it.
 
-**Waits for the user: the cleaning's rule** (`PENDING.md`). On production's
-data the evidence of one body moves 23 views, 2 of them wrong — two of the
-user's views to Izabel, from one night event whose "sure" Izabel is a
-36 px face seen in one frame (HISTORY 13.35). The choices:
+**Developer 32: backlog 45 measured, then backlog 42.**
 
-| | The sure resident's sighting | Moves | Wrong | Right lost |
-|---|---|---|---|---|
-| (a) | as decided | 23 | 2 | — |
-| (b) | seen in at least 2 frames, as an unnamed entry needs 2 to form | 21 | 0 | 1 |
-| (c) | a face at least 40 px wide | 21 | 0 | 1 |
-
-The architect recommends **(b)**: it reuses a rule the scan already has
-(`MIN_VIEWS_FOR_NEW`); (c) would be a new number fitted to one event.
-
-**Developer 32: backlog 42, then the user's rule.**
-
-1. **Backlog 42**, by tests first: (a) an unnamed face entry not seen for
+1. **Backlog 45, the measurement — no rule built.** A tool,
+   `tools/view_quality.py <folder>`, on a **copy** of production's
+   `faces/`, `dogs/` and `clips/` (`C:\JARVIS` only read): per stored view
+   its quality signals — what the view, its sighting or its photo holds
+   (face width, frames, the detector's and the landmarks' scores, the
+   frontal gate's numbers, sharpness as the variance of the Laplacian; for
+   dogs crop size, sharpness, day or night) — and, per candidate cut on
+   each signal and on the few combinations that matter, how many views
+   pass, how many of those are **wrong**: matched to another entry by
+   other visits' views (leave-one-event-out, R55's `face_tuning`/
+   `dog_tuning`), or known bad — HISTORY 13.33's labels, the misfiled
+   views, a contact sheet per cut read by eye. The lowest cut with **0
+   wrong**, for faces and for dogs; what it keeps per named entry (views
+   left by day and at night); and the leave-one-event-out accuracy of
+   recognition with only those views as references against today's. If no
+   cut reaches 0, the best and why. Contact sheets of what the cut keeps
+   and drops, outside the folder.
+2. **Backlog 42**, by tests first: (a) an unnamed face entry not seen for
    60 days (its last sighting) is forgotten with its view photos; its
    sightings stay and read "?" on Recordings, as a forgotten dog's do; a
    named entry is never touched; checked once a day by the service. A
@@ -352,33 +383,24 @@ The architect recommends **(b)**: it reuses a rule the scan already has
    the header's counter; a test). (b) a dog crop that is probably a named
    dog (ARCHITECTURE 20's probable distance and ratio) stays a sighting
    with that name and makes no unnamed card.
-2. **If the user chose (b) or (c)**: that rule in `sure_resident`, by a
-   test (a sure sighting of one frame, or under 40 px, is no evidence);
-   then the dry run of `tools/clean_gallery.py` on a fresh copy of
-   production's `faces/` and `clips/`, its numbers in the HANDOFF, the
-   wrong moves read on the contact sheets.
-3. **Backlog 43 at scan time — only if step 2's dry run shows no wrong
-   move**: in `_scan_clip`'s naming, a face group of an event with one
-   person track and one sure resident (the same rule) joins that resident
-   through the 40-view rule — chosen, replacing or discarded; it never
-   queues (ARCHITECTURE 17.14) — instead of forming a new unnamed entry.
-   `scan_clip` already receives the tracks. Under (a) it is not built.
 
-**HANDOFF:** as always, with the dry run's numbers.
+**HANDOFF:** the cut's tables for faces and dogs, what each keeps per
+entry, recognition before and after, the contact sheets' paths.
 
-**The architect, at the release after developer 32:** the deploy; on
-production the dry run read against the contact sheets, `--apply` with the
-service stopped, `check_data`; People at 375 px and on a desktop with the
-visitors named; raid log 26. Then the late messages of 18/10
-(`PENDING.md`) — measure the delays on the month again and propose.
+**The architect, at review 34:** read the cut on the contact sheets — it
+is applied without asking again (the user, 17/11), so the reading is the
+check: a cut that is not 0 wrong goes to the user instead; then plan
+developer 33: the gate on every way into a gallery, the cleaning at the
+cut, the views below it deleted with a backup — and the once-only settle
+of backlog 28 after the cut, since the 40-view rule keeps the most varied
+views, not the best. Then the release with "Visitor N", the deploy, the
+cleaning on production, People at 375 px and on a desktop, raid log 26.
+After that, the late messages of 18/10 (`PENDING.md`).
 
-**Waits for the user:** the cleaning's rule (above); choosing the sure
-threshold for faces and the sure distance for dogs from the two tables in
-Settings → Detection (the defaults hold until then); the misfiled dog
-views, thirteen, before the once-only settle of backlog 28 — the new model
-sees them right, but four sit in Chosen, where every match is measured
-against them; the M900 sleeping at the sign-in screen; the checks on the
-M900, `v2026.11.17` among them (`PENDING.md`).
+**Waits for the user:** choosing the sure threshold for faces and the sure
+distance for dogs from the two tables in Settings → Detection (the defaults
+hold until then); the M900 sleeping at the sign-in screen; the checks on
+the M900, `v2026.11.17` among them (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later
 sessions. R14, R12 and R9 as before. Every other open backlog item is

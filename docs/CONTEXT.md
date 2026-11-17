@@ -172,6 +172,18 @@ backup** — the user's choice over seeing it first (backlog 42, 43). **New
 people group themselves under a temporary name**, "Visitor N", which the
 user only renames (the user's idea, 17/11; backlog 44).
 
+**Reference photos only of impeccable quality** (the user, 17/11/2026,
+shown that the cleaning would give two of the user's views to Izabel on
+the strength of a 36 px face seen in one frame): "find a cut-off level
+that never fails in terms of face quality, and work only with photos at
+that level. Detection can stay as it is, but stored as reference the
+photos must be impeccable. The same for the dogs." Recognition and the
+messages keep today's rules; what a gallery keeps as a view — and what
+the cleaning trusts — must pass a quality cut **measured** to be one at
+which no view is ever wrong (backlog 45). The views already stored below
+it, people's and dogs', are removed as soon as it is measured, with a
+backup and without asking again (the user, the same afternoon).
+
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 

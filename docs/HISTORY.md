@@ -2591,9 +2591,19 @@ Izabel's Chosen: their events have no tracks.
 - The tool's gallery lock is a thread lock, so `--apply` is safe only with
   the service stopped, which it checks on the folder's port.
 
-**For the next session.** The user chooses the cleaning's rule
-(`PENDING.md`, BACKLOG 3); then the architect releases, deploys and applies
-it. Developer 32: backlog 42.
+**The user's answers, the same afternoon.** Shown (a) as decided, (b) two
+frames, (c) 40 px, the user chose none: reference photos only of
+impeccable quality, at a cut measured never to fail, faces and dogs —
+detection as it is (CONTEXT 3, backlog 45). And "delete them" for the
+thirteen misfiled dog views: ten had already left the current gallery,
+the three left were deleted through the page's API after a backup
+(`PENDING.md`); the once-only settle is held until the cut. Then: "already
+remove the photos that do not obey the threshold in the current
+collections" — no quality cut exists yet, so it is recorded in backlog
+45: the views below the cut are deleted as soon as it is measured.
+
+**For the next session.** Developer 32: backlog 45 measured, then 42
+(BACKLOG 3).
 
 ## 14.3 Usage log
 
@@ -2676,4 +2686,4 @@ of `CONTEXT.md`.
 | D30 | developer | high | 17/11 12:55–13:12 | session 30: R63 by a fake Telegram, backlog 41 — the visit, its three rules — `replay_visits.py` on the month (98 → 35 a day), R62 (384 tests) | 20% → 35%: R63 6, backlog 41 4, the replay 3, R62 1 | 3% → 5% | 77k → about 230k tokens, a new conversation |
 | A43 | architect | ultracode | 17/11 13:15–13:35 | review 32: the diff read whole, four holes fixed by tests first, the month replayed again and in scan order; HANDOFF integrated, ARCHITECTURE 7.16, 8.4, 12.11, 12.13, 12.14 and 22.3, PYTHON 50, the labels of 13.33 saved; release and deploy `v2026.11.17`, raid log 25; developer 31 planned | 35% → 52% | 5% → 7% | 72k → about 270k tokens, a new conversation |
 | D31 | developer | high | 17/11 13:33–13:52 | session 31: backlog 43 steps 1–2 — the evidence, `apply_cleaning`, `clean_gallery.py`, the dry run on a copy (23 moves, 2 wrong) — and backlog 44, "Visitor N" and one body's unnamed faces merged; the scan-time step not built, 42 not started (421 tests) | 51% → 65% | 7% → 9% | 77k → about 230k tokens, a new conversation |
-| A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule goes to the user; not handed over (the window and the decision) | 67% → 74% before the last commit | 9% → 10% | 72k → about 200k tokens, a new conversation (started by the developer's handover) |
+| A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule went to the user; then the user's answers: backlog 45 (the quality cut), three misfiled dog views deleted on production through the page's API; not handed over (the window) | 67% → 79% | 9% → 11% | 72k → about 235k tokens, a new conversation (started by the developer's handover) |
