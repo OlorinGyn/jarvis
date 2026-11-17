@@ -79,6 +79,8 @@ MAX_PENDING = 100
 TINY_SIDE = 16
 SAME_PICTURE = 1.0
 WRITTEN_TOGETHER_SECONDS = 2.0
+FORGET_DAYS = 60
+KEEP_SECONDS = 24 * 3600
 
 _GALLERY_LOCK = threading.Lock()
 _SCAN_LOCK = threading.Lock()
@@ -850,6 +852,42 @@ class Gallery:
         for view in _all_views(person):
             self._forget_view(view)
 
+    def forget_unseen(self, days=FORGET_DAYS, today=None):
+        """Forget each unnamed entry not formed or seen in the last days, and its photos; sightings stay (backlog 42).
+
+        A named entry is never touched. The entries that left are returned.
+        """
+        since = (today or date.today()) - timedelta(days=days)
+        seen = self.seen_since(since)
+        with _GALLERY_LOCK:
+            self.load()
+            stale = [p for p in self.people if not p["name"] and p["id"] not in seen
+                     and p.get("first_seen", "")[:10] < since.isoformat()]
+            for person in stale:
+                self.people.remove(person)
+                self.dropped.extend(_all_views(person))
+            if stale:
+                self.save()
+        return stale
+
+    def seen_since(self, since):
+        """The ids every sighting from the day since on points to, read from the day folders beside the gallery."""
+        seen = set()
+        for folder in self.path.parent.glob("*"):
+            try:
+                if datetime.strptime(folder.name, "%Y-%m-%d").date() < since:
+                    continue
+            except ValueError:
+                continue
+            for path in folder.glob("*.json"):
+                try:
+                    sighting = json.loads(path.read_text(encoding="utf-8-sig"))
+                except (OSError, ValueError):
+                    continue
+                if isinstance(sighting, dict) and sighting.get(self.sighting_key):
+                    seen.add(sighting[self.sighting_key])
+        return seen
+
     def settle_waiting(self, dry_run=False):
         """Pass every waiting view through the rule of _take, oldest first, and empty the queues (backlog 28).
 
@@ -1178,6 +1216,20 @@ class Gallery:
         if person is None:
             return "?"
         return person["name"] or "Unknown"
+
+
+def keep_gallery(stop, gallery=Gallery):
+    """Forget the unnamed faces unseen for FORGET_DAYS now, then every KEEP_SECONDS until stop is set (backlog 42)."""
+    while True:
+        try:
+            forgotten = gallery().forget_unseen()
+            if forgotten:
+                logger.info("Forgot %d unnamed face entries unseen for %d days: %s", len(forgotten), FORGET_DAYS,
+                            ", ".join(p.get("temporary_name") or p["id"] for p in forgotten))
+        except Exception as problem:
+            logger.warning("Forgetting the unseen faces failed: %s", problem)
+        if stop.wait(KEEP_SECONDS):
+            return
 
 
 def _repoint_sightings(folder, moves, key="person_id"):

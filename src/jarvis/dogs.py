@@ -453,8 +453,9 @@ def identify(frame, boxes, gallery=None):
 def record(frame, boxes, camera, started_at, clip, gallery=None):
     """Record every dog of the event's best dog frame, with a sighting each.
 
-    A sure match teaches that dog one more view; anything less becomes an
-    unnamed crop for the Dogs tab, where the user names or merges it.
+    A sure match teaches that dog one more view; a probable one stays a
+    sighting with that name and no card (backlog 42); anything less becomes
+    an unnamed crop for the Dogs tab, where the user names or merges it.
     Returns the dog ids the sightings point to.
     """
     if frame is None or not boxes:
@@ -474,6 +475,8 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
         if result["certainty"] == "sure":
             dog_id = result["dog_id"]
             gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))
+        elif result["certainty"] == "probable":
+            dog_id = ""
         else:
             dog_id = gallery.add([descriptor], thumbnail, [crop], faces.event_of(clip))
         sighting = {
@@ -490,8 +493,10 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
             "thumbnail": thumbnail.name,
         }
         (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2), encoding="utf-8")
-        added.append(dog_id)
-    logger.info("  dogs %s %s: %d crop(s) added to the gallery", camera, stamp, len(added))
+        if dog_id:
+            added.append(dog_id)
+    logger.info("  dogs %s %s: %d crop(s) added to the gallery, %d probable kept as sightings only", camera,
+                stamp, len(added), len(boxes) - len(added))
     return added
 
 

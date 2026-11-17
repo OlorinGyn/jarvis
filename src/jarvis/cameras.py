@@ -394,6 +394,7 @@ def main(argv=None):
     bot.start()
     threading.Thread(target=outage.CameraWatch(core.frame_ages).run, args=(stop,), daemon=True,
                      name="camera-watch").start()
+    threading.Thread(target=faces.keep_gallery, args=(stop,), daemon=True, name="gallery-keeper").start()
     if open_browser and server is not None:
         webbrowser.open(url)
     try:
