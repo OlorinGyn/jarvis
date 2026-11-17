@@ -155,6 +155,15 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
+**Messages arrive late (the user, 18/10/2026: "it takes long to notify").**
+In Home every message waits for the clip to close and its face scan:
+median about 30 s from the event's start, minutes when scans queue behind
+a busy visit (9 min at worst on 17–18/10; HISTORY 13.33). Backlog 41 cuts
+the messages, not the scan. **The architect's next step:** after developer
+30, measure the delays on the month again and propose — the face checked
+on the first closed segment while the event still records, and no scan for
+an event whose visit can no longer change a message. Not work yet.
+
 **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
 goes down, 33 buttons on the Telegram message, 6 search and filter: the user
 liked all of them and will discuss them later (14/10). Still not work until
