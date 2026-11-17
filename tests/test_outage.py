@@ -23,8 +23,8 @@ def sent(monkeypatch):
     notify.reset_incident()
     messages = []
     monkeypatch.setattr(notify, "load", lambda: SETTINGS)
-    monkeypatch.setattr(notify, "send", lambda text, image=None, settings=None, silent=False:
-                        (messages.append((text, silent)), (True, ""))[1])
+    monkeypatch.setattr(notify, "_post", lambda text, image=None, settings=None, silent=False:
+                        (messages.append((text, silent)), (True, "", None))[1])
     yield messages
     notify.reset_incident()
 

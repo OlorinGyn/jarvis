@@ -15,6 +15,7 @@ SETTINGS = {"notify_token": TOKEN, "notify_chat": "1", "notify_labels": ["person
 HOME = {**SETTINGS, "notify_mode": "home"}
 START = datetime(2026, 10, 10, 12, 0, 0)
 SEND = notify.send
+POST = notify._post
 
 EXPECTED = {
     "away": {"resident_person": True, "probable_resident_person": True, "known_person": True,
@@ -73,9 +74,9 @@ def sent(monkeypatch):
     def record(text, image=None, settings=None, silent=False):
         messages.append(text)
         messages.silent.append(silent)
-        return True, ""
+        return True, "", None
 
-    monkeypatch.setattr(notify, "send", record)
+    monkeypatch.setattr(notify, "_post", record)
     monkeypatch.setattr(notify.threading, "Thread", Inline)
     monkeypatch.setattr(notify.threading, "Timer", Timer)
     monkeypatch.setattr(notify, "_clock", lambda: Clock.now)
@@ -202,7 +203,8 @@ def test_one_held_back_message_is_named_alone(sent):
 
 def test_silent_asks_telegram_for_no_sound(monkeypatch):
     calls = []
-    monkeypatch.setattr(notify, "_call", lambda token, method, fields, *a: (calls.append(fields), (True, ""))[1])
+    monkeypatch.setattr(notify, "_post", POST)
+    monkeypatch.setattr(notify, "_call", lambda token, method, fields, *a: (calls.append(fields), (True, "", None))[1])
     SEND("x", None, SETTINGS, silent=True)
     SEND("x", None, SETTINGS)
     assert calls[0]["disable_notification"] == "true" and "disable_notification" not in calls[1]
@@ -472,8 +474,8 @@ def test_one_person_at_a_time_keeps_no_people_frame(tmp_path, monkeypatch, sent)
 
 def test_the_hidden_person_message_carries_the_counted_frame(tmp_path, monkeypatch, sent, best):
     pictures = []
-    monkeypatch.setattr(notify, "send", lambda text, image=None, settings=None, silent=False:
-                        (pictures.append(image), (True, ""))[1])
+    monkeypatch.setattr(notify, "_post", lambda text, image=None, settings=None, silent=False:
+                        (pictures.append(image), (True, "", None))[1])
     counted = tmp_path / "12-00-00.people.jpg"
     counted.write_bytes(b"jpg")
     resident = [face("p_1", "Gustavo", 0.6, True)]

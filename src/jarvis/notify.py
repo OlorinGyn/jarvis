@@ -6,6 +6,7 @@ machine. Email would be slower and silent; a Windows toast is useless when
 nobody is at the computer.
 
 Sending happens in a thread: the network must never stall the capture loop.
+A failed send is tried again with a growing pause, in a thread of its own.
 Nothing the mode wants is dropped: the house's incident decides whether each
 message rings or arrives silently.
 
@@ -26,6 +27,8 @@ from .settings import load
 
 API = "https://api.telegram.org/bot{token}/{method}"
 TIMEOUT = 15
+RETRY_PAUSES = (5, 15, 30, 60)
+TOO_MANY_REQUESTS = 429
 QUIET_SECONDS = 120
 LOUD_FLOOR_SECONDS = 30
 MAX_FACES = 3
@@ -35,6 +38,7 @@ _incident = {}
 _floor = {"last_loud": None, "held_back": [], "timer": None}
 _lock = threading.Lock()
 _clock = time.monotonic
+_sleep = time.sleep
 logger = logging.getLogger(__name__)
 
 
@@ -46,18 +50,30 @@ def _redact(text, token):
 
 
 def _call(token, method, fields, file_field=None, file_path=None):
-    """One Telegram API call. Returns (ok, detail), the detail never holding the token."""
+    """One Telegram API call. Returns (ok, detail, wait): the detail never holds the token; wait is None
+    when trying again cannot help, else the seconds Telegram asked for, 0 when it asked none."""
     try:
         files = None
         if file_field and file_path:
             path = Path(file_path)
             files = {file_field: (path.name, path.read_bytes())}
-        payload = requests.post(API.format(token=token, method=method),
-                                data=fields, files=files,
-                                timeout=TIMEOUT).json()
-    except (requests.RequestException, ValueError, OSError) as problem:
-        return False, _redact(str(problem), token)
-    return bool(payload.get("ok")), _redact(payload.get("description", ""), token)
+    except OSError as problem:
+        return False, _redact(str(problem), token), None
+    try:
+        answer = requests.post(API.format(token=token, method=method),
+                               data=fields, files=files, timeout=TIMEOUT)
+    except requests.RequestException as problem:
+        return False, _redact(str(problem), token), 0
+    try:
+        payload = answer.json()
+    except ValueError:
+        payload = {}
+    if payload.get("ok"):
+        return True, "", None
+    detail = _redact(payload.get("description") or f"HTTP {answer.status_code}", token)
+    if answer.status_code == TOO_MANY_REQUESTS:
+        return False, detail, float((payload.get("parameters") or {}).get("retry_after") or 0)
+    return False, detail, 0 if answer.status_code >= 500 else None
 
 
 def discover_chat(token):
@@ -78,12 +94,18 @@ def discover_chat(token):
 
 
 def send(text, image=None, settings=None, silent=False):
-    """Send one notification now, with no sound when silent. Returns (ok, detail)."""
+    """Send one notification now, with no sound when silent, in one attempt. Returns (ok, detail)."""
+    ok, detail, _ = _post(text, image, settings, silent)
+    return ok, detail
+
+
+def _post(text, image=None, settings=None, silent=False):
+    """One attempt at sending a notification. Returns (ok, detail, wait), as _call."""
     settings = settings or load()
     token = (settings.get("notify_token") or "").strip()
     chat = (settings.get("notify_chat") or "").strip()
     if not token or not chat:
-        return False, "notifications not configured"
+        return False, "notifications not configured", None
     prefix = (settings.get("notify_prefix") or "").strip()
     if prefix:
         text = f"{prefix} {text}"
@@ -190,13 +212,51 @@ def holds_person(settings=None):
 
 
 def _send_logged(subject, text, image, settings, silent=False):
-    """Send, and leave the outcome in the log: the only trace of whether it arrived."""
-    ok, detail = send(text, image, settings, silent=silent)
+    """Send, and leave each attempt in the log: the only trace of whether it arrived.
+
+    The first attempt is the caller's, so its timing is as it always was; a
+    failure that may pass is tried again in a thread of its own (R63).
+    """
+    ok, detail, wait = _post(text, image, settings, silent)
     if ok:
         logger.info("Notification %s: %s", subject, "sent silently" if silent else "sent")
-    else:
-        logger.warning("Notification %s: failed: %s", subject, detail)
-    return ok
+        return True
+    pause = _failed(subject, 1, detail, wait)
+    if pause is not None:
+        threading.Thread(target=_retry, args=(subject, text, image, settings, silent, pause),
+                         daemon=True).start()
+    return False
+
+
+def _retry(subject, text, image, settings, silent, pause):
+    """Try a failed message again after each pause, until it arrives or the attempts run out."""
+    attempt = 1
+    while pause is not None:
+        _sleep(pause)
+        attempt += 1
+        ok, detail, wait = _post(text, image, settings, silent)
+        if ok:
+            logger.info("Notification %s: %s, attempt %d", subject, "sent silently" if silent else "sent",
+                        attempt)
+            return True
+        pause = _failed(subject, attempt, detail, wait)
+    return False
+
+
+def _failed(subject, attempt, detail, wait):
+    """Log one failed attempt. Returns the pause before the next one, None when there is none."""
+    attempts = len(RETRY_PAUSES) + 1
+    if wait is None:
+        logger.warning("Notification %s: failed, attempt %d, not tried again: %s", subject, attempt, detail)
+        return None
+    if attempt >= attempts:
+        logger.warning("Notification %s: failed, attempt %d of %d, gave up: %s", subject, attempt, attempts,
+                       detail)
+        return None
+    pause = wait or RETRY_PAUSES[attempt - 1]
+    logger.warning("Notification %s: failed, attempt %d of %d, trying again in %g s: %s", subject, attempt,
+                   attempts, pause, detail)
+    return pause
 
 
 def faces_seen(camera, started_at, sightings, settings=None, people=1):
