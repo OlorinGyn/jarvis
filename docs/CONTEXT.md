@@ -183,6 +183,18 @@ the cleaning trusts — must pass a quality cut **measured** to be one at
 which no view is ever wrong (backlog 45). The views already stored below
 it, people's and dogs', are removed as soon as it is measured, with a
 backup and without asking again (the user, the same afternoon).
+**Decided, the same evening,** shown that no measured cut is never wrong
+without leaving the residents almost no views — a quality model trusts a
+frontal face, and the cameras look down on them (ARCHITECTURE 10.18):
+**the eye cleans what is stored, a cut guards what enters.** The views
+read poor or someone else's on 17/11 are deleted, people's and dogs',
+with a backup; the views read good stay, however low a quality model
+scores them. From then on a face view enters a gallery only at
+eDifFIQA(T) ≥ 0.40, the cut no view of the month failed, and a dog view
+only when its box is at least 120 px, which stops small and blurred crops
+but not every view from behind. Recognition and the messages keep today's
+rules; the residents' galleries will grow slowly, and a new person gets a
+card only when a face shows clearly (backlog 45).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

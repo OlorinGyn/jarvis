@@ -13,15 +13,6 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **The quality cut for reference photos** (backlog 45, review 35):
-  neither eDifFIQA(T) nor ArcFace's norm meets the rule of 17/11 — the only
-  face cut never wrong keeps the residents 3 views between them and 9
-  right-sure recognitions against today's 72, and the dogs' box ≥ 120 px
-  lets 3 rear views through. The options and their prices are ARCHITECTURE
-  10.18's last table; the architect recommended the views read good by eye
-  for what is stored and a quality model's cut for what enters. Asked in
-  review 35's conversation; the gate, its `--apply`, the cleaning (43) and
-  backlog 28's settle wait for the answer.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
@@ -163,9 +154,11 @@ grows, decisions are being postponed.
 - **The cleaning on production** (backlog 43, applied directly with a
   backup — the user's choice of 17/11): built; waits for backlog 45's
   quality cut, the user's answer to its two wrong moves (BACKLOG 3).
-  The face-quality model was measured and met no rule (review 35); the
-  cut waits for the user's choice (above). The 18 views of someone else
-  are already gone.
+  The face-quality model met no rule (review 35); the user chose the
+  same evening — the eye cleans what is stored, a cut guards what enters
+  (CONTEXT 3) — and the gate and its clean-up are developer 34's. The
+  cleaning then runs as a dry run on production, read move by move
+  (BACKLOG 3). The 18 views of someone else are already gone.
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
@@ -173,9 +166,9 @@ grows, decisions are being postponed.
 - **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
   the user's choice of 13/10: what the rule leaves is deleted): the dog
   views are gone (above), and the user said to run it on 17/11; held by
-  the architect until backlog 45's cut, because the 40-view rule keeps
-  the most varied views, not the best, and could drop an impeccable view
-  for a poor one. The EPUB's documents were chosen by the user on 14/10/2026 —
+  the architect until backlog 45's clean-up, because the 40-view rule
+  keeps the most varied views, not the best, and could drop an impeccable
+  view for a poor one; it runs at review 36, after the clean-up. The EPUB's documents were chosen by the user on 14/10/2026 —
 ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 10); the EPUB itself is built when the user asks.
 
