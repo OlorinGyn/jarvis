@@ -47,6 +47,24 @@ assets/       the icon
 docs/         all the documentation
 ```
 
+## Models
+
+The models are downloaded on first use, not shipped here. Two carry terms
+worth knowing:
+
+- **eDifFIQA(T)**, the face image quality model that decides which photos
+  may become a reference (`ediffiqa_tiny_jun2024.onnx`, from the
+  [OpenCV Zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_image_quality_assessment_ediffiqa)),
+  is licensed **CC-BY-4.0**. Ž. Babnik, P. Peer and V. Štruc,
+  "eDifFIQA: Towards Efficient Face Image Quality Assessment based on
+  Denoising Diffusion Probabilistic Models", *IEEE Transactions on
+  Biometrics, Behavior, and Identity Science*, 2024.
+- **SCRFD and ArcFace** from InsightFace's `buffalo_l` are for
+  non-commercial research purposes only, accepted for a private home system
+  (docs/CONTEXT.md 3).
+
+DINOv2-small, which tells the dogs apart, is Apache-2.0.
+
 ## Documentation
 
 | Document | Contents |
