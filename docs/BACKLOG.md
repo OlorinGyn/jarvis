@@ -60,8 +60,9 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **41.** Notifications by visit in Home: dog tracks, a resident explains one body, then only news — 98 messages a day to 35 on the month (decided 17/11, `071e55b`, review 32 `7709f94`, `v2026.11.17`); with R63, a failed send tried again | ARCHITECTURE 12.13, 12.14 |
 | ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33, `v2026.11.17.2`) | ARCHITECTURE 10.17 |
 | ✓ | **42.** The photos manage themselves: an unnamed face unseen for 60 days forgotten, a probable dog makes no card (decided 17/11, `c3b0dd2`, review 34, `v2026.11.17.2`); closes backlog 37's self-cleaning part | ARCHITECTURE 10.19 |
+| ✓ | **45.** Reference photos only of impeccable quality: the eye cleaned what was stored, a cut guards what enters — eDifFIQA(T) ≥ 0.40 for a face view, the box ≥ 120 px for a dog view (decided 17/11, `4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; applied on production 17/11 19:23) | ARCHITECTURE 10.18 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44 and 32, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45 and 32, in `PENDING.md`.
 
 ### Decided on 17/11/2026, to build
 
@@ -84,54 +85,10 @@ full text is in `HISTORY.md` 8.
     (`7c80e4d`, review 33, ARCHITECTURE 10.17); on production's data they
     move 2 views of 23 to the wrong person, so nothing is applied. The
     user answered with item 45: the cleaning moves only views at its
-    quality cut, on the evidence of a sure sighting at the cut. The
-    scan-time step is not built.
-45. **Reference photos only of impeccable quality** (decided 17/11, the
-    user: "find a cut-off level that never fails in terms of face quality,
-    and work only with photos at that level; detection can stay as it is,
-    but stored as reference the photos must be impeccable; the same for
-    the dogs") — a view enters a face or dog gallery (a new entry, a sure
-    match, naming, merging, the cleaning) only when its photo passes a
-    quality cut; the scan, the matching and the messages keep today's
-    rules. **The cut is measured, not guessed**: from the signals each view
-    has or its photo gives (face width, frames, the detector's and the
-    landmarks' scores, the frontal gate, sharpness; for dogs crop size,
-    sharpness, day or night, one dog in the crop), the lowest cut at which
-    no view of the month is wrong — matched to the wrong person by another
-    visit's views (leave-one-event-out, R55), or a head-top, someone else,
-    two dogs by eye on the contact sheets. **The views already stored below
-    the cut, people's and dogs', are deleted as soon as it is measured**
-    (the user, 17/11: "already remove the photos that do not obey the
-    threshold in the current collections"), with a backup first, as the
-    cleaning; what it keeps per entry and what recognition loses are
-    reported, not asked. A named entry keeps its last view (a person with
-    no view can match nobody). The cleaning
-    (43) runs after it, and its evidence counts only a sure sighting at
-    the cut (the architect's reading of "what the cleaning trusts").
-    **Step 1 measured** (`627c5bc`, review 34, ARCHITECTURE 10.18): no
-    signal the photos carry reaches 0 wrong cheaply — the one clean pair,
-    SCRFD ≥ 0.70 and sharpness ≥ 75, keeps 41 of 324 face views and drops
-    the sure recognitions from 71 to 15; for dogs the box at least 120 px
-    keeps 42 of 79 named views with 0 poor and little lost. **The user's
-    answer, 17/11:** measure first a model made for face quality (eDifFIQA
-    from OpenCV Zoo, and ArcFace's embedding norm); one that reaches 0
-    wrong keeping more is the cut, applied without asking again; if none
-    does, the pair goes back to the user. The 18 views of someone else
-    were deleted from production the same day, with a backup
-    (HISTORY 13.36). **Step 2 measured** (`14404df`, review 35,
-    ARCHITECTURE 10.18): eDifFIQA(T) (CC-BY-4.0, 9.8 ms a face) ranks the
-    poor views down far better than any photo signal, but its clean cut,
-    0.392, keeps 36 of 306 views — the user 2 of 61, Izabel 1 — with 9
-    right-sure, and chosen on one half of the days it lets 3 poor views
-    through on the other; ArcFace's norm has no clean cut; step 1's pair
-    does not hold on unseen days either. For dogs the box ≥ 120 px no
-    longer holds (3 poor of 80, rear views). **No signal meets the rule,
-    so the choice went back to the user** (review 35). **The user's
-    answer, 17/11 evening** (CONTEXT 3): the eye cleans what is stored —
-    the views read poor or someone else's are deleted, the views read
-    good stay — and a cut guards what enters: eDifFIQA(T) ≥ 0.40 for a
-    face view, the box ≥ 120 px for a dog view. Step 3, the gate and the
-    clean-up, is developer 34's (section 3).
+    quality cut, on the evidence of a sure sighting at the cut. Item 45
+    is applied (`v2026.11.17.3`), so the cleaning's dry run on production
+    is next (section 3). The scan-time step is not built.
+Item 45 is done (above, review 36); its full text moves to `HISTORY.md` 8.
 
 ### Decided on 16/10/2026, to build
 
@@ -347,89 +304,33 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 35 is done** (HISTORY 13.37): developer 33 measured backlog 45
-step 2 — eDifFIQA(T) and ArcFace's norm — and, as planned, built nothing:
-no signal meets the rule. eDifFIQA's clean cut keeps 36 of 306 face views,
-the residents almost none (the cameras look down on them, and a quality
-model rightly trusts a frontal face), with 9 right-sure recognitions
-against today's 72; the dogs' box ≥ 120 px no longer holds. The price of
-each option is ARCHITECTURE 10.18's last table. **No release**: the range
-changed only a tool.
+**Review 36 is done in part** (HISTORY 13.38): developer 34's gate and
+clean-up reviewed, one hole fixed by tests first (`bf3d6f9`), released as
+**`v2026.11.17.3`** and deployed; the clean-up applied on production (faces
+104 views deleted, dogs 12, recognition wrong 0 / 0) and backlog 28's
+settle run (the user and Izabel at 40 chosen each). It stopped at the
+5-hour window.
 
-**The user chose, the same evening** (CONTEXT 3): the eye cleans what is
-stored, a cut guards what enters.
+**The architect, after the reset (finishing review 36):**
 
-**Developer 34: backlog 45 step 3 — the gate and the clean-up.**
-
-1. **The read set, in `tools/view_quality_verdicts.json`.** Every face
-   and dog view of the copy read by eye — taken 17/11 18:19, in
-   `C:\Users\gusta\AppData\Local\Temp\claude\cfd12769ca7e6402\13da264a-ff4d-4d85-a381-b05260e7522a\scratchpad\prod`
-   — that holds no verdict gets `"ok"`, read and good, so the clean-up
-   tells "read good" from "never read" by the file, never by a time. An
-   "ok" only clears a flag, so `view_quality.py` on the copy must print
-   the same tables; run it to show it. If the copy is gone, stop there
-   and say so in the HANDOFF.
-2. **The face gate, by tests first.** `face_quality` moves to `faces.py`
-   and the tool imports it, so the gate and the measurement are one
-   function: SCRFD on the photo about to be stored, the face nearest its
-   centre, `align_crop`, eDifFIQA(T); `None` with no face.
-   `QUALITY_CUT = 0.40`: the measured clean cut, 0.392, rounded up past
-   the highest poor view (0.3916). Only the two paths that store a new
-   photo change — `Gallery.add` and `Gallery.reinforce` keep only views
-   at the cut; a merge, `assign`, the waiting queue and the cleaning move
-   views already stored. In `_scan_clip`, a sure match whose view is
-   below the cut is still a named sighting, with no `reinforce`; a face
-   that matches no entry makes an entry of only its views at the cut,
-   and with none, **a sighting of no entry**, `person_id` `""` — what a
-   forgotten entry's sighting already reads as, so an older version
-   reads it after a rollback. **The messages must not change**
-   (ARCHITECTURE 12.14): today a stranger's second event in a visit
-   matches the entry the first one made and is "the same face again";
-   with no entry, the visit keeps that face's embeddings in memory, never
-   on disk, and a later face of no entry that matches one of them at
-   `MATCH_THRESHOLD`, as `_best_view` matches, is the same face again;
-   one that matches none is news. Tests: a stranger seen in two events
-   of a visit with no view at the cut sends once; a second, different
-   stranger sends; a resident's sure match below the cut is still named
-   and still explains one body; Recordings and People read a sighting of
-   no entry as an unknown face, not "?". The model is pinned by SHA-256
-   in `downloads.py` (ARCHITECTURE 10.18) and fetched into `models/` with
-   the others, before the deploy stops anything.
-3. **The dog gate.** In `dogs.record`, a crop whose box is under 120 px —
-   `max(w, h)` of the sighting's box, the unit measured — stores no view:
-   a sure match is still named, with no `reinforce`; an unmatched crop is
-   a sighting of no dog (`dog_id` `""`, the probable case's value) and
-   makes no card. The messages do not change.
-4. **The clean-up, once: `--apply`** (in `view_quality.py` or its own
-   tool, as `clean_gallery.py`). A dry run by default, listing what it
-   would delete per entry; `--apply` refuses while the folder's service
-   answers and copies `faces/` and `dogs/` to `backups/` first. It
-   deletes every stored view, chosen or waiting, read poor or someone
-   else's, and every view the file does not hold that fails the cut
-   (eDifFIQA below 0.40 or no face; a box under 120 px). A named entry
-   keeps its last view, the best by the model; an unnamed entry left
-   with none is removed as `forget_unseen` removes one — its sightings
-   stay, its "Visitor N" is never reused. `check_data` reads everything
-   afterwards. Run the dry run on a fresh copy of production.
-
-**HANDOFF:** the read set's count; the dry run's counts per entry, faces
-and dogs, and recognition with what is left (leave-one-event-out, as
-ARCHITECTURE 10.18); the time the gate adds to a scan on the M900; any
-message that changed in the tests or the replay.
-
-**The architect, at review 36:** the release with the gate; the deploy
-(the model fetched before the stop); production stopped, the `--apply`
-dry run read, applied, started again; the cleaning (43) as a dry run on
-production, each move read on a sheet, applied only if none is wrong —
-otherwise to the user; the once-only settle of backlog 28; People and
-Dogs at 375 px and on a desktop; eDifFIQA's CC-BY-4.0 attribution in the
-README; raid log 27. After that, the late messages of 18/10
-(`PENDING.md`).
+1. **The cleaning (43) as a dry run on production** —
+   `tools/clean_gallery.py C:\JARVIS`, the service running is fine for a
+   dry run — its evidence counting only a sure sighting at the cut; each
+   move read on a contact sheet. Applied (service stopped, `--apply`) only
+   if no move is wrong; otherwise the moves go to the user.
+2. **People and Dogs at 375 px and on a desktop** with the built-in
+   browser: the cards after the clean-up, an unknown face of no entry in
+   Recordings.
+3. **Raid log 27** for `v2026.11.17.3`, both languages (PROCESS 6).
+4. Then plan the next developer session here. The candidate, after the
+   cleaning: the late messages of 18/10 (`PENDING.md`, open discussion —
+   the architect measures and proposes first); otherwise nothing is
+   decided and the cycle stops for the user.
 
 **Waits for the user:** choosing the sure
 threshold for faces and the sure distance for dogs from the two tables in
 Settings → Detection (the defaults hold until then); the M900 sleeping at
-the sign-in screen; the checks on the M900, `v2026.11.17.2` among them
+the sign-in screen; the checks on the M900, `v2026.11.17.3` among them
 (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later

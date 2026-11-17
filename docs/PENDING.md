@@ -149,26 +149,30 @@ grows, decisions are being postponed.
   stop. **What goes to the architect:** a dog card that is clearly Aurora
   or Mirana, or "Izabel" named for the user, with its time.
 
+- **`v2026.11.17.3` on the phone and the M900** (backlog 45): the
+  galleries hold only views read good — the user's and Izabel's 40 each,
+  Karol 15, Ana Claudia 8, Dhaniel 6, Luan 5; 11 visitors and 7 unnamed
+  dogs whose every photo was poor are gone, their recordings kept. From
+  now on a face photo enters a gallery only when eDifFIQA(T) grades it at
+  0.40 or more, and a dog photo only when the dog's box is at least
+  120 px: **a new visitor gets a card only when a face shows clearly**;
+  one seen only poorly is still a recording and a message ("unknown
+  face"), with no card. The messages do not change. **What goes to the
+  architect, with its time:** a message that repeats one stranger in one
+  visit, or a resident named wrong.
+
 ## Decided, not yet done
 
 - **The cleaning on production** (backlog 43, applied directly with a
-  backup — the user's choice of 17/11): built; waits for backlog 45's
-  quality cut, the user's answer to its two wrong moves (BACKLOG 3).
-  The face-quality model met no rule (review 35); the user chose the
-  same evening — the eye cleans what is stored, a cut guards what enters
-  (CONTEXT 3) — and the gate and its clean-up are developer 34's. The
-  cleaning then runs as a dry run on production, read move by move
-  (BACKLOG 3). The 18 views of someone else are already gone.
+  backup — the user's choice of 17/11): built; backlog 45's cut is applied
+  (`v2026.11.17.3`), so its dry run on production, read move by move, is
+  the architect's next step (BACKLOG 3).
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
   is done (`v2026.10.16`).
-- **Backlog 28's once-only settle on production** (`tools/settle_waiting.py`,
-  the user's choice of 13/10: what the rule leaves is deleted): the dog
-  views are gone (above), and the user said to run it on 17/11; held by
-  the architect until backlog 45's clean-up, because the 40-view rule
-  keeps the most varied views, not the best, and could drop an impeccable
-  view for a poor one; it runs at review 36, after the clean-up. The EPUB's documents were chosen by the user on 14/10/2026 —
+- **Backlog 28's once-only settle** ran on production on 17/11 at 19:24,
+  after the clean-up (HISTORY 13.38). The EPUB's documents were chosen by the user on 14/10/2026 —
 ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 10); the EPUB itself is built when the user asks.
 

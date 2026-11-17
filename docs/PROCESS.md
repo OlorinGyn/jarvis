@@ -188,15 +188,15 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 35, covers
-up to `cb20ae2`** (developer 33's handoff; no code fixed; no release — the
-quality cut, measured with a face-quality model, went to the user); the
-next starts from the commit after the review's last.
+The table of every review is `HISTORY.md` 13.2. **The last review, 36, covers
+up to `165e316`** (developer 34's handoff; one hole fixed, `bf3d6f9`;
+release `v2026.11.17.3`, the clean-up applied on production); the next
+starts from the commit after the review's last.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.37, one section per review (13.16 is the reading of
-the bad-detection reports, 13.33 the month left alone); the next one is 13.38.
+`HISTORY.md` 13.3 to 13.38, one section per review (13.16 is the reading of
+the bad-detection reports, 13.33 the month left alone); the next one is 13.39.
 
 ---
 
@@ -356,3 +356,4 @@ review and commits.
 | 24 | `v2026.10.16.3` | The First Footprint / A Primeira Pegada | written |
 | 25 | `v2026.11.17` | The Month Nobody Watched / O Mês que Ninguém Viu | written |
 | 26 | `v2026.11.17.2` | The Impeccable Album / O Álbum Impecável | written |
+| 27 | `v2026.11.17.3` | — | to write (review 36, after the reset) |

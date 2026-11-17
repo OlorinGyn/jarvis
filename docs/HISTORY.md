@@ -108,6 +108,53 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+45. **Done 17/11 (`4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; ARCHITECTURE 10.18).** **Reference photos only of impeccable quality** (decided 17/11, the
+    user: "find a cut-off level that never fails in terms of face quality,
+    and work only with photos at that level; detection can stay as it is,
+    but stored as reference the photos must be impeccable; the same for
+    the dogs") — a view enters a face or dog gallery (a new entry, a sure
+    match, naming, merging, the cleaning) only when its photo passes a
+    quality cut; the scan, the matching and the messages keep today's
+    rules. **The cut is measured, not guessed**: from the signals each view
+    has or its photo gives (face width, frames, the detector's and the
+    landmarks' scores, the frontal gate, sharpness; for dogs crop size,
+    sharpness, day or night, one dog in the crop), the lowest cut at which
+    no view of the month is wrong — matched to the wrong person by another
+    visit's views (leave-one-event-out, R55), or a head-top, someone else,
+    two dogs by eye on the contact sheets. **The views already stored below
+    the cut, people's and dogs', are deleted as soon as it is measured**
+    (the user, 17/11: "already remove the photos that do not obey the
+    threshold in the current collections"), with a backup first, as the
+    cleaning; what it keeps per entry and what recognition loses are
+    reported, not asked. A named entry keeps its last view (a person with
+    no view can match nobody). The cleaning
+    (43) runs after it, and its evidence counts only a sure sighting at
+    the cut (the architect's reading of "what the cleaning trusts").
+    **Step 1 measured** (`627c5bc`, review 34, ARCHITECTURE 10.18): no
+    signal the photos carry reaches 0 wrong cheaply — the one clean pair,
+    SCRFD ≥ 0.70 and sharpness ≥ 75, keeps 41 of 324 face views and drops
+    the sure recognitions from 71 to 15; for dogs the box at least 120 px
+    keeps 42 of 79 named views with 0 poor and little lost. **The user's
+    answer, 17/11:** measure first a model made for face quality (eDifFIQA
+    from OpenCV Zoo, and ArcFace's embedding norm); one that reaches 0
+    wrong keeping more is the cut, applied without asking again; if none
+    does, the pair goes back to the user. The 18 views of someone else
+    were deleted from production the same day, with a backup
+    (HISTORY 13.36). **Step 2 measured** (`14404df`, review 35,
+    ARCHITECTURE 10.18): eDifFIQA(T) (CC-BY-4.0, 9.8 ms a face) ranks the
+    poor views down far better than any photo signal, but its clean cut,
+    0.392, keeps 36 of 306 views — the user 2 of 61, Izabel 1 — with 9
+    right-sure, and chosen on one half of the days it lets 3 poor views
+    through on the other; ArcFace's norm has no clean cut; step 1's pair
+    does not hold on unseen days either. For dogs the box ≥ 120 px no
+    longer holds (3 poor of 80, rear views). **No signal meets the rule,
+    so the choice went back to the user** (review 35). **The user's
+    answer, 17/11 evening** (CONTEXT 3): the eye cleans what is stored —
+    the views read poor or someone else's are deleted, the views read
+    good stay — and a cut guards what enters: eDifFIQA(T) ≥ 0.40 for a
+    face view, the box ≥ 120 px for a dog view. Step 3, the gate and the
+    clean-up, is developer 34's (section 3).
+
 44. **Done 17/11 (`92e36a3`, review 33; ARCHITECTURE 10.17).** **New people grouped under a temporary name** (decided 17/11, the
     user's idea: "they can group themselves before being named; give a
     temporary name and I only rename it") — every unnamed face entry gets
@@ -330,6 +377,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 33 | 17/11/2026 | `2ef8562..186a52e`, developer session 31 — backlog 43 (the evidence of one body, `clean_gallery.py`), backlog 44 ("Visitor N") | **one code fix, by tests first (`2154a68`)**: the cleaning's evidence took an event with untracked boxes, which the scan refuses; the event JSON records `untracked_people`; 423 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the dry run read again on production itself: 23 moves, 2 wrong — the rule goes to the user; **no release** (13.35) |
 | 34 | 17/11/2026 | `2154a68..59ec29f`, developer session 32 — backlog 45 step 1 (the quality cut measured, `view_quality.py`), backlog 42 | no code fixed; 440 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the verdicts read on the contact sheets — the poor and someone-else's right, the "good" ones recognisable rather than impeccable; no cheap cut reaches 0 wrong, so the cut went to the user: a face-quality model measured first; the 18 views of someone else deleted from production with a backup; **release `v2026.11.17.2`** (backlogs 42 and 44) (13.36) |
 | 35 | 17/11/2026 | `6d141ac..cb20ae2`, developer session 33 — backlog 45 step 2 (eDifFIQA(T) and ArcFace's norm, the halves check) | no code fixed; 446 tests pass, no comments, `check_doc_refs` 0; the alignment measured (the same cut both ways), the four dog verdicts upheld; no signal meets the rule — the cut went to the user with the price of each option, who chose the eye for what is stored and a cut for what enters; developer 34 planned; **no release** (13.37) |
+| 36 | 17/11/2026 | `2a936e8..165e316`, developer session 34 — backlog 45 step 3 (the face and dog gates, the clean-up) | one hole fixed by tests first (`bf3d6f9`: one stranger's split face sent twice); 473 tests pass, no comments; eDifFIQA's attribution in the README; **`v2026.11.17.3`** deployed, the clean-up and backlog 28's settle applied on production with backups; the cleaning's dry run, the page check and raid log 27 left for after the reset (13.38) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2781,6 +2829,62 @@ news again in every event of the visit (ARCHITECTURE 12.14).
 **For the next session.** Developer 34: backlog 45 step 3, the gate and
 the clean-up (BACKLOG 3).
 
+### 13.38 Review 36 — developer session 34 (17/11/2026)
+
+Developer 34 reviewed whole (`2a936e8..165e316`: the face gate in
+`faces.py`, the visit's memory of new faces in `notify.py`, the dog gate,
+`tools/clean_views.py` and `Gallery.drop_views`, the read set, 25 tests).
+471 tests passed as delivered; **one hole fixed by tests first**, 473
+pass; no comments in `src/` and `tools/`; `check_data` reads everything,
+here and on production before and after each step.
+
+**Fixed: one stranger, two face messages in one event** (`bf3d6f9`).
+`_group` splits a face's views into groups at `SAME_FACE_THRESHOLD`
+(0.35), while a match needs only `MATCH_THRESHOLD` (0.30). Before the
+gate, the first group of a new face made an entry of its four views and
+the second group matched it and was skipped (`seen_here`); with the gate
+the first group may make no entry, or one holding fewer views, and the
+second became a sighting of its own — a second "unknown face" message in
+the same event whenever `_one_visitor` could not fold them (not exactly
+one person track). The scan now keeps every new face's four references;
+a group not matched to a named person whose views match them better than
+the gallery does is that face, skipped as before. Two tests: the split
+face sends once; a group closer to an older unnamed entry is still that
+entry. The dog log line also counted small crops as probable; each is
+now counted apart.
+
+**The developer's points, read.**
+
+- **`_again` for every new face, entry or none**: right — it keeps the
+  messages as before when a stranger's first event had no view at the
+  cut and a later one does. Two different strangers within
+  `MATCH_THRESHOLD` of each other are one, the gallery's own risk.
+- **`drop_views` moves the queue up for named entries too**: right; the
+  queue left is read good or at the cut, better than keeping a poor view.
+- **A dog view with no sighting found counts as box 0**: did not arise on
+  production (every view has a verdict).
+- **eDifFIQA's URL on `main`, pinned by hash**: as DINOv2's pin works; a
+  changed file fails the fetch loudly. The deploy fetched it (7,272,678
+  bytes) before stopping production.
+
+**Released and applied.** `v2026.11.17.3` deployed at 19:22. Production
+stopped; `clean_views.py` read as a dry run on production itself — the
+developer's numbers plus three views stored after 19:07 (one at the cut,
+kept; two below, deleted) — then applied: faces 104 deleted, 11 unnamed
+entries removed; dogs 12 deleted, 7 removed; recognition right-sure 85 →
+49, wrong 1 / 2 → **0 / 0** (ARCHITECTURE 10.18). Backlog 28's settle then
+ran: the user and Izabel at 40 chosen each, nothing waiting. Production
+back at 19:25, about 2.5 minutes down. Backups:
+`C:\JARVIS\backups\clean_views_20261117-192340` and
+`waiting_20261117-192436`. One slip: the settle's first `uv run` in
+`C:\JARVIS` installed six development packages into production's
+environment — harmless; the next update's sync decides them. A tool run in
+`C:\JARVIS` uses `uv run --no-sync`.
+
+**Not done, for lack of the 5-hour window** (82 % after the deploy): the
+cleaning (43) as a dry run on production read move by move, People and
+Dogs at 375 px and on a desktop, raid log 27 (BACKLOG 3).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2867,3 +2971,5 @@ of `CONTEXT.md`.
 | A45 | architect | ultracode | 17/11 17:35–18:15 | review 34: the diff read whole, the contact sheets read, the quality model searched, the user's two answers, the 18 views deleted on production; release and deploy `v2026.11.17.2`, People at 375 and 1280 px, raid log 26; developer 33 planned | 23% → 37% | 14% → 16% | 72k → about 265k tokens, a new conversation (started by the developer's handover) |
 | D33 | developer | high | 17/11 evening | session 33: backlog 45 step 2 — eDifFIQA(T) and ArcFace's norm measured, every cut checked on unseen days, nine dog views read; no signal passes, no gate built (446 tests) | 39% → 46% | 17% → 17% | 73k → 176k tokens, a new conversation |
 | A46 | architect | ultracode | 17/11 18:34–19:00 | review 35: the diff read whole, the alignment measured, the sheets and the band around the cut read, the price of each option computed; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 53; no release; the cut to the user, the user's answer, the gate designed against the visit rule and developer 34 planned | 46% → 60% | 17% → 19% | 74k → about 240k tokens, a new conversation (started by the developer's handover) |
+| D34 | developer | high | 17/11 evening | session 34: backlog 45 step 3 — the read set, the face gate, the dog gate, `clean_views.py` dry-run on a copy (471 tests) | 59% → 74% | 19% → 21% | about 250k tokens, a new conversation |
+| A47 | architect | ultracode | 17/11 19:13–19:40 | review 36: the diff read whole, one hole fixed by tests first, the release deployed, the clean-up and the settle applied on production; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 54, README; stopped at the window | 75% → about 86% | 21% → 22% | 74k → about 215k tokens, a new conversation (started by the developer's handover) |

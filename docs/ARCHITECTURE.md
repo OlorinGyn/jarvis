@@ -2362,9 +2362,11 @@ entries labelled the user — none of two people.
 
 **The user's rule** (CONTEXT 3): a view enters a face or dog gallery only
 when its photo passes a quality cut measured never to fail; detection,
-matching and the messages stay as they are. **Steps 1 and 2 are
-measurements; no rule is built yet**: no signal met the rule, and the
-choice went back to the user (review 35, below).
+matching and the messages stay as they are. Steps 1 and 2 are
+measurements: no signal met the rule, and the choice went back to the
+user (review 35, below). **Step 3 is the user's answer, built in
+`v2026.11.17.3`:** the eye cleaned what is stored, a cut guards what
+enters (the end of this section).
 
 **The tool.** `tools/view_quality.py <folder> [--sheets DIR] [--verdicts
 FILE] [--unread ISO-TIME]` reads any J.A.R.V.I.S. folder — on 17/11 a copy of production's
@@ -2522,6 +2524,76 @@ residents are seen from above. A visit is explained only by a **sure**
 resident (12.14), so a cut that leaves the residents two views brings
 Home's messages back toward the month before backlog 41. The choice went
 back to the user (backlog 45).
+
+**Step 3: the gate and the clean-up** (developer 34, review 36,
+`v2026.11.17.3`). The user's answer (CONTEXT 3) in code:
+
+- **The face gate.** `faces.face_quality(image, face=None)` is the
+  measurement's own function, now in `faces.py` (the tool imports it):
+  SCRFD on the photo, the face nearest its centre, `align_crop`,
+  eDifFIQA(T); `None` with no face. `QUALITY_CUT = 0.40`, the measured
+  clean cut 0.392 rounded up past the highest poor view (0.3916).
+  `Gallery.admits(crop)` is the hook; only the two paths that store a
+  **new** photo ask it — `add` keeps only admitted views and returns
+  `None` with none (no entry, no Visitor number taken), `reinforce`
+  returns `False` below the cut. A merge, `assign`, the queue and the
+  cleaning move views already stored. `DogGallery.admits` takes every crop
+  (PYTHON 54).
+- **The scan.** A sure match below the cut is still a named sighting with
+  no view kept; a new face with no admitted view is **a sighting of no
+  entry**, `person_id` `""` — what a forgotten entry's sighting already
+  read as, so an older version reads it after a rollback; People and
+  Recordings call it an unknown face. The messages do not change
+  (12.14): every new face's sighting carries, in memory only, its views
+  and the four references `add` was given, so a later event of the visit
+  — and, since review 36, a second group of the same face in the same
+  clip (`_earlier_new_face`) — is the same face again, as it was when
+  the first event's entry held those views. `_one_visitor` (10.17) folds
+  `""` sightings on one body into the kept one.
+- **The dog gate.** `dogs.MIN_VIEW_BOX = 120`: a crop whose box,
+  `max(w, h)` in the frame, is smaller stores no view — a sure match is
+  named with no `reinforce`, an unmatched crop is a sighting of no dog
+  (`dog_id` `""`, `certainty` `""`) with no card (20).
+- **The model** is pinned by SHA-256 in `downloads.py` and fetched with
+  the others; the deploy fetched it before stopping anything. ~7 MB.
+- **The cost**, measured by developer 34 on the M900: `admits` on a
+  stored 300 px view, median 62.5 ms (SCRFD on the photo is most of it,
+  eDifFIQA alone 9.8 ms) — once per sure match, up to four times per new
+  face, in a scan of several seconds off the live path.
+
+**The clean-up, once: `tools/clean_views.py <folder> [--apply]
+[--verdicts FILE]`.** Per view with a photo: read poor or someone else's
+→ deleted; read good → kept, however low eDifFIQA scores it; never read →
+kept only at the cut (a dog view whose sighting is not found counts as box
+0). `Gallery.drop_views` does it under one lock and one save: an entry left
+with no chosen view moves its queue up; a named one with none keeps its
+best view; an unnamed one with none is removed as `forget_unseen` removes
+it, its sightings kept, its Visitor number never reused. A dry run by
+default; `--apply` refuses while the folder's port answers and copies
+`faces/` and `dogs/` to `backups/clean_views_<stamp>/` first. Every unread
+view was marked `"ok"` in `view_quality_verdicts.json` first (445 views,
+328 marked), so "read good" and "never read" are told apart by the file.
+
+**Applied on production, 17/11 19:23** (review 36, the service stopped,
+backup `C:\JARVIS\backups\clean_views_20261117-192340`): faces 309 views,
+104 deleted (102 read poor, 2 unread below the cut), 11 unnamed entries
+removed, 28 left; dogs 139 views, 12 deleted (9 poor, 3 someone else's),
+Aurora 37, Mirana 37, 7 unnamed dogs removed. Recognition,
+leave-one-event-out at production's thresholds:
+
+| | right sure | right probable | wrong sure / probable | no name |
+|---|---|---|---|---|
+| faces, before | 85 | 92 | 1 / 2 | 75 |
+| faces, after | **49** | 95 | **0 / 0** | 111 |
+| dogs, before | 14 | 34 | 0 | 31 |
+| dogs, after | 13 | 34 | 0 | 32 |
+
+Then backlog 28's once-only settle (17.14) ran on what was left, every
+waiting view now read good: the user's 16 waiting, 12 entered Chosen (4
+chosen replaced, 4 deleted), Izabel's 34, 25 entered (1 replaced, 9
+deleted); both hold 40 chosen and nothing waiting. The "after" row above
+was counted before the settle, with 32 and 16 chosen; with 40 each it can
+only gain.
 
 ### 10.19 The photos manage themselves (backlog 42, 17/11/2026)
 
@@ -3172,7 +3244,7 @@ visit of its own, thrown away, and leaves the current one alone.
 |---|---|---|
 | **(a)** every track with person frames is voted dog (`voted`, 7.16) and none has a run of `PERSON_RUN` = 2 person frames (`tracks.dog_only`) — and the scan found no face | the event's faceless message; **the event does not extend the visit** | `Notification Back best view: skipped: dog tracks` |
 | **(b)** a sure resident (`resident_person`) was recognised in the visit, on this camera, in this event or **an earlier one**, and the event shows at most one person at once | the faceless message: best view or side view | `… best view: skipped: visit (Gustavo recognized at 12:00:05)` |
-| **(c)** the visit has already sent a message | a faceless or hidden-person message with no more people at once than the visit has seen; a face whose entry the visit has already seen | `… best view: skipped: visit (no news, 1 person at once)`, `Notification Front face, unknown face: skipped: visit (the same face again)` |
+| **(c)** the visit has already sent a message | a faceless or hidden-person message with no more people at once than the visit has seen; a face the visit has already seen — its entry, or a new face whose views match the references of one seen new (`_again`, 10.18) | `… best view: skipped: visit (no news, 1 person at once)`, `Notification Front face, unknown face: skipped: visit (the same face again)` |
 
 What each rule leaves alone is the point of it:
 

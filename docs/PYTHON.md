@@ -2957,3 +2957,38 @@ A set comprehension collects the days, `sorted` orders them,
 `enumerate` numbers them and `index % 2` alternates 0 and 1 — a dictionary
 comprehension building `{day: half}` in one line. In Java it is a `Stream`
 of distinct sorted days collected with an index into a `Map`.
+
+## 54. Late binding, a hook a subclass overrides, and identity (developer 34)
+
+### 54.1 Patching a module's function in a test
+
+`tests/conftest.py` makes every face photo pass the quality cut with
+`monkeypatch.setattr(faces, "face_quality", lambda image, face=None: 1.0)`.
+It works because `Gallery.admits` looks the name `face_quality` up in the
+module's globals **each time it runs**: Python binds names late, so
+replacing the module attribute replaces what every caller gets. A Java
+static import is resolved when the class is compiled and cannot be swapped
+this way; the nearest C# habit is an interface injected for the test. The
+tool calls `faces.face_quality(...)` through the module for the same
+reason: a `from faces import face_quality` would copy the original into
+the tool's own globals, and a patch would not reach it.
+
+### 54.2 A hook the subclass overrides
+
+`Gallery.add` and `Gallery.reinforce` call `self.admits(crop)`;
+`DogGallery` inherits both and overrides only `admits`, to take every
+crop (a dog's gate is its box, decided in `dogs.record`). That is the
+template-method pattern — a C# `protected virtual bool Admits(...)` the
+base class calls. Without the override the dog gallery would have been
+gated by a face model, since in Python every method is virtual.
+
+### 54.3 The same object, not an equal one
+
+In `notify`, a sighting already seen in the visit is found with `s is r`
+and `id(s)`, not `==`: two sightings of two different strangers can be
+equal dictionaries, and only identity says they are two faces. `is` is
+C#'s `ReferenceEquals`; `==` on dicts compares contents, like a value
+`Equals`. And `gallery.add(...) or ""` gives `""` when `add` returns
+`None`, because `None` is falsy — C#'s `??` for this case, though `or`
+also replaces `0`, `""` and empty lists, which `??` would not.
+

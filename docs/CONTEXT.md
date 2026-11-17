@@ -194,7 +194,8 @@ eDifFIQA(T) ≥ 0.40, the cut no view of the month failed, and a dog view
 only when its box is at least 120 px, which stops small and blurred crops
 but not every view from behind. Recognition and the messages keep today's
 rules; the residents' galleries will grow slowly, and a new person gets a
-card only when a face shows clearly (backlog 45).
+card only when a face shows clearly (backlog 45, **built and applied in
+`v2026.11.17.3`**, ARCHITECTURE 10.18).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -293,6 +294,7 @@ tools/
   rebuild_faces.py rebuilds faces/ from the recorded clips
   settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
   clean_gallery.py once: each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
+  clean_views.py once: deletes the views read poor or someone else's, and the unread ones below the cut (backlog 45; applied 17/11)
   view_quality.py per stored face and dog view its quality signals, eDifFIQA(T) and ArcFace's norm among them; the cuts against the verdicts read by eye (view_quality_verdicts.json), checked on unseen days
   check_clips.py  counts damaged blocks per camera on one day
   make_epub.py, epub.css   every .md into one EPUB for an e-reader
@@ -353,6 +355,7 @@ uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
 uv run python tools/clean_gallery.py <folder> [--apply]   once: the galleries cleaned by the evidence of one body; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
+uv run python tools/clean_views.py <folder> [--apply]   once: the views read poor or someone else's, and the unread below the cut, deleted; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.18)
 uv run python tools/view_quality.py <folder> [--sheets DIR] [--unread ISO-TIME]   each stored view's quality, the cuts and contact sheets; only reads (ARCHITECTURE 10.18)
 uv run python tools/face_bench.py [--pipelines ...]     face models compared on a copy of faces/ (ARCHITECTURE 10.14)
 uv run python tools/dog_bench.py [--candidates ...]     dog descriptors compared on a copy of dogs/ (ARCHITECTURE 20)
@@ -391,10 +394,11 @@ threshold, ARCHITECTURE 10.15 — `SURE_SWEEP`, `COPY_SIMILARITY`, `SAME_FACE_TH
 `MIN_EYE_SPREAD`, `MIN_VIEWS_FOR_NEW`, `LANDMARK_SIZE`, `LANDMARK_SCORE`;
 `TINY_SIDE`, `SAME_PICTURE`, `WRITTEN_TOGETHER_SECONDS`: recovering each
 view's event, ARCHITECTURE 10.16; `FORGET_DAYS`, `KEEP_SECONDS`: the
-unseen unnamed faces forgotten, 10.19),
+unseen unnamed faces forgotten, 10.19; `QUALITY_CUT`: what a new face view
+needs to enter a gallery, 10.18),
 `dogs.py` (`SURE_DISTANCE` — since backlog 32 only the default of the
 user's sure distance — `SURE_RATIO`, `PROBABLE_DISTANCE`, `PROBABLE_RATIO`,
-`SURE_SWEEP`, `COPY_DISTANCE`, `MARGIN`, `CROP_SIDE`, `MAX_UNNAMED`,
+`SURE_SWEEP`, `COPY_DISTANCE`, `MARGIN`, `CROP_SIDE`, `MIN_VIEW_BOX` (10.18), `MAX_UNNAMED`,
 `DECIMALS`; ARCHITECTURE 20),
 `settings.py` (`CONFIDENCE_RANGE`, `SLIDER_STEPS`: the detection sliders,
 ARCHITECTURE 7.14; `FACE_SURE_RANGE`, 10.15; `DOG_SURE_RANGE`, 20), `app.js` (`PAGE_STEP`, 17.17), `notify.py` (`MAX_FACES`, `QUIET_SECONDS` — only the default of the page's quiet window — `LOUD_FLOOR_SECONDS`; 12.11; `RETRY_PAUSES`, 12.13; `VISIT_SECONDS`, 12.14), `tracks.py` (`LOST_SECONDS`, `PERSON_RUN`, `FAILURE_LOG_SECONDS`; 7.16), `outage.py` (`CAMERA_DOWN_SECONDS`, `CHECK_SECONDS`, `GRACE_SECONDS`; 12.12), `bot.py` (`LONG_POLL_SECONDS`,
