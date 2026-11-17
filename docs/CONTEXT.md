@@ -139,6 +139,16 @@ four messages in eleven minutes for one walk in the backyard, and offered
 one message per camera per 15 minutes, no faceless message in Home, or the
 front camera only, the user chose **every faceless person still reaches the
 phone in Home**; only the false ones go (R58, R59).
+**Changed by the user, 17/11/2026,** after a month left alone: 96 messages a
+day, three in four a faceless person, 84 % of them near a resident
+recognised on the same camera, and most "unknown faces" the user's own bad
+views (HISTORY 13.33). Shown the price, the user chose **the visit, 5
+minutes**: per camera, person events less than 5 minutes apart are one
+visit; a resident recognised in it explains one body, so a faceless person
+alone in a visit where a resident was recognised sends nothing — only a
+recording; after the visit's first message only news sends again (more
+people at once, a face not yet seen in it). A stranger whose face shows, or
+who comes beside someone, still reaches the phone (backlog 41).
 
 **Notifying is a weighing: risk never lost, nobody shouted at** (the user,
 16/10/2026). An event that may mean risk must never be lost, and a message
@@ -148,7 +158,18 @@ the Back — deserves a new message; the same subject in the same place does
 not. The user left to the architect which situations count as risk, looking
 at the competitors; the design is backlog 40, **built in `v2026.10.16`**:
 nothing the mode wants is dropped, and a message rings or arrives silently
-by the house's incident (ARCHITECTURE 12.11).
+by the house's incident (ARCHITECTURE 12.11). **"Nothing dropped" was the
+architect's reading, and it doubled the chat** — a silent message is still a
+message; the visit (17/11, above) is the user's "same subject, same place".
+
+**The photos manage themselves** (the user, 17/11/2026: "auto-administer
+the extra photos"). An unnamed face not seen for **60 days** is forgotten
+with its photos, its recordings and sightings kept; the household's dogs
+stop filling the unnamed list; the residents' mixed galleries are cleaned
+photo by photo by the evidence of one body, **applied directly, with a
+backup** — the user's choice over seeing it first (backlog 42, 43). **New
+people group themselves under a temporary name**, "Visitor N", which the
+user only renames (the user's idea, 17/11; backlog 44).
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

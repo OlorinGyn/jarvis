@@ -194,8 +194,8 @@ starts from the commit after it.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.32, one section per review (13.16 is the reading of
-the bad-detection reports); the next one is 13.33.
+`HISTORY.md` 13.3 to 13.33, one section per review (13.16 is the reading of
+the bad-detection reports, 13.33 the month left alone); the next one is 13.34.
 
 ---
 

@@ -2320,6 +2320,84 @@ production's tracks first (BACKLOG 3). One text fix in passing: the
 Portuguese raid log named the owl ARQUITETA in issues 19–22 against its
 bible's "O Arquiteto".
 
+### 13.33 A month left alone, read (17/11/2026)
+
+The user, 17/11: "many, many notifications every day, of myself" —
+eliminate the unnecessary ones and let the photos manage themselves. The
+18/10 complaint ("the worst of both worlds": late, and endless) is the same
+problem, measured now on a month. The scripts and contact sheets were the
+architect's, in its scratchpad; the numbers:
+
+**The messages** (16/10 21:28 → 17/11 12:25, 31.6 days, `v2026.10.16.3`,
+Home all along): 5,972 events, **3,020 messages sent — 96 a day, 44 of
+them loud** (median 64 a day, 310 at most). By kind: faceless person
+(`best view` 1,770, `side view` 538, `hidden person` 176) 2,484; unknown
+face 425; floor texts 72; named visitors 31; camera outages 8. **84 % of
+the faceless messages had a resident recognised on the same camera within
+30 minutes, 62 % within 5.** **The unknown faces are mostly the user**:
+the 425 come from 50 unnamed entries, and by eye on a contact sheet 13 of
+them are Gustavo (headphones, head down, night) — the five largest alone
+behind 369 mentions — 3 more probably him, 3 are Izabel; the rest are true
+visitors (a party on 31/10, a child, Dhaniel's and Ana Claudia's other
+faces). How: a resident's bad views never reach "sure", so they never
+enter his Chosen; two of them in one clip become an unnamed entry; from
+then on his bad views match that entry better than him — a loop that
+feeds itself. **The residents' galleries are mixed too**: Izabel's Chosen
+holds four of Gustavo's views (headphones, beard), his holds one woman's;
+the unnamed entry behind 103 messages holds Gustavo *and* two of Izabel's
+views — so merging whole entries would spread the mix. 108 events with a
+single person track recognised both residents. **75 messages failed to
+send** (Telegram read time-outs mostly, 11 of them unknown faces) and
+nothing retries (R63).
+
+**The photos**: 47 unnamed face entries (248 views) since 15/10; the
+residents' Chosen full (40 each), Waiting 23 and 35. **The 60 unnamed dogs
+are Aurora and Mirana, 59 of 60** (the other a person's crop), all first
+seen in the last 24 hours: the cap of 60 keeps one day of crops the
+matcher was not sure of, so the Dogs tab's unnamed list is the household's
+own dogs, renewed daily. Sightings: about 2,500 faces and 3,000 dogs a
+month, ~3 MB a day — the record, kept. Clips: 20 GB in 39 days, 356 GB
+free — not urgent.
+
+**Rules simulated on the month** (per camera, a **visit** is person events
+less than N minutes apart):
+
+| Rule | Messages a day |
+|---|---|
+| today | 96 |
+| R59's dog tracks alone | 95 |
+| a resident in the visit explains one body (one at a time only) + only news in a visit (more bodies at once, a face not yet seen in the visit) + dog tracks, 5 min | 34 |
+| the same with the galleries cleaned, 5 min | 27 |
+| the same with the galleries cleaned, 10 min | 23 |
+
+The floor's 72 texts sit in those numbers and would mostly go. "One body
+at a time" is on purpose: with the galleries mixed, two names can be one
+person, so two names never explain two bodies. **The price, the user's:**
+inside a visit where a resident was recognised, a faceless person who
+comes alone, less than N minutes after, sends nothing — only a recording;
+a stranger whose face shows, or who comes beside someone, still does. It
+changes the rule reconfirmed on 16/10 (CONTEXT 3). What is left (~25 a
+day): faceless people with no resident recognised in the visit, visitors'
+faces, more people than residents. The next cut, later and measured first:
+**a body recognised by its clothes** within the day, so a resident's
+faceless events after one recognised face are his — 443 of the 622
+faceless messages left had a resident within 30 minutes.
+
+**The photos, proposed**: unnamed dog crops that are probably a household
+dog stop becoming cards (they stay sightings); an unnamed face entry not
+seen for 30 days is forgotten with its photos, its sightings kept as the
+record (the user's); the mixed galleries cleaned **photo by photo**, by
+evidence — a view whose own event (`view_events`) had one body and one
+resident recognised is that resident's — checked against this review's
+labels, shown once to the user before it is applied, and then the same
+rule at scan time so look-alikes stop forming.
+
+**The user's answers, the same day:** the visit at 5 minutes; unnamed faces
+forgotten after 60 days, not 30; the cleaning applied directly, with a
+backup (CONTEXT 3; backlog 41–43). The 18/10 latency stays as measured
+then: in Home every message waits for the clip's face scan, median about
+30 s, minutes when scans queue; the visit cuts the messages, not the scan.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
