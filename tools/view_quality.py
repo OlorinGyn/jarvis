@@ -1,6 +1,6 @@
 """Measure the quality cut for reference photos: the lowest at which no stored view is wrong (backlog 45).
 
-Usage: uv run python tools/view_quality.py <folder> [--sheets DIR] [--verdicts FILE]
+Usage: uv run python tools/view_quality.py <folder> [--sheets DIR] [--verdicts FILE] [--unread ISO-TIME]
 
 <folder> is a J.A.R.V.I.S. folder, such as a copy of production's; its faces/,
 dogs/ and clips/ are only read. For every stored view, chosen or waiting, of
@@ -28,6 +28,13 @@ pass, and how many of them are poor and someone else's; the lowest cut with
 no poor photo and with nothing wrong; what the best pair keeps per named
 entry by day and at night; and leave-one-event-out recognition with only the
 views that pass as references, against today's chosen views.
+Two signals made for the question, each on its own (backlog 45 step 2):
+eDifFIQA(T), OpenCV Zoo's face image quality model, on the face aligned as
+for ArcFace, and the norm of ArcFace's stored, unnormalised embedding. Per
+signal the lowest cut with nothing wrong, what it keeps, recognition with it,
+and the honest check: the cut chosen on the views of every other day and its
+wrong views counted on the remaining days, both ways. --unread writes a sheet
+of the views of events after that time that hold no verdict yet.
 Contact sheets go to --sheets (a new temporary folder when not given).
 """
 
@@ -35,13 +42,15 @@ import itertools
 import json
 import sys
 import tempfile
+import time
 from collections import Counter, defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from jarvis import dogs, faces, people
+from jarvis import ROOT, dogs, faces, people
 
 from clean_gallery import LABELS
 
@@ -75,6 +84,9 @@ DOG_CUTS = {
     "one_dog": (0, 1),
 }
 LOWER_IS_BETTER = {"frontal"}
+QUALITY_MODEL = ROOT / "models" / "bench" / "ediffiqa_tiny_jun2024.onnx"
+MODEL_SIGNALS = ("ediffiqa", "norm")
+QUANTILES = tuple(q / 10 for q in range(10))
 
 
 def effective_side(grey):
@@ -107,13 +119,27 @@ def nearest_centre(found, centre, box=lambda f: f[:4]):
                                                          - centre)))
 
 
+@lru_cache(maxsize=1)
+def quality_net():
+    """eDifFIQA(T), OpenCV Zoo's face image quality model (CC-BY-4.0), read once."""
+    return cv2.dnn.readNetFromONNX(str(QUALITY_MODEL))
+
+
+def face_quality(image, face):
+    """eDifFIQA(T)'s score of a face aligned as ArcFace sees it: the higher, the more useful to a recogniser."""
+    net = quality_net()
+    crop = faces.align_crop(image, face["box"], face["points"])
+    net.setInput(cv2.dnn.blobFromImage(crop, 1 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=True))
+    return float(net.forward().ravel()[0])
+
+
 def face_photo_signals(image):
     """What a stored face photo shows of itself: detector, landmarks, frontal numbers, sharpness, resolution."""
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     centre = np.array([image.shape[1] / 2, image.shape[0] / 2])
     yunet = nearest_centre(faces._detect_in(image), centre)
     scrfd = nearest_centre(faces._landmarker().detect(image), centre, box=lambda f: f["box"])
-    signals = {"yunet": 0.0, "frontal": float("inf"), "spread": 0.0, "scrfd": 0.0,
+    signals = {"yunet": 0.0, "frontal": float("inf"), "spread": 0.0, "scrfd": 0.0, "ediffiqa": 0.0,
                "sharpness": sharpness(face_region(grey)), "infrared": dogs.is_infrared(image),
                "width": round(effective_side(grey) / faces.THUMB_CONTEXT)}
     if yunet is not None:
@@ -122,6 +148,7 @@ def face_photo_signals(image):
                        spread=eyes / float(yunet[2]) if yunet[2] else 0.0)
     if scrfd is not None:
         signals["scrfd"] = scrfd["score"]
+        signals["ediffiqa"] = face_quality(image, scrfd)
     return signals
 
 
@@ -176,6 +203,7 @@ def face_rows(gallery, folder):
             if sighting is not None:
                 signals["width"] = sighting.get("face_width", signals["width"])
             signals["frames"] = max((s.get("frames", 1) for s in own), default=1)
+            signals["norm"] = float(np.linalg.norm(embedding))
             rows.append({"photo": name, "path": str(gallery.view_dir / name), "entry": person["id"],
                          "entry_name": person["name"] or person.get("temporary_name") or person["id"],
                          "identity": face_identity(person), "named": bool(person["name"]),
@@ -488,6 +516,113 @@ def report(kind, rows, cuts, sure, folder, dog=False, rule=None):
     return rule
 
 
+def quantile_cuts(rows, signals, quantiles=QUANTILES):
+    """Per signal, cuts at the rows' quantiles: a scale no one had to guess."""
+    return {s: tuple(sorted({round(float(np.quantile([r[s] for r in rows], q)), 3) for q in quantiles}))
+            for s in signals}
+
+
+def clean_cut(rows, signal, kinds=("poor", "other")):
+    """The lowest of the rows' values at which no row passing it is wrong (higher is better); None for none."""
+    values = sorted({r[signal] for r in rows})
+    wrong = [r[signal] for r in rows if any(r[k] for k in kinds)]
+    if not wrong:
+        return values[0] if values else None
+    return next((v for v in values if v > max(wrong)), None)
+
+
+def day_of(row):
+    """The day of a row's event ("" for none)."""
+    parts = row["event"].split("/")
+    return parts[1] if len(parts) == 3 else ""
+
+
+def halves(rows):
+    """Each row's half, 0 or 1, by its event's day taken in turn, so no visit sits in both halves."""
+    order = {day: index % 2 for index, day in enumerate(sorted({day_of(r) for r in rows}))}
+    return [order[day_of(r)] for r in rows]
+
+
+def honest_check(rows, signal, kinds=("poor", "other")):
+    """The clean cut chosen on one half's views, and how many of the other half's views at it are poor or other."""
+    side = halves(rows)
+    found = []
+    for fit in (0, 1):
+        cut = clean_cut([r for r, h in zip(rows, side) if h == fit], signal, kinds)
+        test = [r for r, h in zip(rows, side) if h != fit and cut is not None and r[signal] >= cut]
+        found.append({"fit": fit, "cut": cut, "views": sum(h != fit for h in side), "kept": len(test),
+                      "poor": sum(r["poor"] for r in test), "other": sum(r["other"] for r in test)})
+    return found
+
+
+def honest_pairs(rows, cuts, sure, dog=False):
+    """The best pair of cuts chosen on one half's views (pair_table), counted on the other half, both ways."""
+    side = halves(rows)
+    found = []
+    for fit in (0, 1):
+        pairs = pair_table([r for r, h in zip(rows, side) if h == fit], cuts, top=1)
+        cut = pairs[0]["cut"] if pairs else None
+        keep = rule_of(cut) if cut else (lambda row: False)
+        test = [r for r, h in zip(rows, side) if h != fit and keep(r)]
+        found.append({"fit": fit, "cut": cut, "views": sum(h != fit for h in side), "kept": len(test),
+                      "poor": sum(r["poor"] for r in test), "other": sum(r["other"] for r in test),
+                      "recognition": recognition(rows, keep, sure, dog)})
+        print(f"  the best pair chosen on half {fit}: {cut}; the other half's {found[-1]['views']} views keep "
+              f"{found[-1]['kept']}, {found[-1]['poor']} poor and {found[-1]['other']} someone else's; "
+              f"recognition with it: {found[-1]['recognition']}")
+    return found
+
+
+def signal_report(kind, rows, signal, sure, folder, dog=False, kinds=("poor", "other")):
+    """One signal on its own: its clean cut, what it keeps, recognition with it, and the check on the other half."""
+    cut = clean_cut(rows, signal, kinds)
+    print(f"\n--- {kind}, {signal} alone: the lowest cut with no {' or '.join(kinds)} view is {cut}")
+    if cut is None:
+        return {"signal": signal, "cut": None}
+    keep = lambda row: row[signal] >= cut
+    print(f"  keeps {sum(map(keep, rows))} of {len(rows)}; per named entry:")
+    for name, counts in kept_per_entry(rows, keep).items():
+        print(f"    {name:24} {counts}")
+    found = {"signal": signal, "cut": cut, "kept": sum(map(keep, rows)),
+             "recognition": recognition(rows, keep, sure, dog), "halves": honest_check(rows, signal, kinds)}
+    print(f"  recognition with only the views at the cut: {found['recognition']}")
+    for half in found["halves"]:
+        reached = recognition(rows, lambda row, c=half["cut"]: c is not None and row[signal] >= c, sure, dog)
+        half["recognition"] = reached
+        print(f"  chosen on half {half['fit']}: cut {half['cut']}; the other half's {half['views']} views keep "
+              f"{half['kept']}, {half['poor']} poor and {half['other']} someone else's; recognition at it: {reached}")
+    for path in split_sheets(rows, keep, folder, f"{kind.lower()}_{signal}"):
+        print(f"  contact sheet: {path}")
+    return found
+
+
+def event_time(row):
+    """An event's start as an ISO time ("Back/2026-11-17/13-05-41" is "2026-11-17T13:05:41"); "" for none."""
+    parts = row["event"].split("/")
+    return f"{parts[1]}T{parts[2].replace('-', ':')}" if len(parts) == 3 else ""
+
+
+def unread_sheet(rows, verdicts, since, path):
+    """The views of events after since that hold no verdict, captioned for reading by eye."""
+    found = sorted((r for r in rows if event_time(r) > since and r["photo"] not in verdicts), key=event_time)
+    for row in found:
+        print(f"  unread: {row['photo']} {row['entry_name']} {row['event']}")
+    return sheet([tile(r, f"{r['photo'][:7]} {short(r)}") for r in found], path)
+
+
+def time_quality(rows, count=50):
+    """Milliseconds eDifFIQA(T) takes per face on this machine, alignment included (median)."""
+    found = []
+    for row in rows[:count]:
+        image = cv2.imread(row["path"])
+        detected = faces._landmarker().detect(image) if image is not None else None
+        if detected:
+            start = time.perf_counter()
+            face_quality(image, detected[0])
+            found.append(time.perf_counter() - start)
+    return 1000 * float(np.median(found)) if found else float("nan")
+
+
 def load_verdicts(path):
     """{photo name: "ok", "poor" or "other"}: a view not in it was read as good, or not read at all."""
     path = Path(path or VERDICTS)
@@ -516,10 +651,26 @@ def main(argv=None):
     face_gallery = faces.Gallery(folder / "faces" / faces.GALLERY_FILE.name)
     dog_gallery = dogs.DogGallery(folder / "dogs" / dogs.GALLERY_FILE.name)
     rows = flag_wrong(face_rows(face_gallery, folder), verdicts=verdicts)
-    report("Faces", rows, FACE_CUTS, faces.learn_threshold(values), sheets)
+    since = option(argv, "--unread")
+    if since:
+        print(f"unread face views: {unread_sheet(rows, verdicts, since, sheets / 'faces_unread.jpg')}")
+    sure = faces.learn_threshold(values)
+    cuts = {**FACE_CUTS, **quantile_cuts(rows, MODEL_SIGNALS)}
+    report("Faces", rows, cuts, sure, sheets)
+    print("  the honest check of step 1's signals alone:")
+    honest_pairs(rows, FACE_CUTS, sure)
+    print("  the honest check with the two new signals too:")
+    honest_pairs(rows, cuts, sure)
+    for signal in MODEL_SIGNALS:
+        signal_report("Faces", rows, signal, sure, sheets)
+    print(f"\neDifFIQA(T) per face on this machine: {time_quality(rows):.1f} ms (median)")
     sure = dogs.sure_distance(values)
     rows = flag_wrong(dog_rows(dog_gallery, folder), dog=True, verdicts=verdicts, sure=sure)
+    if since:
+        print(f"unread dog views: {unread_sheet(rows, verdicts, since, sheets / 'dogs_unread.jpg')}")
     report("Dogs", rows, DOG_CUTS, sure, sheets, dog=True)
+    honest_pairs(rows, DOG_CUTS, sure, dog=True)
+    signal_report("Dogs", rows, "box_side", sure, sheets, dog=True, kinds=("poor",))
     return 0
 
 

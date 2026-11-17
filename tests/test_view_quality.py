@@ -99,6 +99,56 @@ def test_who_an_entry_is_name_label_visitor_or_unknown():
                                       labels) is None
 
 
+def scored(event, quality, poor=False, other=False):
+    return {"event": event, "ediffiqa": quality, "poor": poor, "other": other}
+
+
+def test_the_clean_cut_is_the_first_value_above_every_wrong_one():
+    rows = [scored("Back/2026-11-01/10-00-00", q, poor=p, other=o)
+            for q, p, o in ((0.2, True, False), (0.5, False, True), (0.4, False, False), (0.6, False, False),
+                            (0.7, False, False))]
+    assert view_quality.clean_cut(rows, "ediffiqa") == 0.6
+    assert view_quality.clean_cut([scored("", 0.3), scored("", 0.1)], "ediffiqa") == 0.1
+    assert view_quality.clean_cut([scored("", 0.9, poor=True)], "ediffiqa") is None
+
+
+def test_the_halves_split_by_day_so_no_visit_is_in_both():
+    rows = [scored(f"Back/2026-11-0{day}/10-00-0{i}", 0.5) for day in (1, 2, 3) for i in (1, 2)]
+    assert view_quality.halves(rows) == [0, 0, 1, 1, 0, 0]
+
+
+def test_the_cut_chosen_on_one_half_is_counted_on_the_other():
+    rows = [scored("Back/2026-11-01/10-00-00", 0.3, poor=True), scored("Back/2026-11-01/11-00-00", 0.5),
+            scored("Back/2026-11-02/10-00-00", 0.4, poor=True), scored("Back/2026-11-02/11-00-00", 0.6)]
+    first, second = view_quality.honest_check(rows, "ediffiqa")
+    assert (first["cut"], first["kept"], first["poor"]) == (0.5, 1, 0)
+    assert (second["cut"], second["kept"], second["poor"]) == (0.6, 0, 0)
+    rows[1]["ediffiqa"] = 0.35
+    first, _ = view_quality.honest_check(rows, "ediffiqa")
+    assert (first["cut"], first["kept"], first["poor"]) == (0.35, 2, 1)
+
+
+def test_a_dog_cut_can_ignore_views_of_someone_else_that_no_quality_removes():
+    rows = [scored("", 0.9, other=True), scored("", 0.5, poor=True), scored("", 0.7)]
+    assert view_quality.clean_cut(rows, "ediffiqa") is None
+    assert view_quality.clean_cut(rows, "ediffiqa", kinds=("poor",)) == 0.7
+
+
+def test_the_best_pair_chosen_on_one_half_is_counted_on_the_other():
+    rows = [dict(scored(f"Back/2026-11-0{day}/10-00-00", q, poor=p), sharp=s)
+            for day, q, s, p in ((1, 0.5, 10, True), (1, 0.6, 50, False), (2, 0.6, 40, True), (2, 0.7, 60, False))]
+    for r in rows:
+        r.update(identity=None, vector=np.zeros(4), infrared=False, waiting=False, named=False, verdict=None)
+    first, second = view_quality.honest_pairs(rows, {"ediffiqa": (0.0, 0.55), "sharp": (0, 30)}, 0.4)
+    assert first["cut"] == {"ediffiqa": 0.0, "sharp": 30} and (first["kept"], first["poor"]) == (2, 1)
+    assert second["cut"] is None and second["kept"] == 0
+
+
+def test_an_event_name_reads_as_its_start_time():
+    assert view_quality.event_time({"event": "Back/2026-11-17/13-05-41"}) == "2026-11-17T13:05:41"
+    assert view_quality.event_time({"event": ""}) == ""
+
+
 def test_the_verdicts_of_17_11_ship_beside_the_tool():
     verdicts = view_quality.load_verdicts(None)
     assert set(verdicts.values()) <= {"ok", "poor", "other"}
