@@ -130,6 +130,7 @@ class Record:
         self.tracks = {}
         self.present = []
         self.untracked_runs = 0
+        self.untracked_people = 0
 
     def add(self, moment, observed):
         """Count one run of the tracker at moment seconds; observed None is a run the tracker failed on."""
@@ -139,6 +140,7 @@ class Record:
         seen = set()
         for track_id, detection in observed:
             if track_id is None:
+                self.untracked_people += detection.label == "person"
                 continue
             seen.add(track_id)
             entry = self.tracks.setdefault(track_id, {"first": moment, "labels": Counter(), "run": 0,
@@ -155,8 +157,8 @@ class Record:
         return max((len(seen & people) for seen in self.present), default=0)
 
     def decided(self):
-        """The summary the notification may act on: None when a run went untracked, so the event decides by its boxes."""
-        return None if self.untracked_runs else self.summary()
+        """The summary the notification may act on: None when a run or a person box went untracked, so the event decides by its boxes."""
+        return None if self.untracked_runs or self.untracked_people else self.summary()
 
     def summary(self):
         """The event JSON's tracks: id, first and last second from the start, frames per label, longest person run."""

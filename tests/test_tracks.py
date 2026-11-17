@@ -188,3 +188,12 @@ def test_an_event_with_an_untracked_run_decides_as_today():
     record.add(2.0, None)
     assert record.untracked_runs == 1 and record.decided() is None
     assert feed(walk(["dog"] * 3, step=0)).decided() == record.summary()
+
+
+def test_a_person_box_left_without_a_track_makes_the_event_decide_as_today():
+    record = feed(walk(["dog", "dog", "person", "dog"], step=0))
+    record.add(1.5, [(None, Detection(400, 100, 60, 150, 0.7, "person"))])
+    assert record.decided() is None
+    record = feed(walk(["dog", "dog", "person", "dog"], step=0))
+    record.add(1.5, [(None, Detection(400, 100, 60, 40, 0.7, "dog"))])
+    assert record.decided() == record.summary()

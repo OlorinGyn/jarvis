@@ -169,6 +169,19 @@ def test_a_face_not_yet_seen_in_the_visit_is_news_and_the_same_face_again_is_not
     assert skips(caplog) == ["Notification Front face, unknown face: skipped: visit (the same face again)"]
 
 
+def test_a_second_body_beside_a_face_already_seen_is_news(sent, best):
+    scan("Front", 0, [STRANGER], best=best)
+    assert scan("Front", 2, [STRANGER], best=best, people=2) == 1
+    assert scan("Front", 3, [STRANGER], best=best, people=2) == 0
+    assert sent == ["Front 12:00:00: unknown face", "Front 12:02:00: 2 people seen, 1 face found"]
+
+
+def test_a_resident_recognised_only_after_the_event_explains_nothing(sent, best):
+    scan("Back", 4, [GUSTAVO], best=best)
+    assert scan("Back", 2, best=best) == 1
+    assert sent == ["Back 12:02:00: no face seen, best view"]
+
+
 def test_a_face_is_news_once_whatever_the_visit_sent_first(sent, best):
     scan("Front", 0, best=best)
     assert scan("Front", 1, [STRANGER], best=best) == 1

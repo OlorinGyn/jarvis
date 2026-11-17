@@ -137,6 +137,12 @@ def test_the_token_never_reaches_the_log(telegram, caplog):
     assert all(TOKEN not in r.getMessage() for r in caplog.records)
 
 
+def test_an_error_requests_does_not_wrap_is_a_failed_attempt_not_a_crash(telegram):
+    fake = telegram(OSError("[WinError 10054] connection reset"), ValueError("bad answer"), OK)
+    assert notify._send_logged("Front best view", "x", None, SETTINGS) is False
+    assert len(fake.posts) == 3
+
+
 def test_the_test_button_tries_once(telegram):
     fake = telegram(SERVER_ERROR)
     assert notify.send("J.A.R.V.I.S.: test notification", settings=SETTINGS) == (False, "Internal Server Error")

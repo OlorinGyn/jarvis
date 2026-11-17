@@ -66,7 +66,7 @@ def _call(token, method, fields, file_field=None, file_path=None):
     try:
         answer = requests.post(API.format(token=token, method=method),
                                data=fields, files=files, timeout=TIMEOUT)
-    except requests.RequestException as problem:
+    except (requests.RequestException, OSError, ValueError) as problem:
         return False, _redact(str(problem), token), 0
     try:
         payload = answer.json()
@@ -303,9 +303,10 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     the best view, is the faceless-person case: a follow-up after a sent
     event, as before, held or not; or, when the person was held and nothing
     of the event went out, the person message itself. people is the most persons
-    YOLO saw in one frame: when the held person's faces were all silenced and
-    YOLO saw more people than faces, the frame where YOLO counted them,
-    people_view, goes out as the same case (R42 (b), R56); the best view when
+    YOLO saw in one frame: when the held person's faces were all silenced, or
+    already seen in the visit, and YOLO saw more people than faces, the
+    frame where YOLO counted them, people_view, goes out as the same case
+    (R42 (b), R56); the best view when
     that frame was not kept. In Home the held decision also weighs the
     camera's visit (backlog 41): an event whose person frames all sit in dog
     tracks sends no person message; a resident recognised in the visit
@@ -326,13 +327,16 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
         return 0
     can_faceless = modes.allowed("faceless_person", settings) and (held or notified)
     wanted = [s for s in found if modes.allowed(person_case(s, settings), settings)]
-    hidden = bool(held and found and not wanted and people > len(found) and picture)
     with _visit_lock:
         visit = _visit(camera, started_at, ended_at or started_at)
         quiet = rules and visit["sent"] and seen <= visit["people"]
         repeats = set(visit["faces"]) if rules and visit["sent"] else set()
+        news = [s for s in wanted if s.get("person_id") not in repeats]
+        hidden = bool(held and found and not news and people > len(found) and picture)
         _remember(visit, found, seen, started_at, settings)
         resident = visit["resident"] if rules and not found and seen <= 1 else None
+        if resident and resident[1] > started_at:
+            resident = None
         if resident:
             reason = f"visit ({resident[0]} recognized at {resident[1]:%H:%M:%S})"
         elif quiet and (hidden or not found):
@@ -340,8 +344,7 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
         else:
             reason = None
         if found:
-            planned = any(s.get("person_id") not in repeats for s in wanted) or (
-                hidden and can_faceless and reason is None)
+            planned = bool(news) or (hidden and can_faceless and reason is None)
         else:
             planned = (side is not None or bool(best)) and can_faceless and reason is None
         visit["sent"] |= bool(planned)
