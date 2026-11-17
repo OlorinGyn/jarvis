@@ -2413,7 +2413,10 @@ for this**: a face image quality model, trained to predict how useful a
 face photo is to a recogniser (head pose, blur, occlusion) — eDifFIQA(T)
 in OpenCV Zoo, an ONNX model `cv2.dnn` can run — and ArcFace's own
 embedding norm before normalisation, which grows with a face's quality (the
-idea behind MagFace). The choice went to the user (HISTORY 13.36).
+idea behind MagFace). The gallery stores ArcFace's raw output (`embed_view`
+does not normalise; `cosine` divides by the norms), so the norm costs
+nothing. The user chose, 17/11, to measure both before any cut is built
+(backlog 45, HISTORY 13.36).
 
 **Someone else's views are a filing problem, not a quality one**: 14 of the
 user's views sit in Izabel's entry (HISTORY 13.33 had counted four), a

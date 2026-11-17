@@ -1753,3 +1753,71 @@ message tried again) · **The Muzzle** (a failing tracker logged once a
 minute). Lurking: the owner's own bad views posing as strangers; the
 mixed galleries; the scan that makes every message late. Next: the album
 cleans itself — each photo moved by the evidence of one body.
+
+## Issue #26 — The Impeccable Album
+
+`v2026.11.17.2` · 17 Nov 2026
+
+**Panel 1.** The People album lies open on a table, its pages a mess: the
+owner's bearded face glued on Izabel's page, again and again; on a loose
+page, a stack of nameless photos of the owner looking at his shoes.
+CAPTION: After a month alone, the album no longer knew who was who.
+
+**Panel 2.** The beaver with a magnifying glass over a film strip of one
+event: one body walking, one name stamped above it.
+DEV: The evidence of one body. One person in the event, one resident
+recognised for sure — then every photo of that event is hers.
+J.A.R.V.I.S.: `23 moves.`
+ARCHITECT (behind him, lantern up): And two of them hand the owner's face
+to Izabel. Her "sure" was a 36-pixel face in one frame.
+
+**Panel 3.** The owner, in a speech balloon from a phone, pointing at a
+blurry photo.
+OWNER: Then only keep photos that are impeccable. Find the level where
+it never fails. The same for the dogs.
+
+**Panel 4.** The beaver at a long wall of 324 face photos, a red marker
+in hand, crossing out head-tops, blurs, two faces in one frame, a
+motorcycle helmet.
+DEV: I read every one. A hundred and two are poor. Eighteen are someone
+else — fourteen of them the owner, filed under Izabel.
+J.A.R.V.I.S.: `SCRFD ≥ 0.70 and sharpness ≥ 75: 41 kept, 0 wrong.`
+DEV: Forty-one of three hundred and twenty-four. The owner keeps five.
+
+**Panel 5.** The owl weighing two piles on a scale: a tiny pile of
+perfect photos against a big jar labelled "names said for sure: 71". The
+jar drains to 15.
+ARCHITECT: Never wrong on the labels it was chosen to dodge — and it
+silences four sure names in five. That is not "impeccable". That is
+"empty".
+CAPTION: The owner chose: first try a model made to judge a face's
+quality. And throw out the eighteen strangers now.
+
+**Panel 6.** Night at the M900. The owl, with a lantern, carefully
+peeling the owner's photos off Izabel's page into a box labelled
+"backup — 17/11 18:03". A T-shirt with a printed face goes into a tray
+marked "bad detection".
+J.A.R.V.I.S.: `Izabel: 40 → 26.` `Gustavo: 40 → 38.`
+
+**Panel 7.** The Dogs tab, a mountain of cards of two fluffy dogs,
+shrinking. A card that says "probably Aurora" turns into a plain line in
+a ledger instead.
+DEV: A dog that is probably Aurora is a sighting, not a card. And a
+nameless face nobody has seen for sixty days is forgotten — its
+recordings kept.
+
+**Panel 8.** The People page on a phone: the nameless cards now wear
+badges — "Visitor 9", "Visitor 6", "Visitor 5".
+CAPTION: New people group themselves under a temporary name. The owner
+only renames them.
+
+**Panel 9.** The M900. The parcel `v2026.11.17.2` goes in; a few seconds
+dark, then the drones rise.
+J.A.R.V.I.S.: `Temporary names given to 34 unnamed face entries.`
+`Back: ok` `Front: ok`
+
+**Closing card.** Abilities: **The Visitor's Badge** (a temporary name
+for every new face) · **The Short Memory** (a stranger unseen for sixty
+days forgotten) · **The Quiet Kennel** (a probable dog makes no card).
+Lurking: the cut that keeps the album impeccable without emptying it.
+Next: a judge of faces, trained for exactly this.

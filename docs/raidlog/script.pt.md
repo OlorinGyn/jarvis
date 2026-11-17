@@ -1825,3 +1825,74 @@ com defeito registrado uma vez por minuto). À espreita: as fotos ruins do
 próprio dono se passando por estranhos; as galerias misturadas; o scan que
 atrasa toda mensagem. Próxima: o álbum se limpa sozinho — cada foto movida
 pela evidência de um corpo só.
+
+## Edição #26 — O Álbum Impecável
+
+`v2026.11.17.2` · 17 nov 2026
+
+**Quadro 1.** O álbum de People aberto sobre a mesa, as páginas uma
+bagunça: o rosto barbudo do dono colado na página da Izabel, de novo e de
+novo; numa página solta, uma pilha de fotos sem nome do dono olhando para
+os sapatos.
+LEGENDA: Depois de um mês sozinha, o álbum já não sabia quem era quem.
+
+**Quadro 2.** O castor com uma lupa sobre a fita de um evento: um corpo
+andando, um nome carimbado em cima dele.
+DEV: A evidência de um corpo só. Uma pessoa no evento, um morador
+reconhecido com certeza — então toda foto daquele evento é dela.
+J.A.R.V.I.S.: `23 moves.`
+ARQUITETO (atrás dele, lanterna erguida): E duas delas entregam o rosto
+do dono à Izabel. O "com certeza" dela era um rosto de 36 pixels num
+quadro só.
+
+**Quadro 3.** O dono, num balão saindo de um celular, apontando uma foto
+borrada.
+DONO: Então só guarda foto impecável. Acha o nível em que nunca falha. O
+mesmo para os cachorros.
+
+**Quadro 4.** O castor diante de um mural comprido com 324 fotos de
+rostos, um marcador vermelho na mão, riscando topos de cabeça, borrões,
+dois rostos num quadro, um capacete de moto.
+DEV: Li uma por uma. Cento e duas são ruins. Dezoito são de outra pessoa
+— catorze delas o dono, arquivado como Izabel.
+J.A.R.V.I.S.: `SCRFD ≥ 0.70 and sharpness ≥ 75: 41 kept, 0 wrong.`
+DEV: Quarenta e uma de trezentas e vinte e quatro. O dono fica com cinco.
+
+**Quadro 5.** A coruja pesando duas pilhas numa balança: uma pilhinha de
+fotos perfeitas contra um pote com o rótulo "nomes ditos com certeza: 71".
+O pote esvazia até 15.
+ARQUITETO: Nunca erra nos rótulos que ele foi escolhido para driblar — e
+cala quatro de cada cinco nomes certos. Isso não é "impecável". É
+"vazio".
+LEGENDA: O dono escolheu: primeiro testar um modelo feito para julgar a
+qualidade de um rosto. E jogar fora já os dezoito estranhos.
+
+**Quadro 6.** Noite no M900. A coruja, com a lanterna, descolando com
+cuidado as fotos do dono da página da Izabel para uma caixa com o rótulo
+"backup — 17/11 18:03". Uma camiseta com um rosto estampado vai para uma
+bandeja marcada "bad detection".
+J.A.R.V.I.S.: `Izabel: 40 → 26.` `Gustavo: 40 → 38.`
+
+**Quadro 7.** A aba Dogs, uma montanha de cards de duas cachorras
+peludas, encolhendo. Um card que diz "probably Aurora" vira, em vez
+disso, uma linha simples num livro-caixa.
+DEV: Uma cachorra que provavelmente é a Aurora é um avistamento, não um
+card. E um rosto sem nome que ninguém vê há sessenta dias é esquecido —
+as gravações ficam.
+
+**Quadro 8.** A página People num celular: os cards sem nome agora usam
+crachás — "Visitor 9", "Visitor 6", "Visitor 5".
+LEGENDA: Gente nova se agrupa sob um nome temporário. O dono só
+renomeia.
+
+**Quadro 9.** O M900. O pacote `v2026.11.17.2` entra; alguns segundos no
+escuro, e os drones sobem.
+J.A.R.V.I.S.: `Temporary names given to 34 unnamed face entries.`
+`Back: ok` `Front: ok`
+
+**Cartão final.** Habilidades: **O Crachá de Visitante** (um nome
+temporário para cada rosto novo) · **A Memória Curta** (um estranho não
+visto por sessenta dias, esquecido) · **O Canil Silencioso** (uma
+cachorra provável não vira card). À espreita: o corte que deixa o álbum
+impecável sem esvaziá-lo. Próxima: um juiz de rostos, treinado
+exatamente para isso.

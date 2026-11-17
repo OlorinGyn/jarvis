@@ -355,3 +355,4 @@ review and commits.
 | 23 | `v2026.10.16.2` | The Tracker Who Never Looks / O Rastreador que Nunca Olha | written |
 | 24 | `v2026.10.16.3` | The First Footprint / A Primeira Pegada | written |
 | 25 | `v2026.11.17` | The Month Nobody Watched / O Mês que Ninguém Viu | written |
+| 26 | `v2026.11.17.2` | The Impeccable Album / O Álbum Impecável | written |

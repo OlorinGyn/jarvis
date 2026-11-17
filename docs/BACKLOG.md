@@ -61,7 +61,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33, `v2026.11.17.2`) | ARCHITECTURE 10.17 |
 | ✓ | **42.** The photos manage themselves: an unnamed face unseen for 60 days forgotten, a probable dog makes no card (decided 17/11, `c3b0dd2`, review 34, `v2026.11.17.2`); closes backlog 37's self-cleaning part | ARCHITECTURE 10.19 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–41 and 32, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44 and 32, in `PENDING.md`.
 
 ### Decided on 17/11/2026, to build
 
@@ -334,61 +334,74 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 33 is done** (HISTORY 13.35): developer 31 delivered backlog 43's
-evidence with `tools/clean_gallery.py`, and backlog 44, "Visitor N"; the
-review made the cleaning refuse an event with untracked boxes, as the scan
-does (`2154a68`). **No release yet**: the next deploy is the one that
-applies the cleaning. Shown its two wrong moves, **the user answered with
-backlog 45**: only photos of impeccable quality are kept as references, at
-a cut measured never to fail; the cleaning waits for that cut. The three
-misfiled dog views still in the gallery were deleted (17/11, with a
-backup); the other ten had already left it.
+**Review 34 is done** (HISTORY 13.36): developer 32 measured backlog 45's
+cut and built backlog 42. No signal the photos carry reaches "never
+wrong" cheaply — the one clean pair, SCRFD ≥ 0.70 and sharpness ≥ 75,
+keeps 41 of 324 face views and drops sure recognitions from 71 to 15 — so
+the cut went to the user, who chose **a model made for face quality,
+measured first**. The 18 views of someone else were deleted from
+production (with a backup). **Release `v2026.11.17.2`** carries backlogs
+42 and 44; the cleaning (43) and the cut (45) wait for this measurement.
 
-**Developer 32: backlog 45 measured, then backlog 42.**
+**Developer 33: backlog 45 step 2 — a face-quality model measured, then
+the gate if it passes.**
 
-1. **Backlog 45, the measurement — no rule built.** A tool,
-   `tools/view_quality.py <folder>`, on a **copy** of production's
-   `faces/`, `dogs/` and `clips/` (`C:\JARVIS` only read): per stored view
-   its quality signals — what the view, its sighting or its photo holds
-   (face width, frames, the detector's and the landmarks' scores, the
-   frontal gate's numbers, sharpness as the variance of the Laplacian; for
-   dogs crop size, sharpness, day or night) — and, per candidate cut on
-   each signal and on the few combinations that matter, how many views
-   pass, how many of those are **wrong**: matched to another entry by
-   other visits' views (leave-one-event-out, R55's `face_tuning`/
-   `dog_tuning`), or known bad — HISTORY 13.33's labels, the misfiled
-   views, a contact sheet per cut read by eye. The lowest cut with **0
-   wrong**, for faces and for dogs; what it keeps per named entry (views
-   left by day and at night); and the leave-one-event-out accuracy of
-   recognition with only those views as references against today's. If no
-   cut reaches 0, the best and why. Contact sheets of what the cut keeps
-   and drops, outside the folder.
-2. **Backlog 42**, by tests first: (a) an unnamed face entry not seen for
-   60 days (its last sighting) is forgotten with its view photos; its
-   sightings stay and read "?" on Recordings, as a forgotten dog's do; a
-   named entry is never touched; checked once a day by the service. A
-   forgotten visitor's number is never given again (`_next_visitor` reads
-   the header's counter; a test). (b) a dog crop that is probably a named
-   dog (ARCHITECTURE 20's probable distance and ratio) stays a sighting
-   with that name and makes no unnamed card.
+1. **The measurement, in `tools/view_quality.py`, on a fresh copy of
+   production's `faces/`, `dogs/` and event JSONs** (`C:\JARVIS` only
+   read; the 18 views are gone from it). Views new since 17/11 have no
+   verdict: read them by eye and add them to
+   `tools/view_quality_verdicts.json`, as strictly as before. Two new
+   face signals:
+   (a) **eDifFIQA(T)**, OpenCV Zoo's face image quality model
+   (`face_image_quality_assessment_ediffiqa`, `ediffiqa_tiny_jun2024.onnx`),
+   through `cv2.dnn`, on the face aligned as for ArcFace (112×112, the same
+   `align_crop`) unless its own demo aligns otherwise. **Read its LICENSE
+   first** and write it in the HANDOFF: a licence that does not allow a
+   private home system goes to the user before anything else (the
+   InsightFace precedent, CONTEXT 3). The file goes to `models/bench`
+   for now.
+   (b) **ArcFace's embedding norm**: the gallery stores the raw output of
+   the R50 (`embed_view` does not normalise; `cosine` divides by the
+   norms), so it is the norm of each stored embedding — free.
+   Per signal, the same tables: kept / poor / someone else's per cut, the
+   lowest cut with 0 poor and 0 someone else's, what it keeps per named
+   entry by day and at night, and leave-one-event-out recognition with
+   only those views. **Then the honest check** (PYTHON 52.3): choose the
+   cut on the views of half the events and count the wrong ones on the
+   other half, both ways. Time the model per face on the M900.
+2. **The rule** (the user, 17/11, review 34): a signal whose clean cut,
+   checked on the other half, still finds 0 wrong and keeps **more
+   right-sure recognitions than the pair's 15** is the face cut — built
+   without asking again. If neither does, stop after step 1: the pair's
+   price goes back to the user.
+3. **Only if step 2 found the cut — the gate, by tests first.** A view
+   enters a face gallery (a new entry, a sure match's `reinforce`, naming,
+   `assign`, a merge, the waiting queue, the cleaning's moves) only when it
+   passes the face cut; a dog view (a sure match, naming, a merge, an
+   unnamed crop) only when its box in the frame is at least 120 px (ARCHITECTURE 10.18:
+   0 poor, measured on 17/11). The scan, the matching and the messages do
+   not change. The model, if (a), is fetched like the dog model — pinned by
+   SHA-256 in `downloads.py`, before the deploy stops anything. A
+   once-only `--apply` (in `view_quality.py` or its own tool, as
+   `clean_gallery.py` does: a dry run by default, refuses while the
+   folder's service answers, a backup of `faces/` and `dogs/` first)
+   deletes the stored views below the cut; a named entry keeps its last
+   view. `check_data` reads everything afterwards.
 
-**HANDOFF:** the cut's tables for faces and dogs, what each keeps per
-entry, recognition before and after, the contact sheets' paths.
+**HANDOFF:** the licence; the two signals' tables and the half-and-half
+check; the cut, if any, and what it keeps per entry; the time per face;
+the contact sheets' paths.
 
-**The architect, at review 34:** read the cut on the contact sheets — it
-is applied without asking again (the user, 17/11), so the reading is the
-check: a cut that is not 0 wrong goes to the user instead; then plan
-developer 33: the gate on every way into a gallery, the cleaning at the
-cut, the views below it deleted with a backup — and the once-only settle
-of backlog 28 after the cut, since the 40-view rule keeps the most varied
-views, not the best. Then the release with "Visitor N", the deploy, the
-cleaning on production, People at 375 px and on a desktop, raid log 26.
+**The architect, at review 35:** read the cut on the sheets; then the
+release with the gate, the deploy, the `--apply` on production after the
+stop, the cleaning (43) at the cut and the once-only settle of backlog 28
+— in that order; People and Dogs at 375 px and on a desktop; raid log 27.
 After that, the late messages of 18/10 (`PENDING.md`).
 
 **Waits for the user:** choosing the sure threshold for faces and the sure
 distance for dogs from the two tables in Settings → Detection (the defaults
 hold until then); the M900 sleeping at the sign-in screen; the checks on
-the M900, `v2026.11.17` among them (`PENDING.md`).
+the M900, `v2026.11.17.2` among them (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later
 sessions. R14, R12 and R9 as before. Every other open backlog item is

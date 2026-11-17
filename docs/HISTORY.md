@@ -2694,6 +2694,23 @@ Settings can undo it. None of the 18 is left in the gallery or on disk.
 The three dog crops read as people stay unnamed cards for the user to
 report.
 
+**Release `v2026.11.17.2`** (backlogs 42 and 44, with review 33's fix),
+deployed at 18:07: 7,326 events, 45 face entries and 2,598 face
+sightings, 62 dogs and 2,999 dog sightings, 25 reports read before and
+after; packages imported in 14 s before the stop; cameras ok 0.1 s after
+the start. "Temporary names given to 34 unnamed face entries"; nothing
+forgotten (the faces start on 10/10). The old version's web server
+logged an invalid request and an `h11` error in the 30 ms between "Shutdown
+requested through the web" and "Stopped" — the stop's own connection
+torn down as the server exits; the stop was clean. People checked on
+production at 375 px and 1280 px in the built-in browser: "Visitor 9",
+"18 views" fit on a card, no horizontal scroll; Izabel reads "26 views
++35". The page took about 3 s to list People right after the start.
+Raid log 26.
+
+**For the next session.** Developer 33: backlog 45 step 2, eDifFIQA and
+ArcFace's norm measured, then the gate only if one passes (BACKLOG 3).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -2777,4 +2794,4 @@ of `CONTEXT.md`.
 | D31 | developer | high | 17/11 13:33–13:52 | session 31: backlog 43 steps 1–2 — the evidence, `apply_cleaning`, `clean_gallery.py`, the dry run on a copy (23 moves, 2 wrong) — and backlog 44, "Visitor N" and one body's unnamed faces merged; the scan-time step not built, 42 not started (421 tests) | 51% → 65% | 7% → 9% | 77k → about 230k tokens, a new conversation |
 | A44 | architect | ultracode | 17/11 13:53–14:15 | review 33: the diff read whole, one hole fixed by tests first, the dry run read again on production itself; HANDOFF integrated, ARCHITECTURE 3, 10.17 and 19.2, PYTHON 51; no release — the cleaning's rule went to the user; then the user's answers: backlog 45 (the quality cut), three misfiled dog views deleted on production through the page's API; not handed over (the window) | 67% → 79% | 9% → 11% | 72k → about 235k tokens, a new conversation (started by the developer's handover) |
 | D32 | developer | high | 17/11 afternoon | session 32: backlog 45 step 1 — `view_quality.py`, 324 face and 139 dog views read by eye, the cuts and recognition per cut — and backlog 42 (440 tests) | 1% → 21% (new window) | 12% → 14% | 78k → about 310k tokens, a new conversation |
-| A45 | architect | ultracode | 17/11 17:35– | review 34: the diff read whole, the contact sheets read, the user's two answers, the 18 views deleted on production; release `v2026.11.17.2` | 23% → | 14% → | 72k → |
+| A45 | architect | ultracode | 17/11 17:35–18:15 | review 34: the diff read whole, the contact sheets read, the quality model searched, the user's two answers, the 18 views deleted on production; release and deploy `v2026.11.17.2`, People at 375 and 1280 px, raid log 26; developer 33 planned | 23% → 37% | 14% → 16% | 72k → about 265k tokens, a new conversation (started by the developer's handover) |
