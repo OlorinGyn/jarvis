@@ -128,6 +128,6 @@ def test_a_crop_that_is_probably_a_named_dog_stays_a_sighting_and_makes_no_card(
 
 def test_a_crop_no_named_dog_explains_still_makes_a_card(two_dogs, tmp_path, monkeypatch):
     monkeypatch.setattr(dogs, "describe", lambda frame, box: (descriptor(7, True), np.zeros((8, 8, 3), "uint8")))
-    added = dogs.record(np.zeros((8, 8, 3), "uint8"), [(0, 0, 4, 4)], "Front",
+    added = dogs.record(np.zeros((8, 8, 3), "uint8"), [(0, 0, 120, 120)], "Front",
                         datetime(2026, 11, 17, 10, 0, 0), tmp_path / "c.mp4", two_dogs)
     assert len(added) == 1 and len(dogs.DogGallery(two_dogs.path).people) == 3

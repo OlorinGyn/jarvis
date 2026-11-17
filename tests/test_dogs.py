@@ -58,7 +58,7 @@ def test_the_real_model_gives_a_unit_embedding_and_the_same_one_twice():
 
 
 def test_record_adds_one_unnamed_dog_per_box_with_a_sighting(gallery, tmp_path):
-    added = dogs.record(scene(False), [(110, 60, 100, 140), (10, 10, 60, 60)], "Front", START,
+    added = dogs.record(scene(False), [(110, 60, 100, 140), (190, 100, 120, 130)], "Front", START,
                         tmp_path / "clip.mp4", gallery)
     assert len(added) == 2 and all(dog_id.startswith("d_") for dog_id in added)
     sightings = [json.loads(p.read_text(encoding="utf-8")) for p in (tmp_path / "2026-10-10").glob("*.json")]

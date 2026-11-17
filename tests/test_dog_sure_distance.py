@@ -62,10 +62,10 @@ def test_record_learns_a_view_only_within_the_chosen_distance(gallery, config, m
     monkeypatch.setattr(dogs, "describe", lambda frame, box, network=None: (at_distance(10, 0.30), crop))
     started = datetime(2026, 10, 15, 9, 0, 0)
     choose(config, 0.25)
-    assert dogs.record(FRAME, [(10, 10, 50, 50)], "Back", started, "clips/Back/2026-10-15/09-00-00.mp4",
+    assert dogs.record(FRAME, [(10, 10, 150, 150)], "Back", started, "clips/Back/2026-10-15/09-00-00.mp4",
                        gallery) != ["d_aaaaaaaa"]
     choose(config, 0.31)
-    assert dogs.record(FRAME, [(10, 10, 50, 50)], "Back", started, "clips/Back/2026-10-15/09-00-00.mp4",
+    assert dogs.record(FRAME, [(10, 10, 150, 150)], "Back", started, "clips/Back/2026-10-15/09-00-00.mp4",
                        gallery) == ["d_aaaaaaaa"]
     assert len(dogs.DogGallery(gallery.path).get("d_aaaaaaaa")["embeddings"]) == 2
 

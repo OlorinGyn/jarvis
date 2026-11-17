@@ -147,5 +147,5 @@ def test_a_dog_crop_records_the_event_of_its_clip(tmp_path):
     gallery = dogs.DogGallery(tmp_path / "gallery.json")
     frame = np.full((200, 200, 3), (40, 90, 160), np.uint8)
     started = datetime(2026, 10, 14, 11, 5, 41)
-    [dog_id] = dogs.record(frame, [(50, 50, 80, 80)], "Back", started, "clips/Back/2026-10-14/11-05-41.mp4", gallery)
+    [dog_id] = dogs.record(frame, [(40, 40, 120, 120)], "Back", started, "clips/Back/2026-10-14/11-05-41.mp4", gallery)
     assert faces.events_of(dogs.DogGallery(gallery.path).get(dog_id)) == [EVENT]

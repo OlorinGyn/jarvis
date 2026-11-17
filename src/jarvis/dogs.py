@@ -44,6 +44,7 @@ PROBABLE_DISTANCE = 0.39
 PROBABLE_RATIO = 0.8
 SURE_SWEEP = tuple(round(0.20 + 0.02 * step, 2) for step in range(10)) + (PROBABLE_DISTANCE,)
 COPY_DISTANCE = 0.0001
+MIN_VIEW_BOX = 120
 
 logger = logging.getLogger(__name__)
 
@@ -459,7 +460,9 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
 
     A sure match teaches that dog one more view; a probable one stays a
     sighting with that name and no card (backlog 42); anything less becomes
-    an unnamed crop for the Dogs tab, where the user names or merges it.
+    an unnamed crop for the Dogs tab, where the user names or merges it. A
+    box under MIN_VIEW_BOX px stores no view (backlog 45): a sure match is
+    still named, and an unmatched crop is a sighting of no dog, with no card.
     Returns the dog ids the sightings point to.
     """
     if frame is None or not boxes:
@@ -469,17 +472,20 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
     folder.mkdir(parents=True, exist_ok=True)
     stamp = started_at.strftime("%H-%M-%S")
     sure = sure_distance()
-    added = []
+    added, small = [], 0
     for box in boxes:
         descriptor, crop = describe(frame, box)
         name = f"{stamp}_{uuid.uuid4().hex[:6]}"
         thumbnail = folder / f"{name}.jpg"
         cv2.imwrite(str(thumbnail), crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
         result = match(descriptor, gallery, sure)
+        keeps = max(box[2], box[3]) >= MIN_VIEW_BOX
+        small += not keeps
         if result["certainty"] == "sure":
             dog_id = result["dog_id"]
-            gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))
-        elif result["certainty"] == "probable":
+            if keeps:
+                gallery.reinforce(dog_id, descriptor, crop, faces.event_of(clip))
+        elif result["certainty"] == "probable" or not keeps:
             dog_id = ""
         else:
             dog_id = gallery.add([descriptor], thumbnail, [crop], faces.event_of(clip))
@@ -499,8 +505,9 @@ def record(frame, boxes, camera, started_at, clip, gallery=None):
         (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2), encoding="utf-8")
         if dog_id:
             added.append(dog_id)
-    logger.info("  dogs %s %s: %d crop(s) added to the gallery, %d probable kept as sightings only", camera,
-                stamp, len(added), len(boxes) - len(added))
+    logger.info("  dogs %s %s: %d crop(s) added to the gallery, %d probable kept as sightings only, "
+                "%d under %d px with no view kept", camera, stamp, len(added), len(boxes) - len(added), small,
+                MIN_VIEW_BOX)
     return added
 
 
