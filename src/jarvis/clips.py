@@ -401,6 +401,8 @@ class EventRecorder:
         if self.tracks.tracks:
             meta["tracks"] = self.tracks.summary()
             meta["most_person_tracks"] = self.tracks.most_person_tracks()
+        if self.tracks.untracked_runs:
+            meta["untracked_runs"] = self.tracks.untracked_runs
         self.base.with_suffix(".json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8")
         return meta
@@ -423,7 +425,7 @@ class EventRecorder:
                                      followup, [tuple(s) for s in self.person_spans],
                                      self.dog_view, self.person_held),
                                kwargs={"people": self.most_people, "people_view": people_view,
-                                       "tracks": meta.get("tracks")})
+                                       "tracks": self.tracks.decided()})
         job.start()
         _jobs.append(job)
 

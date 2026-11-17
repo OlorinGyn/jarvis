@@ -26,7 +26,7 @@ from jarvis.capture import FFmpegCamera
 from jarvis.clips import BUFFER_DIR, EventRecorder, wait_for_jobs
 from jarvis.motion import MotionDetector
 from jarvis.people import SubjectDetector
-from jarvis.tracks import Tracks
+from jarvis.tracks import Failures, Tracks
 
 DEFAULT_STREAM = "stream1"
 PLACEHOLDER_IP = "ip-da-camera"
@@ -81,6 +81,7 @@ class Camera:
         self.motion = MotionDetector()
         self.subjects = SubjectDetector()
         self.tracks = Tracks()
+        self.failures = Failures(label)
         self.recorder = EventRecorder(self.stream)
 
     def read(self):
@@ -90,7 +91,7 @@ class Camera:
         self.stream.prune(self.recorder.protect_from)
 
     def detect(self, frame, motion_boxes):
-        """The detector's subjects, and (moment, tracked) when YOLO ran on this frame, else None."""
+        """The detector's subjects, and (moment, tracked) when YOLO ran on this frame, else None; tracked None when tracking failed."""
         ran = self.subjects.last_run
         subjects = self.subjects.detect(frame, motion_boxes)
         if self.subjects.last_run == ran:
@@ -98,8 +99,9 @@ class Camera:
         try:
             return subjects, (self.subjects.last_run, self.tracks.update(subjects, self.subjects.last_run))
         except Exception:
-            logger.exception("Tracking failed on %s; this run goes untracked", self.label)
-            return subjects, None
+            self.failures.failed()
+            self.tracks.restart()
+            return subjects, (self.subjects.last_run, None)
 
     def close(self):
         self.stream.stop()

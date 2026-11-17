@@ -90,7 +90,8 @@ class Detector:
 def camera(detector, tracks):
     from jarvis.cameras import Camera
     cam = Camera.__new__(Camera)
-    cam.label, cam.subjects, cam.tracks = "Front", detector, tracks
+    from jarvis.tracks import Failures
+    cam.label, cam.subjects, cam.tracks, cam.failures = "Front", detector, tracks, Failures("Front")
     return cam
 
 
@@ -109,7 +110,81 @@ def test_a_tracking_failure_leaves_the_subjects_and_the_loop_alone(caplog):
         def update(self, found, moment):
             raise ValueError("broken")
 
+        def restart(self):
+            pass
+
     detector = Detector()
     detector.runs = True
     subjects, tracked = camera(detector, Broken()).detect(None, [(0, 0, 10, 10)])
-    assert subjects and tracked is None and "Tracking failed on Front" in caplog.text
+    assert subjects and tracked == (0.3, None) and "Tracking failed on Front" in caplog.text
+
+
+class Clock:
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+
+def test_a_tracker_failing_every_run_writes_one_traceback_then_a_line_a_minute(caplog):
+    from jarvis.tracks import Failures
+    clock = Clock()
+    failures = Failures("Front", clock)
+    for _ in range(3 * 60 * 3):
+        try:
+            raise ValueError("broken")
+        except ValueError:
+            failures.failed()
+        clock.now += 1 / 3
+    records = [r for r in caplog.records if "Tracking failed" in r.getMessage()]
+    assert len(records) == 3
+    assert records[0].exc_info and not any(r.exc_info for r in records[1:])
+    assert records[1].getMessage() == "Tracking failed 180 more time(s) on Front in the last 60 s"
+
+
+def test_a_failure_after_a_quiet_minute_has_its_traceback_again(caplog):
+    from jarvis.tracks import Failures
+    clock = Clock()
+    failures = Failures("Front", clock)
+    for moment in (0.0, 30.0, 61.0, 200.0):
+        clock.now = moment
+        try:
+            raise ValueError("broken")
+        except ValueError:
+            failures.failed()
+    records = [r for r in caplog.records if "Tracking failed" in r.getMessage()]
+    assert [bool(r.exc_info) for r in records] == [True, False, True]
+
+
+def test_a_restarted_tracker_keeps_its_ids_unique():
+    tracks = Tracks()
+    first = feed(walk(["person"] * 3, step=0), tracks)
+    tracks.restart()
+    later = feed([(moment + 1.0, found) for moment, found in walk(["person"] * 3, step=0)], tracks)
+    assert set(later.tracks).isdisjoint(first.tracks) and min(later.tracks) > max(first.tracks)
+
+
+def test_a_failed_run_restarts_the_tracker_and_is_marked_untracked(caplog):
+    class Broken(Tracks):
+        restarted = 0
+
+        def update(self, found, moment):
+            raise ValueError("broken")
+
+        def restart(self):
+            Broken.restarted += 1
+
+    detector = Detector()
+    detector.runs = True
+    broken = Broken()
+    before = Broken.restarted
+    subjects, tracked = camera(detector, broken).detect(None, [(0, 0, 10, 10)])
+    assert subjects and tracked == (0.3, None) and Broken.restarted == before + 1
+
+
+def test_an_event_with_an_untracked_run_decides_as_today():
+    record = feed(walk(["dog"] * 3, step=0))
+    record.add(2.0, None)
+    assert record.untracked_runs == 1 and record.decided() is None
+    assert feed(walk(["dog"] * 3, step=0)).decided() == record.summary()

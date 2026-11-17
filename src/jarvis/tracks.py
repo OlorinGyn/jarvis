@@ -9,7 +9,9 @@ person frames are all a dog's sends no person message (backlog 41).
 See docs/ARCHITECTURE.md section 7.16.
 """
 
+import logging
 import math
+import time
 from collections import Counter
 
 import numpy as np
@@ -25,6 +27,9 @@ FRAME_RATE = ANALYSIS_FPS / RUN_EVERY
 LIBRARY_FPS = 30
 LOST_SECONDS = 3.0
 PERSON_RUN = 2
+FAILURE_LOG_SECONDS = 60
+
+logger = logging.getLogger(__name__)
 
 
 def as_detections(found):
@@ -56,11 +61,16 @@ class Tracks:
     """One camera's tracker; ids are unique for the life of the object, so a walk across two events keeps its id."""
 
     def __init__(self, lost_seconds=LOST_SECONDS):
-        self.tracker = ByteTrackTracker(lost_track_buffer=round(lost_seconds * LIBRARY_FPS), frame_rate=FRAME_RATE,
-                                        track_activation_threshold=0.0, high_conf_det_threshold=0.0,
-                                        minimum_consecutive_frames=1)
-        self.ids = {}
+        self.lost_seconds = lost_seconds
         self.next_id = 1
+        self.restart()
+
+    def restart(self):
+        """A fresh library tracker, its state forgotten; the id counter goes on, so ids stay unique."""
+        self.tracker = ByteTrackTracker(lost_track_buffer=round(self.lost_seconds * LIBRARY_FPS),
+                                        frame_rate=FRAME_RATE, track_activation_threshold=0.0,
+                                        high_conf_det_threshold=0.0, minimum_consecutive_frames=1)
+        self.ids = {}
 
     def update(self, found, moment):
         """Feed one run of YOLO at moment seconds; (track id, detection) per detection, the id None if untracked."""
@@ -89,6 +99,29 @@ class Tracks:
         return None
 
 
+class Failures:
+    """One camera's tracking failures in the log: the first with its traceback, then at most a line a minute."""
+
+    def __init__(self, label, clock=time.monotonic):
+        self.label, self.clock = label, clock
+        self.since = None
+        self.count = 0
+
+    def failed(self):
+        """Log the exception being handled, or count it when a line went out less than a minute ago."""
+        now = self.clock()
+        if self.since is None or (now - self.since >= FAILURE_LOG_SECONDS and not self.count):
+            logger.exception("Tracking failed on %s; this run goes untracked and the tracker starts afresh",
+                             self.label)
+            self.since = now
+            return
+        self.count += 1
+        if now - self.since >= FAILURE_LOG_SECONDS:
+            logger.warning("Tracking failed %d more time(s) on %s in the last %d s", self.count, self.label,
+                           FAILURE_LOG_SECONDS)
+            self.since, self.count = now, 0
+
+
 class Record:
     """What one stretch of time saw of its tracks: per track its seconds, frames per label and longest person run."""
 
@@ -96,9 +129,13 @@ class Record:
         self.start = start
         self.tracks = {}
         self.present = []
+        self.untracked_runs = 0
 
     def add(self, moment, observed):
-        """Count one run of the tracker at moment seconds."""
+        """Count one run of the tracker at moment seconds; observed None is a run the tracker failed on."""
+        if observed is None:
+            self.untracked_runs += 1
+            return
         seen = set()
         for track_id, detection in observed:
             if track_id is None:
@@ -116,6 +153,10 @@ class Record:
         """The most tracks voted person seen in one run."""
         people = {track_id for track_id, entry in self.tracks.items() if voted(entry["labels"]) == "person"}
         return max((len(seen & people) for seen in self.present), default=0)
+
+    def decided(self):
+        """The summary the notification may act on: None when a run went untracked, so the event decides by its boxes."""
+        return None if self.untracked_runs else self.summary()
 
     def summary(self):
         """The event JSON's tracks: id, first and last second from the start, frames per label, longest person run."""
