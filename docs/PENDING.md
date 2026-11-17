@@ -155,6 +155,35 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
+**"The worst of both worlds" — the user, 18/10/2026: messages arrive late
+and never stop.** Measured on production from 17/10 01:18 to 18/10 18:44
+(41.5 h, `v2026.10.16.3`): 150 messages, 48 of them loud; from the event's
+start, median 34 s, but 41 took over 2 min and 23 over 5 (9 min at worst).
+The worst: the Back porch, 17/10 19:40–20:05, the user with a visitor —
+32 messages, 24 of them "hidden person"; the Front door, 17/10
+02:30–06:00, someone on the phone with no face seen — 63. Two causes: one
+message per event, and a person who stays makes a new event every minute
+or two, with the repeats sent silently since `v2026.10.16` — the
+architect's choice, against the user's own "the same subject in the same
+place does not deserve a new message" (CONTEXT 3); and in Home every
+message waits for the clip's face scan, which queues when events pile up.
+**The architect's proposal: one visit, one message.** Per camera, a visit
+lasts while person events come less than 5 min apart; its first message
+rings; within it, only a change sends another, and rings — an unknown face
+not yet seen in the visit, or more people at once than before; the rest
+stays on Recordings. Scans that can no longer change anything are skipped,
+so the queue stops growing; Home keeps a floor of about 30 s (the clip
+closing and the face check), lowered later only by checking faces while
+the event records. Simulated on the same 41.5 h: 150 → 41 messages (87 →
+24 a day; 52 at 2 min, 37 at 10); the porch 32 → 3, the Front night
+63 → 11. **The price, the user's to accept:** within a visit, a faceless
+person who arrives alone less than 5 min after another left sends no new
+message, only a recording — it reverses part of the rule reconfirmed on
+16/10 (CONTEXT 3); tracking cannot close it, since anyone out of view for
+over ~7 s comes back as a new track. If accepted, it goes before R59 in
+developer 30's plan. **No answer yet** (asked 18/10; 17/11: nothing has
+changed since, production still on `v2026.10.16.3`).
+
 **Self-cleaning People and Dogs — the architect's proposal, review 24**
 (backlog 37; the user, 14/10: "perhaps clean themselves now and then").
 Measured on production on 14/10: most of it already cleans itself. A
