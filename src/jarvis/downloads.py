@@ -30,7 +30,10 @@ DINOV2 = "dinov2_small.onnx"
 DINOV2_URL = ("https://huggingface.co/onnx-community/dinov2-small/resolve/"
               "8b1f705a3a7f6f062f6bdd21986c1583d3ef105d/onnx/model.onnx")
 DINOV2_SHA256 = "f22797eabf810a75e41de68d378541ebea372122b25c4ce3ef25ff618250c20a"
-PINNED = {DINOV2: (DINOV2_URL, DINOV2_SHA256)}
+EDIFFIQA = "ediffiqa_tiny_jun2024.onnx"
+EDIFFIQA_URL = f"{OPENCV_ZOO}/face_image_quality_assessment_ediffiqa/{EDIFFIQA}"
+EDIFFIQA_SHA256 = "9426c899cc0f01665240cb7d9e7f98e18e24e456c178326c771a43da289bfc6a"
+PINNED = {DINOV2: (DINOV2_URL, DINOV2_SHA256), EDIFFIQA: (EDIFFIQA_URL, EDIFFIQA_SHA256)}
 MIN_SIZE = 1024
 
 

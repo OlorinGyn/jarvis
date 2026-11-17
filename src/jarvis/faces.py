@@ -38,6 +38,7 @@ DETECTOR_MODEL = MODEL_DIR / downloads.YUNET
 SFACE_MODEL = MODEL_DIR / downloads.SFACE
 LANDMARK_MODEL = MODEL_DIR / downloads.BUFFALO_FOLDER / downloads.SCRFD
 RECOGNISER_MODEL = MODEL_DIR / downloads.BUFFALO_FOLDER / downloads.ARCFACE
+QUALITY_MODEL = MODEL_DIR / downloads.EDIFFIQA
 EMBEDDING_MODEL = "arcface_w600k_r50"
 EMBEDDING_SIZE = 512
 FACE_DIR = ROOT / "faces"
@@ -58,6 +59,7 @@ REFINE_MARGIN = 1.0
 LANDMARK_VALUES = 14
 GOOD_FACE_WIDTH = 80
 MATCH_THRESHOLD = 0.30
+QUALITY_CUT = 0.40
 LEARN_THRESHOLD = settings.DEFAULTS[settings.FACE_SURE_KEY]
 SURE_SWEEP = tuple(round(0.30 + 0.025 * step, 3) for step in range(13))
 COPY_SIMILARITY = 0.9999
@@ -117,6 +119,13 @@ def _landmarker():
 def _recogniser():
     ensure_models()
     return cv2.dnn.readNetFromONNX(str(RECOGNISER_MODEL))
+
+
+@lru_cache(maxsize=1)
+def _quality_net():
+    """eDifFIQA(T), OpenCV Zoo's face image quality model (CC-BY-4.0), read once."""
+    ensure_models()
+    return cv2.dnn.readNetFromONNX(str(QUALITY_MODEL))
 
 
 def _distance_points(centres, distances):
@@ -187,16 +196,37 @@ def embed_view(image, centre=None):
     The image is a face photo framed like context_crop: a stored view, or the
     same square cut from a frame, so the gallery and the scan embed alike.
     """
+    face = _central_face(image, centre)
+    if face is None:
+        return None
+    return _aligned_output(_recogniser(), image, face).astype(np.float32)
+
+
+def _central_face(image, centre=None):
+    """The face SCRFD finds nearest centre (default the image's middle), or None without one."""
     found = _landmarker().detect(image)
     if not found:
         return None
     centre = np.array(centre if centre is not None else (image.shape[1] / 2, image.shape[0] / 2))
-    face = min(found, key=lambda f: float(np.linalg.norm(f["box"][:2] + f["box"][2:4] / 2 - centre)))
+    return min(found, key=lambda f: float(np.linalg.norm(f["box"][:2] + f["box"][2:4] / 2 - centre)))
+
+
+def _aligned_output(net, image, face):
+    """A network's output on the face aligned as ArcFace sees it: RGB, (x/255 - 0.5)/0.5, 112 px."""
     crop = align_crop(image, face["box"], face["points"])
-    net = _recogniser()
     net.setInput(cv2.dnn.blobFromImage(crop, 1 / 127.5, (112, 112), (127.5, 127.5, 127.5),
                                        swapRB=True))
-    return net.forward().ravel().astype(np.float32)
+    return net.forward().ravel()
+
+
+def face_quality(image, face=None):
+    """eDifFIQA(T)'s score of a face photo's central face, or of face: higher is more useful; None with no face."""
+    if image is None:
+        return None
+    face = face if face is not None else _central_face(image)
+    if face is None:
+        return None
+    return float(_aligned_output(_quality_net(), image, face)[0])
 
 
 def embed(frame, box):
@@ -645,6 +675,11 @@ class Gallery:
         """Where each stored view's face crop is kept, next to gallery.json."""
         return self.path.parent / "views"
 
+    def admits(self, crop):
+        """Whether a new photo may enter the gallery: its face at QUALITY_CUT or more (backlog 45)."""
+        quality = face_quality(crop)
+        return quality is not None and quality >= QUALITY_CUT
+
     def _store_view(self, crop):
         """Save a view's face crop and return its portable path, or None without one."""
         if crop is None:
@@ -687,10 +722,14 @@ class Gallery:
         return "replaced"
 
     def add(self, embeddings, thumbnail, crops=None, event=None):
-        """Add an unnamed entry with its views; event is the clip's (event_of), kept per view (R55)."""
+        """Add an unnamed entry of the views admits takes; event is the clip's, kept per view (R55). None for none."""
         embeddings = list(embeddings)
         crops = list(crops or []) + [None] * len(embeddings)
-        stored = [self._store_view(crop) for crop in crops[:min(len(embeddings), MAX_EMBEDDINGS)]]
+        admitted = [(e, c) for e, c in zip(embeddings, crops) if self.admits(c)]
+        if not admitted:
+            return None
+        embeddings = [e for e, _ in admitted]
+        stored = [self._store_view(crop) for _, crop in admitted[:MAX_EMBEDDINGS]]
         person = {
             "id": f"{self.id_prefix}_{uuid.uuid4().hex[:8]}",
             "name": "",
@@ -747,17 +786,23 @@ class Gallery:
         return target["id"]
 
     def reinforce(self, person_id, embedding, crop=None, event=None):
-        """Keep one more view of a person; past MAX_EMBEDDINGS, only one that makes them more varied."""
+        """Keep one more view of a person, if admits takes it; past MAX_EMBEDDINGS, only one more varied.
+
+        Returns whether the view was offered to the person: False below the cut or for a person gone.
+        """
+        if not self.admits(crop):
+            return False
         view = self._store_view(crop)
         with _GALLERY_LOCK:
             self.load()
             person = self.get(person_id)
             if person is None:
                 self._forget_view(view)
-                return
+                return False
             _note_event(person, view, event)
             self._take(person, embedding, view)
             self.save()
+        return True
 
     def remove_view(self, person_id, index, expected=None):
         """Delete one chosen view; nothing waiting takes its place unless the user moves it up.
@@ -1212,6 +1257,9 @@ class Gallery:
         self.repoints[source["id"]] = target["id"]
 
     def label(self, person_id):
+        """The entry's name, "Unknown" unnamed or for a sighting of no entry (""), "?" for an entry gone."""
+        if person_id == "":
+            return "Unknown"
         person = self.get(person_id)
         if person is None:
             return "?"
@@ -1754,14 +1802,21 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         thumbnail = folder / f"{name}.jpg"
         cv2.imwrite(str(thumbnail), group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])
 
+        memory = {}
         if person_id is None:
             others = [(v, c) for v, c in zip(group["views"], group["crops"]) if v is not embedding]
-            person_id = gallery.add([embedding, *(v for v, _ in others[:3])], thumbnail,
-                                    [group["crop"], *(c for _, c in others[:3])], event_of(clip))
-        elif score >= sure:
-            gallery.reinforce(person_id, group["views"][matched], group["crops"][matched],
-                              event_of(clip))
-        seen_here.add(person_id)
+            references = [embedding, *(v for v, _ in others[:3])]
+            person_id = gallery.add(references, thumbnail, [group["crop"], *(c for _, c in others[:3])],
+                                    event_of(clip)) or ""
+            memory = {"views": group["views"], "references": references}
+            if not person_id:
+                logger.info("  face scan %s: a new face with no view at the quality cut: a sighting of no entry",
+                            clip.name)
+        elif score >= sure and not gallery.reinforce(person_id, group["views"][matched],
+                                                     group["crops"][matched], event_of(clip)):
+            logger.info("  face scan %s: a sure match below the quality cut: named, no view kept", clip.name)
+        if person_id:
+            seen_here.add(person_id)
 
         sighting = {
             "person_id": person_id,
@@ -1782,28 +1837,38 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         recorded.append({**sighting, "thumbnail_path": thumbnail,
                          "name": person.get("name", ""),
                          "temporary_name": person.get("temporary_name", ""),
-                         "resident": bool(person.get("resident"))})
+                         "resident": bool(person.get("resident")), **memory})
 
     return _one_visitor(gallery, recorded, tracks)
 
 
 def _one_visitor(gallery, recorded, tracks):
-    """Merge the unnamed entries a clip of one body saw into one, and keep one sighting of it (backlog 44)."""
-    unnamed = [s["person_id"] for s in recorded if not s["name"]]
+    """Merge the unnamed entries a clip of one body saw into one, and keep one sighting of it (backlog 44).
+
+    A sighting of no entry ("", backlog 45) on that body is the same face: it
+    joins the one kept, its views remembered with it for the visit.
+    """
+    unnamed = [s for s in recorded if not s["name"]]
     if len(unnamed) < 2 or person_tracks(tracks) != 1:
         return recorded
-    target = gallery.merge_unnamed(unnamed)
+    ids = list(dict.fromkeys(s["person_id"] for s in unnamed if s["person_id"]))
+    target = gallery.merge_unnamed(ids) if len(ids) > 1 else (ids[0] if ids else "")
     if target is None:
         return recorded
-    visitor = (gallery.get(target) or {}).get("temporary_name", "")
-    logger.info("  face scan: %d unnamed faces on one body merged into %s", len(unnamed), visitor or target)
-    kept, seen = [], set()
+    visitor = (gallery.get(target) or {}).get("temporary_name", "") if target else ""
+    if len(ids) > 1:
+        logger.info("  face scan: %d unnamed faces on one body merged into %s", len(ids), visitor or target)
+    kept, first = [], None
     for sighting in recorded:
-        if not sighting["name"]:
-            sighting = {**sighting, "person_id": target, "temporary_name": visitor}
-        if sighting["person_id"] not in seen:
-            seen.add(sighting["person_id"])
+        if sighting["name"]:
             kept.append(sighting)
+        elif first is None:
+            first = {**sighting, "person_id": target, "temporary_name": visitor}
+            kept.append(first)
+        else:
+            for key in ("views", "references"):
+                if sighting.get(key):
+                    first[key] = [*(first.get(key) or []), *sighting[key]]
     return kept
 
 

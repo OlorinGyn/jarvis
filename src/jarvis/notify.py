@@ -22,7 +22,7 @@ from pathlib import Path
 import requests
 
 from . import modes
-from .faces import learn_threshold
+from .faces import MATCH_THRESHOLD, cosine, learn_threshold
 from .settings import load
 from .tracks import dog_only
 
@@ -269,9 +269,10 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=(
     Runs in the clip-assembly thread, after the event, so it can block on the
     network without touching capture. Sent whether or not the event's own
     message went out, since a face is rare and the most useful message (R25);
-    people is the most persons seen at once, for the incident. A face entry
-    in repeats was already seen in a visit that sent, and is not news.
+    people is the most persons seen at once, for the incident. A sighting
+    in repeats is a face a visit that sent has already seen, and is not news.
     """
+    repeats = [id(s) for s in repeats]
     settings = settings or load()
     if not configured(settings):
         return 0
@@ -283,7 +284,7 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=(
         if not modes.allowed(case, settings):
             logger.info("Notification %s face, %s: skipped: %s mode", camera, _who(sighting, settings),
                         modes.mode_of(settings))
-        elif sighting.get("person_id") in repeats:
+        elif id(sighting) in repeats:
             logger.info("Notification %s face, %s: skipped: visit (the same face again)", camera,
                         _who(sighting, settings))
         else:
@@ -330,8 +331,8 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     with _visit_lock:
         visit = _visit(camera, started_at, ended_at or started_at)
         quiet = rules and visit["sent"] and seen <= visit["people"]
-        repeats = set(visit["faces"]) if rules and visit["sent"] else set()
-        news = [s for s in wanted if s.get("person_id") not in repeats]
+        repeats = [s for s in found if _again(visit, s)] if rules and visit["sent"] else []
+        news = [s for s in wanted if not any(s is r for r in repeats)]
         hidden = bool(held and found and not news and people > len(found) and picture)
         _remember(visit, found, seen, started_at, settings)
         resident = visit["resident"] if rules and not found and seen <= 1 else None
@@ -386,7 +387,7 @@ def _visit(camera, started_at, ended_at):
              and (visit["start"] - ended_at).total_seconds() < VISIT_SECONDS)
     if not joins:
         fresh = {"start": started_at, "end": ended_at, "resident": None, "sent": False, "people": 0,
-                 "faces": set()}
+                 "faces": set(), "strangers": []}
         if visit is not None and started_at < visit["start"]:
             return fresh
         _visits[camera] = visit = fresh
@@ -395,12 +396,26 @@ def _visit(camera, started_at, ended_at):
     return visit
 
 
+def _again(visit, sighting):
+    """Whether the visit has seen this face: its entry, or for a new face the views of one seen new (backlog 45).
+
+    A face with no view at the quality cut makes no entry, so its second event
+    in a visit has no entry to match: the visit keeps the views a new face
+    would have stored, in memory only, and matches them as the gallery would.
+    """
+    if sighting.get("person_id") in visit["faces"]:
+        return True
+    return any(cosine(view, known) >= MATCH_THRESHOLD
+               for view in sighting.get("views") or () for known in visit["strangers"])
+
+
 def _remember(visit, found, seen, started_at, settings):
     """Add one event to its visit: the faces it saw, its people at once, the last resident recognised."""
     visit["people"] = max(visit["people"], seen)
     for sighting in found:
         if sighting.get("person_id"):
             visit["faces"].add(sighting["person_id"])
+        visit["strangers"].extend(sighting.get("references") or ())
         if person_case(sighting, settings) == "resident_person" and (
                 visit["resident"] is None or started_at >= visit["resident"][1]):
             visit["resident"] = (sighting.get("name"), started_at)

@@ -132,6 +132,10 @@ class DogGallery(faces.Gallery):
             return None
         return min(found, key=lambda r: (r["certainty"] != "sure", r["distance"]))["dog_id"]
 
+    def admits(self, crop):
+        """Every crop offered: a dog's gate is its box in the frame, which record reads (backlog 45)."""
+        return True
+
     def add(self, embeddings, thumbnail, crops=None, event=None):
         """Add an unnamed dog, then keep only the newest MAX_UNNAMED unnamed ones."""
         dog_id = super().add(embeddings, thumbnail, crops, event)

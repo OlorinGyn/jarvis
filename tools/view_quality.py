@@ -44,13 +44,12 @@ import sys
 import tempfile
 import time
 from collections import Counter, defaultdict
-from functools import lru_cache
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from jarvis import ROOT, dogs, faces, people
+from jarvis import dogs, faces, people
 
 from clean_gallery import LABELS
 
@@ -84,7 +83,6 @@ DOG_CUTS = {
     "one_dog": (0, 1),
 }
 LOWER_IS_BETTER = {"frontal"}
-QUALITY_MODEL = ROOT / "models" / "bench" / "ediffiqa_tiny_jun2024.onnx"
 MODEL_SIGNALS = ("ediffiqa", "norm")
 QUANTILES = tuple(q / 10 for q in range(10))
 
@@ -119,20 +117,6 @@ def nearest_centre(found, centre, box=lambda f: f[:4]):
                                                          - centre)))
 
 
-@lru_cache(maxsize=1)
-def quality_net():
-    """eDifFIQA(T), OpenCV Zoo's face image quality model (CC-BY-4.0), read once."""
-    return cv2.dnn.readNetFromONNX(str(QUALITY_MODEL))
-
-
-def face_quality(image, face):
-    """eDifFIQA(T)'s score of a face aligned as ArcFace sees it: the higher, the more useful to a recogniser."""
-    net = quality_net()
-    crop = faces.align_crop(image, face["box"], face["points"])
-    net.setInput(cv2.dnn.blobFromImage(crop, 1 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=True))
-    return float(net.forward().ravel()[0])
-
-
 def face_photo_signals(image):
     """What a stored face photo shows of itself: detector, landmarks, frontal numbers, sharpness, resolution."""
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -148,7 +132,7 @@ def face_photo_signals(image):
                        spread=eyes / float(yunet[2]) if yunet[2] else 0.0)
     if scrfd is not None:
         signals["scrfd"] = scrfd["score"]
-        signals["ediffiqa"] = face_quality(image, scrfd)
+        signals["ediffiqa"] = faces.face_quality(image, scrfd)
     return signals
 
 
@@ -618,7 +602,7 @@ def time_quality(rows, count=50):
         detected = faces._landmarker().detect(image) if image is not None else None
         if detected:
             start = time.perf_counter()
-            face_quality(image, detected[0])
+            faces.face_quality(image, detected[0])
             found.append(time.perf_counter() - start)
     return 1000 * float(np.median(found)) if found else float("nan")
 
