@@ -685,8 +685,13 @@ def schedule(events, scans, cache, gallery, sure, size, aside=False):
     return {key: (ready[key], done[("quick", key)], done[("full", key)]) for key in scans}
 
 
-def built(root, since, cache, aside=False):
-    """clips._person_messages on every cached person event, its scans replaced by the cache: messages and delays."""
+def built(root, since, cache, aside=False, every=False):
+    """clips._person_messages on every cached person event, its scans replaced by the cache: messages and delays.
+
+    Returns what it replayed: the span, each event's messages sent and the
+    full scan's sightings, the sure threshold. every prints each event's
+    messages, not only the differing ones.
+    """
     events = replay_visits.read_events(root, since - timedelta(hours=1))
     scans = join_scans(read_scans(root, since), events)
     config = json.loads((root / "config.json").read_text(encoding="utf-8-sig"))
@@ -774,6 +779,10 @@ def built(root, since, cache, aside=False):
         message = quick_done if quick[key] else quick_done + deadline if key in late else full_done
         values.append(message + latency - events[key]["start"].timestamp())
     line(f"built, quick {faces.QUICK_FRAMES}, D {deadline:g} s{', aside' if aside else ''}", values)
+    if every:
+        for key in quick:
+            print(f"  {key}: {sent.get(key, [])}")
+    return {"span": span, "events": events, "sent": dict(sent), "full": full, "sure": sure}
 
 
 def line(name, values):
@@ -794,6 +803,7 @@ def main():
     parser.add_argument("--queue", action="store_true")
     parser.add_argument("--built", action="store_true")
     parser.add_argument("--aside", action="store_true", help="with --built: a full scan steps aside for a quick pass at once")
+    parser.add_argument("--messages", action="store_true", help="with --built: print every event's messages")
     args = parser.parse_args()
     lower_priority()
     if args.detect:
@@ -808,7 +818,7 @@ def main():
     if args.queue:
         queue(args.root, args.since, args.cache)
     if args.built:
-        built(args.root, args.since, args.cache, args.aside)
+        built(args.root, args.since, args.cache, args.aside, args.messages)
 
 
 if __name__ == "__main__":
