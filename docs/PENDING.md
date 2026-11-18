@@ -200,13 +200,6 @@ work: the face checked while the event still records (not chosen), and
 developer 35's, untested — an event whose message does not depend on a
 face could skip the queue with no quick pass at all.
 
-**What comes after backlog 46** (review 38, 18/11/2026). No decided item
-is left to build but item 7's part 2, the name following the body
-(decided 16/10). Since backlog 41's visit, a resident recognised in the
-visit already explains one faceless body, so what part 2 still adds over
-the visit is to be measured before it is designed. The other open items
-are (proposto). Asked of the user in review 38.
-
 **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
 goes down, 33 buttons on the Telegram message, 6 search and filter: the user
 liked all of them and will discuss them later (14/10). Still not work until

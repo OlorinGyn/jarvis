@@ -156,7 +156,11 @@ It works without them, but is incomplete.
    body left the view for 7–9 s — appearance or place will have to. **Part
    2** acts on tracks: its R59 piece is done as backlog 41 (a) —
     `tracks.dog_only`, Home only (`v2026.11.17`, ARCHITECTURE 12.14); next,
-    the name following the body.
+    the name following the body. **The user's answer, 18/11 (review 38):
+    measured first** — since backlog 41's visit, a resident recognised in
+    the visit already explains one faceless body, so what the name
+    following the body still adds over the visit is measured on the month
+    before it is designed (developer 37, section 3).
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -312,11 +316,59 @@ a face scan` against before; and any `quick pass failed`, `person message
 failed` or `face scan failed` line. Far from the replay, or a stranger
 sent twice, is a recommendation.
 
-**No developer session planned.** Backlog 46 was the last decided item
-ready to build. What is open: item 7's part 2, the name following the
-body (decided 16/10), whose gain over backlog 41's visit is to be
-measured before it is designed; and the (proposto) items. **Waits for the
-user:** what comes next (`PENDING.md`); choosing the sure threshold for
+The user answered on 18/11 what comes next: **item 7's part 2, measured
+first.**
+
+**Developer 37: item 7 part 2 measured — what the name following the
+body adds over the visit.** Read-only on production, as developers 26
+and 35 did: production read in place, nothing written there, below
+normal priority (`lower_priority`). No rule built and no program code
+changed; tools and their tests only. The month is 10–18/11, Home, the
+built path's messages (`replay_quick_pass.py --built --aside`, which
+already runs `_person_messages` on every person event; give it a way to
+print every event's messages, not only the differing ones).
+
+1. **The upper bound, from what is on disk.** Each event JSON's `tracks`
+   (ARCHITECTURE 8.4) keep their ids for the process's life, so an id in
+   two events of a camera is one body followed across the cut; ids
+   restart at 1 when production restarts (the log's `Starting 2
+   camera(s)` lines), so a shared id counts only within one run. For
+   every person message the built path sends **without a face** (side
+   view, best view, hidden person), its class:
+   - (a) one of its person tracks is in an earlier event of the camera
+     whose sightings hold a sure resident face — the name could have
+     followed that body;
+   - (b) more person tracks at once (`most_person_tracks`) than faces
+     found, a resident's face among them — a hidden person a body-bound
+     name could explain only if every track gets a face;
+   - (c) neither — no track crossed from a named event and no face on
+     any — which tracking cannot name.
+
+   Also: how many consecutive person events of a camera share a track id
+   at all, and their gaps; how many person tracks live across events for
+   more than 2 and more than 5 minutes (item 40's loitering), with and
+   without a face in any of their events. One table per question, counts
+   and per day, three keys as examples of each class.
+2. **Only if (a) and (b) together reach one message a day or more:** the
+   real count on those events. Bind each face observation of the full
+   scan (developer 35's cache) to a track, by time and box: the live
+   detector replayed through `jarvis.tracks` on the clip
+   (`replay_tracks.py`'s path, ARCHITECTURE 7.16), the face's box inside
+   the person box of the nearest run within 0.5 s. Per event: person
+   tracks with a face and without; whether every person track would be
+   named. And the full scan's frames after a track's first sure face
+   where only named tracks are present: the share of scan time "a named
+   track not scanned again" would save. Show on three clips, with a
+   contact sheet, that the binding puts each face on the right body.
+3. **HANDOFF:** the tables, the method and what it cost to run, and what
+   to read hardest — the time alignment between the clip's frames and
+   the live runs (the clip starts `PRE_SECONDS` before the event; the
+   analysis frames are 960×540, the clip full size), and whether a
+   track id crossing an event boundary is one body (three read on
+   contact sheets). The architect designs part 2 from the numbers, or
+   takes them to the user if part 2 adds little.
+
+**Waits for the user:** choosing the sure threshold for
 faces and the sure distance for dogs from the two tables in Settings →
 Detection (the defaults hold until then); the M900 sleeping at the
 sign-in screen; the checks on the M900, `v2026.11.18` among them
