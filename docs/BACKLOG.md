@@ -86,8 +86,11 @@ full text is in `HISTORY.md` 8.
     move 2 views of 23 to the wrong person, so nothing is applied. The
     user answered with item 45: the cleaning moves only views at its
     quality cut, on the evidence of a sure sighting at the cut. Item 45
-    is applied (`v2026.11.17.3`), so the cleaning's dry run on production
-    is next (section 3). The scan-time step is not built.
+    is applied (`v2026.11.17.3`); the dry run on production after it
+    (review 36) moves 3 views, all wrong — a one-frame "sure" Izabel the
+    mixed gallery recorded on 17/10 (ARCHITECTURE 10.17) — so nothing is
+    applied, and closing the item waits for the user (`PENDING.md`). The
+    scan-time step is not built.
 Item 45 is done (above, review 36); its full text moves to `HISTORY.md` 8.
 
 ### Decided on 16/10/2026, to build
@@ -304,28 +307,26 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 36 is done in part** (HISTORY 13.38): developer 34's gate and
-clean-up reviewed, one hole fixed by tests first (`bf3d6f9`), released as
+**Review 36 is done** (HISTORY 13.38): developer 34's gate and clean-up
+reviewed, one hole fixed by tests first (`bf3d6f9`), released as
 **`v2026.11.17.3`** and deployed; the clean-up applied on production (faces
 104 views deleted, dogs 12, recognition wrong 0 / 0) and backlog 28's
-settle run (the user and Izabel at 40 chosen each). It stopped at the
-5-hour window.
+settle run (the user and Izabel at 40 chosen each). After the 5-hour reset:
+the cleaning's (43) dry run on production moved 3 views, all wrong, so
+nothing was applied; People and Dogs read right at 375 px and on a
+desktop; raid log 27 written; the late messages measured.
 
-**The architect, after the reset (finishing review 36):**
+**No developer session is planned: the cycle stops for the user**, with
+two choices (`PENDING.md`):
 
-1. **The cleaning (43) as a dry run on production** —
-   `tools/clean_gallery.py C:\JARVIS`, the service running is fine for a
-   dry run — its evidence counting only a sure sighting at the cut; each
-   move read on a contact sheet. Applied (service stopped, `--apply`) only
-   if no move is wrong; otherwise the moves go to the user.
-2. **People and Dogs at 375 px and on a desktop** with the built-in
-   browser: the cards after the clean-up, an unknown face of no entry in
-   Recordings.
-3. **Raid log 27** for `v2026.11.17.3`, both languages (PROCESS 6).
-4. Then plan the next developer session here. The candidate, after the
-   cleaning: the late messages of 18/10 (`PENDING.md`, open discussion —
-   the architect measures and proposes first); otherwise nothing is
-   decided and the cycle stops for the user.
+1. **The cleaning (43)** — close it (the architect's recommendation), or
+   rebuild its evidence from today's gallery and read the dry run again.
+2. **The late messages** — (a) the scan in two passes, measured first on
+   a replay of the month; (b) the face checked while the event records;
+   both in that order; or leave it.
+
+Whichever the user picks becomes the next developer session, planned here
+by the architect.
 
 **Waits for the user:** choosing the sure
 threshold for faces and the sure distance for dogs from the two tables in

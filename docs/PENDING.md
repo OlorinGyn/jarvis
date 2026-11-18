@@ -159,14 +159,24 @@ grows, decisions are being postponed.
   one seen only poorly is still a recording and a message ("unknown
   face"), with no card. The messages do not change. **What goes to the
   architect, with its time:** a message that repeats one stranger in one
-  visit, or a resident named wrong.
+  visit, or a resident named wrong. The first such message came on 17/11
+  at 22:20:59, Front, "unknown face": a man with glasses at night, face at
+  0.29 — **the user says whether it was them.** People's "Visitor 2" and
+  "Visitor 3" (5 night photos) look like the user, as HISTORY 13.33's
+  labels read them: if so, merging them into the user's card is the
+  user's, on the page.
+- **The cleaning (backlog 43): close it?** Its dry run on production after
+  the cut (review 36) moves 3 views, all wrong — "Visitor 3" given to
+  Izabel on a sighting the mixed gallery made on 17/10 (ARCHITECTURE
+  10.17). Nothing was applied. **The architect recommends closing item
+  43**: the cleaning has nothing right left to move, and its scan-time
+  step was for a resident's poor views forming a new entry, which backlog
+  45's gate already stops. The other choice: the developer rebuilds the
+  evidence from today's gallery instead of the stored sightings, and the
+  dry run is read again.
 
 ## Decided, not yet done
 
-- **The cleaning on production** (backlog 43, applied directly with a
-  backup — the user's choice of 17/11): built; backlog 45's cut is applied
-  (`v2026.11.17.3`), so its dry run on production, read move by move, is
-  the architect's next step (BACKLOG 3).
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
   rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
@@ -182,10 +192,30 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 In Home every message waits for the clip to close and its face scan:
 median about 30 s from the event's start, minutes when scans queue behind
 a busy visit (9 min at worst on 17–18/10; HISTORY 13.33). Backlog 41 cuts
-the messages, not the scan (built, `v2026.11.17`). **The architect's next
-step:** measure the delays on the month again and propose — the face checked
-on the first closed segment while the event still records, and no scan for
-an event whose visit can no longer change a message. Not work yet.
+the messages, not the scan (built, `v2026.11.17`).
+
+**Measured again, 17/11 (review 36, HISTORY 13.38):** 3,187 messages after
+a face scan, 10/10–17/11 — median 38 s from the event's start, p90 3 min,
+p99 31 min; a face message median 69 s, p90 4 min. Of the messages over a
+minute, **three quarters of the wait is the queue**: the scan waits for
+the scans before it, one at a time. The event itself until its clip
+closes is 11 %, the scan 13 %. "No scan for an event whose visit can no
+longer change a message" helps little: in Home any event can still bring
+a new face, which is news.
+
+**The architect's proposal, for the user to choose:**
+
+- **(a) The scan in two passes** — first: a quick pass that decides the
+  message (fewer frames, stopping at the first sure face) goes ahead of
+  every full pass; the full pass, which keeps the album's photos and the
+  sighting, runs after. It aims at the queue. The developer first
+  replays the month and counts the messages the quick pass would decide
+  differently (a face it misses would send "best view" instead of a
+  name); built only if that is near zero and the queue falls.
+- **(b) The face checked while the event records**, on its first closed
+  segment — aims at the event's own share; a bigger change in the
+  recorder, after (a) if the messages are still slow.
+- Or both, in that order; or leave it as it is.
 
 **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
 goes down, 33 buttons on the Telegram message, 6 search and filter: the user

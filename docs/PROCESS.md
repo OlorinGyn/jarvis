@@ -356,4 +356,4 @@ review and commits.
 | 24 | `v2026.10.16.3` | The First Footprint / A Primeira Pegada | written |
 | 25 | `v2026.11.17` | The Month Nobody Watched / O Mês que Ninguém Viu | written |
 | 26 | `v2026.11.17.2` | The Impeccable Album / O Álbum Impecável | written |
-| 27 | `v2026.11.17.3` | — | to write (review 36, after the reset) |
+| 27 | `v2026.11.17.3` | The Judge at the Door / O Juiz na Porta | written |

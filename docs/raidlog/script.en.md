@@ -1821,3 +1821,82 @@ for every new face) · **The Short Memory** (a stranger unseen for sixty
 days forgotten) · **The Quiet Kennel** (a probable dog makes no card).
 Lurking: the cut that keeps the album impeccable without emptying it.
 Next: a judge of faces, trained for exactly this.
+
+## Issue #27 — The Judge at the Door
+
+`v2026.11.17.3` · 17 Nov 2026
+
+**Panel 1.** The People album, its door now guarded: a small grey judge
+in a powdered wig, a gavel in one hand, a magnifying glass in the other,
+on a stool beside the album's cover. A label on the stool: eDifFIQA(T),
+7 MB.
+CAPTION: The owner asked for a judge of faces. The developer found one,
+trained for exactly this.
+
+**Panel 2.** The judge holding a face photo to the light; a scale of
+scores behind him, a red line drawn across it.
+J.A.R.V.I.S.: `poor views: highest 0.3916` `QUALITY_CUT = 0.40`
+DEV: Every photo the owner's readers called poor scores under the line.
+Above it, only good ones. One check costs 62 milliseconds — after the
+event, never in the live loop.
+
+**Panel 3.** Two doors side by side. At the faces' door the judge
+stamps REFUSED on a blurred photo; the stranger it shows still walks on
+to the phone as a message. At the dogs' door a beaver with a ruler
+measures a tiny dog crop: under 120 px, no photo kept.
+DEV: Only a new photo meets the judge. A face seen only poorly is still
+a recording and a message. It just gets no card.
+
+**Panel 4.** Night, the owl at the desk with a lantern, two film strips
+from one clip: the same stranger's face, cut in two groups.
+ARCHITECT: Here. One face, two groups: grouping needs 0.35, a match only
+0.30. Before the judge, the first group made a card and the second
+matched it. Now the first may make none — and the phone hears "unknown
+face" twice.
+J.A.R.V.I.S.: `2 messages, 1 event.`
+
+**Panel 5.** The owl writing a test on a scroll first, then tying a
+small memory knot around the four photos of the first group.
+ARCHITECT: The scan remembers the four photos each new face would have
+kept. A second group closer to them than to the album is that same
+face.
+J.A.R.V.I.S.: `473 passed`
+
+**Panel 6.** The M900 at 19:22. A parcel marked `v2026.11.17.3`; a
+download bar (the judge, 7 MB) fills BEFORE the drones go dark.
+
+**Panel 7.** The owl and the beaver at the album with scissors and a
+box marked "backup — 17/11 19:23". Blurred photos fall like leaves; 11
+nameless pages slide out; in the kennel, 7 nameless dogs trot off.
+J.A.R.V.I.S.: `faces: 104 views deleted` `dogs: 12 views deleted`
+`wrong names: 1 sure, 2 probable → 0, 0`
+ARCHITECT: Sure names fall from 85 to 49 — the price. Wrong names, to
+none.
+
+**Panel 8.** The owner's and Izabel's pages, both full again: 40
+photos each, every one read good. The drones rise.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` — about two and a half minutes
+dark.
+CAPTION, small, in a corner: The owl's one slip — six developer's tools
+installed in production by a careless `uv run`. Harmless; noted.
+
+**Panel 9.** The owl yawning over a fuel gauge at 85 %, setting an
+alarm clock to 22:27, and falling asleep on the desk.
+
+**Panel 10.** 22:20, the front yard in the dark. A face the judge
+refuses: no card. The phone lights up all the same.
+J.A.R.V.I.S.: `Front face, unknown face: sent`
+
+**Panel 11.** The alarm rings. The owl, lantern lit, runs the last
+cleaning as a dry run: three photos of the owner's face, each with an
+arrow toward Izabel's page. Behind the arrows, a pale ghost of a witness
+holding a card dated 17/10: "Izabel, 0.472".
+ARCHITECT: A witness from the old album, when Izabel's page still held
+the owner's face. All three moves are wrong. None applied.
+
+**Closing card.** Abilities: **The Judge at the Door** (a face photo
+enters only at 0.40) · **The Ruler** (a dog photo only at 120 px) ·
+**The Knot** (a split face sends once). Credit: the judge's makers, by
+name, in the README. Lurking: a month of old witnesses, recorded before
+the album was cleaned. Next: the owner's verdict on the three moves —
+and the messages that still arrive late.

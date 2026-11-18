@@ -2331,6 +2331,18 @@ the cleaning waits for their choice before it runs on production
 (`PENDING.md`), and **the same evidence at scan time, backlog 43's last
 step, is not built** — the plan made it conditional on no wrong move.
 
+**After the cut, 17/11 22:30 (review 36).** With backlog 45's gate and
+clean-up applied (10.18), the dry run on production moves **3 views, all
+wrong**: the three of `p_cfb78815` ("Visitor 3", labelled "probably
+Gustavo" in HISTORY 13.33) given to Izabel by `Back/2026-10-17/19-44-03`,
+one person track, whose "sure" Izabel is again one frame at 0.472 — read
+by eye, a man's face — recorded on 17/10, while Izabel's entry held 14 of
+the user's views. **A sighting is the testimony of the gallery as it was
+on its day:** cleaning the gallery does not clean the sightings it made,
+so the evidence of an old event is no better than that day's gallery. The
+two-frame rule above would have refused it too. Not applied; the user
+decides (`PENDING.md`).
+
 **"Visitor N".** Every unnamed face entry gets a `temporary_name`,
 "Visitor N", when it forms (`Gallery.add`). `_next_visitor` takes N past
 the gallery header's counter (`"visitors"`, the last number given) and

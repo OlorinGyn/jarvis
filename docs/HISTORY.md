@@ -2881,9 +2881,41 @@ back at 19:25, about 2.5 minutes down. Backups:
 environment — harmless; the next update's sync decides them. A tool run in
 `C:\JARVIS` uses `uv run --no-sync`.
 
-**Not done, for lack of the 5-hour window** (82 % after the deploy): the
-cleaning (43) as a dry run on production read move by move, People and
-Dogs at 375 px and on a desktop, raid log 27 (BACKLOG 3).
+**After the 5-hour reset** (the wake-up, 22:27; the rest of BACKLOG 3):
+
+- **The cleaning (43), dry run on production**: 3 moves, **all wrong** —
+  the user's face ("Visitor 3", `p_cfb78815`) given to Izabel on a
+  one-frame "sure" Izabel recorded on 17/10 by the mixed gallery
+  (ARCHITECTURE 10.17). Not applied; to the user, with the architect's
+  recommendation to close item 43: the cleaning has nothing right left
+  to move, and the gate already keeps a resident's poor views from
+  forming a new entry, which the scan-time step was for.
+- **People and Dogs, 375 px and 1024 px**: no horizontal scroll; People
+  13 named and 8 unnamed, all "Visitor N"; Dogs Aurora 40 and Mirana 38,
+  54 unnamed (25 "looks like Aurora", 9 "looks like Mirana", 20 no
+  guess) — 53 formed before backlog 42's release, one since. Recordings
+  reads the face of no entry "unknown". One reading: an event of one
+  person track, `Front/2026-11-17/20-11-39`, the user with headphones,
+  reads "Gustavo Henrique Gomes; unknown" — his second face group, at
+  0.29, below both the match and the cut; before the gate it would have
+  been a new Visitor card. No message went for it. Not opened as a
+  recommendation: `_one_visitor` already folds such sightings for the
+  messages, and Recordings shows what the scan found.
+- **The first stranger-like message since the gate**:
+  `Front/2026-11-17/22-20-08`, two person tracks, a face at 0.29 with no
+  view at the cut — "unknown face" sent at 22:20:59, no card. Its face,
+  a man with glasses at night, may be the user's; to the user.
+- **Raid log 27** written in both languages.
+- **The late messages of 18/10, measured** (`PENDING.md`): 3,187 first
+  messages after a face scan, 10/10–17/11 — event start to sent, median
+  38 s, p90 182 s, p99 31 min; face messages median 69 s, p90 250 s.
+  Of the 1,020 over 60 s, **75 % of the time is the wait between the
+  clip's close and its scan's start** — mostly the scans before it, one
+  at a time under `_SCAN_LOCK` — 11 % the event itself until the clip
+  closes, 13 % the scan, 1 % the send. (Measured from production's log:
+  each assembly thread's "face scan" line against its first "sent".) Since `v2026.11.17`
+  (93 messages): median 39 s, p90 103 s, 3 over 5 minutes.
+  The architect's proposal is the user's to choose.
 
 ## 14.3 Usage log
 
@@ -2973,3 +3005,4 @@ of `CONTEXT.md`.
 | A46 | architect | ultracode | 17/11 18:34–19:00 | review 35: the diff read whole, the alignment measured, the sheets and the band around the cut read, the price of each option computed; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 53; no release; the cut to the user, the user's answer, the gate designed against the visit rule and developer 34 planned | 46% → 60% | 17% → 19% | 74k → about 240k tokens, a new conversation (started by the developer's handover) |
 | D34 | developer | high | 17/11 evening | session 34: backlog 45 step 3 — the read set, the face gate, the dog gate, `clean_views.py` dry-run on a copy (471 tests) | 59% → 74% | 19% → 21% | about 250k tokens, a new conversation |
 | A47 | architect | ultracode | 17/11 19:13–19:40 | review 36: the diff read whole, one hole fixed by tests first, the release deployed, the clean-up and the settle applied on production; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 54, README; stopped at the window | 75% → 85% | 21% → 23% | 74k → 208k tokens, a new conversation (started by the developer's handover) |
+| A48 | architect | ultracode | 17/11 22:27–22:40 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month and two options proposed; stopped for the user | 1% → 9% (new window) | 23% → 24% | 86k → 177k tokens, the same conversation after its summary |

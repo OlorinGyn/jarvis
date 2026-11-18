@@ -1896,3 +1896,88 @@ visto por sessenta dias, esquecido) · **O Canil Silencioso** (uma
 cachorra provável não vira card). À espreita: o corte que deixa o álbum
 impecável sem esvaziá-lo. Próxima: um juiz de rostos, treinado
 exatamente para isso.
+
+## Edição #27 — O Juiz na Porta
+
+`v2026.11.17.3` · 17 nov 2026
+
+**Quadro 1.** O álbum de People, a porta agora vigiada: um juizinho
+cinza de peruca empoada, um martelo numa mão e uma lupa na outra, num
+banquinho ao lado da capa do álbum. Um rótulo no banquinho:
+eDifFIQA(T), 7 MB.
+LEGENDA: O dono pediu um juiz de rostos. O desenvolvedor achou um,
+treinado exatamente para isso.
+
+**Quadro 2.** O juiz erguendo uma foto de rosto contra a luz; atrás
+dele, uma escala de notas cortada por uma linha vermelha.
+J.A.R.V.I.S.: `poor views: highest 0.3916` `QUALITY_CUT = 0.40`
+DEV: Toda foto que os leitores do dono chamaram de ruim fica abaixo da
+linha. Acima dela, só as boas. Cada exame custa 62 milissegundos —
+depois do evento, nunca no laço ao vivo.
+
+**Quadro 3.** Duas portas lado a lado. Na porta dos rostos o juiz
+carimba RECUSADA numa foto borrada; o estranho que ela mostra segue
+mesmo assim até o celular como mensagem. Na porta dos cachorros um
+castor com uma régua mede um recorte minúsculo de cachorro: abaixo de
+120 px, nenhuma foto guardada.
+DEV: Só uma foto nova passa pelo juiz. Um rosto visto só mal continua
+sendo gravação e mensagem. Só não ganha card.
+
+**Quadro 4.** Noite, a coruja na mesa com a lanterna, duas fitas de um
+mesmo clipe: o rosto do mesmo estranho, partido em dois grupos.
+ARQUITETO: Aqui. Um rosto, dois grupos: agrupar exige 0.35, reconhecer
+só 0.30. Antes do juiz, o primeiro grupo criava um card e o segundo
+casava com ele. Agora o primeiro pode não criar nenhum — e o celular
+ouve "unknown face" duas vezes.
+J.A.R.V.I.S.: `2 messages, 1 event.`
+
+**Quadro 5.** A coruja escrevendo primeiro um teste num pergaminho, e
+depois amarrando um nozinho de memória em volta das quatro fotos do
+primeiro grupo.
+ARQUITETO: A varredura lembra as quatro fotos que cada rosto novo teria
+guardado. Um segundo grupo mais parecido com elas do que com o álbum é
+esse mesmo rosto.
+J.A.R.V.I.S.: `473 passed`
+
+**Quadro 6.** O M900 às 19:22. Um pacote marcado `v2026.11.17.3`; uma
+barra de download (o juiz, 7 MB) enche ANTES de os drones apagarem.
+
+**Quadro 7.** A coruja e o castor no álbum, com tesouras e uma caixa
+marcada "backup — 17/11 19:23". Fotos borradas caem como folhas; 11
+páginas sem nome escorregam para fora; no canil, 7 cachorros sem nome
+vão embora trotando.
+J.A.R.V.I.S.: `faces: 104 views deleted` `dogs: 12 views deleted`
+`wrong names: 1 sure, 2 probable → 0, 0`
+ARQUITETO: Os nomes certos caem de 85 para 49 — o preço. Os nomes
+errados, para nenhum.
+
+**Quadro 8.** As páginas do dono e da Izabel, cheias de novo: 40 fotos
+cada, todas lidas como boas. Os drones sobem.
+J.A.R.V.I.S.: `Back: ok` `Front: ok` — uns dois minutos e meio no
+escuro.
+LEGENDA, pequena, num canto: O único deslize da coruja — seis
+ferramentas de desenvolvedor instaladas na produção por um `uv run`
+descuidado. Inofensivo; anotado.
+
+**Quadro 9.** A coruja bocejando diante de um marcador de combustível
+em 85 %, ajustando um despertador para 22:27 e dormindo sobre a mesa.
+
+**Quadro 10.** 22:20, o quintal da frente no escuro. Um rosto que o
+juiz recusa: nenhum card. O celular acende mesmo assim.
+J.A.R.V.I.S.: `Front face, unknown face: sent`
+
+**Quadro 11.** O despertador toca. A coruja, lanterna acesa, roda a
+última limpeza em simulação: três fotos do rosto do dono, cada uma com
+uma seta para a página da Izabel. Atrás das setas, o fantasma pálido de
+uma testemunha segurando um cartão datado de 17/10: "Izabel, 0.472".
+ARQUITETO: Uma testemunha do álbum antigo, de quando a página da Izabel
+ainda tinha o rosto do dono. Os três movimentos estão errados. Nenhum
+aplicado.
+
+**Cartão final.** Habilidades: **O Juiz na Porta** (uma foto de rosto
+só entra a partir de 0.40) · **A Régua** (uma foto de cachorro só a
+partir de 120 px) · **O Nó** (um rosto partido manda uma mensagem só).
+Crédito: os criadores do juiz, pelo nome, no README. À espreita: um mês
+de testemunhas antigas, registradas antes de o álbum ser limpo.
+Próxima: o veredito do dono sobre os três movimentos — e as mensagens
+que ainda chegam atrasadas.
