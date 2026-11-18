@@ -166,6 +166,20 @@ grows, decisions are being postponed.
   labels read them: if so, merging them into the user's card is the
   user's, on the page.
 
+- **`v2026.11.18` on the phone** (backlog 46): a person's message comes
+  sooner. When a face shows, the message goes within seconds of the
+  clip; when none shows quickly, it waits at most 45 s for the full scan,
+  then the side view or best view goes, and a face the full scan finds
+  afterwards arrives as a second message — never a second "no face",
+  never a face already sent. On the month replayed, the worst waits
+  fall from 8½ minutes to about 2, and about 3 events a day change —
+  most often an extra "no face" for a resident whose face showed in few
+  frames, sometimes a "hidden person" followed by the other face. **What
+  goes to the architect, with its time:** one stranger announced twice
+  in one event, a face message that still arrives minutes late, or a
+  resident named wrong. The architect measures the delays on
+  production's log after a day of use (BACKLOG 3).
+
 ## Decided, not yet done
 
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
@@ -179,12 +193,19 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 ## Open discussions
 
-**Messages arrive late** (the user, 18/10/2026) — answered 18/11: the scan
-in two passes is work, backlog 46, measured first (CONTEXT 3); measured
-in review 37 and decided the same day: built at 45 s (CONTEXT 3). The face checked
-while the event records was not chosen, an idea for later. Developer
-35's own idea, untested: an event whose message does not depend on a
+**Messages arrive late** (the user, 18/10/2026) — answered 18/11 and
+built: backlog 46, `v2026.11.18` (CONTEXT 3, ARCHITECTURE 12.15); its
+production measurement is BACKLOG 3's. Two ideas stay for later, not
+work: the face checked while the event still records (not chosen), and
+developer 35's, untested — an event whose message does not depend on a
 face could skip the queue with no quick pass at all.
+
+**What comes after backlog 46** (review 38, 18/11/2026). No decided item
+is left to build but item 7's part 2, the name following the body
+(decided 16/10). Since backlog 41's visit, a resident recognised in the
+visit already explains one faceless body, so what part 2 still adds over
+the visit is to be measured before it is designed. The other open items
+are (proposto). Asked of the user in review 38.
 
 **The (proposto) items** — 1 zones per camera, 2 a warning when a camera
 goes down, 33 buttons on the Telegram message, 6 search and filter: the user

@@ -1900,3 +1900,78 @@ enters only at 0.40) · **The Ruler** (a dog photo only at 120 px) ·
 name, in the README. Lurking: a month of old witnesses, recorded before
 the album was cleaned. Next: the owner's verdict on the three moves —
 and the messages that still arrive late.
+
+---
+
+## Issue #28 — The Express Lane
+
+`v2026.11.18` · 18 Nov 2026
+
+**Panel 1.** Morning. A long line of film reels before one narrow door
+marked SCAN; at its head, a reel asleep on its feet, holding the door
+shut. Far away, the owner's phone, dark.
+CAPTION: The owner's verdict on the three moves: closed, never applied.
+Left on the desk: the messages that arrive late.
+J.A.R.V.I.S.: `start → sent: p90 147 s, p99 507 s`
+
+**Panel 2.** The owl with a stopwatch beside the line, a chart in its
+wing.
+ARCHITECT: Three quarters of the wait is the line. And a scan at the
+door keeps it shut even while it naps for the cameras recording.
+J.A.R.V.I.S.: `46 % of all scan time: paused`
+
+**Panel 3.** The beaver at an old projector, replaying a whole month of
+reels on a wall: 24 frames lit on each, the rest dark.
+DEV: Twenty-four frames where the person was, stopping at the first
+sure face. Deciding alone, it halves the wait — and misses the owner's
+face under headphones. Waiting for the full scan, it changes nothing.
+
+**Panel 4.** The owl turns an hourglass marked 45 s over the line.
+ARCHITECT: Then let it decide when it finds a face. When it finds none,
+the message waits for the full scan — but no longer than this.
+THE OWNER: Build it at 45 seconds.
+
+**Panel 5.** The door, rebuilt: beside it a turnstile with a ticket
+dispenser and a sign EXPRESS. The big reel steps aside between two of
+its frames, and again while it naps; a small reel with a ticket runs
+through.
+DEV: A full scan holds the face networks one frame at a time. Between
+two, or while it naps, a quick pass goes first — by ticket, in order.
+J.A.R.V.I.S.: `quick pass 12-00-00.mp4: 18 of 24 frames, 2.9 s, stopped at a sure face`
+
+**Panel 6.** Three paths out of the door. A face: an envelope flies to
+the phone at once. No face: the hourglass — the full scan wins, its own
+envelope goes; the sand runs out, a "no face" envelope goes, and the
+beaver as postman follows with a second envelope stamped NEVER TWICE.
+DEV: What the full scan finds later goes as a follow-up. Never a second
+"no face". Never a face already sent.
+
+**Panel 7.** Night, the owl with a lantern. Two bosses. A cracked
+envelope with the big reel stuck under it; and a stranger wearing two
+name tags, "Visitor 6" and "Visitor 5".
+BOSS (the envelope): IF I BREAK, THE SCAN NEVER RUNS!
+BOSS (the tags): ONE FACE, TWO MESSAGES!
+ARCHITECT: The quick pass named the heavier page. The full scan's merge
+keeps the oldest.
+
+**Panel 8.** The owl writing two tests first on a scroll, then
+stretching a net under the envelope and pinning one tag, "Visitor 5",
+on the stranger.
+J.A.R.V.I.S.: `516 passed`
+
+**Panel 9.** The projector again, the month replayed with the fixes.
+J.A.R.V.I.S.: `1234 person events` `28 differ (2.3 %)` `39 / 74 / 115 s`
+ARCHITECT: The worst wait, from 507 seconds to 115. Number for number,
+the developer's own.
+
+**Panel 10.** The M900 at 12:47. A parcel marked `v2026.11.18`; a broom
+sweeps six small developer's tools out of production's box.
+J.A.R.V.I.S.: `Uninstalled 6 packages` `Back: ok` `Front: ok` — 19
+seconds dark.
+
+**Closing card.** Abilities: **The Express Lane** (24 frames ahead of
+every full scan) · **The Hourglass** (a message waits at most 45 s) ·
+**The Second Envelope** (the full scan's news follows, never twice).
+Lurking: a stranger whose new face the full scan names as an old
+visitor — not seen in a month, not ruled out. Next: a day of real
+messages, timed.

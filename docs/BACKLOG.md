@@ -294,81 +294,32 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 37 is done** (HISTORY 13.39): developer 35's measurement of
-backlog 46 reviewed — the scan's finding split from its recording
-(behaviour unchanged, 487 tests), `tools/replay_quick_pass.py` read-only,
-its numbers reproduced from its cache. **No code fixed, no release**: the
-split ships with the next release. Neither of the developer's variants
-meets item 46's conditions together; the architect measured one more —
-the message waits for the full scan at most 45 s — and took it to the
-user.
+**Review 38 is done** (HISTORY 13.40): developer 36's build of backlog 46
+reviewed whole — the turns read for a deadlock (none), two holes fixed by
+tests first (`3767102`: a failed quick message skipped the full scan; one
+body's two visitors named apart by the two passes), the built replay run
+again with the fixes, number for number (39 / 74 / 115 s). **Release
+`v2026.11.18` deployed** on 18/11 at 12:48.
 
-The user answered on 18/11 (CONTEXT 3): **build backlog 46 at 45 s.**
+**Next, the architect's: backlog 46 measured on production after a day of
+use** (from 19/11 about 13:00). From the log's `message` and `follow-up`
+lines (ARCHITECTURE 12.15), with each event's start from its name: start →
+sent, median / p90 / p99, against today's 40 / 147 / 507 s and the
+replay's 39 / 74 / 115 s; how many messages the quick face, the full scan
+and the deadline decided (the replay: 29 %, 54 %, 17 %); the follow-ups
+sent and skipped as "sent by the quick pass"; `analysed per minute during
+a face scan` against before; and any `quick pass failed`, `person message
+failed` or `face scan failed` line. Far from the replay, or a stranger
+sent twice, is a recommendation.
 
-**Developer 36: backlog 46 built — the message decided by a quick face
-pass, the full scan after it.** The design is HISTORY 13.39's; this is
-its order. Tests first for every rule below; the log lines are what the
-architect will measure production's new delays from, so they matter.
-
-1. **The quick pass**, `faces.quick_scan(clip, camera, started_at,
-   moments, tracks)`: 24 frames (`QUICK_FRAMES`) spread evenly through
-   the frames the full scan reads densely (its person windows; all its
-   frames when there are none), read in time order, stopping after the
-   first face on a person that matches an entry at the user's sure
-   threshold — `observe(..., stop=...)` and `matches`, as the tool does.
-   **It writes nothing to the gallery or the sightings**; it returns the
-   sightings a message needs (`sighting_of`, the name, a picture of the
-   face for `faces_seen`) and the side views it saw. The developer
-   chooses how the frames are selected — by frame number from the full
-   scan's own `_selection`, which needs no extra ffmpeg pass, or by pts
-   as the tool does — and shows on a few production clips that the
-   chosen frames lie inside the windows. One log line per pass: frames
-   read, seconds, and whether it stopped at a sure face.
-2. **The quick pass never waits behind a full scan.** Today one lock
-   (`_SCAN_LOCK`) serialises scans, and a full scan holds it through
-   R23's pause — 46 % of all scan time. A full scan must let a waiting
-   quick pass run between two of its frames and while it pauses; it
-   never yields inside a network call nor while it matches and records.
-   Quick passes run in order of arrival, with no pause of their own
-   (developer 35's bench: 2.1 s, live YOLO 1.8× meanwhile). `scanning()`
-   and `embed_view`'s use of the lock keep working. Test: a quick pass
-   started while a full scan is paused, or between its frames, finishes
-   before that full scan reads another frame.
-3. **The message** (`clips._assemble`, `notify`). After the clip is
-   built: the quick pass. **A face found** → `after_scan` with its
-   sightings at once, as today with the full scan's. **No face** → the
-   message waits for the full scan at most 45 s
-   (`QUICK_DEADLINE_SECONDS`) from that moment; if the full scan ends
-   first, `after_scan` with its sightings, exactly as today, and nothing
-   else; if the deadline comes first, `after_scan` with no sightings —
-   the quick pass's side view if it saw one (`_save_side_view`), else
-   the best view — once, and the full scan's result becomes the
-   follow-up. Either way the full scan then runs as today and alone
-   keeps the views, the sightings, the side view and the gallery.
-4. **The follow-up**, a new function in `notify`: after a message the
-   quick pass decided, the full scan's sightings send **only faces this
-   event did not already send** — not the same entry, and for a face
-   with no entry not the same views (`_again`'s test against the quick
-   pass's references) — each through its case, and in Home only the
-   visit's news. It never sends a faceless message ("no face", "hidden
-   person"). This holds in every mode: in Away, where every person
-   event notifies, a face the quick pass already sent is not sent twice.
-   The visit remembers the full scan's faces as it does today's.
-5. **Read again with the shipped code**: `replay_quick_pass.py` (or a
-   step of it) runs the built path on the cached events, and the
-   HANDOFF compares its message classes with HISTORY 13.39's "else full,
-   D 45 s" row. `check_data` and the full suite as before; no file
-   changes format.
-6. **HANDOFF**: what was built and how the yield in step 2 works, the
-   log lines, the replay's numbers, and what to look at hardest — the
-   lock, the deadline's race with the full scan, the follow-up's
-   dedupe. The architect releases and deploys it, then measures start
-   → sent on production's log after a day of use.
-
-**Waits for the user:** choosing the sure
-threshold for faces and the sure distance for dogs from the two tables in
-Settings → Detection (the defaults hold until then); the M900 sleeping at
-the sign-in screen; the checks on the M900, `v2026.11.17.3` among them
+**No developer session planned.** Backlog 46 was the last decided item
+ready to build. What is open: item 7's part 2, the name following the
+body (decided 16/10), whose gain over backlog 41's visit is to be
+measured before it is designed; and the (proposto) items. **Waits for the
+user:** what comes next (`PENDING.md`); choosing the sure threshold for
+faces and the sure distance for dogs from the two tables in Settings →
+Detection (the defaults hold until then); the M900 sleeping at the
+sign-in screen; the checks on the M900, `v2026.11.18` among them
 (`PENDING.md`).
 
 **Not planned:** R54 and R47 are watches. R58 waits for item 7's later

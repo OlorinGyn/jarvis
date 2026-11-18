@@ -1981,3 +1981,82 @@ Crédito: os criadores do juiz, pelo nome, no README. À espreita: um mês
 de testemunhas antigas, registradas antes de o álbum ser limpo.
 Próxima: o veredito do dono sobre os três movimentos — e as mensagens
 que ainda chegam atrasadas.
+
+---
+
+## Edição #28 — A Fila Expressa
+
+`v2026.11.18` · 18 nov 2026
+
+**Quadro 1.** Manhã. Uma fila comprida de rolos de filme diante de uma
+porta estreita marcada SCAN; na frente, um rolo dormindo em pé,
+segurando a porta fechada. Ao longe, o celular do dono, apagado.
+LEGENDA: O veredito do dono sobre os três movimentos: encerrado, nunca
+aplicado. Ficou na mesa: as mensagens que chegam atrasadas.
+J.A.R.V.I.S.: `start → sent: p90 147 s, p99 507 s`
+
+**Quadro 2.** A coruja com um cronômetro ao lado da fila, um gráfico
+debaixo da asa.
+ARQUITETO: Três quartos da espera são a fila. E um scan na porta a
+mantém fechada até enquanto cochila esperando as câmeras gravarem.
+J.A.R.V.I.S.: `46 % of all scan time: paused`
+
+**Quadro 3.** O castor num projetor antigo, reprisando um mês inteiro de
+rolos numa parede: 24 quadros acesos em cada um, o resto escuro.
+DEV: Vinte e quatro quadros onde a pessoa estava, parando no primeiro
+rosto certo. Decidindo sozinha, ela corta a espera pela metade — e perde
+o rosto do dono de fone de ouvido. Esperando o scan completo, não muda
+nada.
+
+**Quadro 4.** A coruja vira uma ampulheta marcada 45 s sobre a fila.
+ARQUITETO: Então que ela decida quando acha um rosto. Quando não acha,
+a mensagem espera o scan completo — mas não mais que isto.
+O DONO: Constrói com 45 segundos.
+
+**Quadro 5.** A porta, reconstruída: ao lado, uma catraca com um
+distribuidor de senhas e uma placa EXPRESSA. O rolo grande dá passagem
+entre dois quadros seus, e de novo enquanto cochila; um rolo pequeno com
+uma senha passa correndo.
+DEV: Um scan completo segura as redes de rosto um quadro por vez. Entre
+dois, ou enquanto cochila, uma passagem rápida vai primeiro — por senha,
+em ordem.
+J.A.R.V.I.S.: `quick pass 12-00-00.mp4: 18 of 24 frames, 2.9 s, stopped at a sure face`
+
+**Quadro 6.** Três caminhos saindo da porta. Um rosto: um envelope voa
+para o celular na hora. Nenhum rosto: a ampulheta — o scan completo
+ganha, e vai o envelope dele; a areia acaba, vai um envelope "sem
+rosto", e o castor carteiro vem atrás com um segundo envelope carimbado
+NUNCA DUAS VEZES.
+DEV: O que o scan completo achar depois vai como complemento. Nunca um
+segundo "sem rosto". Nunca um rosto já enviado.
+
+**Quadro 7.** Noite, a coruja com uma lanterna. Dois chefões. Um
+envelope rachado com o rolo grande preso debaixo dele; e um estranho
+com dois crachás, "Visitor 6" e "Visitor 5".
+CHEFÃO (o envelope): SE EU QUEBRAR, O SCAN NUNCA RODA!
+CHEFÃO (os crachás): UM ROSTO, DUAS MENSAGENS!
+ARQUITETO: A passagem rápida deu o nome da página mais pesada. A fusão
+do scan completo fica com a mais antiga.
+
+**Quadro 8.** A coruja escrevendo dois testes primeiro num pergaminho,
+depois esticando uma rede debaixo do envelope e prendendo um crachá só,
+"Visitor 5", no estranho.
+J.A.R.V.I.S.: `516 passed`
+
+**Quadro 9.** O projetor de novo, o mês reprisado com as correções.
+J.A.R.V.I.S.: `1234 person events` `28 differ (2.3 %)` `39 / 74 / 115 s`
+ARQUITETO: A pior espera, de 507 segundos para 115. Número por número,
+os do próprio desenvolvedor.
+
+**Quadro 10.** O M900 às 12:47. Um pacote marcado `v2026.11.18`; uma
+vassoura varre seis ferramentinhas de desenvolvedor para fora da caixa
+da produção.
+J.A.R.V.I.S.: `Uninstalled 6 packages` `Back: ok` `Front: ok` — 19
+segundos no escuro.
+
+**Cartão final.** Habilidades: **A Fila Expressa** (24 quadros à frente
+de todo scan completo) · **A Ampulheta** (uma mensagem espera no máximo
+45 s) · **O Segundo Envelope** (a novidade do scan completo vem depois,
+nunca duas vezes). À espreita: um estranho cujo rosto novo o scan
+completo chama de visitante antigo — não visto em um mês, não
+descartado. Próxima: um dia de mensagens reais, cronometrado.

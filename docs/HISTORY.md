@@ -441,6 +441,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 35 | 17/11/2026 | `6d141ac..cb20ae2`, developer session 33 — backlog 45 step 2 (eDifFIQA(T) and ArcFace's norm, the halves check) | no code fixed; 446 tests pass, no comments, `check_doc_refs` 0; the alignment measured (the same cut both ways), the four dog verdicts upheld; no signal meets the rule — the cut went to the user with the price of each option, who chose the eye for what is stored and a cut for what enters; developer 34 planned; **no release** (13.37) |
 | 36 | 17/11/2026 | `2a936e8..165e316`, developer session 34 — backlog 45 step 3 (the face and dog gates, the clean-up) | one hole fixed by tests first (`bf3d6f9`: one stranger's split face sent twice); 473 tests pass, no comments; eDifFIQA's attribution in the README; **`v2026.11.17.3`** deployed, the clean-up and backlog 28's settle applied on production with backups; the cleaning's dry run, the page check and raid log 27 left for after the reset (13.38) |
 | 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s); the user chose to build it, developer 36 planned; **no release** (13.39) |
+| 38 | 18/11/2026 | `fdebd19..c2eedfe`, developer session 36 — backlog 46 built (the quick pass, the networks' turns, the message's three paths, the follow-up) | **two holes fixed by tests first (`3767102`)**: an exception in the quick message skipped the full scan; one body's two visitors named apart by the two passes; 516 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the built replay run again, the same 39 / 74 / 115 s; **release `v2026.11.18`**, deployed at 12:48: 7,437 events, 2,628 face and 3,045 dog sightings, 25 reports read before and after; about 19 s stopped, cameras ok 3 s after the start; the six developer packages review 36 left in production removed by the deploy's sync (13.40) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -3132,6 +3133,14 @@ conditions: (a) 2.3 % of the events, each read in the HANDOFF's classes
 pass of about 2 s, no pause, YOLO 1.8× meanwhile. The page does not
 change.
 
+**Released and deployed: `v2026.11.18`, 18/11 at 12:48.** `check_data`
+before and after: 7,437 events, 2,628 face and 3,045 dog sightings, 25
+reports; nothing to fetch; the imports warmed in 13.3 s before the stop;
+about 19 s stopped, both cameras ok 3 s after the start. The deploy's
+`uv sync` removed the six developer packages review 36's careless `uv
+run` had put in production (raid log 27). Production's own numbers after
+a day of use are BACKLOG 3's.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -3223,3 +3232,5 @@ of `CONTEXT.md`.
 | A48 | architect | ultracode | 17/11 22:27 – 18/11 01:35 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month; the user's two answers (43 closed, 46 measured first) waited about three hours; developer 35 planned and handed over | 1% → 15% (one window) | 23% → 25% | 86k → 215k tokens, the same conversation after its summary |
 | D35 | developer | high | 17/11 night – 18/11 04:20 | session 35: backlog 46 measured — the scan's finding split from its recording, `replay_quick_pass.py` (detect, compare, cost, bench, queue), 1,222 events read on production in place (487 tests) | 17% → 28% before the reset, then 0% → 5% | 25% → 27% | about 135k tokens, compacted once during the 2.5 h detection |
 | A49 | architect | ultracode | 18/11 early morning | review 37: the diff read whole, the numbers reproduced from the developer's cache, two sheets read, the "else full with a deadline" variant and the queue order measured by a scratch replay; HANDOFF integrated, ARCHITECTURE 10.3, PYTHON 55; no release; backlog 46 to the user, whose answer (build at 45 s) came after the window; developer 36 planned and handed over | 6% → 18%, then 0% → 6% in the next window | 27% → 30% | 73k → 272k tokens, a new conversation (started by the developer's handover) |
+| D36 | developer | high | 18/11 morning | session 36: backlog 46 built — the quick pass, `Turns` in place of the lock, the message's three paths and the follow-up, the picture in memory, the `--built` replay on the month (513 tests) | 8% → 23% | 30% → 32% | about 250k tokens at the end, a new conversation |
+| A50 | architect | ultracode | 18/11 12:33–12:55 | review 38: the diff read whole, the turns read for a deadlock, two holes fixed by tests first, the built replay run again (3 min); HANDOFF integrated, ARCHITECTURE 10.20 and 12.15, PYTHON 56, raid log 28; release and deploy `v2026.11.18`; no developer planned — what comes next went to the user | 25% → about 43% | 32% → 34% | 76k → about 320k tokens, a new conversation (started by the developer's handover) |
