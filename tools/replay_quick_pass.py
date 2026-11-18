@@ -11,6 +11,10 @@ written to the J.A.R.V.I.S. folder. Each part runs on its own:
     --cost N   the real quick pass timed on N events, each size
     --bench S  YOLO's time per frame alone and beside each pass, S seconds each
     --queue    the scan queue simulated from the log, quick passes first
+    --built    the shipped path, clips._person_messages, on every cached event:
+               its messages against the full scan's, the deadline from --queue's
+               schedule (needs --cost's cost.json); --aside lets a full scan step
+               aside for a quick pass at once, as the build does
 
     uv run python tools/replay_quick_pass.py C:\\JARVIS --since 2026-11-10 --detect
 """
@@ -40,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import replay_visits
-from jarvis import faces, people
+from jarvis import clips, faces, notify, people
 from jarvis.capture import NO_WINDOW, ffmpeg_exe
 from jarvis.clips import ASSEMBLY_DELAY, POST_SECONDS
 
@@ -232,24 +236,12 @@ def inside(frames, windows):
     return [f for f in frames if any(start <= f["t"] <= end for start, end in windows)]
 
 
-def spread_pick(items, count):
-    """count items spread evenly through the list, in order: the middle of each equal share."""
-    if len(items) <= count:
-        return list(items)
-    return [items[int((i + 0.5) * len(items) / count)] for i in range(count)]
-
-
-def sure_stop(gallery, sure):
-    """The quick pass's stop: a face on a person that matches an entry at the sure threshold."""
-    def stop(kept):
-        return any(score >= sure and person_id is not None
-                   for person_id, score in (gallery.match(f["embedding"]) for f in kept))
-    return stop
+spread_pick = faces.evenly
 
 
 def quick_frames(entry, count, gallery, sure):
     """The frames a quick pass of count frames reads from a cached event, stopping after the first sure face."""
-    stop = sure_stop(gallery, sure)
+    stop = faces.sure_stop(gallery, sure)
     read = []
     for frame in spread_pick(inside(entry["frames"], entry["windows"]), count):
         read.append(frame)
@@ -259,22 +251,9 @@ def quick_frames(entry, count, gallery, sure):
 
 
 def dry_found(gallery, observations, meta, tracks):
-    """The sightings a scan of these observations would hand notify, with nothing written."""
-    found = []
-    clip = meta["path"].with_suffix(".mp4")
-    for match in faces.matches(gallery, observations):
-        group = match["group"]
-        memory = {}
-        if match["person_id"] is None:
-            match["person_id"] = ""
-            memory = {"views": group["views"], "references": match["references"]}
-        person = gallery.get(match["person_id"]) or {}
-        found.append({**faces.sighting_of(group, match["person_id"], match["score"], meta["camera"],
-                                          meta["start"], clip),
-                      "thumbnail_path": None, "name": person.get("name", ""),
-                      "temporary_name": person.get("temporary_name", ""),
-                      "resident": bool(person.get("resident")), "crop": group["crop"], **memory})
-    return faces._one_visitor(gallery, found, tracks, merge=lambda ids: ids[0])
+    """The sightings a scan of these observations would hand notify, with nothing written: the quick pass's own."""
+    return faces.quick_sightings(gallery, observations, meta["path"].with_suffix(".mp4"), meta["camera"],
+                                 meta["start"], tracks)
 
 
 def identity(sighting, sure):
@@ -411,8 +390,8 @@ def contact_sheets(keys, events, full_found, quick_found, full_sent, quick_sent,
             picture = np.full((ROW_HEIGHT, ROW_HEIGHT, 3), 200, np.uint8)
         cells = [label(picture, key, 0)]
         for side, found in (("full", full_found[key]), ("quick", quick_found[key])):
-            for sighting in found or [{"crop": np.full((ROW_HEIGHT, ROW_HEIGHT, 3), 230, np.uint8)}]:
-                cells.append(label(sighting["crop"], f"{side}: {identity(sighting, sure) if 'name' in sighting else 'none'}",
+            for sighting in found or [{"picture": jpeg(np.full((ROW_HEIGHT, ROW_HEIGHT, 3), 230, np.uint8))}]:
+                cells.append(label(unjpeg(sighting["picture"]), f"{side}: {identity(sighting, sure) if 'name' in sighting else 'none'}",
                                    260))
         row = np.hstack(cells)
         text = np.full((20, row.shape[1], 3), 255, np.uint8)
@@ -437,7 +416,7 @@ def real_quick_pass(clip, chosen, gallery, sure):
     width, height, _, _ = faces._describe(clip)
     expression = "+".join(f"eq(pts\\,{f['pts']})" for f in chosen)
     with closing(faces.frames_selected(clip, expression, len(chosen), width, height)) as frames:
-        observations, count, _, _ = faces.observe(frames, sides=[], stop=sure_stop(gallery, sure))
+        observations, count, _, _ = faces.observe(frames, sides=[], stop=faces.sure_stop(gallery, sure))
     found = list(faces.matches(gallery, observations))
     return count, found
 
@@ -571,7 +550,7 @@ def finish_with_pause(start, work, busy, budget=faces.MAX_PAUSE_SECONDS):
 
 
 def simulate(jobs, quick_first):
-    """One worker, as _SCAN_LOCK: each job (ready, kind, service, id) when it finishes; quick jobs first if asked.
+    """One worker, as the scan's turns without a full scan stepping aside: each job (ready, kind, service, id) when it finishes; quick jobs first if asked.
 
     service is seconds, or a function of the start time for a job that pauses.
     """
@@ -664,6 +643,139 @@ def queue(root, since, cache):
             line(f"  its full scans' follow-ups", fulls)
 
 
+LATE_SECONDS = 0.4
+
+
+class SideView:
+    """An event's side-view path for after_scan: an existing picture once a pass of the replay kept a side view."""
+
+    def __init__(self, kept, key, stand_in):
+        self.kept, self.key, self.stand_in = kept, key, stand_in
+
+    def __fspath__(self):
+        return str(self.stand_in) if self.key in self.kept else "-missing-"
+
+
+def schedule(events, scans, cache, gallery, sure, size, aside=False):
+    """Each scanned event's clip ready, quick pass done and full scan done, quick passes first with no pause.
+
+    aside lets a full scan step aside for a quick pass at once, as the build
+    does between frames: a quick pass then waits only for the quick passes
+    before it.
+    """
+    rows = json.loads((cache / "cost.json").read_text(encoding="utf-8"))
+    fit = np.polyfit([r[f"read {size}"] for r in rows], [r[str(size)] for r in rows], 1)
+    offsets = sorted(((s["when"] - timedelta(seconds=s["seconds"])) - events[k]["end"]).total_seconds()
+                     for k, s in scans.items())
+    offset = offsets[len(offsets) // 20]
+    jobs, ready = [], {}
+    for key, scan in scans.items():
+        start = (scan["when"] - timedelta(seconds=scan["seconds"])).timestamp()
+        ready[key] = min(events[key]["end"].timestamp() + offset, start)
+        path = cache_path(cache, key)
+        if needs_detection(scan) and path.exists():
+            frames = len(quick_frames(pickle.loads(path.read_bytes()), size, gallery, sure))
+        else:
+            frames = min(size, scan["frames"])
+        jobs.append((ready[key], "quick", max(fit[1] + fit[0] * frames, 0.1), ("quick", key)))
+        jobs.append((ready[key], "full", scan["seconds"], ("full", key)))
+    done = simulate(jobs, True)
+    if aside:
+        done.update(simulate([job for job in jobs if job[1] == "quick"], True))
+    return {key: (ready[key], done[("quick", key)], done[("full", key)]) for key in scans}
+
+
+def built(root, since, cache, aside=False):
+    """clips._person_messages on every cached person event, its scans replaced by the cache: messages and delays."""
+    events = replay_visits.read_events(root, since - timedelta(hours=1))
+    scans = join_scans(read_scans(root, since), events)
+    config = json.loads((root / "config.json").read_text(encoding="utf-8-sig"))
+    settings = {**config, "notify_token": "0:replay", "notify_chat": "0", "notify_mode": "home"}
+    sure = faces.learn_threshold(settings)
+    gallery = faces.Gallery(root / "faces" / faces.GALLERY_FILE.name)
+    span = [m for m in sorted(events.values(), key=lambda m: m["start"])
+            if "person" in m.get("labels", ()) and m["start"] >= since]
+    quick, full, quick_sides, full_sides = {}, {}, {}, {}
+    missing = 0
+    for meta in span:
+        key, scan = meta["key"], scans.get(meta["key"])
+        path = cache_path(cache, key)
+        if not needs_detection(scan) or not path.exists() or not meta["path"].with_suffix(".mp4").exists():
+            missing += needs_detection(scan) and meta["path"].with_suffix(".mp4").exists() and not path.exists()
+            quick[key], full[key] = [], []
+            quick_sides[key] = full_sides[key] = meta["side_path"].exists()
+            continue
+        entry = pickle.loads(path.read_bytes())
+        chosen = quick_frames(entry, faces.QUICK_FRAMES, gallery, sure)
+        quick[key] = dry_found(gallery, observations_of(chosen), meta, meta.get("tracks"))
+        full[key] = dry_found(gallery, observations_of(entry["frames"]), meta, meta.get("tracks"))
+        quick_sides[key] = any(f["sides"] for f in chosen)
+        full_sides[key] = any(f["sides"] for f in entry["frames"])
+    if missing:
+        print(f"{missing} events to read are not in the cache: run --detect first")
+    times = schedule(events, scans, cache, gallery, sure, faces.QUICK_FRAMES, aside)
+    deadline = clips.QUICK_DEADLINE_SECONDS
+    late = {k for k, (_, quick_done, full_done) in times.items() if not quick.get(k) and full_done - quick_done > deadline}
+
+    metas = {m["key"]: {**m, "side_path": m["path"].with_suffix(".jpg") if full_sides[m["key"]] and not full[m["key"]]
+                        else Path("-missing-")} for m in span}
+    today = replay_visits.replay(metas, full, settings, visits=True)
+
+    sent, follow, kept, current = defaultdict(list), Counter(), set(), {}
+    notify._send_logged = lambda subject, text, image, values, silent=False: sent[current["key"]].append(subject) or True
+    notify.reset_incident()
+    notify.load = lambda: settings
+    real_follow_up = notify.follow_up
+
+    def follow_up(*args, **kwargs):
+        count = real_follow_up(*args, **kwargs)
+        follow[current["key"]] += count
+        return count
+
+    def scan_clip(*args, **kwargs):
+        key = current["key"]
+        if key in late:
+            time.sleep(LATE_SECONDS)
+        if full_sides[key] and not full[key]:
+            kept.add(key)
+        return full[key]
+
+    notify.follow_up = follow_up
+    faces.quick_scan = lambda clip, camera, start, moments, tracks: (quick[current["key"]],
+                                                                     [True] if quick_sides[current["key"]] else [])
+    faces.save_side_view = lambda clip, sides: kept.add(current["key"])
+    faces.scan_clip = scan_clip
+    clips.QUICK_DEADLINE_SECONDS = LATE_SECONDS / 2
+    for meta in span:
+        key = current["key"] = meta["key"]
+        notify._clock = lambda: meta["start"].timestamp()
+        best = meta["best_path"] if meta["best_path"] and meta["best_path"].exists() else None
+        message = {"held": True, "notified": False, "side_view": SideView(kept, key, meta["path"].with_suffix(".jpg")),
+                   "best": best, "people": meta.get("most_people", 0), "people_view": meta["people_path"],
+                   "ended_at": meta["end"], "tracks": meta.get("tracks")}
+        clips._person_messages(meta["camera"], meta["start"], meta["path"].with_suffix(".mp4"), (), message)
+
+    differing = [k for k in quick if Counter(map(kind, today.get(k, ()))) != Counter(map(kind, sent.get(k, ())))]
+    carried = [k for k in differing if follow[k]]
+    decided = Counter("quick face" if quick[k] else "deadline" if k in late else "full scan" for k in quick)
+    print(f"{len(quick)} person events since {since:%d/%m %H:%M}; decided by {dict(decided)}")
+    print(f"person messages: today {sum(len(v) for v in today.values())}, built {sum(len(v) for v in sent.values())}; "
+          f"events whose messages differ: {len(differing)} ({100 * len(differing) / max(len(quick), 1):.1f} %), "
+          f"{len(carried)} of them with the full scan's face sent as the follow-up")
+    for key in differing:
+        print(f"    {key}: today {today.get(key, [])} | built {sent.get(key, [])}"
+              f"{' (follow-up)' if follow[key] else ''}")
+    values = []
+    for key, scan in scans.items():
+        if not scan["sent"] or key not in quick:
+            continue
+        ready, quick_done, full_done = times[key]
+        latency = max((scan["sent"] - scan["when"]).total_seconds(), 0.0)
+        message = quick_done if quick[key] else quick_done + deadline if key in late else full_done
+        values.append(message + latency - events[key]["start"].timestamp())
+    line(f"built, quick {faces.QUICK_FRAMES}, D {deadline:g} s{', aside' if aside else ''}", values)
+
+
 def line(name, values):
     """One row of start-to-sent seconds: median, p90, p99."""
     print(f"  {name:30s} median {statistics.median(values):5.0f} s, p90 {percentile(values, 0.9):5.0f} s, "
@@ -680,6 +792,8 @@ def main():
     parser.add_argument("--cost", type=int, default=0)
     parser.add_argument("--bench", type=float, default=0.0)
     parser.add_argument("--queue", action="store_true")
+    parser.add_argument("--built", action="store_true")
+    parser.add_argument("--aside", action="store_true", help="with --built: a full scan steps aside for a quick pass at once")
     args = parser.parse_args()
     lower_priority()
     if args.detect:
@@ -693,6 +807,8 @@ def main():
         bench(args.root, args.since, args.cache, args.bench)
     if args.queue:
         queue(args.root, args.since, args.cache)
+    if args.built:
+        built(args.root, args.since, args.cache, args.aside)
 
 
 if __name__ == "__main__":

@@ -102,3 +102,13 @@ def test_an_identity_is_sure_probable_or_unknown():
     assert replay_quick_pass.identity({"name": "Izabel", "score": 0.32}, 0.4) == "probable Izabel"
     assert replay_quick_pass.identity({"name": "", "temporary_name": "Visitor 4"}, 0.4) == "unknown face Visitor 4"
     assert replay_quick_pass.identities([], 0.4) == ("none",)
+
+
+def test_the_replays_side_view_exists_once_a_pass_kept_one(tmp_path):
+    stand_in = tmp_path / "12-00-00.jpg"
+    stand_in.write_bytes(b"x")
+    kept = set()
+    side = replay_quick_pass.SideView(kept, "Back/2026-11-18/12-00-00", stand_in)
+    assert not Path(side).exists()
+    kept.add("Back/2026-11-18/12-00-00")
+    assert Path(side) == stand_in
