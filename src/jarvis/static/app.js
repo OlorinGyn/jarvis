@@ -721,6 +721,10 @@ function galleryTab(section, api, kind, unnamedLabel) {
 
   selectBar.querySelector(".select-clear").addEventListener("click", clearSelection);
 
+  new ResizeObserver(() => {
+    list.style.setProperty("--select-bar-height", `${selectBar.offsetHeight}px`);
+  }).observe(selectBar);
+
   function tileButton(tile, className, symbol, title, action) {
     const button = document.createElement("button");
     button.type = "button";
@@ -869,7 +873,7 @@ function galleryTab(section, api, kind, unnamedLabel) {
       viewsGrid.replaceChildren();
       waitingGrid.replaceChildren();
       calendarBox.replaceChildren();
-      pageResult.textContent = `This ${kind} no longer exists; it may have been merged.`;
+      pageResult.textContent = `This ${kind} no longer exists; it may have been merged or deleted.`;
     }
   }
 

@@ -987,7 +987,7 @@ input[role="switch"]:focus-visible {
 }
 
 .list.selecting {
-  padding-bottom: 140px;
+  padding-bottom: calc(var(--select-bar-height, 124px) + 16px);
 }
 
 .phone-only {
