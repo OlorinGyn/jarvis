@@ -108,6 +108,33 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+43. **Closed 18/11 by the user, not applied (`7c80e4d`, review 33; ARCHITECTURE 10.17).** **The residents' galleries cleaned photo by photo, and look-alikes
+    stopped** (decided 17/11; applied directly, with a backup) — a view
+    belongs to a resident when its own event (`view_events`, R55) had
+    exactly one person track voted person and exactly one resident
+    recognised in its scan. That evidence moves a resident's view filed
+    under the other resident, and an unnamed entry's views into the
+    resident they belong to, through the 40-view rule (ARCHITECTURE 17.14);
+    a view without it stays where it is. Checked against the review's
+    labels before anything is applied (HISTORY 13.33). Then the same
+    evidence at scan time, so a resident's bad views join him instead of
+    forming a new unnamed entry — only if the month shows no view given to
+    the wrong person. **The evidence and `tools/clean_gallery.py` are built**
+    (`7c80e4d`, review 33, ARCHITECTURE 10.17); on production's data they
+    move 2 views of 23 to the wrong person, so nothing is applied. The
+    user answered with item 45: the cleaning moves only views at its
+    quality cut, on the evidence of a sure sighting at the cut. Item 45
+    is applied (`v2026.11.17.3`); the dry run on production after it
+    (review 36) moves 3 views, all wrong — a one-frame "sure" Izabel the
+    mixed gallery recorded on 17/10 (ARCHITECTURE 10.17) — so nothing is
+    applied, and closing the item went to the user. The
+    scan-time step is not built.
+    **Closed by the user on 18/11** on the architect's recommendation: after
+    item 45 the cleaning has nothing right left to move — its only moves
+    rest on a sighting the mixed gallery made — and item 45's gate already
+    keeps a resident's poor views from forming a new unnamed entry, which
+    the scan-time step was for. `tools/clean_gallery.py` stays, unused.
+
 45. **Done 17/11 (`4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; ARCHITECTURE 10.18).** **Reference photos only of impeccable quality** (decided 17/11, the
     user: "find a cut-off level that never fails in terms of face quality,
     and work only with photos at that level; detection can stay as it is,
@@ -2915,7 +2942,9 @@ environment — harmless; the next update's sync decides them. A tool run in
   closes, 13 % the scan, 1 % the send. (Measured from production's log:
   each assembly thread's "face scan" line against its first "sent".) Since `v2026.11.17`
   (93 messages): median 39 s, p90 103 s, 3 over 5 minutes.
-  The architect's proposal is the user's to choose.
+  **The user's answers, 18/11:** backlog 43 closed, not applied; the
+  scan in two passes measured first, backlog 46 (CONTEXT 3). Developer
+  35 planned: the measurement only (BACKLOG 3).
 
 ## 14.3 Usage log
 
@@ -3005,4 +3034,4 @@ of `CONTEXT.md`.
 | A46 | architect | ultracode | 17/11 18:34–19:00 | review 35: the diff read whole, the alignment measured, the sheets and the band around the cut read, the price of each option computed; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 53; no release; the cut to the user, the user's answer, the gate designed against the visit rule and developer 34 planned | 46% → 60% | 17% → 19% | 74k → about 240k tokens, a new conversation (started by the developer's handover) |
 | D34 | developer | high | 17/11 evening | session 34: backlog 45 step 3 — the read set, the face gate, the dog gate, `clean_views.py` dry-run on a copy (471 tests) | 59% → 74% | 19% → 21% | about 250k tokens, a new conversation |
 | A47 | architect | ultracode | 17/11 19:13–19:40 | review 36: the diff read whole, one hole fixed by tests first, the release deployed, the clean-up and the settle applied on production; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 54, README; stopped at the window | 75% → 85% | 21% → 23% | 74k → 208k tokens, a new conversation (started by the developer's handover) |
-| A48 | architect | ultracode | 17/11 22:27–22:40 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month and two options proposed; stopped for the user | 1% → 9% (new window) | 23% → 24% | 86k → 177k tokens, the same conversation after its summary |
+| A48 | architect | ultracode | 17/11 22:27 – 18/11 01:35 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month; the user's two answers (43 closed, 46 measured first) waited about three hours; developer 35 planned and handed over | 1% → 15% (one window) | 23% → 25% | 86k → 215k tokens, the same conversation after its summary |

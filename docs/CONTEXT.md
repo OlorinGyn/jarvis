@@ -196,6 +196,20 @@ but not every view from behind. Recognition and the messages keep today's
 rules; the residents' galleries will grow slowly, and a new person gets a
 card only when a face shows clearly (backlog 45, **built and applied in
 `v2026.11.17.3`**, ARCHITECTURE 10.18).
+**The cleaning by the evidence of one body is closed, not applied** (the
+user, 18/11/2026, on the architect's recommendation): after the cut, its
+dry run on production moved 3 views, all wrong, on a sighting the mixed
+gallery had made a month before — a stored sighting is the gallery of
+its day — and the cut already keeps a resident's poor views from forming
+a new entry (backlog 43, ARCHITECTURE 10.17).
+
+**A slow message is a queue, and the queue is measured before it is
+changed** (the user, 18/11/2026, answering the late messages of 18/10):
+of the option list, "the scan in two passes" — a quick pass decides the
+message ahead of the full scan, which keeps the photos — measured first
+on a replay of the month, and built only if almost no message changes and
+the queue falls (backlog 46). The face checked while the event still
+records was not chosen; it stays an idea for later.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -293,7 +307,7 @@ tools/
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
   settle_waiting.py once: the Waiting queues older versions left, through the 40-view rule
-  clean_gallery.py once: each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
+  clean_gallery.py never applied (backlog 43, closed 18/11): each face view to the resident its own event shows, the unnamed of one body merged, "Visitor N"
   clean_views.py once: deletes the views read poor or someone else's, and the unread ones below the cut (backlog 45; applied 17/11)
   view_quality.py per stored face and dog view its quality signals, eDifFIQA(T) and ArcFace's norm among them; the cuts against the verdicts read by eye (view_quality_verdicts.json), checked on unseen days
   check_clips.py  counts damaged blocks per camera on one day
@@ -353,7 +367,7 @@ uv run python tools/probe_rtsp.py <ip> <user> <pw> stream1   raw RTSP
 powershell Test-NetConnection <ip> -Port 554            does the camera answer on that IP?
 uv run python tools/rebuild_faces.py                    rebuild faces/ (stop the program first)
 uv run python tools/settle_waiting.py [--dry-run]       once: old Waiting queues through the 40-view rule (stop the program first; R48)
-uv run python tools/clean_gallery.py <folder> [--apply]   once: the galleries cleaned by the evidence of one body; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
+uv run python tools/clean_gallery.py <folder> [--apply]   the galleries cleaned by the evidence of one body — never applied, backlog 43 closed 18/11; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.17)
 uv run python tools/check_clips.py [YYYY-MM-DD]         image damage coming from the cameras
 uv run python tools/clean_views.py <folder> [--apply]   once: the views read poor or someone else's, and the unread below the cut, deleted; a dry run unless --apply, which wants the service stopped (ARCHITECTURE 10.18)
 uv run python tools/view_quality.py <folder> [--sheets DIR] [--unread ISO-TIME]   each stored view's quality, the cuts and contact sheets; only reads (ARCHITECTURE 10.18)

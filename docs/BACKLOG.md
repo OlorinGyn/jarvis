@@ -60,6 +60,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **41.** Notifications by visit in Home: dog tracks, a resident explains one body, then only news — 98 messages a day to 35 on the month (decided 17/11, `071e55b`, review 32 `7709f94`, `v2026.11.17`); with R63, a failed send tried again | ARCHITECTURE 12.13, 12.14 |
 | ✓ | **44.** New people under "Visitor N"; one body's unnamed faces merged (decided 17/11, `92e36a3`, review 33, `v2026.11.17.2`) | ARCHITECTURE 10.17 |
 | ✓ | **42.** The photos manage themselves: an unnamed face unseen for 60 days forgotten, a probable dog makes no card (decided 17/11, `c3b0dd2`, review 34, `v2026.11.17.2`); closes backlog 37's self-cleaning part | ARCHITECTURE 10.19 |
+| ✓ | **43.** The residents' galleries cleaned by the evidence of one body — closed by the user 18/11, not applied: after item 45 its dry run on production moved 3 views, all wrong, and item 45's gate already does its scan-time step's job | ARCHITECTURE 10.17 |
 | ✓ | **45.** Reference photos only of impeccable quality: the eye cleaned what was stored, a cut guards what enters — eDifFIQA(T) ≥ 0.40 for a face view, the box ≥ 120 px for a dog view (decided 17/11, `4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; applied on production 17/11 19:23) | ARCHITECTURE 10.18 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45 and 32, in `PENDING.md`.
@@ -70,28 +71,32 @@ After a month left alone (HISTORY 13.33). The user's three answers are in
 CONTEXT 3. Items 41, 42 and 44 are done (above, reviews 32 to 34); their
 full text is in `HISTORY.md` 8.
 
-43. **The residents' galleries cleaned photo by photo, and look-alikes
-    stopped** (decided 17/11; applied directly, with a backup) — a view
-    belongs to a resident when its own event (`view_events`, R55) had
-    exactly one person track voted person and exactly one resident
-    recognised in its scan. That evidence moves a resident's view filed
-    under the other resident, and an unnamed entry's views into the
-    resident they belong to, through the 40-view rule (ARCHITECTURE 17.14);
-    a view without it stays where it is. Checked against the review's
-    labels before anything is applied (HISTORY 13.33). Then the same
-    evidence at scan time, so a resident's bad views join him instead of
-    forming a new unnamed entry — only if the month shows no view given to
-    the wrong person. **The evidence and `tools/clean_gallery.py` are built**
-    (`7c80e4d`, review 33, ARCHITECTURE 10.17); on production's data they
-    move 2 views of 23 to the wrong person, so nothing is applied. The
-    user answered with item 45: the cleaning moves only views at its
-    quality cut, on the evidence of a sure sighting at the cut. Item 45
-    is applied (`v2026.11.17.3`); the dry run on production after it
-    (review 36) moves 3 views, all wrong — a one-frame "sure" Izabel the
-    mixed gallery recorded on 17/10 (ARCHITECTURE 10.17) — so nothing is
-    applied, and closing the item waits for the user (`PENDING.md`). The
-    scan-time step is not built.
-Item 45 is done (above, review 36); its full text moves to `HISTORY.md` 8.
+Items 43 and 45 are closed (above, review 36 and the user's answer of
+18/11); their full text is in `HISTORY.md` 8.
+
+### Decided on 18/11/2026, to build
+
+46. **The message decided by a quick face pass, ahead of the full scan**
+    (decided 18/11, the user's answer to the late messages of 18/10:
+    "measured first; built only if almost no message changes and the
+    queue falls") — measured in review 36 (HISTORY 13.38): three quarters
+    of a slow message's wait is the queue for `faces._SCAN_LOCK`, and 46 %
+    of all scan time on the month is R21's pause while any camera records
+    (`busy=recording_now`, up to `MAX_PAUSE_SECONDS`), so in a busy visit
+    each scan waits for every scan before it, and each of those for the
+    recordings. **The idea:** per event, a quick pass — a few frames where
+    the person was (the person spans), stopping at the first sure face —
+    decides the message and runs ahead of every full scan, with no pause
+    or a short one; the full scan runs after, as today, and keeps the
+    views, the sightings and the gallery. What the full scan finds that
+    the quick pass did not, and the mode would send (a stranger's face, a
+    face new to the visit), goes out then as a follow-up: one extra
+    message beats a hidden person (CONTEXT 3). **Measured first, built
+    only if:** (a) on a replay of production's events the quick pass
+    decides almost no message differently from the full scan, each
+    difference read; (b) the simulated delays fall; (c) the live loop does
+    not slow — the quick pass's cost against YOLO while a camera records
+    (R21). The architect reads the numbers and plans the build.
 
 ### Decided on 16/10/2026, to build
 
@@ -316,17 +321,47 @@ the cleaning's (43) dry run on production moved 3 views, all wrong, so
 nothing was applied; People and Dogs read right at 375 px and on a
 desktop; raid log 27 written; the late messages measured.
 
-**No developer session is planned: the cycle stops for the user**, with
-two choices (`PENDING.md`):
+The user answered on 18/11 (CONTEXT 3): **backlog 43 is closed, not
+applied; backlog 46, the scan in two passes, is measured first.**
 
-1. **The cleaning (43)** — close it (the architect's recommendation), or
-   rebuild its evidence from today's gallery and read the dry run again.
-2. **The late messages** — (a) the scan in two passes, measured first on
-   a replay of the month; (b) the face checked while the event records;
-   both in that order; or leave it.
+**Developer 35: backlog 46's measurement — nothing changes in what runs
+on production.**
 
-Whichever the user picks becomes the next developer session, planned here
-by the architect.
+1. **Make the scan's finding reusable without writing.** `_scan_clip`
+   finds the faces and records them in one function; split the finding
+   (frames → observations → groups → matches) from the recording
+   (thumbnails, `add`, `reinforce`, sighting files), tests first, the
+   behaviour and the log lines unchanged — the full suite and
+   `check_data` as before.
+2. **`tools/replay_quick_pass.py <folder> [--since DATE]`**, read-only
+   like `replay_visits.py`: the gallery loaded and never saved, no
+   photo, view or sighting written. For each person event of the span
+   with a clip, with today's gallery: **the quick pass** — a few frames
+   from where the person was (the event's person spans, as the assembly
+   gives the scan its `moments`), stopping at the first sure face; the
+   developer chooses how the frames are picked and says why — and **the
+   full scan** as today. Per event, the identities each finds (named
+   sure, named probable, unknown face, none) and the Home message each
+   would make through `notify.after_scan`'s rules with the visit, as
+   `replay_visits.py` replays them. Every event whose message differs is
+   listed with its event and saved on a contact sheet, for the
+   architect to read. At least two sizes of the quick pass (for
+   instance 8 and 24 frames).
+3. **Its cost on the M900:** the quick pass's seconds per event (median,
+   p90), and YOLO's time per frame while a quick pass runs beside a
+   recording — R21's measurement (HISTORY 13.4), so the architect can
+   decide whether the quick pass needs R21's pause.
+4. **The queue simulated** from production's log, HISTORY 13.38's method
+   (each assembly's "face scan" line against its first "sent"), with the
+   quick pass first and the full scans after: start → sent, median, p90,
+   p99, before and after.
+5. **The span:** production's person events since 10/11, read in place
+   with no write, at below-normal CPU priority — production runs on the
+   same M900 (R12). Tests for the tool's pure parts.
+6. **HANDOFF** with the numbers, every differing message, the cost, and
+   the developer's recommendation for the size and the pause. The build
+   is not part of this session: the architect reads the numbers against
+   item 46's three conditions and plans it.
 
 **Waits for the user:** choosing the sure
 threshold for faces and the sure distance for dogs from the two tables in
