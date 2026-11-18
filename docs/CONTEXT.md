@@ -220,6 +220,17 @@ the user chose to build it at 45 s. **Built in `v2026.11.18`**
 messages differ, p90 147 → 74 s, p99 507 → 115 s; production's own
 numbers after a day of use.
 
+**Tracking records; it does not name** (the user, 18/11/2026). Item 7
+(16/10) asked that a name follow the body, not the clock. Its first part
+records every event's tracks, and their first use is the visit's dog
+rule (backlog 41). Measured before the rest was designed: over the
+visit, a name following the body changes about one message in nine
+days, no person track lived the 5 minutes a loitering message needs, and
+198 of 216 faceless messages have no resident recognised near them
+(ARCHITECTURE 7.16). **Closed as measured** on the architect's
+recommendation; a named track skipping the scan comes back only if the
+scan's queue still delays messages.
+
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
 

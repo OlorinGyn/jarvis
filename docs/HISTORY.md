@@ -108,6 +108,58 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+7. **Closed 18/11 by the user as measured (developer 37, review 39, ARCHITECTURE 7.16); part 1 `v2026.10.16.3`, part 2's dog rule backlog 41 (a) `v2026.11.17`.** **Tracking** (decided by the user, 16/10/2026) — "once one frame
+   recognised me, you do not want my face any more, only the object":
+   turning around does not make the user someone else, and nobody
+   teleports into their place. Today the name belongs to the event, not
+   the body: one good frame names the whole clip, but the name dies when
+   YOLO loses the body for 5 s and the event closes, and with two people
+   nobody knows which body is whom. Measured on the 29 person messages of
+   15–16/10: 4 were one walk cut into two clips 0–7 s apart, the user
+   recognised in one and not the other (`Back/2026-10-15/18-42-31`,
+   `Front/2026-10-15/19-41-18`, `Front/2026-10-16/00-30-11`,
+   `Front/2026-10-16/14-19-58`); 14 had no frame recognising anyone, which
+   tracking cannot name. The identity follows the body, never the clock: a
+   time rule ("Gustavo was here a minute ago") would hide a stranger
+   arriving right after a resident (CONTEXT 3). **It is also R59's and
+   R58's answer** (section 2): a body YOLO calls a dog in most of its
+   frames is a dog, and two boxes nested for a whole track's life are one
+   body. The design, for the session that builds it: a well-regarded
+   tracker (ByteTrack, from Roboflow's `trackers` — probed on the M900 in
+   review 29, HISTORY 13.30) in the live loop; each
+   face of the clip scan bound to a track by the frame's time; a named
+   track not scanned again while other tracks still are; the track
+   surviving the event boundary, for a gap measured on the four clips
+   above, not guessed; the loitering message of item 40 (a person nobody
+   accounts for still there after some minutes, once); and "the same
+   place" of item 40's incident becoming "the same body", so a new person
+   on the same camera rings again (ARCHITECTURE 12.11). **Part 1 done
+   (developers 28 and 29, reviews 30 and 31, `v2026.10.16.3`,
+   ARCHITECTURE 7.16):** `trackers` is a dependency, deployed with its
+   imports warmed before the stop; `src/jarvis/tracks.py` gives every track
+   an id from its first box and runs in the live loop, and each event's
+   JSON records its tracks (ARCHITECTURE 8.4), acting on nothing. The vote
+   with a run of 2 person frames clears dog-majority tracks without losing
+   a true person; a short track that starts as person — R58's false bodies,
+   the rest of R59 — needs another signal, and no buffer joins a walk whose
+   body left the view for 7–9 s — appearance or place will have to. **Part
+   2** acts on tracks: its R59 piece is done as backlog 41 (a) —
+    `tracks.dog_only`, Home only (`v2026.11.17`, ARCHITECTURE 12.14); next,
+    the name following the body. **The user's answer, 18/11 (review 38):
+    measured first** — since backlog 41's visit, a resident recognised in
+    the visit already explains one faceless body, so what the name
+    following the body still adds over the visit is measured on the month
+    before it is designed (developer 37, section 3). **Measured
+    (developer 37, review 39, ARCHITECTURE 7.16):** of the 216 person
+    messages Home sent without a face in nine days, a name following the
+    body would have changed 1 and a count of tracks at once 5 (R58's
+    side); 198 had no resident recognised near them, which no tracking
+    names. No person track lived 5 minutes, so the loitering message
+    would never have fired; ids cross events only where the 60-s limit
+    cut one walk. A named track not scanned again would save 23 % of a
+    named event's scan frames. What part 2 still builds, if anything, is
+    the user's (`PENDING.md`).
+
 46. **Built 18/11 (`6c9d645`, `5e3a668`, review 38 `3767102`, `v2026.11.18`; ARCHITECTURE 10.20, 12.15); measured on production after a day of use: BACKLOG 3.** **The message decided by a quick face pass, ahead of the full scan**
     (decided 18/11, the user's answer to the late messages of 18/10:
     "measured first; built only if almost no message changes and the
@@ -3197,6 +3249,12 @@ the queue still costs, which production's reading of backlog 46 tomorrow
 says. Taken to the user with the recommendation to close part 2 as
 measured (`PENDING.md`).
 
+**The user's answers, the same afternoon:** item 7 part 2 **closed as
+measured** — the architect's recommendation; tracks stay recorded and
+feed the visit's dog rule, R58 becomes a watch — and the next developer
+session **waits for production's reading of backlog 46** on 19/11. Item 7
+left the backlog for section 8.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -3291,4 +3349,4 @@ of `CONTEXT.md`.
 | D36 | developer | high | 18/11 morning | session 36: backlog 46 built — the quick pass, `Turns` in place of the lock, the message's three paths and the follow-up, the picture in memory, the `--built` replay on the month (513 tests) | 8% → 23% | 30% → 32% | about 250k tokens at the end, a new conversation |
 | A50 | architect | ultracode | 18/11 12:33–12:55 | review 38: the diff read whole, the turns read for a deadlock, two holes fixed by tests first, the built replay run again (3 min); HANDOFF integrated, ARCHITECTURE 10.20 and 12.15, PYTHON 56, raid log 28; release and deploy `v2026.11.18`, the first live quick passes read; the user's answer — item 7 part 2, measured first — and developer 37 planned and handed over | 25% → about 45% | 32% → 34% | 76k → about 320k tokens, a new conversation (started by the developer's handover) |
 | D37 | developer | high | 18/11 afternoon | session 37: item 7 part 2 measured — `follow_body.py` (the faceless Home messages by class, ids across events, tracks living for minutes, faces bound to replayed tracks on 18 events and 30 sampled), read-only on production, part 2's replay 22 min (12 tool tests) | 46% → 53% | 35% → 36% | 76k → 175k tokens, a new conversation |
-| A51 | architect | ultracode | 18/11 13:15–14:25 | review 39: the tool read whole, part 1 run again on production with two numbers added, the sheets read, the joined clips' alignment checked; HANDOFF integrated, ARCHITECTURE 7.16 and 12.11, PYTHON 57; no release; part 2's decision to the user, not handed over | 53% → 62% | 36% → 37% | 73k → 200k tokens, a new conversation (started by the developer's handover) |
+| A51 | architect | ultracode | 18/11 13:15–14:35 | review 39: the tool read whole, part 1 run again on production with two numbers added, the sheets read, the joined clips' alignment checked; HANDOFF integrated, ARCHITECTURE 7.16 and 12.11, PYTHON 57; no release; part 2 to the user, who closed it as measured and chose to wait for production's reading of backlog 46 — item 7 to HISTORY 8, R58 a watch, CONTEXT 3; not handed over | 53% → about 64% | 36% → 37% | 73k → about 215k tokens, a new conversation (started by the developer's handover) |

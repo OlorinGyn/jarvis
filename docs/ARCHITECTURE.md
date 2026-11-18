@@ -1390,8 +1390,10 @@ would have changed about one message in nine days that the visit does not
 already handle, and a count of tracks at once five more (R58's side); the
 loitering message would never have fired; what is left of value is scan
 time. The rest of the faceless messages — 22 a day — have no resident
-recognised near them, which no tracking can name. The decision went to
-the user (`PENDING.md`).
+recognised near them, which no tracking can name. **The user closed part
+2 as measured** (18/11): the tracks stay recorded and feed the visit's
+dog rule (12.14); the scan's piece comes back only if production shows
+the queue still delaying messages (BACKLOG 3).
 
 ---
 
@@ -3311,11 +3313,11 @@ limits.
 message. Since `v2026.11.17`, in Home, the visit (12.14) decides which
 messages go at all; this section decides how each one that goes arrives.
 
-**Open, for tracking (backlog 7):** "the same place" becoming "the same
+**Left open for tracking, then closed (backlog 7, 18/11):** "the same place" becoming "the same
 body", so a new person on the same camera rings again; and a person nobody
 accounts for still there after some minutes, once. Measured on 10–18/11
 (7.16): no person track lived 5 minutes, so the second would not have
-fired once that month.
+fired once that month; the user closed both with item 7 part 2.
 
 ### 12.12 A camera with no picture (backlog 40, `v2026.10.16`)
 

@@ -63,6 +63,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **43.** The residents' galleries cleaned by the evidence of one body — closed by the user 18/11, not applied: after item 45 its dry run on production moved 3 views, all wrong, and item 45's gate already does its scan-time step's job | ARCHITECTURE 10.17 |
 | ✓ | **45.** Reference photos only of impeccable quality: the eye cleaned what was stored, a cut guards what enters — eDifFIQA(T) ≥ 0.40 for a face view, the box ≥ 120 px for a dog view (decided 17/11, `4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; applied on production 17/11 19:23) | ARCHITECTURE 10.18 |
 | ✓ | **46.** The message decided by a quick face pass of 24 frames, the full scan's message waiting at most 45 s, what the full scan finds later as a follow-up (decided 18/11, `6c9d645`, `5e3a668`, review 38 `3767102`, `v2026.11.18`); its measurement on production after a day of use is section 3's | ARCHITECTURE 10.20, 12.15 |
+| ✓ | **7.** Tracking (decided 16/10): part 1, every event's tracks recorded (`v2026.10.16.3`, reviews 30–31); part 2's dog rule as backlog 41 (a) (`v2026.11.17`); the rest — the name following the body, the loitering message, "the same body" in the incident — **closed by the user 18/11 as measured** (developer 37, review 39): 1 message in nine days over the visit | ARCHITECTURE 7.16 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45 and 32, in `PENDING.md`.
 
@@ -83,7 +84,7 @@ section 3; its full text is in `HISTORY.md` 8.
 ### Decided on 16/10/2026, to build
 
 Item 40 is done (above, review 29); its full text is in `HISTORY.md` 8. Item 7,
-tracking, decided the same day, is under Important.
+tracking, decided the same day, is closed (above, 18/11) and its text there too.
 
 ### Decided on 13/10/2026, to build
 
@@ -119,57 +120,6 @@ It works without them, but is incomplete.
    and whether `HWACCEL` helps (INSTALL 6).
 6. **Search and filter** (proposto) — with ~100 events a day, by date only is
    not enough. By person, camera, label.
-7. **Tracking** (decided by the user, 16/10/2026) — "once one frame
-   recognised me, you do not want my face any more, only the object":
-   turning around does not make the user someone else, and nobody
-   teleports into their place. Today the name belongs to the event, not
-   the body: one good frame names the whole clip, but the name dies when
-   YOLO loses the body for 5 s and the event closes, and with two people
-   nobody knows which body is whom. Measured on the 29 person messages of
-   15–16/10: 4 were one walk cut into two clips 0–7 s apart, the user
-   recognised in one and not the other (`Back/2026-10-15/18-42-31`,
-   `Front/2026-10-15/19-41-18`, `Front/2026-10-16/00-30-11`,
-   `Front/2026-10-16/14-19-58`); 14 had no frame recognising anyone, which
-   tracking cannot name. The identity follows the body, never the clock: a
-   time rule ("Gustavo was here a minute ago") would hide a stranger
-   arriving right after a resident (CONTEXT 3). **It is also R59's and
-   R58's answer** (section 2): a body YOLO calls a dog in most of its
-   frames is a dog, and two boxes nested for a whole track's life are one
-   body. The design, for the session that builds it: a well-regarded
-   tracker (ByteTrack, from Roboflow's `trackers` — probed on the M900 in
-   review 29, HISTORY 13.30) in the live loop; each
-   face of the clip scan bound to a track by the frame's time; a named
-   track not scanned again while other tracks still are; the track
-   surviving the event boundary, for a gap measured on the four clips
-   above, not guessed; the loitering message of item 40 (a person nobody
-   accounts for still there after some minutes, once); and "the same
-   place" of item 40's incident becoming "the same body", so a new person
-   on the same camera rings again (ARCHITECTURE 12.11). **Part 1 done
-   (developers 28 and 29, reviews 30 and 31, `v2026.10.16.3`,
-   ARCHITECTURE 7.16):** `trackers` is a dependency, deployed with its
-   imports warmed before the stop; `src/jarvis/tracks.py` gives every track
-   an id from its first box and runs in the live loop, and each event's
-   JSON records its tracks (ARCHITECTURE 8.4), acting on nothing. The vote
-   with a run of 2 person frames clears dog-majority tracks without losing
-   a true person; a short track that starts as person — R58's false bodies,
-   the rest of R59 — needs another signal, and no buffer joins a walk whose
-   body left the view for 7–9 s — appearance or place will have to. **Part
-   2** acts on tracks: its R59 piece is done as backlog 41 (a) —
-    `tracks.dog_only`, Home only (`v2026.11.17`, ARCHITECTURE 12.14); next,
-    the name following the body. **The user's answer, 18/11 (review 38):
-    measured first** — since backlog 41's visit, a resident recognised in
-    the visit already explains one faceless body, so what the name
-    following the body still adds over the visit is measured on the month
-    before it is designed (developer 37, section 3). **Measured
-    (developer 37, review 39, ARCHITECTURE 7.16):** of the 216 person
-    messages Home sent without a face in nine days, a name following the
-    body would have changed 1 and a count of tracks at once 5 (R58's
-    side); 198 had no resident recognised near them, which no tracking
-    names. No person track lived 5 minutes, so the loitering message
-    would never have fired; ids cross events only where the 60-s limit
-    cut one walk. A named track not scanned again would save 23 % of a
-    named event's scan frames. What part 2 still builds, if anything, is
-    the user's (`PENDING.md`).
 8. **Animal labels** (proposto) — accept a species only when it repeats within
    the event, instead of accumulating every YOLO hesitation.
 10. **Audio** (proposto) — the cameras send PCM and `-an` drops it. Barking,
@@ -235,7 +185,7 @@ review 29, R61 in review 30, R59, R62 and R63 in review 32.
 
 | # | Priority | Recommendation | State |
 |---|---|---|---|
-| R58 | medium | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule; waits for item 7 part 2 — tracks at once are no better than boxes once the first box counts (ARCHITECTURE 7.16) |
+| R58 | medium — a watch | One body with two boxes counts as two people, and the hidden-person message fires | measured, no rule: tracks at once are no better than boxes once the first box counts; 5 such messages in nine days of November (ARCHITECTURE 7.16); item 7 part 2 closed 18/11, so a watch — trigger: a false "hidden person" the user reports |
 | R54 | medium — a watch | Best of N and the looser frontal gate give a stranger more chances to read "probably <resident>", silent in Home | open (below) |
 | R47 | low — a watch | R46's chain has no end: a real dog that takes a vanished person's place would stay a person | open (below) |
 | R12 | medium | Production and test copy on the same M900 double the CPU load | open (HISTORY 13.5) |
@@ -246,8 +196,8 @@ review 29, R61 in review 30, R59, R62 and R63 in review 32.
 events with a person holds two people, so neither counting rule can be
 shown to keep a true pair; rule (a) at 0.9 would remove 15 of 17 one-body
 cases, and could swallow a person standing behind another (ARCHITECTURE
-22.3). **It waits for tracking** (item 7): a count of tracks instead of
-boxes. **R58 is measurable
+22.3). It waited for tracking (item 7): a count of tracks instead of
+boxes — and item 7 part 2 closed on 18/11 without one, so it is a watch. **R58 is measurable
 since 17/10:** production now holds true pairs — 13 events of 17–18/10
 count two or more person tracks at once; two read by eye, both true:
 `Back/2026-10-17/19-50-59` (two people on the porch at night) and
@@ -311,8 +261,9 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 item 7 part 2 reviewed — `tools/follow_body.py` read whole, its part 1
 run again on production (the same classes), the binding and crossing
 sheets read, the joined clips' time alignment checked. No code fixed, no
-release. What part 2 adds over the visit is small (ARCHITECTURE 7.16):
-**what comes next waits for the user** (`PENDING.md`).
+release. What part 2 adds over the visit is small (ARCHITECTURE 7.16);
+**the user closed it as measured**, and chose to wait for the reading
+below before the next developer session.
 
 **Next, the architect's: backlog 46 measured on production after a day of
 use** (from 19/11 about 13:00). From the log's `message` and `follow-up`
@@ -324,11 +275,13 @@ sent and skipped as "sent by the quick pass"; `analysed per minute during
 a face scan` against before; and any `quick pass failed`, `person message
 failed` or `face scan failed` line. Far from the replay, or a stranger
 sent twice, is a recommendation. The same reading says whether the scan
-queue still delays messages — what a named track not scanned again would
-be worth (ARCHITECTURE 7.16).
+queue still delays messages — if it does, a named track not scanned
+again (23 % of a named event's frames, ARCHITECTURE 7.16) comes back as
+a proposal.
 
-**Developer: nothing planned** until the user answers what part 2
-builds, if anything, and what comes after it.
+**Developer: nothing planned.** The user closed item 7 part 2 as
+measured and chose to wait for this reading (18/11): the next developer
+session is planned from it, with the user.
 
 **Waits for the user:** choosing the sure threshold for
 faces and the sure distance for dogs from the two tables in Settings →
@@ -336,6 +289,6 @@ Detection (the defaults hold until then); the M900 sleeping at the
 sign-in screen; the checks on the M900, `v2026.11.18` among them
 (`PENDING.md`).
 
-**Not planned:** R54 and R47 are watches. R58 waits for item 7's later
-sessions. R14, R12 and R9 as before. Every other open backlog item is
+**Not planned:** R54, R47 and R58 are watches. R14, R12 and R9 as
+before. Every other open backlog item is
 **(proposto)**.
