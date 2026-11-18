@@ -64,8 +64,10 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **45.** Reference photos only of impeccable quality: the eye cleaned what was stored, a cut guards what enters — eDifFIQA(T) ≥ 0.40 for a face view, the box ≥ 120 px for a dog view (decided 17/11, `4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; applied on production 17/11 19:23) | ARCHITECTURE 10.18 |
 | ✓ | **46.** The message decided by a quick face pass of 24 frames, the full scan's message waiting at most 45 s, what the full scan finds later as a follow-up (decided 18/11, `6c9d645`, `5e3a668`, review 38 `3767102`, `v2026.11.18`); its measurement on production after a day of use is section 3's | ARCHITECTURE 10.20, 12.15 |
 | ✓ | **7.** Tracking (decided 16/10): part 1, every event's tracks recorded (`v2026.10.16.3`, reviews 30–31); part 2's dog rule as backlog 41 (a) (`v2026.11.17`); the rest — the name following the body, the loitering message, "the same body" in the incident — **closed by the user 18/11 as measured** (developer 37, review 39): 1 message in nine days over the visit | ARCHITECTURE 7.16 |
+| ✓ | **48.** "Visitor N" takes the smallest free number (decided 18/11, `4e67fc4`, review 40, `v2026.11.18.2`) | ARCHITECTURE 10.17 |
+| ✓ | **47.** Delete an unnamed entry from the page: at once what forgetting does, in the selection bar and on a wide card (decided 18/11, `72798fc`, `f12d35a`, review 40 `3cd2908`, `v2026.11.18.2`) | ARCHITECTURE 10.19, 17.16 |
 
-**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45 and 32, in `PENDING.md`.
+**Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45, 47, 48 and 32, in `PENDING.md`.
 
 ### Decided on 17/11/2026, to build
 
@@ -79,35 +81,8 @@ Items 43 and 45 are closed (above, review 36 and the user's answer of
 ### Decided on 18/11/2026, to build
 
 Item 46 is done (above, review 38), its production measurement in
-section 3; its full text is in `HISTORY.md` 8.
-
-47. **Delete an unnamed entry** (decided 18/11, the user: "delete
-    items in the No guess section — visitors who came that I do not want
-    to keep, only discard") — a face that is a real person, so not a bad
-    detection, and not worth keeping. **Delete** does at once what the
-    60-day forgetting does (backlog 42, ARCHITECTURE 10.19): the entry
-    leaves the gallery and its view photos are erased; its recordings,
-    sightings and thumbnails stay, and Recordings reads them as it reads
-    a forgotten entry's. If the person comes back, a new entry forms — a
-    new "Visitor N". No undo: it asks first ("Delete 3? Their photos are
-    erased; their recordings stay. If they come back they appear as a
-    new visitor."). **Where (decided, UX):** the unnamed list's selection
-    bar, beside "Bad detection" — so "Select all" on the No guess group
-    and Delete empties it — and on each unnamed card beside its "Bad
-    detection" where the card shows one (a wide screen). Any unnamed
-    entry, in any group; a named entry is never deleted this way. People
-    and Dogs alike, since the list is one component: a neighbour's dog
-    passing is the same case.
-48. **"Visitor N" takes the smallest free number** (decided 18/11, the
-    user: "I do not want Visitor N to reach large values, we are at 34;
-    reuse the numbers no longer in use") — a number is free when no entry holds it: named, merged,
-    reported, deleted (47) or forgotten (42). Existing entries keep their
-    numbers; on production on 18/11 they hold 2, 3, 4, 21, 25, 29, 30 and
-    34, so the next new face is Visitor 1, then 5. The price, accepted
-    with the request: a "Visitor 5" in the Telegram chat last week and
-    one today may be two people. The page is not affected — Recordings
-    never shows the temporary name, and a gone entry's sighting reads as
-    one (ARCHITECTURE 10.17, 10.19).
+section 3; items 47 and 48 are done (above, review 40). Their full text
+is in `HISTORY.md` 8.
 
 ### Decided on 16/10/2026, to build
 
@@ -285,14 +260,13 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 39 is done** (HISTORY 13.41): developer 37's measurement of
-item 7 part 2 reviewed — `tools/follow_body.py` read whole, its part 1
-run again on production (the same classes), the binding and crossing
-sheets read, the joined clips' time alignment checked. No code fixed, no
-release. What part 2 adds over the visit is small (ARCHITECTURE 7.16);
-**the user closed it as measured**, and chose to wait for the reading
-below before planning more; then asked for backlogs 47 and 48
-(developer 38, below).
+**Review 40 is done** (HISTORY 13.42): developer 38's backlogs 47 and
+48 reviewed whole — the delete racing a face scan read path by path,
+every gallery write checked to reload under the lock; one page fix
+(`3cd2908`, the list's room under the selection bar follows the bar's
+real height); **release `v2026.11.18.2`**. No developer session is
+planned: the next work is the reading below, and the user chose to wait
+for it before anything else.
 
 **Next, the architect's: backlog 46 measured on production after a day of
 use** (from 19/11 about 13:00). From the log's `message` and `follow-up`
@@ -308,57 +282,11 @@ queue still delays messages — if it does, a named track not scanned
 again (23 % of a named event's frames, ARCHITECTURE 7.16) comes back as
 a proposal.
 
-**Developer 38: backlogs 47 and 48** (the user's request, 18/11, after
-choosing to wait for the reading above for anything else). Both small,
-both in the gallery and the page; the order below.
-
-1. **Backlog 48 first** — `faces.Gallery._next_visitor` returns the
-   smallest N ≥ 1 that no entry's `temporary_name` holds. Every caller
-   already holds `_GALLERY_LOCK` after a `load()` (`add`,
-   `name_visitors`); keep it so. **Data format:** the header's
-   `"visitors"` counter is no longer read; leave it in the file as it is
-   — never removed — so a rollback to `v2026.11.18` (max of counter and
-   held, plus one) still gives a number no entry holds. Tests: the
-   smallest free number after a gap (2, 3, 4, 21 held → 1, then 5); a
-   number freed by naming, merging and deleting is given again; a file
-   without the counter.
-2. **Backlog 47's server** — `POST /api/persons/delete` and
-   `POST /api/dogs/delete` with `{"ids": [...]}`, beside `/report`, and
-   the one-entry form `POST /api/persons/{id}/delete` and
-   `/api/dogs/{id}/delete`. Each id through the gallery's `take_out`
-   (photos erased, the entry gone); a named or unknown id is skipped and
-   reported back as gone, the way `_report_many` answers. The same write
-   guard as every other POST (paired devices). The log names what left:
-   "Deleted N unnamed face entries from the page: Visitor 21, …" — the
-   temporary name or the id. Check that the dog gallery's `take_out`
-   does the same for a dog (`DogGallery` inherits it), and that a
-   deleted entry's sightings read in Recordings exactly as a forgotten
-   one's (10.19). Tests: an unnamed entry deleted, its view files gone,
-   its sightings and thumbnails kept; a named id refused; a mixed list.
-3. **Backlog 47's page** — "Delete" in the selection bar beside "Bad
-   detection" (`index.html`, both tabs) and on the unnamed card beside
-   its "Bad detection" (`app.js`), each with the confirm of item 47's
-   text (the count, and "a new visitor" only on People); after it,
-   `loadList()` and a line in the list's result ("Deleted 3."). Style it
-   as the page's other destructive buttons are. **Check at 375 px and at
-   desktop width** with the built-in browser on the test copy: the bar
-   must still fit and wrap cleanly with one more button, and a phone
-   user reaches Delete through the bar. Screenshots of both widths in
-   the HANDOFF.
-4. **Before committing**, `tools/check_data.py` (the gallery's reader
-   and writer changed), the full test suite, the comment count. **No
-   production data touched**: no deletion on `C:\JARVIS`, only on the
-   test copy.
-5. **HANDOFF:** what changed, the data-format note (the counter kept,
-   unused), the screenshots, what the review should read hardest — the
-   delete racing a face scan that matches the same entry (10.19's race,
-   now at the user's click), and a delete while the entry's page is open
-   on another device.
-
 **Waits for the user:** choosing the sure threshold for
 faces and the sure distance for dogs from the two tables in Settings →
 Detection (the defaults hold until then); the M900 sleeping at the
-sign-in screen; the checks on the M900, `v2026.11.18` among them
+sign-in screen; the checks on the M900, `v2026.11.18` and
+`v2026.11.18.2` among them
 (`PENDING.md`).
 
 **Not planned:** R54, R47 and R58 are watches. R14, R12 and R9 as

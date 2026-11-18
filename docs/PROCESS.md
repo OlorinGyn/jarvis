@@ -188,15 +188,15 @@ one, it does not ignore it: it writes why, and the user decides.
 
 ### 3.2 Review log
 
-The table of every review is `HISTORY.md` 13.2. **The last review, 39, covers
-up to `e5ead24`** (developer 37's handoff, item 7 part 2 measured; no code
-fixed, no release); the next starts from the commit after the review's
+The table of every review is `HISTORY.md` 13.2. **The last review, 40, covers
+up to `063d7cd`** (developer 38's handoff, backlogs 47 and 48; one page
+fix, `v2026.11.18.2`); the next starts from the commit after the review's
 last.
 
 ### 3.3 Each review in full
 
-`HISTORY.md` 13.3 to 13.41, one section per review (13.16 is the reading of
-the bad-detection reports, 13.33 the month left alone); the next one is 13.42.
+`HISTORY.md` 13.3 to 13.42, one section per review (13.16 is the reading of
+the bad-detection reports, 13.33 the month left alone); the next one is 13.43.
 
 ---
 
@@ -358,3 +358,4 @@ review and commits.
 | 26 | `v2026.11.17.2` | The Impeccable Album / O Álbum Impecável | written |
 | 27 | `v2026.11.17.3` | The Judge at the Door / O Juiz na Porta | written |
 | 28 | `v2026.11.18` | The Express Lane / A Fila Expressa | written |
+| 29 | `v2026.11.18.2` | Visitor Number One / Visitante Número Um | written |

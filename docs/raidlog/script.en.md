@@ -1975,3 +1975,53 @@ every full scan) · **The Hourglass** (a message waits at most 45 s) ·
 Lurking: a stranger whose new face the full scan names as an old
 visitor — not seen in a month, not ruled out. Next: a day of real
 messages, timed.
+
+## Issue #29 — Visitor Number One
+
+`v2026.11.18.2` · 18 Nov 2026
+
+**Panel 1.** The People room. A long row of name tags on hooks:
+VISITOR 2, 3, 4, 21, 25, 29, 30, 34. The owner, arms crossed, before an
+empty hook marked 35.
+OWNER: I don't want these numbers growing. And some of these people I
+never want to see again. Just discard them.
+
+**Panel 2.** The developer at a counter with a roll of tickets that
+starts at 1. A magnifier slides along the hooks and stops on the first
+empty one.
+DEV: The smallest number nobody holds. Named, merged, reported,
+forgotten — the hook is free again.
+J.A.R.V.I.S.: `next stranger: Visitor 1, then 5`
+
+**Panel 3.** The old counter on the wall, stopped at 34, a sticky note
+on it: DO NOT REMOVE.
+DEV: We don't read it any more. But if we ever roll back, the old
+version counts from it — above every hook in use.
+
+**Panel 4.** The owner taps a new red-edged button, DELETE, beside BAD
+DETECTION. A dialog: "Delete 3? Their photos are erased; their
+recordings stay." Three photos fade; the film reels on the shelf behind
+stay where they are.
+J.A.R.V.I.S.: `Deleted 3 unnamed face entries from the page`
+
+**Panel 5.** Night. The owl with a lantern reads a scan that is halfway
+through, a hand on a photo that has just vanished from the album.
+ARCHITECT: A scan matched someone a second before you deleted them.
+It looks for the page, finds none, throws its photo away. No ghost
+comes back.
+
+**Panel 6.** A phone held close. The bar at the bottom has grown a row
+taller and hides the bottom of the last photos. The owl measures the
+gap with a ruler: 3 px.
+ARCHITECT: The room under the list was a guess. With a bigger font the
+bar won.
+
+**Panel 7.** The list now stretches its own floor to the bar's height —
+a tape measure on the bar, wired to the floor.
+J.A.R.V.I.S.: `--select-bar-height: 154px` — the last photo 24 px clear.
+
+**Closing card.** Abilities: **The Free Hook** (a new visitor takes the
+smallest number) · **Delete** (forgetting, at once; the recordings
+stay) · **The Measured Floor** (the list makes room for the bar as it
+is). Lurking: a "Visitor 5" in last week's chat who is not today's.
+Next: a day of real messages, timed.

@@ -180,6 +180,16 @@ grows, decisions are being postponed.
   resident named wrong. The architect measures the delays on
   production's log after a day of use (BACKLOG 3).
 
+- **`v2026.11.18.2` on the phone** (backlogs 47 and 48): People and Dogs
+  have **Delete** beside Bad detection — in the selection bar ("Select
+  all" on No guess, then Delete, empties it) and, on a wide screen, on
+  each unnamed card. It asks first; the photos are erased, the
+  recordings stay, and someone who comes back is a new visitor. The next
+  new face is **Visitor 1**, then 5 — the smallest free number, so a
+  "Visitor 5" in the chat last week and one today may be two people.
+  **What goes to the architect:** a card that stays after Delete, or the
+  bar covering the last photos on the phone.
+
 ## Decided, not yet done
 
 - **Backlog 28's once-only settle** ran on production on 17/11 at 19:24,

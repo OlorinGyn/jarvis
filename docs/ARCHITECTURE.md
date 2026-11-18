@@ -2447,10 +2447,21 @@ two-frame rule above would have refused it too. Not applied; the user
 decides (`PENDING.md`).
 
 **"Visitor N".** Every unnamed face entry gets a `temporary_name`,
-"Visitor N", when it forms (`Gallery.add`). `_next_visitor` takes N past
-the gallery header's counter (`"visitors"`, the last number given) and
-every temporary name held, so a number is never reused, also after a
-deletion or on a file without the counter. Entries older than this get
+"Visitor N", when it forms (`Gallery.add`). `_next_visitor` takes **the
+smallest N of 1 or more that no entry holds** (backlog 48, the user,
+18/11: "I do not want Visitor N to reach large values"): a set of the
+numbers held and `next(n for n in itertools.count(1) if n not in held)`
+(PYTHON 58). A number is free again once its entry is named, merged,
+reported, deleted (10.19) or forgotten; on production on 18/11 the
+entries held 2, 3, 4, 21, 25, 29, 30 and 34, so the next new face is
+Visitor 1, then 5. Until `v2026.11.18` a number was never reused: the
+header's counter (`"visitors"`) held the last one given. It is no longer
+read or written, but stays in old files on purpose — a rollback to
+`v2026.11.18` takes max(counter, held) + 1, above every number held, so
+it can never give a number someone holds. The price, accepted with the
+request: a "Visitor 5" in the Telegram chat last week and one today may
+be two people; the page is not affected, since Recordings never shows the
+temporary name. Entries older than this get
 theirs once per start, in order of first sighting (`name_visitors`, from
 `cameras.main()`, logged "Temporary names given to N unnamed face
 entries"). **It is not a name**: `person_case` stays `unknown_face`, the
@@ -2721,9 +2732,8 @@ day on). Its views, chosen and waiting, go to `dropped`, so `save()`
 deletes their photos after the write — only files in the gallery's own
 `views/`; the thumbnail, which is the sighting's photo in its day folder,
 stays. Its sightings stay and Recordings reads "?" for an id that is gone,
-as a forgotten dog's does. A named entry is never touched, and a forgotten
-"Visitor N" keeps its number taken: `_next_visitor` reads the header's
-counter (10.17). `faces.keep_gallery(stop)` runs it at start and then every
+as a forgotten dog's does. A named entry is never touched; a forgotten
+"Visitor N" frees its number for the next new face (backlog 48, 10.17). `faces.keep_gallery(stop)` runs it at start and then every
 `KEEP_SECONDS` (24 h) in a daemon thread, "gallery-keeper", started in
 `cameras.main()` beside "camera-watch" — sixty days of sightings, about
 5,000 small JSON files and a second on production, would stall the camera
@@ -2748,6 +2758,34 @@ copy, 58 of the 157 sightings of 16–17/11 were probable — cards no more;
 the 36 with no name still make one. The price, accepted with the item: a
 probable crop can no longer be named on the Dogs tab, so the gallery learns
 only from sure matches and from crops no named dog explains.
+
+**Delete from the page: forgetting, at once (backlog 47, 18/11/2026).**
+The user's request: "visitors who came that I do not want to keep, only
+discard". `POST /api/{persons,dogs}/delete` with `{"ids": [...]}` and the
+one-entry `POST /api/{persons,dogs}/{id}/delete` (17.16) run each id
+through `Gallery.take_out`, the call a report makes (21): under the
+gallery lock the entry leaves and the file is saved, then its view
+photos, chosen and waiting, are erased. Its sightings and thumbnails
+stay, and Recordings reads them as a forgotten entry's. Only an unnamed
+entry: `take_out` returns None for a named one, which the batch answers
+in `gone` and the one-entry form as 400; an unknown id is 404.
+`DogGallery` inherits all of it, its photos in `dogs/views`. The log:
+"Deleted 2 unnamed face entries from the page: Visitor 25, Visitor 29"
+(a dog by its id, since dogs have no temporary name). No undo: the page
+asks first. Someone who comes back forms a new entry — a new "Visitor
+N", perhaps the same number (10.17).
+
+**The race with a face scan, read in review 40.** A scan loads the
+gallery when it starts. If Delete runs between its `match` and its
+`_record`, `reinforce` reloads under the lock, finds no entry, erases
+the photo it just stored and returns False — and the scan logs "a sure
+match below the quality cut", which is not the reason. The sighting
+still names the deleted id; the message names the visitor as read at
+match time, or "unknown face" after `reinforce`'s reload; no new entry
+forms for that clip, the next visit makes one. `merge_unnamed` skips an
+id that is gone. Every write in `faces.py` reloads under the lock before
+it saves, so no stale copy brings a deleted entry back. The same race as
+forgetting's above, now at a click; left as it is.
 
 ### 10.20 The quick pass and the networks' turns (backlog 46, `v2026.11.18`)
 
@@ -4190,7 +4228,12 @@ tabs are the same `galleryTab` factory (20).
   the name link still opens the entry. Shift-click selects the range from the
   last photo tapped, in display order. While anything is selected, a bar stays
   at the bottom of the screen: "N selected · Assign to… · or a new name · Bad
-  detection · Clear". Each action asks once ("Join 7 photos to Aurora? A merge
+  detection · Delete · Clear". The list keeps room under it for the bar: its
+  bottom padding is the bar's own height plus 16 px, which a
+  `ResizeObserver` writes to the CSS variable `--select-bar-height` (review
+  40: the fixed 140 px left 3 px under the People bar on a phone, 137 px tall
+  once Delete joined it, and a system font at 115 % hid the last row's
+  bottom; PYTHON 58). Each action asks once ("Join 7 photos to Aurora? A merge
   cannot be undone."). The selection survives a reload of the list, minus the
   photos that left. On a phone the unnamed groups show two columns.
 - **One request each.** `POST /api/{dogs,persons}/assign` with `{"ids", "to"}`
@@ -4201,6 +4244,18 @@ tabs are the same `galleryTab` factory (20).
   the end (R29). `POST /api/{dogs,persons}/report` writes one report per entry
   (21) and answers `{reported, gone}`. Both take 1 to `BATCH_MAX` = 500
   well-formed ids and pass the write guard (17.12).
+- **Delete (backlog 47, 18/11/2026).** In the bar, and on a wide screen on
+  each unnamed card beside "Bad detection" (`div.card-actions`, flex; both
+  buttons `.report`, the page's muted destructive style). Each asks with
+  `confirm()`: "Delete 3? Their photos are erased; their recordings stay.
+  If they come back, they appear as a new visitor." — the card names the
+  visitor, "Delete Visitor 21? …"; a dog's text has no visitor sentence.
+  Then the list reloads and its result line reads "Deleted 3.", plus "N
+  already gone or named." when the server skipped some. On a phone the
+  card's buttons stay hidden (17.17) and Delete is in the bar. The server
+  side is 10.19. An entry's page open on another device answers its next
+  write with 404; reloaded, it reads "This person no longer exists; it may
+  have been merged or deleted." (review 40).
 - **Found on the way:** with six tabs the tab bar did not wrap, so a phone laid
   the page out 545 px wide — the layout viewport grows to the widest content —
   and the bar fixed to the bottom fell below the screen. The tabs wrap now.
@@ -4252,7 +4307,7 @@ UX) drops them from the card on a phone.
 `.report` are `display: none` — CSS only, so the desktop keeps every card's
 name form, "Belongs to…" list and "Bad detection". The hint above the
 unnamed list holds two spans, `.wide-only` (the long text) and `.phone-only`
-("Tap photos to select them, then name or report them below."); the base
+("Tap photos to select them, then name, report or delete them below."); the base
 rule `.phone-only { display: none }` comes **before** the media query that
 shows it, because at equal specificity the later rule wins (PYTHON 44).
 Naming or reporting one photo is two taps: the photo, then the bar's "Assign

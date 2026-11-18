@@ -170,7 +170,11 @@ stop filling the unnamed list; the residents' mixed galleries are cleaned
 photo by photo by the evidence of one body, **applied directly, with a
 backup** — the user's choice over seeing it first (backlog 42, 43). **New
 people group themselves under a temporary name**, "Visitor N", which the
-user only renames (the user's idea, 17/11; backlog 44).
+user only renames (the user's idea, 17/11; backlog 44). The user may
+also **delete** an unnamed entry from the page — what the forgetting
+does, at once, its recordings kept — and the numbers stay small: a new
+visitor takes the smallest free one (the user, 18/11; backlogs 47 and
+48, `v2026.11.18.2`).
 
 **Reference photos only of impeccable quality** (the user, 17/11/2026,
 shown that the cleaning would give two of the user's views to Izabel on

@@ -2060,3 +2060,51 @@ de todo scan completo) · **A Ampulheta** (uma mensagem espera no máximo
 nunca duas vezes). À espreita: um estranho cujo rosto novo o scan
 completo chama de visitante antigo — não visto em um mês, não
 descartado. Próxima: um dia de mensagens reais, cronometrado.
+
+## Edição #29 — Visitante Número Um
+
+`v2026.11.18.2` · 18 nov 2026
+
+**Quadro 1.** A sala de Pessoas. Uma fileira de crachás em ganchos:
+VISITANTE 2, 3, 4, 21, 25, 29, 30, 34. O dono, de braços cruzados,
+diante de um gancho vazio marcado 35.
+DONO: Não quero esses números crescendo. E algumas dessas pessoas eu
+não quero guardar. Só descartar.
+
+**Quadro 2.** O desenvolvedor num balcão com um rolo de senhas que
+começa no 1. Uma lupa corre pelos ganchos e para no primeiro vazio.
+DEV: O menor número que ninguém usa. Nomeado, unido, denunciado,
+esquecido — o gancho fica livre de novo.
+J.A.R.V.I.S.: `next stranger: Visitor 1, then 5`
+
+**Quadro 3.** O contador velho na parede, parado no 34, com um
+post-it: NÃO REMOVER.
+DEV: A gente não lê mais. Mas se um dia voltar a versão, a antiga conta
+a partir dele — acima de todo gancho em uso.
+
+**Quadro 4.** O dono toca um botão novo de borda vermelha, DELETE, ao
+lado de BAD DETECTION. Um diálogo: "Delete 3? Their photos are erased;
+their recordings stay." Três fotos somem; os rolos de filme na estante
+atrás continuam no lugar.
+J.A.R.V.I.S.: `Deleted 3 unnamed face entries from the page`
+
+**Quadro 5.** Noite. A coruja com a lanterna lê um scan pela metade, a
+mão sobre uma foto que acabou de sumir do álbum.
+ARQUITETO: Um scan reconheceu alguém um segundo antes de você apagar.
+Ele procura a página, não acha, joga a foto fora. Nenhum fantasma volta.
+
+**Quadro 6.** Um celular de perto. A barra de baixo cresceu uma fileira
+e esconde a base das últimas fotos. A coruja mede a folga com uma
+régua: 3 px.
+ARQUITETO: O espaço embaixo da lista era um palpite. Com a fonte maior,
+a barra ganhou.
+
+**Quadro 7.** A lista agora estica o próprio chão até a altura da
+barra — uma fita métrica na barra, ligada ao chão.
+J.A.R.V.I.S.: `--select-bar-height: 154px` — a última foto 24 px livre.
+
+**Cartão final.** Habilidades: **O Gancho Livre** (um visitante novo
+pega o menor número) · **Delete** (o esquecimento, na hora; as gravações
+ficam) · **O Chão Medido** (a lista abre espaço para a barra como ela
+é). À espreita: um "Visitante 5" no chat da semana passada que não é o
+de hoje. Próximo: um dia de mensagens reais, cronometradas.

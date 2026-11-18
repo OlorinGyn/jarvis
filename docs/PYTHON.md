@@ -3297,3 +3297,82 @@ a strategy object — an anonymous class implementing a one-method
 interface in Java, or a lambda capturing locals in C#. Python's one
 difference: the inner function may read `gallery` freely, but assigning to
 it would make a new local name, unless declared `nonlocal`.
+
+## 58. An endless counter read lazily, an ordered de-duplicate, a filter before every request, a blocking question, and a size that writes CSS (developer 38, review 40)
+
+### 58.1 The smallest free number
+
+```python
+held = {int(found.group(1)) for p in self.people
+        if (found := VISITOR_PATTERN.fullmatch(p.get("temporary_name") or ""))}
+return VISITOR_NAME.format(next(n for n in itertools.count(1) if n not in held))
+```
+
+`itertools.count(1)` is an endless counter — `for (int n = 1; ; n++)` in
+Java or C#. It never builds a list: it hands out one number when asked.
+The parenthesised `n for n in … if …` is a **generator expression**
+(section 55), just as lazy, and `next()` asks it for its first value, so
+the loop stops at the first free number. `held` is a **set**, written
+with braces, so `n not in held` is one hash lookup, like a
+`HashSet<int>.contains`; with a list it would walk every element. `:=`
+names the regex match inside the comprehension so the filter and the
+value share it.
+
+### 58.2 An ordered de-duplicate
+
+```python
+for entry_id in dict.fromkeys(_ids(gallery, payload)):
+```
+
+`dict.fromkeys(ids)` makes a dictionary whose keys are the ids, each
+once, **in the order first seen** — dictionaries keep insertion order
+since Python 3.7. Iterating it gives the ids without repeats, the job of
+a `LinkedHashSet` in Java. A `set` would drop repeats too, but in no
+promised order, and the answer lists them back to the page.
+
+### 58.3 A filter before every request
+
+The four new `delete` routes have no guard code, yet an unpaired device
+gets 403. The guard is one function registered with
+`@app.middleware("http")`: FastAPI runs it before every request and
+passes it the next step, which it calls only when the request may go on.
+It is a servlet filter in Java, or an ASP.NET Core middleware in C#.
+Every POST goes through it, so a new route is guarded by being a POST.
+
+### 58.4 A blocking question in the browser
+
+```js
+if (!confirm(`Delete ${count}? ${deleteWarning(count > 1)}`)) return;
+```
+
+`confirm()` shows the browser's own yes/no dialog and **stops the
+script** until it is answered — true for OK, false for Cancel. It is the
+one blocking call a page still uses, fine for a question asked once per
+destructive click. A test can replace `window.confirm` with a function
+that records its text and answers true, which is how the page tests read
+the wording.
+
+### 58.5 A size that writes CSS
+
+```js
+new ResizeObserver(() => {
+  list.style.setProperty("--select-bar-height", `${selectBar.offsetHeight}px`);
+}).observe(selectBar);
+```
+
+```css
+.list.selecting {
+  padding-bottom: calc(var(--select-bar-height, 124px) + 16px);
+}
+```
+
+The selection bar is fixed to the bottom of the screen, so it takes no
+room in the page and would cover the last photos; the list leaves room
+under itself. A fixed number guessed the bar's height and was 3 px from
+wrong on a phone. A `ResizeObserver` calls its function whenever the
+observed element changes size — a wrap to more rows, a larger system
+font, a rotation — just before the browser paints. It writes the height
+to a **CSS custom property** (a variable whose name starts with `--`),
+and `var(--select-bar-height, 124px)` reads it, with 124 px until it is
+first written. `calc()` adds the margin. The JavaScript knows the size;
+the CSS keeps deciding the layout.

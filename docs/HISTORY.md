@@ -108,6 +108,33 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+48. **Done 18/11 (`4e67fc4`, review 40, `v2026.11.18.2`; ARCHITECTURE 10.17).** **"Visitor N" takes the smallest free number** (decided 18/11, the
+    user: "I do not want Visitor N to reach large values, we are at 34;
+    reuse the numbers no longer in use") — a number is free when no entry holds it: named, merged,
+    reported, deleted (47) or forgotten (42). Existing entries keep their
+    numbers; on production on 18/11 they hold 2, 3, 4, 21, 25, 29, 30 and
+    34, so the next new face is Visitor 1, then 5. The price, accepted
+    with the request: a "Visitor 5" in the Telegram chat last week and
+    one today may be two people. The page is not affected — Recordings
+    never shows the temporary name, and a gone entry's sighting reads as
+    one (ARCHITECTURE 10.17, 10.19).
+47. **Done 18/11 (`72798fc`, `f12d35a`, review 40 `3cd2908`, `v2026.11.18.2`; ARCHITECTURE 10.19, 17.16).** **Delete an unnamed entry** (decided 18/11, the user: "delete
+    items in the No guess section — visitors who came that I do not want
+    to keep, only discard") — a face that is a real person, so not a bad
+    detection, and not worth keeping. **Delete** does at once what the
+    60-day forgetting does (backlog 42, ARCHITECTURE 10.19): the entry
+    leaves the gallery and its view photos are erased; its recordings,
+    sightings and thumbnails stay, and Recordings reads them as it reads
+    a forgotten entry's. If the person comes back, a new entry forms — a
+    new "Visitor N". No undo: it asks first ("Delete 3? Their photos are
+    erased; their recordings stay. If they come back they appear as a
+    new visitor."). **Where (decided, UX):** the unnamed list's selection
+    bar, beside "Bad detection" — so "Select all" on the No guess group
+    and Delete empties it — and on each unnamed card beside its "Bad
+    detection" where the card shows one (a wide screen). Any unnamed
+    entry, in any group; a named entry is never deleted this way. People
+    and Dogs alike, since the list is one component: a neighbour's dog
+    passing is the same case.
 7. **Closed 18/11 by the user as measured (developer 37, review 39, ARCHITECTURE 7.16); part 1 `v2026.10.16.3`, part 2's dog rule backlog 41 (a) `v2026.11.17`.** **Tracking** (decided by the user, 16/10/2026) — "once one frame
    recognised me, you do not want my face any more, only the object":
    turning around does not make the user someone else, and nobody
@@ -495,6 +522,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s); the user chose to build it, developer 36 planned; **no release** (13.39) |
 | 38 | 18/11/2026 | `fdebd19..c2eedfe`, developer session 36 — backlog 46 built (the quick pass, the networks' turns, the message's three paths, the follow-up) | **two holes fixed by tests first (`3767102`)**: an exception in the quick message skipped the full scan; one body's two visitors named apart by the two passes; 516 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the built replay run again, the same 39 / 74 / 115 s; **release `v2026.11.18`**, deployed at 12:48: 7,437 events, 2,628 face and 3,045 dog sightings, 25 reports read before and after; about 19 s stopped, cameras ok 3 s after the start; the six developer packages review 36 left in production removed by the deploy's sync (13.40) |
 | 39 | 18/11/2026 | `cab34ea..e5ead24`, developer session 37 — item 7 part 2 measured (`follow_body.py`: the faceless Home messages by class, ids across events, tracks living for minutes, faces bound to replayed tracks) | no code fixed; 22 tool tests pass, no comments, `check_doc_refs` 0; part 1 run again on production, the same classes (3 / 15 / 198 of 216); the two sheets read; the joined clips' alignment checked on the log's windows and the camera's clock; two numbers added — (c)'s make-up and the ceiling of a join across the cut (5 in nine days); part 2 adds little over the visit, taken to the user; **no release** (13.41) |
+| 40 | 18/11/2026 | `2a3f53b..063d7cd`, developer session 38 — backlogs 48 ("Visitor N" the smallest free number) and 47 (Delete an unnamed entry, server and page) | **one page fix (`3cd2908`)**: the list's room under the selection bar follows the bar's real height — 3 px of margin on a phone, covered at a 115 % font — and the not-found text names a deletion; 538 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the delete racing a face scan read path by path; People-like and Dogs bars measured at 375 px, the cards at 1024 px; **release `v2026.11.18.2`**, deployed: 7,477 events, 2,639 face and 3,074 dog sightings, 25 reports read before and after, cameras ok (13.42) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -3255,6 +3283,58 @@ feed the visit's dog rule, R58 becomes a watch — and the next developer
 session **waits for production's reading of backlog 46** on 19/11. Item 7
 left the backlog for section 8.
 
+### 13.42 Review 40 — developer session 38 (18/11/2026)
+
+Developer 38 reviewed whole (`2a3f53b..063d7cd`: `_next_visitor`,
+`web._delete_many` and `_delete`, the four routes, the page's Delete in
+the bar and on the card, `.card-actions`, 11 new tests and three turned
+to the new numbering rule). 538 tests pass, `check_data` reads every
+file, no comments, `check_doc_refs` 0. **One page fix (`3cd2908`)**,
+measured in the browser before and after; no server code changed.
+
+**The delete racing a face scan, path by path.** A scan loads the
+gallery when it starts and matches against that copy. Delete between
+`match` and `_record`: `reinforce` reloads under `_GALLERY_LOCK`, finds
+no entry, erases the photo it stored and returns False; `_record` then
+reads the reloaded gallery (`get` → `{}`), so the message reads "unknown
+face" — or "Visitor N" when the score was below sure and nothing
+reloaded. Nothing raises. `_one_visitor`'s `merge_unnamed` skips an id
+that is gone; the quick pass reads `get(...) or {}`. The sighting keeps
+the deleted id and Recordings reads it as a forgotten one's. **Nothing
+brings a deleted entry back:** every `save()` in `faces.py` and `dogs.py`
+was checked to come after a `load()` inside the lock (the three that do
+not are once-only tools run with the service stopped). One inaccuracy
+left: when `reinforce` returns False because the entry is gone, the scan
+logs "a sure match below the quality cut" — rare, and only a log line
+(ARCHITECTURE 10.19).
+
+**Delete with the entry's page open elsewhere.** Its next write answers
+404; reloaded, the page said "it may have been merged". Now "merged or
+deleted" — text, fixed on the spot.
+
+**The bar's 3 px (fixed).** The developer's own concern, measured: on
+the test copy the Dogs bar at 375 px is 94 px; with "Assign to…" shown,
+as People has it, 137 px, against the list's fixed 140 px of bottom
+padding; with the root font at 115 % the bar is 148 px and at 130 % 154
+px — the last row's bottom behind the bar. A `ResizeObserver` now writes
+the bar's height to `--select-bar-height`, and the padding is that plus
+16 px: at 130 % with Assign the last card ends 24 px above the bar; at
+1024 px the bar is 56 px, the padding 72 px, and the card's "Bad
+detection" and "Delete" sit side by side. No horizontal scroll at 375
+px. A UX change, the architect's (PROCESS 1).
+
+**Accepted.** The log line's plural ("Deleted 1 unnamed face entries").
+A batch over 500 ids is refused whole, as assign and report are. A
+named person's old number goes to the next stranger at once — the rule
+the user asked for.
+
+**Released and deployed: `v2026.11.18.2`.** `check_data` before and
+after: 7,477 events, 2,639 face and 3,074 dog sightings, 25 reports;
+nothing to fetch; every package imported in 16.1 s before the stop;
+both cameras at 0.1 s after it. The backlog 46 reading on production
+(BACKLOG 3) is not disturbed: the release does not touch the message
+path, and the log runs on.
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -3350,3 +3430,5 @@ of `CONTEXT.md`.
 | A50 | architect | ultracode | 18/11 12:33–12:55 | review 38: the diff read whole, the turns read for a deadlock, two holes fixed by tests first, the built replay run again (3 min); HANDOFF integrated, ARCHITECTURE 10.20 and 12.15, PYTHON 56, raid log 28; release and deploy `v2026.11.18`, the first live quick passes read; the user's answer — item 7 part 2, measured first — and developer 37 planned and handed over | 25% → about 45% | 32% → 34% | 76k → about 320k tokens, a new conversation (started by the developer's handover) |
 | D37 | developer | high | 18/11 afternoon | session 37: item 7 part 2 measured — `follow_body.py` (the faceless Home messages by class, ids across events, tracks living for minutes, faces bound to replayed tracks on 18 events and 30 sampled), read-only on production, part 2's replay 22 min (12 tool tests) | 46% → 53% | 35% → 36% | 76k → 175k tokens, a new conversation |
 | A51 | architect | ultracode | 18/11 13:15–14:40 | review 39: the tool read whole, part 1 run again on production with two numbers added, the sheets read, the joined clips' alignment checked; HANDOFF integrated, ARCHITECTURE 7.16 and 12.11, PYTHON 57; no release; part 2 to the user, who closed it as measured and chose to wait for production's reading of backlog 46 — item 7 to HISTORY 8, R58 a watch, CONTEXT 3; then the user's request — delete an unnamed entry, "Visitor N" reusing free numbers — as backlogs 47 and 48, developer 38 planned and handed over | 53% → 67% | 36% → 38% | 73k → about 240k tokens, a new conversation (started by the developer's handover) |
+| D38 | developer | high | 18/11 afternoon | session 38: backlogs 48 ("Visitor N" the smallest free number) and 47 (Delete an unnamed entry, server and page), checked at 375 and 1280 px on the test copy (538 tests) | 69% → 76% | 38% → 39% | about 161k tokens at the end, a new conversation |
+| A52 | architect | ultracode | 18/11 17:45–18:10 | review 40: the diff read whole, the delete racing a scan read path by path, the bar measured at 375 px with larger fonts and fixed (`3cd2908`); HANDOFF integrated, ARCHITECTURE 10.17, 10.19, 17.16, PYTHON 58, CONTEXT 3, raid log 29; release and deploy `v2026.11.18.2`; no developer session planned — stopped for the user | 76% → 86% | 39% → 40% | 80k → about 215k tokens, a new conversation (started by the developer's handover) |
