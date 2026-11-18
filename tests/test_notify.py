@@ -89,13 +89,13 @@ def sent(monkeypatch):
 class Inline:
     """A thread that runs at start(), so a test sees the message at once."""
 
-    def __init__(self, target, args=(), kwargs=None, daemon=None):
+    def __init__(self, target, args=(), kwargs=None, daemon=None, name=None):
         self.target, self.args, self.kwargs = target, args, kwargs or {}
 
     def start(self):
         self.target(*self.args, **self.kwargs)
 
-    def join(self):
+    def join(self, timeout=None):
         pass
 
 
@@ -324,6 +324,7 @@ def test_the_held_person_message_follows_a_fake_scan(tmp_path, monkeypatch, sent
     monkeypatch.setattr(notify, "load", lambda: HOME)
     monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
     monkeypatch.setattr(clips, "_concat", lambda segments, destination: destination.write_bytes(b"x"))
+    monkeypatch.setattr(faces, "quick_scan", lambda *a, **k: ([], []))
     monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [face("p_1", "Gustavo", 0.6, True),
                                                              face("p_2", "Ana", 0.6)])
     clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
@@ -440,6 +441,7 @@ def test_the_hidden_person_follows_a_fake_scan(tmp_path, monkeypatch, sent, best
     monkeypatch.setattr(notify, "load", lambda: HOME)
     monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
     monkeypatch.setattr(clips, "_concat", lambda segments, destination: destination.write_bytes(b"x"))
+    monkeypatch.setattr(faces, "quick_scan", lambda *a, **k: ([], []))
     monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [face("p_1", "Gustavo", 0.6, True)])
     clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False,
                     best, held=True, people=2)

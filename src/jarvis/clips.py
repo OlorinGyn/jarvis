@@ -41,6 +41,7 @@ THUMB_WIDTH = 480
 ASSEMBLY_DELAY = SEGMENT_SECONDS + 2.0
 PERSON_GAP_SECONDS = 2.0
 DOG_CASES = {"sure": "resident_dog", "probable": "probable_resident_dog"}
+QUICK_DEADLINE_SECONDS = 45.0
 
 GREEN = (0, 255, 0)
 CYAN = (255, 200, 0)
@@ -96,7 +97,8 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
     When no face was found, the phone gets the side view or the best view of
     the person instead, so it always ends with a picture of them, even when
     the clip could not be built. When the person was held for the scan, that
-    message is the person's only one.
+    message is the person's only one. A quick pass decides the message
+    first, and the full scan follows (backlog 46).
     """
     time.sleep(ASSEMBLY_DELAY)
     segments = camera.covering(start - timedelta(seconds=PRE_SECONDS),
@@ -107,23 +109,77 @@ def _assemble(camera, start, end, destination, labels, notified=False, best_view
                               people=people, ended_at=end, tracks=tracks)
         return
     _concat(segments, destination)
-    found = []
     if "person" in labels and destination.exists():
-        try:
-            found = faces.scan_clip(destination, camera.label, start,
-                                    moments=_clip_moments(segments, person_spans),
-                                    busy=recording_now, tracks=tracks)
-        except Exception as problem:
-            logger.exception("  face scan failed on %s: %s", destination.name, problem)
-    if "person" in labels:
-        notify.after_scan(camera.label, start, found, held, notified,
-                          faces.side_view_path(destination), best_view, people=people,
-                          people_view=people_view, ended_at=end, tracks=tracks)
+        message = {"held": held, "notified": notified, "side_view": faces.side_view_path(destination),
+                   "best": best_view, "people": people, "people_view": people_view, "ended_at": end,
+                   "tracks": tracks}
+        _person_messages(camera.label, start, destination, _clip_moments(segments, person_spans), message)
+    elif "person" in labels:
+        notify.after_scan(camera.label, start, [], held, notified, faces.side_view_path(destination),
+                          best_view, people=people, people_view=people_view, ended_at=end, tracks=tracks)
     if dog_view:
         try:
             dogs.record(dog_view["frame"], dog_view["boxes"], camera.label, start, destination)
         except Exception as problem:
             logger.exception("  dog crops failed on %s: %s", destination.name, problem)
+
+
+def _person_messages(camera, start, clip, moments, message):
+    """A person event's messages: decided by the quick pass, else by the full scan within the deadline (backlog 46).
+
+    A face in the quick pass goes out at once. With none, the message waits
+    for the full scan at most QUICK_DEADLINE_SECONDS: when the full scan ends
+    first, its sightings go as before and nothing else; when the deadline
+    comes first, the message has no face, with the quick pass's side view
+    if it saw one, and the full scan's faces follow. The full scan alone
+    keeps the views, the sightings and the gallery.
+    """
+    began = time.monotonic()
+    try:
+        quick, sides = faces.quick_scan(clip, camera, start, moments, message["tracks"])
+    except Exception as problem:
+        logger.exception("  quick pass failed on %s: %s", clip.name, problem)
+        quick, sides = [], []
+    ready = time.monotonic()
+    scan = {}
+
+    def full_scan():
+        try:
+            scan["found"] = faces.scan_clip(clip, camera, start, moments=moments, busy=recording_now,
+                                            tracks=message["tracks"])
+        except Exception as problem:
+            logger.exception("  face scan failed on %s: %s", clip.name, problem)
+            scan["found"] = []
+
+    sent = []
+    if quick:
+        notify.after_scan(camera, start, quick, sent_faces=sent, **message)
+        _log_message(camera, clip, f"decided by the quick pass, {len(quick)} face(s)", began, ready)
+        full_scan()
+    else:
+        worker = threading.Thread(target=full_scan, name=f"scan {camera} {clip.stem}", daemon=True)
+        worker.start()
+        worker.join(QUICK_DEADLINE_SECONDS)
+        if "found" in scan:
+            notify.after_scan(camera, start, scan["found"], **message)
+            _log_message(camera, clip, f"decided by the full scan, {len(scan['found'])} face(s)", began, ready)
+            return
+        if sides:
+            faces.save_side_view(clip, sides)
+        notify.after_scan(camera, start, [], **message)
+        _log_message(camera, clip, "the deadline, no face", began, ready)
+        worker.join()
+    sent_after = notify.follow_up(camera, start, scan["found"], sent, message["held"], people=message["people"],
+                                  ended_at=message["ended_at"])
+    logger.info("  follow-up %s %s: %d of the full scan's %d face(s) sent, %.1f s after the clip", camera,
+                clip.name, sent_after, len(scan["found"]), time.monotonic() - began)
+
+
+def _log_message(camera, clip, how, began, ready):
+    """One line per person message: how it was decided, the quick pass's time and the clip's age when it went."""
+    now = time.monotonic()
+    logger.info("  message %s %s: %s; quick pass %.1f s, done %.1f s after the clip", camera, clip.name, how,
+                ready - began, now - began)
 
 
 def recording_now():

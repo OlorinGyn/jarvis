@@ -34,6 +34,7 @@ QUIET_SECONDS = 120
 LOUD_FLOOR_SECONDS = 30
 MAX_FACES = 3
 VISIT_SECONDS = 300
+PICTURE_NAME = "face.jpg"
 TOKEN_IN_URL = re.compile(r"bot\d+(?::|%3A)[\w-]+", re.IGNORECASE)
 
 _incident = {}
@@ -55,10 +56,14 @@ def _redact(text, token):
 
 def _call(token, method, fields, file_field=None, file_path=None):
     """One Telegram API call. Returns (ok, detail, wait): the detail never holds the token; wait is None
-    when trying again cannot help, else the seconds Telegram asked for, 0 when it asked none."""
+    when trying again cannot help, else the seconds Telegram asked for, 0 when it asked none.
+
+    file_path may be the file's bytes instead: a quick pass's face is a picture in memory (backlog 46)."""
     try:
         files = None
-        if file_field and file_path:
+        if file_field and isinstance(file_path, bytes):
+            files = {file_field: (PICTURE_NAME, file_path)}
+        elif file_field and file_path:
             path = Path(file_path)
             files = {file_field: (path.name, path.read_bytes())}
     except OSError as problem:
@@ -115,7 +120,7 @@ def _post(text, image=None, settings=None, silent=False):
         text = f"{prefix} {text}"
     quiet = {"disable_notification": "true"} if silent else {}
 
-    if image and Path(image).exists():
+    if isinstance(image, bytes) or (image and Path(image).exists()):
         return _call(token, "sendPhoto",
                      {"chat_id": chat, "caption": text[:1024], **quiet},
                      "photo", image)
@@ -263,7 +268,7 @@ def _failed(subject, attempt, detail, wait):
     return pause
 
 
-def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=()):
+def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=(), sent_faces=None):
     """Announce each face the clip scan found, named when known, if the active mode wants its case.
 
     Runs in the clip-assembly thread, after the event, so it can block on the
@@ -271,6 +276,8 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=(
     message went out, since a face is rare and the most useful message (R25);
     people is the most persons seen at once, for the incident. A sighting
     in repeats is a face a visit that sent has already seen, and is not news.
+    Each face sent is added to sent_faces, when given. The picture is the
+    sighting's thumbnail, or a quick pass's picture in memory.
     """
     repeats = [id(s) for s in repeats]
     settings = settings or load()
@@ -291,13 +298,15 @@ def faces_seen(camera, started_at, sightings, settings=None, people=1, repeats=(
             wanted.append(sighting)
     for sighting in wanted[:MAX_FACES]:
         who = _who(sighting, settings)
+        if sent_faces is not None:
+            sent_faces.append(sighting)
         sent += _deliver(camera, people, f"{camera} face, {who}", f"{camera} {when}: {who}",
-                         sighting.get("thumbnail_path"), settings)
+                         sighting.get("thumbnail_path") or sighting.get("picture"), settings)
     return sent
 
 
 def after_scan(camera, started_at, found, held, notified, side_view=None, best=None,
-               settings=None, people=0, people_view=None, ended_at=None, tracks=None):
+               settings=None, people=0, people_view=None, ended_at=None, tracks=None, sent_faces=None):
     """Every message a finished face scan sends. Returns how many went out.
 
     Faces are announced each by its case. With no face, the side view, else
@@ -312,7 +321,8 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
     camera's visit (backlog 41): an event whose person frames all sit in dog
     tracks sends no person message; a resident recognised in the visit
     explains one faceless body; after the visit's first message only news
-    goes out.
+    goes out. Each face sent is added to sent_faces, when given: what a follow-up
+    must not send again (backlog 46).
     """
     settings = settings or load()
     if not configured(settings):
@@ -350,7 +360,7 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
             planned = (side is not None or bool(best)) and can_faceless and reason is None
         visit["sent"] |= bool(planned)
     if found:
-        sent = faces_seen(camera, started_at, found, settings, seen, repeats)
+        sent = faces_seen(camera, started_at, found, settings, seen, repeats, sent_faces)
         if not hidden:
             return sent
         if reason:
@@ -369,6 +379,38 @@ def after_scan(camera, started_at, found, held, notified, side_view=None, best=N
                          lambda: side_face(camera, started_at, side, settings, seen))
     return _faceless(camera, held, notified, settings,
                      lambda: best_view(camera, started_at, best, settings, seen))
+
+
+def follow_up(camera, started_at, found, sent, held, settings=None, people=0, ended_at=None):
+    """The full scan's faces after a message the quick pass decided: only those the event did not send (backlog 46).
+
+    sent are the faces the event's message sent; a face is the same as one of
+    them by its entry, or for a face with no entry by its views, as the
+    visit's test. Never a faceless message, in any mode. In Home, when the
+    person was held, only the visit's news; the visit remembers these faces
+    as after_scan's. Returns how many went out.
+    """
+    settings = settings or load()
+    if not configured(settings):
+        return 0
+    seen = max(people, 1)
+    rules = held and modes.mode_of(settings) == "home"
+    earlier = {"faces": {s["person_id"] for s in sent if s.get("person_id")},
+               "strangers": [view for s in sent for view in s.get("references") or ()]}
+    fresh = []
+    for sighting in found:
+        if _again(earlier, sighting):
+            logger.info("Notification %s face, %s: skipped: sent by the quick pass", camera,
+                        _who(sighting, settings))
+        else:
+            fresh.append(sighting)
+    with _visit_lock:
+        visit = _visit(camera, started_at, ended_at or started_at)
+        repeats = [s for s in fresh if _again(visit, s)] if rules and visit["sent"] else []
+        _remember(visit, found, seen, started_at, settings)
+        visit["sent"] |= any(modes.allowed(person_case(s, settings), settings) and not any(s is r for r in repeats)
+                             for s in fresh)
+    return faces_seen(camera, started_at, fresh, settings, seen, repeats)
 
 
 def _people(count):

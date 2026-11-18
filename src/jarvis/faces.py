@@ -20,7 +20,8 @@ import shutil
 import threading
 import time
 import uuid
-from collections import Counter
+from collections import Counter, deque
+from contextlib import closing, contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -74,6 +75,7 @@ DENSE_MARGIN_SECONDS = 1.5
 MAX_DENSE_SAMPLES = 300
 PAUSE_STEP_SECONDS = 0.2
 MAX_PAUSE_SECONDS = 600.0
+QUICK_FRAMES = 24
 THUMB_SIZE = 300
 THUMB_CONTEXT = 2.2
 MAX_EMBEDDINGS = 40
@@ -85,7 +87,64 @@ FORGET_DAYS = 60
 KEEP_SECONDS = 24 * 3600
 
 _GALLERY_LOCK = threading.Lock()
-_SCAN_LOCK = threading.Lock()
+
+
+class Turns:
+    """Who runs the face networks now: one user at a time, quick passes first, in order of arrival (backlog 46).
+
+    A full scan holds its slot from start to end, so full scans still run one
+    at a time, and takes the networks one frame at a time: between two frames
+    and while it pauses, a waiting quick pass goes first.
+    """
+
+    def __init__(self):
+        self._ready = threading.Condition()
+        self._busy = False
+        self._quick = deque()
+        self._full = threading.Lock()
+
+    def active(self):
+        """Whether a scan runs: a full scan, paused or not, a quick pass, or another user of the networks."""
+        return self._busy or self._full.locked()
+
+    @contextmanager
+    def quick(self):
+        """The networks for a whole quick pass, after the quick passes that came first and the frame running now."""
+        ticket = object()
+        with self._ready:
+            self._quick.append(ticket)
+            self._ready.wait_for(lambda: not self._busy and self._quick[0] is ticket)
+            self._quick.popleft()
+            self._busy = True
+        try:
+            yield
+        finally:
+            self._release()
+
+    @contextmanager
+    def turn(self):
+        """The networks for one step of anything else, once no quick pass waits."""
+        with self._ready:
+            self._ready.wait_for(lambda: not self._busy and not self._quick)
+            self._busy = True
+        try:
+            yield
+        finally:
+            self._release()
+
+    @contextmanager
+    def full(self):
+        """A full scan's slot: one at a time, held through its pauses."""
+        with self._full:
+            yield
+
+    def _release(self):
+        with self._ready:
+            self._busy = False
+            self._ready.notify_all()
+
+
+_TURNS = Turns()
 logger = logging.getLogger(__name__)
 
 
@@ -1570,7 +1629,7 @@ def _embed_photo(folder, view, tally):
     if image is None:
         tally["no photo"] += 1
         return None
-    with _SCAN_LOCK:
+    with _TURNS.turn():
         embedding = embed_view(image)
     if embedding is None:
         tally["no face"] += 1
@@ -1715,15 +1774,51 @@ def _selection(total, fps, moments):
     persons were seen: a face is frontal and large enough for only a few
     frames, and one frame in fourteen misses them (HISTORY 13.6, R20).
     """
-    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
+    step, windows, dense = _rates(total, fps, moments)
     expression = f"not(mod(n\\,{step}))"
-    windows = _windows(moments)
     if not windows:
         return expression, MAX_SAMPLES
-    seconds = sum(end - start for start, end in windows)
-    dense = max(DENSE_EVERY, math.ceil(seconds * (fps or 15.0) / MAX_DENSE_SAMPLES))
     inside = "+".join(f"between(t\\,{start:.2f}\\,{end:.2f})" for start, end in windows)
     return f"{expression}+({inside})*not(mod(n\\,{dense}))", MAX_SAMPLES + MAX_DENSE_SAMPLES
+
+
+def _rates(total, fps, moments):
+    """(sparse step, person windows, dense step) of a clip's full scan: every step-th frame, every dense-th inside a window."""
+    step = max(total // MAX_SAMPLES, SAMPLE_EVERY) if total else SAMPLE_EVERY
+    windows = _windows(moments)
+    seconds = sum(end - start for start, end in windows)
+    dense = max(DENSE_EVERY, math.ceil(seconds * (fps or 15.0) / MAX_DENSE_SAMPLES))
+    return step, windows, dense
+
+
+def quick_picks(total, fps, moments, count=QUICK_FRAMES):
+    """The frame numbers a quick pass reads: count spread evenly through the frames the full scan reads densely.
+
+    Those are its frames inside the person windows, or every frame it reads
+    when there are none. A frame's time is taken as n / fps, which on
+    production's clips is off by under a quarter of a second.
+    """
+    step, windows, dense = _rates(total, fps, moments)
+    rate = fps or 15.0
+    limit = MAX_SAMPLES + MAX_DENSE_SAMPLES if windows else MAX_SAMPLES
+    candidates, read = [], 0
+    for n in range(total):
+        inside = any(start <= n / rate <= end for start, end in windows)
+        if n % step and not (inside and n % dense == 0):
+            continue
+        read += 1
+        if inside or not windows:
+            candidates.append(n)
+        if read == limit:
+            break
+    return evenly(candidates, count)
+
+
+def evenly(items, count):
+    """count items spread evenly through the list, in order: the middle of each equal share."""
+    if len(items) <= count:
+        return list(items)
+    return [items[int((i + 0.5) * len(items) / count)] for i in range(count)]
 
 
 def _sampled_frames(clip, moments=()):
@@ -1764,8 +1859,8 @@ def frames_selected(clip, expression, limit, width, height):
 
 
 def scanning():
-    """Whether a clip scan is running right now."""
-    return _SCAN_LOCK.locked()
+    """Whether a clip scan is running right now, a quick pass or a full scan."""
+    return _TURNS.active()
 
 
 def _wait_while(busy, budget):
@@ -1789,13 +1884,14 @@ def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None, tra
     moments are (start, end) seconds into the clip where persons were seen;
     the scan reads those densely. tracks are the event's decided tracks, or
     None. One scan at a time: each event assembles in its own thread, and the
-    face and YOLO networks are shared objects that cannot run concurrently.
+    face and YOLO networks are shared objects that cannot run concurrently;
+    a quick pass may run between two of its frames (backlog 46).
     """
-    with _SCAN_LOCK:
+    with _TURNS.full():
         sides = []
         found = _scan_clip(clip, camera, started_at, gallery, moments, busy, sides, tracks)
         if not found and sides:
-            _save_side_view(Path(clip), sides)
+            save_side_view(Path(clip), sides)
         return found
 
 
@@ -1805,7 +1901,7 @@ def side_view_path(clip):
     return clip.with_name(f"{clip.stem}.side.jpg")
 
 
-def _save_side_view(clip, sides):
+def save_side_view(clip, sides):
     """Keep the face closest to frontal, then the largest, as the event's side-view photo."""
     best = min(sides, key=lambda s: (s["offset"], -s["box"][2]))
     path = side_view_path(clip)
@@ -1820,7 +1916,7 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         return []
 
     began = time.monotonic()
-    observations, frames, paused, missed = observe(_sampled_frames(clip, moments), busy, sides)
+    observations, frames, paused, missed = observe(_sampled_frames(clip, moments), busy, sides, turn=_TURNS.turn)
     dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
     logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s), "
                 "%d without landmarks", clip.name, dense, frames, time.monotonic() - began, paused,
@@ -1829,32 +1925,102 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
     if not observations:
         return []
 
-    gallery = gallery or Gallery()
-    gallery.load()
-    folder = _sighting_folder(started_at)
-    sure = learn_threshold()
-    recorded = []
+    with _TURNS.turn():
+        gallery = gallery or Gallery()
+        gallery.load()
+        folder = _sighting_folder(started_at)
+        sure = learn_threshold()
+        recorded = []
+        for match in matches(gallery, observations):
+            recorded.append(_record(gallery, match, clip, camera, started_at, folder, sure))
+        return _one_visitor(gallery, recorded, tracks)
+
+
+def quick_scan(clip, camera, started_at, moments=(), tracks=None, gallery=None):
+    """The quick pass (backlog 46): (sightings, side views) from QUICK_FRAMES frames of a finished clip. Writes nothing.
+
+    The frames are read in time order, and the reading stops after the first
+    face on a person that matches an entry at the sure threshold. It waits
+    for the quick passes that came first and for the frame a full scan is
+    on, never for a full scan's pause. Each sighting carries its face's
+    picture as JPEG bytes, for the message.
+    """
+    clip = Path(clip)
+    if not clip.exists():
+        return [], []
+    sides = []
+    with _TURNS.quick():
+        began = time.monotonic()
+        width, height, total, fps = _describe(clip)
+        picks = quick_picks(total, fps, moments) if width and height else []
+        gallery = gallery or Gallery()
+        gallery.load()
+        stop = sure_stop(gallery, learn_threshold())
+        observations, count = [], 0
+        if picks:
+            expression = "+".join(f"eq(n\\,{n})" for n in picks)
+            with closing(frames_selected(clip, expression, len(picks), width, height)) as frames:
+                observations, count, _, _ = observe(frames, sides=sides, stop=stop)
+        found = quick_sightings(gallery, observations, clip, camera, started_at, tracks)
+        seconds = time.monotonic() - began
+    logger.info("  quick pass %s: %d of %d frames, %.1f s, %s, %d face(s), %d side view(s)", clip.name, count,
+                len(picks), seconds, "stopped at a sure face" if stop.found else "no sure face", len(found),
+                len(sides))
+    return found, sides
+
+
+def sure_stop(gallery, sure):
+    """The quick pass's stop: a face on a person that matches an entry at the sure threshold. Its found says whether it fired."""
+    def stop(kept):
+        stop.found = stop.found or any(score >= sure and person_id is not None
+                                       for person_id, score in (gallery.match(f["embedding"]) for f in kept))
+        return stop.found
+    stop.found = False
+    return stop
+
+
+def quick_sightings(gallery, observations, clip, camera, started_at, tracks=None):
+    """The sightings a scan of these observations would hand notify, with nothing written.
+
+    A new face has no entry ("") and keeps its views and references, as the
+    visit remembers them; one body's unnamed faces become one sighting, the
+    first entry's, with nothing merged in the gallery.
+    """
+    found = []
     for match in matches(gallery, observations):
-        recorded.append(_record(gallery, match, clip, camera, started_at, folder, sure))
-    return _one_visitor(gallery, recorded, tracks)
+        group = match["group"]
+        memory = {}
+        if match["person_id"] is None:
+            match["person_id"] = ""
+            memory = {"views": group["views"], "references": match["references"]}
+        person = gallery.get(match["person_id"]) or {}
+        found.append({**sighting_of(group, match["person_id"], match["score"], camera, started_at, clip),
+                      "thumbnail_path": None,
+                      "picture": cv2.imencode(".jpg", group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes(),
+                      "name": person.get("name", ""), "temporary_name": person.get("temporary_name", ""),
+                      "resident": bool(person.get("resident")), **memory})
+    return _one_visitor(gallery, found, tracks, merge=lambda ids: ids[0])
 
 
-def observe(frames, busy=None, sides=None, stop=None):
+def observe(frames, busy=None, sides=None, stop=None, turn=None):
     """(observations, frames read, seconds paused, views without landmarks): the faces on a person in frames.
 
     The finding half of a scan, which writes nothing. busy pauses between
     frames (R23); sides collects the side views; stop, given the faces one
-    frame kept, ends the reading when it returns True.
+    frame kept, ends the reading when it returns True. turn, when given,
+    holds the networks for one frame at a time (backlog 46).
     """
     observations, missed = [], []
     count, paused = 0, 0.0
+    turn = turn or nullcontext
     for frame in frames:
         paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
         count += 1
         side_here = [] if sides is not None else None
-        found = faces_in(frame, side_here, missed)
+        with turn():
+            found = faces_in(frame, side_here, missed)
+            bodies = people.person_boxes(frame) if found or side_here else []
         if found or side_here:
-            bodies = people.person_boxes(frame)
             kept = [f for f in found if _on_a_person(f["box"], bodies)]
             observations.extend(kept)
             if side_here:
@@ -1970,12 +2136,13 @@ def _one_visitor(gallery, recorded, tracks, merge=None):
     if len(unnamed) < 2 or person_tracks(tracks) != 1:
         return recorded
     ids = list(dict.fromkeys(s["person_id"] for s in unnamed if s["person_id"]))
+    merged = merge is None
     merge = merge or gallery.merge_unnamed
     target = merge(ids) if len(ids) > 1 else (ids[0] if ids else "")
     if target is None:
         return recorded
     visitor = (gallery.get(target) or {}).get("temporary_name", "") if target else ""
-    if len(ids) > 1:
+    if len(ids) > 1 and merged:
         logger.info("  face scan: %d unnamed faces on one body merged into %s", len(ids), visitor or target)
     kept, first = [], None
     for sighting in recorded:

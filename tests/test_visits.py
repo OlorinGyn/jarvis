@@ -28,11 +28,14 @@ class Clock:
 
 
 class Inline:
-    def __init__(self, target, args=(), kwargs=None, daemon=None):
+    def __init__(self, target, args=(), kwargs=None, daemon=None, name=None):
         self.target, self.args, self.kwargs = target, args, kwargs or {}
 
     def start(self):
         self.target(*self.args, **self.kwargs)
+
+    def join(self, timeout=None):
+        pass
 
 
 class Timer:
@@ -232,6 +235,7 @@ def test_the_assembly_passes_the_events_end_and_tracks(tmp_path, monkeypatch, se
     monkeypatch.setattr(notify, "load", lambda: HOME)
     monkeypatch.setattr(clips, "ASSEMBLY_DELAY", 0)
     monkeypatch.setattr(clips, "_concat", lambda segments, destination: destination.write_bytes(b"x"))
+    monkeypatch.setattr(faces, "quick_scan", lambda *a, **k: ([], []))
     monkeypatch.setattr(faces, "scan_clip", lambda *a, **k: [])
     clips._assemble(Camera(), START, START, tmp_path / "12-00-00.mp4", {"person"}, False, best,
                     held=True, people=1, tracks=DOG_TRACK)
