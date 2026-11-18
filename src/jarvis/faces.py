@@ -834,15 +834,24 @@ class Gallery:
         """Merge unnamed entries found on one body into the first seen of them; its id, or None with fewer than two."""
         with _GALLERY_LOCK:
             self.load()
-            entries = [p for p in (self.get(i) for i in dict.fromkeys(ids)) if p and not p["name"]]
+            entries = self._unnamed_of(ids)
             if len(entries) < 2:
                 return None
-            target = min(entries, key=lambda p: p.get("first_seen", ""))
+            target = _first_seen(entries)
             for source in entries:
                 if source is not target:
                     self._merge(source, target)
             self.save()
         return target["id"]
+
+    def would_merge(self, ids):
+        """The id merge_unnamed would keep of these entries, with nothing written; None with fewer than two."""
+        entries = self._unnamed_of(ids)
+        return _first_seen(entries)["id"] if len(entries) > 1 else None
+
+    def _unnamed_of(self, ids):
+        """The unnamed entries among ids, each once, in order."""
+        return [p for p in (self.get(i) for i in dict.fromkeys(ids)) if p and not p["name"]]
 
     def reinforce(self, person_id, embedding, crop=None, event=None):
         """Keep one more view of a person, if admits takes it; past MAX_EMBEDDINGS, only one more varied.
@@ -1983,8 +1992,9 @@ def quick_sightings(gallery, observations, clip, camera, started_at, tracks=None
     """The sightings a scan of these observations would hand notify, with nothing written.
 
     A new face has no entry ("") and keeps its views and references, as the
-    visit remembers them; one body's unnamed faces become one sighting, the
-    first entry's, with nothing merged in the gallery.
+    visit remembers them; one body's unnamed faces become one sighting, of
+    the entry the full scan's merge will keep, with nothing merged in the
+    gallery, so the follow-up knows it as the same face (review 38).
     """
     found = []
     for match in matches(gallery, observations):
@@ -1999,7 +2009,7 @@ def quick_sightings(gallery, observations, clip, camera, started_at, tracks=None
                       "picture": cv2.imencode(".jpg", group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes(),
                       "name": person.get("name", ""), "temporary_name": person.get("temporary_name", ""),
                       "resident": bool(person.get("resident")), **memory})
-    return _one_visitor(gallery, found, tracks, merge=lambda ids: ids[0])
+    return _one_visitor(gallery, found, tracks, merge=gallery.would_merge)
 
 
 def observe(frames, busy=None, sides=None, stop=None, turn=None):
@@ -2123,6 +2133,11 @@ def _earlier_new_face(gallery, new_here, group, person_id, score):
         return False
     best = max((cosine(view, known) for view in group["views"] for known in new_here), default=0.0)
     return best >= MATCH_THRESHOLD and best > score
+
+
+def _first_seen(entries):
+    """The entry one body's unnamed entries merge into: the first seen of them."""
+    return min(entries, key=lambda p: p.get("first_seen", ""))
 
 
 def _one_visitor(gallery, recorded, tracks, merge=None):

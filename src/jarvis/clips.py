@@ -153,7 +153,7 @@ def _person_messages(camera, start, clip, moments, message):
 
     sent = []
     if quick:
-        notify.after_scan(camera, start, quick, sent_faces=sent, **message)
+        _announce(camera, clip, start, quick, message, sent)
         _log_message(camera, clip, f"decided by the quick pass, {len(quick)} face(s)", began, ready)
         full_scan()
     else:
@@ -161,18 +161,30 @@ def _person_messages(camera, start, clip, moments, message):
         worker.start()
         worker.join(QUICK_DEADLINE_SECONDS)
         if "found" in scan:
-            notify.after_scan(camera, start, scan["found"], **message)
+            _announce(camera, clip, start, scan["found"], message)
             _log_message(camera, clip, f"decided by the full scan, {len(scan['found'])} face(s)", began, ready)
             return
-        if sides:
-            faces.save_side_view(clip, sides)
-        notify.after_scan(camera, start, [], **message)
+        _announce(camera, clip, start, [], message, sides=sides)
         _log_message(camera, clip, "the deadline, no face", began, ready)
         worker.join()
     sent_after = notify.follow_up(camera, start, scan["found"], sent, message["held"], people=message["people"],
                                   ended_at=message["ended_at"])
     logger.info("  follow-up %s %s: %d of the full scan's %d face(s) sent, %.1f s after the clip", camera,
                 clip.name, sent_after, len(scan["found"]), time.monotonic() - began)
+
+
+def _announce(camera, clip, start, found, message, sent=None, sides=()):
+    """after_scan for the event, the quick pass's side view saved first when given; a failure is logged, never raised.
+
+    The full scan and its follow-up run whatever happens to the message: the
+    full scan alone keeps the views, the sightings and the gallery (review 38).
+    """
+    try:
+        if sides:
+            faces.save_side_view(clip, sides)
+        notify.after_scan(camera, start, found, sent_faces=sent, **message)
+    except Exception as problem:
+        logger.exception("  person message failed on %s: %s", clip.name, problem)
 
 
 def _log_message(camera, clip, how, began, ready):

@@ -430,3 +430,39 @@ def test_the_telegram_call_sends_bytes_as_a_file(monkeypatch):
                         (posted.update(files=files), Answer())[1])
     assert notify._call(TOKEN, "sendPhoto", {}, "photo", b"\xff\xd8jpeg") == (True, "", None)
     assert posted["files"] == {"photo": (notify.PICTURE_NAME, b"\xff\xd8jpeg")}
+
+
+OTHER = vector(0.0, 0.0, 0.0, 1.0)
+ONE_BODY = {"id": 1, "first": 0.0, "last": 4.0, "frames": {"person": 8}, "longest_person_run": 8}
+
+
+def test_one_bodys_unnamed_entries_take_the_entry_the_full_scans_merge_keeps(tmp_path):
+    gallery = faces.Gallery(tmp_path / "faces" / faces.GALLERY_FILE.name)
+    gallery.people = [
+        {"id": "p_new", "name": "", "temporary_name": "Visitor 6", "embeddings": [STRANGER],
+         "first_seen": "2026-11-17T10:00:00"},
+        {"id": "p_old", "name": "", "temporary_name": "Visitor 5", "embeddings": [OTHER],
+         "first_seen": "2026-11-01T10:00:00"},
+    ]
+    gallery.save()
+    observations = [seen(STRANGER, 80), seen(STRANGER, 80), seen(OTHER), seen(OTHER)]
+    found = faces.quick_sightings(gallery, observations, tmp_path / "12-00-00.mp4", "Back", START, [ONE_BODY])
+    assert [(s["person_id"], s["temporary_name"]) for s in found] == [("p_old", "Visitor 5")]
+    assert gallery.merge_unnamed(["p_new", "p_old"]) == "p_old"
+
+
+def broken(*args, **kwargs):
+    raise RuntimeError("a fault in the message")
+
+
+def test_a_failed_quick_message_still_runs_the_full_scan_and_its_follow_up(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(notify, "after_scan", broken)
+    order = assemble(tmp_path, monkeypatch, HOME, [face("p_9", "Ana", 0.6)], [face("p_8", "Bia", 0.6)])
+    assert order == ["full scan"]
+    assert texts(sent) == ["Bia recognized"]
+
+
+def test_a_failed_deadline_message_still_waits_for_the_full_scan_and_follows_up(tmp_path, monkeypatch, sent):
+    monkeypatch.setattr(notify, "after_scan", broken)
+    assemble(tmp_path, monkeypatch, HOME, [], [face("p_8", "Bia", 0.6)], full_seconds=0.6)
+    assert texts(sent) == ["Bia recognized"]
