@@ -215,7 +215,10 @@ the architect's — a quick pass of 24 frames decides when it finds a
 face, and otherwise the message waits for the full scan **at most 45 s**
 after the clip is ready, about 3 messages a day changed (mostly an
 extra "no face" for a resident) for p90 147 → 86 s and p99 507 → 167 s —
-the user chose to build it at 45 s.
+the user chose to build it at 45 s. **Built in `v2026.11.18`**
+(ARCHITECTURE 10.20, 12.15): on the cached month 2.3 % of the events'
+messages differ, p90 147 → 74 s, p99 507 → 115 s; production's own
+numbers after a day of use.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).
@@ -309,7 +312,7 @@ tools/
   replay_notifications.py  a log's notifications through the incident rule: how many ring, how many arrive silently (ARCHITECTURE 12.11)
   replay_tracks.py  the live detector's boxes through the live tracker (jarvis.tracks), per phase: what each track saw (item 7, ARCHITECTURE 7.16)
   replay_visits.py  a month of production's person events through notify.after_scan, visit off and on (backlog 41, ARCHITECTURE 12.14)
-  replay_quick_pass.py  backlog 46 measured: a quick face pass against the full scan, their Home messages, its cost and the scan queue simulated; reads production in place, writes only a cache under %TEMP% (ARCHITECTURE 10.3)
+  replay_quick_pass.py  backlog 46 measured: a quick face pass against the full scan, their Home messages, its cost and the scan queue simulated; --built runs the shipped clips._person_messages on the cached month; reads production in place, writes only a cache under %TEMP% (ARCHITECTURE 10.3, 12.15)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -384,7 +387,7 @@ uv run python tools/person_signals.py <video>... [--gallery FILE]   where each p
 uv run python tools/replay_notifications.py <log> [--quiet 120] [--since ...]   loud and silent messages a log would give (ARCHITECTURE 12.11)
 uv run python tools/replay_tracks.py <video>... [--join] [--lost 3 ...]   each track's life, frames by label and vote; tracks against boxes at once (ARCHITECTURE 7.16)
 uv run python tools/replay_visits.py C:\JARVIS [--since 2026-10-16T21:28]   production's person events through the visit rules, read-only (ARCHITECTURE 12.14)
-uv run python tools/replay_quick_pass.py C:\JARVIS --since 2026-11-10 --detect   then --compare, --cost N, --bench S, --queue: backlog 46's measurement, read-only, below normal priority (HISTORY 13.39)
+uv run python tools/replay_quick_pass.py C:\JARVIS --since 2026-11-10 --detect   then --compare, --cost N, --bench S, --queue, --built [--aside]: backlog 46's measurement and the shipped path, read-only, below normal priority (HISTORY 13.39, ARCHITECTURE 12.15)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg
@@ -417,7 +420,9 @@ threshold, ARCHITECTURE 10.15 — `SURE_SWEEP`, `COPY_SIMILARITY`, `SAME_FACE_TH
 `TINY_SIDE`, `SAME_PICTURE`, `WRITTEN_TOGETHER_SECONDS`: recovering each
 view's event, ARCHITECTURE 10.16; `FORGET_DAYS`, `KEEP_SECONDS`: the
 unseen unnamed faces forgotten, 10.19; `QUALITY_CUT`: what a new face view
-needs to enter a gallery, 10.18),
+needs to enter a gallery, 10.18; `QUICK_FRAMES`: the quick pass, 10.20),
+`clips.py` (`QUICK_DEADLINE_SECONDS`: how long the message waits for the
+full scan, 12.15),
 `dogs.py` (`SURE_DISTANCE` — since backlog 32 only the default of the
 user's sure distance — `SURE_RATIO`, `PROBABLE_DISTANCE`, `PROBABLE_RATIO`,
 `SURE_SWEEP`, `COPY_DISTANCE`, `MARGIN`, `CROP_SIDE`, `MIN_VIEW_BOX` (10.18), `MAX_UNNAMED`,

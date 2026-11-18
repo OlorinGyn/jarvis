@@ -62,6 +62,7 @@ finished item is in `HISTORY.md` 8.
 | ✓ | **42.** The photos manage themselves: an unnamed face unseen for 60 days forgotten, a probable dog makes no card (decided 17/11, `c3b0dd2`, review 34, `v2026.11.17.2`); closes backlog 37's self-cleaning part | ARCHITECTURE 10.19 |
 | ✓ | **43.** The residents' galleries cleaned by the evidence of one body — closed by the user 18/11, not applied: after item 45 its dry run on production moved 3 views, all wrong, and item 45's gate already does its scan-time step's job | ARCHITECTURE 10.17 |
 | ✓ | **45.** Reference photos only of impeccable quality: the eye cleaned what was stored, a cut guards what enters — eDifFIQA(T) ≥ 0.40 for a face view, the box ≥ 120 px for a dog view (decided 17/11, `4652f89`–`1b27565`, review 36 `bf3d6f9`, `v2026.11.17.3`; applied on production 17/11 19:23) | ARCHITECTURE 10.18 |
+| ✓ | **46.** The message decided by a quick face pass of 24 frames, the full scan's message waiting at most 45 s, what the full scan finds later as a follow-up (decided 18/11, `6c9d645`, `5e3a668`, review 38 `3767102`, `v2026.11.18`); its measurement on production after a day of use is section 3's | ARCHITECTURE 10.20, 12.15 |
 
 **Waiting for the user's check on the M900:** items 25, 3, 29, 30, 34–42, 44, 45 and 32, in `PENDING.md`.
 
@@ -76,39 +77,8 @@ Items 43 and 45 are closed (above, review 36 and the user's answer of
 
 ### Decided on 18/11/2026, to build
 
-46. **The message decided by a quick face pass, ahead of the full scan**
-    (decided 18/11, the user's answer to the late messages of 18/10:
-    "measured first; built only if almost no message changes and the
-    queue falls") — measured in review 36 (HISTORY 13.38): three quarters
-    of a slow message's wait is the queue for `faces._SCAN_LOCK`, and 46 %
-    of all scan time on the month is R21's pause while any camera records
-    (`busy=recording_now`, up to `MAX_PAUSE_SECONDS`), so in a busy visit
-    each scan waits for every scan before it, and each of those for the
-    recordings. **The idea:** per event, a quick pass — a few frames where
-    the person was (the person spans), stopping at the first sure face —
-    decides the message and runs ahead of every full scan, with no pause
-    or a short one; the full scan runs after, as today, and keeps the
-    views, the sightings and the gallery. What the full scan finds that
-    the quick pass did not, and the mode would send (a stranger's face, a
-    face new to the visit), goes out then as a follow-up: one extra
-    message beats a hidden person (CONTEXT 3). **Measured first, built
-    only if:** (a) on a replay of production's events the quick pass
-    decides almost no message differently from the full scan, each
-    difference read; (b) the simulated delays fall; (c) the live loop does
-    not slow — the quick pass's cost against YOLO while a camera records
-    (R21). The architect reads the numbers and plans the build.
-    **Measured (developer 35, review 37, HISTORY 13.39), 1,222 person
-    events of 10–18/11:** the quick pass deciding alone halves the wait
-    (p90 147 → 72 s) but changes 8 % of the events' messages, mostly an
-    extra "no face" for a resident whose face the few frames missed;
-    deciding only when it found a face ("else full") changes 3.4 % and
-    the wait not at all. No variant measured meets (a) and (b) together.
-    The architect's variant — else full, but the message waits for the
-    full scan at most 45 s after the clip is ready — changes 4.4 %
-    (about half of them the same face message at the same time, as the
-    full scan's follow-up) and cuts p90 to 86 s and p99 from 507 to
-    167 s. **The user's answer, 18/11: build it at 45 s** (CONTEXT 3) —
-    developer 36, section 3.
+Item 46 is done (above, review 38), its production measurement in
+section 3; its full text is in `HISTORY.md` 8.
 
 ### Decided on 16/10/2026, to build
 

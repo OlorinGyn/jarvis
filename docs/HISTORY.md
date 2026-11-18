@@ -108,6 +108,41 @@ a timeout telling you to check the network and the camera's IP.
 The full text of finished items, as each was decided and delivered. The
 backlog itself is `BACKLOG.md` 1.
 
+46. **Built 18/11 (`6c9d645`, `5e3a668`, review 38 `3767102`, `v2026.11.18`; ARCHITECTURE 10.20, 12.15); measured on production after a day of use: BACKLOG 3.** **The message decided by a quick face pass, ahead of the full scan**
+    (decided 18/11, the user's answer to the late messages of 18/10:
+    "measured first; built only if almost no message changes and the
+    queue falls") — measured in review 36 (HISTORY 13.38): three quarters
+    of a slow message's wait is the queue for `faces._SCAN_LOCK`, and 46 %
+    of all scan time on the month is R21's pause while any camera records
+    (`busy=recording_now`, up to `MAX_PAUSE_SECONDS`), so in a busy visit
+    each scan waits for every scan before it, and each of those for the
+    recordings. **The idea:** per event, a quick pass — a few frames where
+    the person was (the person spans), stopping at the first sure face —
+    decides the message and runs ahead of every full scan, with no pause
+    or a short one; the full scan runs after, as today, and keeps the
+    views, the sightings and the gallery. What the full scan finds that
+    the quick pass did not, and the mode would send (a stranger's face, a
+    face new to the visit), goes out then as a follow-up: one extra
+    message beats a hidden person (CONTEXT 3). **Measured first, built
+    only if:** (a) on a replay of production's events the quick pass
+    decides almost no message differently from the full scan, each
+    difference read; (b) the simulated delays fall; (c) the live loop does
+    not slow — the quick pass's cost against YOLO while a camera records
+    (R21). **Measured (developer 35, review 37, HISTORY 13.39), 1,222
+    person events of 10–18/11:** the quick pass deciding alone halves the
+    wait (p90 147 → 72 s) but changes 8 % of the events' messages, mostly
+    an extra "no face" for a resident whose face the few frames missed;
+    deciding only when it found a face ("else full") changes 3.4 % and
+    the wait not at all. No variant measured meets (a) and (b) together.
+    The architect's variant — else full, but the message waits for the
+    full scan at most 45 s after the clip is ready — changes 4.4 % (about
+    half of them the same face message at the same time, as the full
+    scan's follow-up) and cuts p90 to 86 s and p99 from 507 to 167 s.
+    **The user's answer, 18/11: build it at 45 s** (CONTEXT 3). **Built by
+    developer 36** (HISTORY 13.40): the quick pass of 24 frames, the
+    networks' turns in place of the lock, the three paths of the message
+    and the follow-up; on the cached month 2.3 % of the events' messages
+    differ, p90 147 → 74 s, p99 507 → 115 s.
 43. **Closed 18/11 by the user, not applied (`7c80e4d`, review 33; ARCHITECTURE 10.17).** **The residents' galleries cleaned photo by photo, and look-alikes
     stopped** (decided 17/11; applied directly, with a backup) — a view
     belongs to a resident when its own event (`view_events`, R55) had
@@ -3038,6 +3073,64 @@ most one frame — the measured delays are an upper bound.
 
 **The user's answer, the same morning: build it at 45 s** (CONTEXT 3).
 Developer 36 planned (BACKLOG 3).
+
+### 13.40 Review 38 — developer session 36 (18/11/2026)
+
+Developer 36 reviewed whole (`fdebd19..c2eedfe`: `faces.Turns`, the quick
+pass, `clips._person_messages`, `notify.follow_up`, the picture in
+memory, `replay_quick_pass.py --built`, 26 tests). 513 tests passed,
+no comments, `check_data` reads everything, `check_doc_refs` 0. **Two
+holes fixed, each by tests first (`3767102`)**; 516 pass.
+
+**The turns, read for a deadlock.** Every user of the networks was
+followed: `quick()` holds them for the describe, the gallery load,
+ffmpeg, `observe` with no turn of its own, and `quick_sightings`, none of
+which asks for a turn; the full scan's last turn holds `matches` and
+`_record`, whose `add` and `reinforce` grade with `face_quality` and take
+`_GALLERY_LOCK` inside — the order every other path keeps; `_embed_photo`
+is reached only from `put_back` before its lock and from the migration,
+which runs before the cameras start. No path takes a turn inside a turn.
+The background YOLO (`person_boxes`) is called only inside turns. The
+clean stop's `wait_for_jobs` joins the assembly threads, and each waits
+for its worker. The quick pass's ffmpeg stops at its last pick
+(`-frames:v`) or when the stop closes the generator.
+
+**Hole 1 — the message could stop the full scan.** The design moved
+`after_scan` before the full scan: an exception there on the quick-face
+path skipped `full_scan()` — the event's views, sightings and gallery
+lost — and on the deadline path it skipped the follow-up and left the
+assembly thread without joining its daemon worker, so a stop could kill
+the scan mid-write. `_announce` wraps all three messages and logs.
+
+**Hole 2 — one stranger twice.** On one body with two unnamed entries,
+`quick_sightings` kept the heavier group's entry (`merge=lambda ids:
+ids[0]`), while the full scan's `merge_unnamed` keeps the first seen: the
+quick message "Visitor 6", the follow-up "Visitor 5" — `_again` matches
+by entry, and an existing entry's sighting carries no views.
+`Gallery.would_merge` gives the merge's own choice with nothing written.
+
+**Accepted, not fixed.** The gap the developer named, and its sibling: a
+quick new face the full scan names as an existing entry — another
+event's, or reached by the best of more views — is not recognised as the
+same face; none in the month's 362 quick-face events. A side-view file
+written by the deadline and by a full scan ending in the same
+milliseconds could be written twice at once; the window is the time of
+one JPEG write. `Gallery.save` is not atomic, so a scan's unlocked load
+during a page's write reads an empty gallery and names nobody — as
+before, now with one load more per event; the writers reload under
+`_GALLERY_LOCK`, so no write is lost. The quick pass holds the networks
+while ffmpeg decodes up to its last pick, longer for a long clip with the
+person at its end.
+
+**The numbers, run again.** `replay_quick_pass.py --built --aside` with
+the fixes, from developer 35's cache: 1,234 person events, decided by
+the quick face 362, the full scan 665, the deadline 207; 28 events
+differing (2.3 %), 9 carried by the follow-up; start → sent 39 / 74 /
+115 s — the HANDOFF's row, number for number. Against item 46's three
+conditions: (a) 2.3 % of the events, each read in the HANDOFF's classes
+(ARCHITECTURE 12.15); (b) p90 147 → 74 s, p99 507 → 115 s; (c) a quick
+pass of about 2 s, no pause, YOLO 1.8× meanwhile. The page does not
+change.
 
 ## 14.3 Usage log
 

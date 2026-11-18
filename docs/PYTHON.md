@@ -614,7 +614,8 @@ def scan_clip(clip, camera, started_at, gallery=None, moments=(), busy=None):
 `with lock:` is C#'s `lock (obj) { }` and Java's `synchronized`: it acquires
 on entry and releases on exit, even on an exception. The rule of thumb is the
 same in both languages — a native object shared between threads needs an
-owner or a lock. The GIL is not that lock.
+owner or a lock. The GIL is not that lock. Since backlog 46 the scans
+take turns instead of one lock, so a quick pass can go first (56.1).
 
 ## 15. numpy — the most important type in the project
 
@@ -1822,7 +1823,7 @@ again. Comparing timestamps would be fragile (a copy changes them); comparing
 content by hash is not. SHA-1 is fine here: nobody attacks this file; it only
 has to notice a change.
 
-**Lock order.** A scan takes `_SCAN_LOCK` (the networks) and, inside, the
+**Lock order.** A scan takes `_SCAN_LOCK` (the networks; since backlog 46 a turn, 56.1) and, inside, the
 gallery's `_GALLERY_LOCK`. Undoing an old report must embed photos (needs
 `_SCAN_LOCK`) and then write the gallery (needs `_GALLERY_LOCK`). If it took
 the gallery lock first and then waited for the scan lock, while a scan held
@@ -3104,3 +3105,123 @@ kernel.SetPriorityClass(kernel.GetCurrentProcess(), 0x4000)
 `BELOW_NORMAL_PRIORITY_CLASS`; the ffmpeg processes the tool starts
 inherit it, so a measurement running beside production on the M900
 yields the CPU to it (R12).
+
+## 56. Turns on a condition, `@contextmanager`, a join with a deadline, an object that is a path, a function with a field, bytes as an upload (developer 36)
+
+### 56.1 Turns: a `Condition`, a flag and a queue of tickets
+
+`faces.Turns` (ARCHITECTURE 10.20) decides who runs the face networks.
+A plain `Lock` could not: Python's `Lock` promises no order among the
+threads waiting for it, and it cannot say "a quick pass goes before a
+full scan's next frame". So the state is written out — `_busy`, and a
+`deque` of the quick passes waiting — and a `threading.Condition`
+(55.4) guards it:
+
+```python
+def quick(self):
+    ticket = object()
+    with self._ready:
+        self._quick.append(ticket)
+        self._ready.wait_for(lambda: not self._busy and self._quick[0] is ticket)
+        self._quick.popleft()
+        self._busy = True
+    ...
+
+def turn(self):
+    with self._ready:
+        self._ready.wait_for(lambda: not self._busy and not self._quick)
+        self._busy = True
+```
+
+Each waiting thread re-checks its own predicate whenever `_release` calls
+`notify_all`: a quick pass whose ticket is at the head gets through, a
+full scan's frame sees the queue not empty and sleeps again. `object()`
+is the cheapest unique thing Python has: no two are `is` each other, so
+it works as a ticket with no counter. Java would write the same with
+`ReentrantLock` + `Condition.await()`/`signalAll()`; C# with
+`Monitor.Wait`/`PulseAll`. The lock is held only to change or read the
+state, never while the networks run — that is what `_busy` is for.
+
+Two rules come with it. **No turn inside a turn**: a thread holding the
+networks that asks for them again waits for itself forever. And **one
+order for two locks**: the networks first, then `_GALLERY_LOCK` (41).
+
+### 56.2 `@contextmanager`: a `with` block from a generator
+
+```python
+@contextmanager
+def turn(self):
+    ...take the networks...
+    try:
+        yield
+    finally:
+        self._release()
+```
+
+`with _TURNS.turn():` runs the function up to `yield`, runs the block,
+then the rest — the `finally` even when the block raised. It is C#'s
+`using` and Java's try-with-resources without writing a class with
+`__enter__` and `__exit__` (or `IDisposable`, `AutoCloseable`).
+`nullcontext` is the `with` that does nothing: `observe` takes a `turn`,
+and without one uses `nullcontext`, so the loop has one shape.
+
+### 56.3 `Thread.join(timeout)` as a deadline, with one thread deciding
+
+```python
+worker.start()
+worker.join(QUICK_DEADLINE_SECONDS)
+if "found" in scan:
+    ...the full scan decided...
+```
+
+`join(45)` returns after at most 45 s whether or not the thread ended;
+nothing in its return value says which. The worker fills a dict as its
+last step, and only the waiting thread reads it and decides. So there is
+no race between "the scan ended" and "the deadline passed": a scan that
+ends a millisecond after the check is simply late, and its faces go as
+the follow-up. Java's `Thread.join(millis)` and C#'s `Thread.Join(ms)`
+behave the same; C# returns a `bool` that tells.
+
+### 56.4 An object that is a path: `__fspath__`
+
+The replay's `SideView` gives `after_scan` an event's side-view path that
+"exists" only once a pass of the replay kept a side view:
+
+```python
+def __fspath__(self):
+    return str(self.stand_in) if self.key in self.kept else "-missing-"
+```
+
+`Path(obj)`, `open(obj)` and `os.path` accept any object with
+`__fspath__` (the `os.PathLike` protocol), as a Java method accepts any
+class implementing an interface. Here the path it gives changes with the
+state.
+
+### 56.5 A function with a field
+
+```python
+def sure_stop(gallery, sure):
+    def stop(kept):
+        stop.found = stop.found or any(...)
+        return stop.found
+    stop.found = False
+    return stop
+```
+
+A Python function is an object and can carry attributes, so the stop the
+quick pass calls also tells the log line afterwards whether it fired. The
+same as a lambda capturing a mutable holder (a one-element array in Java).
+
+### 56.6 Bytes as a file in a multipart upload
+
+```python
+files = {"photo": ("face.jpg", picture_bytes)}
+requests.post(url, data=fields, files=files)
+```
+
+`requests` builds the `multipart/form-data` body from a name and the
+bytes: no file on disk is needed. The quick pass's face crop goes
+straight from `cv2.imencode` to Telegram (ARCHITECTURE 12.15).
+`cv2.imencode(".jpg", image)` is `imwrite` into memory: it returns
+`(ok, buffer)`, a numpy array of bytes, and `.tobytes()` makes it a
+`bytes`.

@@ -1844,7 +1844,7 @@ event.
 
 The fix: `load_background_model()` loads a **second copy** of the network
 (~40 MB more memory), used only off the main loop. And `scan_clip()` runs
-under `_SCAN_LOCK`: each event assembles its clip in its own thread, and two
+under `_SCAN_LOCK` (since backlog 46 the networks' turns, 10.20): each event assembles its clip in its own thread, and two
 events in a row would also fight over the face networks, which are shared. The
 scans queue up, which also avoids two heavy scans at once on the M900's CPU.
 
@@ -2140,7 +2140,7 @@ A bad-detection report taken before the switch holds 128-number embeddings:
 Undo restores its photos first, and `put_back` embeds the entry again from
 them (`refit`; since 15/10/2026 a dog entry of histograms too, section 20).
 `refit` runs **before** `_GALLERY_LOCK` is taken, because a scan holds
-`_SCAN_LOCK` and then takes the gallery lock — the opposite order would
+the networks (`_SCAN_LOCK`; since backlog 46 a turn, 10.20) and then takes the gallery lock — the opposite order would
 deadlock (PYTHON 41).
 
 **The dogs migrate the same way (R53 step 2, 15/10/2026).** The code is
@@ -2671,6 +2671,86 @@ the 36 with no name still make one. The price, accepted with the item: a
 probable crop can no longer be named on the Dogs tab, so the gallery learns
 only from sure matches and from crops no named dog explains.
 
+### 10.20 The quick pass and the networks' turns (backlog 46, `v2026.11.18`)
+
+Three quarters of a slow message's wait was the queue for the one scan
+lock, and a full scan held it through R23's pause (HISTORY 13.38–13.39).
+The message now comes from a quick pass that runs ahead of every full scan
+(12.15); the full scan runs as before and alone writes. Built by
+developer 36 from 10.3's three pieces.
+
+**`quick_scan(clip, camera, started_at, moments, tracks, gallery=None)`**
+→ `(sightings, side views)`. It reads `QUICK_FRAMES` = 24 frames and
+writes nothing: no thumbnail, no sighting file, no gallery change.
+
+- **Which frames.** `_selection`'s arithmetic is `_rates(total, fps,
+  moments)` → `(step, windows, dense)`, shared by both passes.
+  `quick_picks` walks the frame numbers the full scan reads — every
+  `step`-th, and every `dense`-th inside a person window, up to the same
+  frame limit — keeps those inside the windows (all of them when there is
+  no window) and takes 24 with `evenly`, the middle of each equal share.
+  ffmpeg then decodes only those, `select=eq(n\,a)+eq(n\,b)+…`, with no
+  extra pass to learn timestamps. A frame's time is taken as `n / fps`:
+  on six production clips `pts_time − n/fps` was −0.02 to +0.22 s, well
+  inside the windows' 1.5 s margin, and on ten clips all 238 frames read
+  lay inside the logged windows. A clip of unknown length (`total` 0)
+  reads nothing, and its message takes the no-face way.
+- **When it stops**: after the first frame with a face on a person that
+  matches an entry at the user's sure threshold (`sure_stop`; its `found`
+  attribute tells the log line whether it fired).
+- **Its sightings.** `quick_sightings` gives what `_scan_clip` would hand
+  `notify`: a new face has `person_id ""` and keeps its `views` and
+  `references` for the visit's test (12.14); one body's unnamed faces are
+  one sighting, of the entry the full scan's merge will keep —
+  `Gallery.would_merge`, the first seen, with nothing written (review 38);
+  each carries `picture`, its face crop as JPEG bytes, sent from memory.
+- Log: `quick pass 12-00-00.mp4: 18 of 24 frames, 2.9 s, stopped at a sure
+  face, 1 face(s), 0 side view(s)`. On ten production clips, 1.4–2.9 s;
+  two stopped at Izabel's sure face after 16 and 18 frames.
+
+**`Turns` replaced `_SCAN_LOCK`.** One object, `faces._TURNS`, decides who
+runs the face networks and the background YOLO (10.9): a
+`threading.Condition` guarding `_busy` (someone runs them now), `_quick`
+(a FIFO `deque` of tickets, the quick passes waiting) and `_full` (a
+`Lock`, one full scan at a time) — PYTHON 56.1.
+
+| | Waits until | Then holds |
+|---|---|---|
+| `quick()` | nobody runs the networks and its ticket is at the head | the networks for the whole pass: describe, gallery load, ffmpeg, the networks, the matching |
+| `turn()` | nobody runs them **and no quick pass waits** | the networks for one step |
+| `full()` | the full scan before it is done | the slot, from start to end, pauses included |
+
+A full scan takes `full()`, then one `turn()` per frame
+(`observe(..., turn=_TURNS.turn)`, covering `faces_in` and `person_boxes`)
+and one more for matching and recording together — gallery load,
+`matches`, `_record`, `_one_visitor` — so it never steps aside in the
+middle of a write. R23's pause and the read of the next frame from ffmpeg
+hold no turn, and a quick pass runs then: it waits at most for the frame
+a full scan is on and for the quick passes before it. Full scans still
+run one at a time. `scanning()` is `_TURNS.active()` — busy, or a full
+scan's slot taken — true through a pause as it was with the lock (12.10).
+`_embed_photo` (refit, migration, the Undo of an old report) takes a
+`turn()` where it took the lock.
+
+- **No turn inside a turn**: a thread that asked for one while holding
+  one would wait on itself. `add` and `reinforce` grade with `face_quality`
+  and take no turn; refit and migration run outside scans; the order is
+  still the networks first, then `_GALLERY_LOCK` (PYTHON 41).
+- **A quick pass never pauses** while a camera records: 2.1 s median, live
+  YOLO 1.8× slower meanwhile, about a tenth of a full scan's harm per
+  event (HISTORY 13.39). It holds the networks while ffmpeg decodes up to
+  its last pick, which a long clip with the person at its end makes
+  longer; a full scan waits that long between two frames.
+- **Starvation**: `turn()` yields to every waiting quick pass, so a steady
+  stream of them would hold full scans back; one pass of about 2 s per
+  event cannot.
+- **Tests** (`tests/test_quick_pass.py`): a quick pass started between two
+  frames, or during a pause, finishes before the full scan reads another
+  frame; quick passes go in order of arrival, ahead of a waiting frame.
+  Dropping `and not self._quick` from `turn()` fails a test on every run;
+  dropping the tickets is caught only now and then, since `Condition`
+  wakes its waiters roughly in order anyway.
+
 ---
 
 ## 11. Tiered storage — `archive.py`
@@ -3008,7 +3088,7 @@ Developer session 2 added the instruments that 12.9 lacked.
 camera; every 60 s `_tally()` turns them into `analysed_per_minute`, served by
 `/api/status`, and logs the numbers when a face scan ran in that minute
 (`faces.scanning()` asks `_SCAN_LOCK.locked()` — whether a lock is held,
-without taking it). Measured on the M900: a quiet scene barely notices a dense
+without taking it; since backlog 46 `_TURNS.active()`, 10.20). Measured on the M900: a quiet scene barely notices a dense
 scan (584 → 575–583 frames a minute), but **YOLO runs 1.6× slower during one**
 (280 → 454 ms), because every `cv2.dnn` network in the process shares one pool
 of worker threads. Giving the scan fewer threads does not help:
@@ -3051,7 +3131,10 @@ cameras: `clips.recording_now()` asks every `EventRecorder`, kept in a
 Java's `WeakHashMap`). Measured: YOLO 328 ms alone, ~590 ms during a dense
 scan, **342 ms while the scan is paused**. A paused scan still holds
 `_SCAN_LOCK`, so on a long busy evening the face messages arrive late; the
-first message of each event never waits.
+first message of each event never waits. **Backlog 46's answer
+(`v2026.11.18`):** a full scan still pauses, but steps aside during the
+pause and between frames for a quick pass that decides the message
+(10.20, 12.15).
 
 **The dog on the mat (R18).** `SubjectDetector.detect()` drops a `person`
 whose box is more than `WIDE_PERSON_RATIO` = 2.0× wider than tall **and**
@@ -3344,6 +3427,124 @@ the user's own bad views (backlog 43). The review's estimate was 96 → 34
 counted here and not there. The replay orders the events by their start;
 production scans them in that order too — none of the 4,106 was scanned
 after a later event of its camera (review 32).
+
+### 12.15 The message decided by a quick pass (backlog 46, `v2026.11.18`)
+
+`clips._person_messages`, called by `_assemble` once the clip exists
+(without one, `after_scan([], …)` runs as before):
+
+1. The quick pass (10.20), in the assembly thread.
+2. **It found a face** → `after_scan` with its sightings at once; then the
+   full scan, in the same thread; then `notify.follow_up`.
+3. **It found none** → the full scan starts in a worker thread named
+   `scan <camera> <stem>`, and the assembly thread waits for it at most
+   `QUICK_DEADLINE_SECONDS` = 45 s, counted from the end of the quick pass:
+   - the full scan ended first → `after_scan` with its sightings, exactly
+     as before, and nothing else;
+   - the deadline came first → `after_scan([])`: the side view the quick
+     pass saw, saved as `HH-MM-SS.side.jpg`, else the best view; then the
+     thread waits for the worker and calls `follow_up`.
+
+   Only the assembly thread decides, by `"found" in scan` after
+   `join(45)`; the worker only fills a dict (PYTHON 56.3). A scan ending
+   right at the deadline gives a faceless message and a follow-up, never
+   two decided messages.
+4. The full scan is `scan_clip`, unchanged, and alone keeps the views, the
+   sightings, the side view and the gallery. One exception: at the
+   deadline the quick pass writes the side view, since it is the
+   message's picture. If the full scan then finds no face and has side
+   views of its own, it overwrites the file, as before; if it finds faces,
+   the file stays, and the page shows the side view the phone got.
+
+**The follow-up**, `notify.follow_up(camera, started_at, found, sent,
+held, settings, people, ended_at)`. `sent` holds the faces the event's
+message tried to deliver: `faces_seen` fills `sent_faces` with
+`wanted[:MAX_FACES]`, after the mode's and the visit's skips. A full-scan
+face is the same as one of them by `_again` against `{faces: their ids,
+strangers: their references}` — the same entry, or for a face with no
+entry the same views (12.14) — and is logged `Notification Back face, X:
+skipped: sent by the quick pass`. Then the visit, as in `after_scan`: in
+Home with the person held, a face the visit has seen is a repeat, and
+`_remember` adds every full-scan face. **It never sends a faceless
+message** — no side view, best view or hidden person — in any mode, and
+in Away too a face already sent is not sent twice.
+
+- **Let through on purpose:** a probable resident the mode silenced in
+  the quick message may still go as a sure match, as the full scan alone
+  would have sent it.
+- **A gap left open:** a quick pass's new face that the full scan matches
+  to an entry already in the gallery — made in between by another event,
+  or reached by the full scan's best of more views (10.3) — carries no
+  views, and `_again` cannot tell it is the same face; the stranger would
+  arrive twice. On the month's replay it never happened.
+- **One body, two unnamed entries** (fixed in review 38, `3767102`): the
+  quick pass named the heavier one, the full scan's merge keeps the first
+  seen, so the quick message could say "Visitor 6" and the follow-up
+  "Visitor 5" for one stranger. The quick pass now asks
+  `Gallery.would_merge` (10.20).
+
+**The message never stops the scan** (fixed in review 38, `3767102`, two
+tests first). Putting the message before the full scan made the scan
+depend on it: an exception in `after_scan` on the quick-face path skipped
+the full scan, and with it the event's views, sightings and gallery; on
+the deadline path it skipped the follow-up and left the assembly thread
+without waiting for its worker — a daemon thread, which the clean stop's
+`wait_for_jobs` waits for only through that join. `_announce` wraps all
+three messages and logs a failure.
+
+**A picture in memory.** `_post` and `_call` take `image` as `bytes` and
+send it as `face.jpg` (`PICTURE_NAME`, PYTHON 56.6); a retry (12.13)
+keeps the bytes in its closure. `faces_seen` sends `thumbnail_path or
+picture`.
+
+**The log lines production's delays are measured from**, all in the
+assembly thread:
+
+- `message Back 12-00-00.mp4: decided by the quick pass, 1 face(s); quick
+  pass 2.1 s, done 2.5 s after the clip` — or `decided by the full scan,
+  N face(s)`, or `the deadline, no face`;
+- `follow-up Back 12-00-00.mp4: 1 of the full scan's 2 face(s) sent, 63.0 s
+  after the clip`.
+
+"After the clip" is after its assembly; the event's start is the
+`HH-MM-SS` in the name. `read_scans` in `tools/replay_quick_pass.py`
+pairs a scan line with the next `Notification … sent` line of the same
+thread, which no longer holds when the full scan runs in the worker:
+measure from these lines.
+
+**Measured before the release** on the cached month: `replay_quick_pass.py
+--built [--aside]` runs `_person_messages` itself on every person event
+since `--since`, the quick and full scans answered from developer 35's
+cache, the deadline from `--queue`'s schedule (`cost.json`'s fit), the
+send replaced, the gallery read-only. 1,234 person events of 10–18/11,
+3 not in the cache, today's gallery and config:
+
+| Variant | Decided by | Events whose messages differ | Of them, the full scan's face as the follow-up | Start → sent, median / p90 / p99 |
+|---|---|---|---|---|
+| today (the log, review 37) | — | — | — | 40 / 147 / 507 s |
+| review 37's estimate, D 45 s (a scratch replay) | 218 at the deadline | 54 (4.4 %) | 29 | 40 / 86 / 167 s |
+| built, a quick pass waits for the full scan running | quick face 362, full scan 726, deadline 146 | 26 (2.1 %) | 8 | 40 / 101 / 195 s |
+| **built, as the turns behave (`--aside`)** | quick face 362, full scan 665, deadline 207 | 28 (2.3 %) | 9 | **39 / 74 / 115 s** |
+
+The last row was run again in review 38 with its two fixes: the same,
+number for number. Person messages, 259 → 270. The 28 that differ:
+
+| Class | Events | Examples |
+|---|---|---|
+| the follow-up carries the face — after a "hidden person" (the quick face silenced or a repeat, YOLO counting more people) or after a deadline side view | 9 (6 + 3) | Back 15/11 02:47:43; Front 15/11 16:14:30 |
+| a faceless message disappears: the quick pass's resident explains the body, or the visit's cascade changes | 7 | Back 17/11 09:59:53 and 12:25:05 |
+| a faceless message appears: the 24 frames missed a face or saw a side view, and the deadline sent it | 6 | Back 13/11 15:02:36, the user with headphones |
+| "hidden person" becomes a side or best view | 2 | Back 10/11 09:25:06 |
+| an unknown face only the quick pass sends: the full scan's grouping of more views sent none | 3 | Front 15/11 02:19:32 |
+| a different certainty: "probably Karol" then "Karol recognized", the second skipped as the same entry | 1 | Front 15/11 02:24:11 |
+
+Why these rows are not review 37's: that one was a scratch replay, and
+its deadline counted from the clip being ready, here from the end of the
+quick pass. Without `--aside` a quick pass waits behind a full scan's
+30 s and starts its 45 s late, hence p90 101 s; as the turns behave the
+pass lasts about 2 s, and the tail falls to p99 115 s — the upper bound
+review 37 named, measured. Production's own numbers come after a day of
+use (BACKLOG 3).
 
 ---
 
@@ -4800,7 +5001,9 @@ Until `v2026.10.16` faces had a cooldown per person and a held person's
 first message answered to the camera's cooldown, both dropping what they
 blocked (R60); since backlog 40 every one of these goes out, loud or silent
 by the incident (12.11). Since `v2026.11.17`, in Home, the camera's visit
-decides first which of them go (12.14).
+decides first which of them go (12.14). Since `v2026.11.18` a quick pass
+of 24 frames decides the message, the full scan's message waiting at most
+45 s, and what the full scan finds later follows (12.15).
 
 **Fixed in review 15 (`5224983`).** The first version checked the camera
 cooldown for every held faceless message, so in Home with a dog switch on, a
