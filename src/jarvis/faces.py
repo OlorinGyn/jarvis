@@ -1727,18 +1727,22 @@ def _selection(total, fps, moments):
 
 
 def _sampled_frames(clip, moments=()):
-    """Yield sampled frames of the clip at full size, denser around the given moments.
+    """Yield sampled frames of the clip at full size, denser around the given moments."""
+    width, height, total, fps = _describe(clip)
+    if not width or not height:
+        return
+    expression, limit = _selection(total, fps, moments)
+    yield from frames_selected(clip, expression, limit, width, height)
+
+
+def frames_selected(clip, expression, limit, width, height):
+    """Yield the frames ffmpeg's select expression keeps, at most limit, each width x height BGR.
 
     Decoding goes through our own ffmpeg rather than cv2.VideoCapture: the
     camera sometimes sends a damaged block, and OpenCV's bundled decoder
     prints every one to the terminal with no way to silence it. ffmpeg's
     select filter also drops the unsampled frames before they reach the pipe.
     """
-    width, height, total, fps = _describe(clip)
-    if not width or not height:
-        return
-    expression, limit = _selection(total, fps, moments)
-
     process = subprocess.Popen(
         [ffmpeg_exe(), "-hide_banner", "-loglevel", "quiet", "-nostdin",
          "-i", str(clip), "-vf", f"select={expression}",
@@ -1816,24 +1820,11 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
         return []
 
     began = time.monotonic()
-    observations = []
-    missed = []
-    frames = 0
-    paused = 0.0
-    for frame in _sampled_frames(clip, moments):
-        paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
-        frames += 1
-        side_here = [] if sides is not None else None
-        found = faces_in(frame, side_here, missed)
-        if found or side_here:
-            bodies = people.person_boxes(frame)
-            observations.extend(f for f in found if _on_a_person(f["box"], bodies))
-            if side_here:
-                sides.extend(s for s in side_here if _on_a_person(s["box"], bodies))
+    observations, frames, paused, missed = observe(_sampled_frames(clip, moments), busy, sides)
     dense = ", ".join(f"{start:.1f}-{end:.1f} s" for start, end in _windows(moments)) or "none"
     logger.info("  face scan %s: dense %s, %d frames, %.1f s (%.1f s paused), %d face view(s), "
                 "%d without landmarks", clip.name, dense, frames, time.monotonic() - began, paused,
-                len(observations), len(missed))
+                len(observations), missed)
 
     if not observations:
         return []
@@ -1841,14 +1832,49 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
     gallery = gallery or Gallery()
     gallery.load()
     folder = _sighting_folder(started_at)
+    sure = learn_threshold()
     recorded = []
+    for match in matches(gallery, observations):
+        recorded.append(_record(gallery, match, clip, camera, started_at, folder, sure))
+    return _one_visitor(gallery, recorded, tracks)
 
+
+def observe(frames, busy=None, sides=None, stop=None):
+    """(observations, frames read, seconds paused, views without landmarks): the faces on a person in frames.
+
+    The finding half of a scan, which writes nothing. busy pauses between
+    frames (R23); sides collects the side views; stop, given the faces one
+    frame kept, ends the reading when it returns True.
+    """
+    observations, missed = [], []
+    count, paused = 0, 0.0
+    for frame in frames:
+        paused += _wait_while(busy, MAX_PAUSE_SECONDS - paused)
+        count += 1
+        side_here = [] if sides is not None else None
+        found = faces_in(frame, side_here, missed)
+        if found or side_here:
+            bodies = people.person_boxes(frame)
+            kept = [f for f in found if _on_a_person(f["box"], bodies)]
+            observations.extend(kept)
+            if side_here:
+                sides.extend(s for s in side_here if _on_a_person(s["box"], bodies))
+            if stop is not None and stop(kept):
+                break
+    return observations, count, paused, len(missed)
+
+
+def matches(gallery, observations):
+    """Yield each group of a clip's faces the scan records, heaviest first: a dict of group, person_id, score, matched.
+
+    The matching half of a scan, which writes nothing. A new face's dict
+    also holds its references, the views an entry of it starts from. The
+    caller may set person_id to the entry it made, or "" for none, before
+    asking for the next group: the skips that follow read it.
+    """
     seen_here = set()
     new_here = []
-    sure = learn_threshold()
     for group in sorted(_group(observations), key=lambda g: g["weight"], reverse=True):
-        embedding = group["embedding"]
-        reliable = group["width"] >= GOOD_FACE_WIDTH
         person_id, score, matched = _best_view(gallery, group)
         if person_id is None and group["count"] < MIN_VIEWS_FOR_NEW:
             continue
@@ -1856,50 +1882,67 @@ def _scan_clip(clip, camera, started_at, gallery, moments, busy=None, sides=None
             continue
         if _earlier_new_face(gallery, new_here, group, person_id, score):
             continue
-        stamp = started_at.strftime("%H-%M-%S")
-        name = f"{stamp}_{uuid.uuid4().hex[:6]}"
-        thumbnail = folder / f"{name}.jpg"
-        cv2.imwrite(str(thumbnail), group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])
-
-        memory = {}
+        match = {"group": group, "person_id": person_id, "score": score, "matched": matched}
         if person_id is None:
+            embedding = group["embedding"]
             others = [(v, c) for v, c in zip(group["views"], group["crops"]) if v is not embedding]
-            references = [embedding, *(v for v, _ in others[:3])]
-            person_id = gallery.add(references, thumbnail, [group["crop"], *(c for _, c in others[:3])],
-                                    event_of(clip)) or ""
-            memory = {"views": group["views"], "references": references}
-            new_here.extend(references)
-            if not person_id:
-                logger.info("  face scan %s: a new face with no view at the quality cut: a sighting of no entry",
-                            clip.name)
-        elif score >= sure and not gallery.reinforce(person_id, group["views"][matched],
-                                                     group["crops"][matched], event_of(clip)):
-            logger.info("  face scan %s: a sure match below the quality cut: named, no view kept", clip.name)
-        if person_id:
-            seen_here.add(person_id)
+            match["references"] = [embedding, *(v for v, _ in others[:3])]
+            match["reference_crops"] = [group["crop"], *(c for _, c in others[:3])]
+        yield match
+        if person_id is None:
+            new_here.extend(match["references"])
+        if match["person_id"]:
+            seen_here.add(match["person_id"])
 
-        sighting = {
-            "person_id": person_id,
-            "camera": camera,
-            "at": started_at.isoformat(timespec="seconds"),
-            "time": started_at.strftime("%H:%M:%S"),
-            "score": round(score, 3),
-            "frames": group["count"],
-            "face_width": group["width"],
-            "box": [int(v) for v in group["box"]],
-            "reliable": reliable,
-            "clip": _portable(clip),
-            "thumbnail": thumbnail.name,
-        }
-        (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2),
-                                             encoding="utf-8")
-        person = gallery.get(person_id) or {}
-        recorded.append({**sighting, "thumbnail_path": thumbnail,
-                         "name": person.get("name", ""),
-                         "temporary_name": person.get("temporary_name", ""),
-                         "resident": bool(person.get("resident")), **memory})
 
-    return _one_visitor(gallery, recorded, tracks)
+def _record(gallery, match, clip, camera, started_at, folder, sure):
+    """The recording half of a scan, for one match: its thumbnail, the gallery's add or reinforce, its sighting file.
+
+    Returns the sighting as notify reads it, and sets the match's person_id
+    to the entry a new face made, "" for none.
+    """
+    group, person_id, score, matched = match["group"], match["person_id"], match["score"], match["matched"]
+    stamp = started_at.strftime("%H-%M-%S")
+    name = f"{stamp}_{uuid.uuid4().hex[:6]}"
+    thumbnail = folder / f"{name}.jpg"
+    cv2.imwrite(str(thumbnail), group["crop"], [cv2.IMWRITE_JPEG_QUALITY, 92])
+
+    memory = {}
+    if person_id is None:
+        references = match["references"]
+        person_id = gallery.add(references, thumbnail, match["reference_crops"], event_of(clip)) or ""
+        memory = {"views": group["views"], "references": references}
+        if not person_id:
+            logger.info("  face scan %s: a new face with no view at the quality cut: a sighting of no entry",
+                        clip.name)
+    elif score >= sure and not gallery.reinforce(person_id, group["views"][matched],
+                                                 group["crops"][matched], event_of(clip)):
+        logger.info("  face scan %s: a sure match below the quality cut: named, no view kept", clip.name)
+    match["person_id"] = person_id
+
+    sighting = {**sighting_of(group, person_id, score, camera, started_at, clip), "thumbnail": thumbnail.name}
+    (folder / f"{name}.json").write_text(json.dumps(sighting, indent=2), encoding="utf-8")
+    person = gallery.get(person_id) or {}
+    return {**sighting, "thumbnail_path": thumbnail,
+            "name": person.get("name", ""),
+            "temporary_name": person.get("temporary_name", ""),
+            "resident": bool(person.get("resident")), **memory}
+
+
+def sighting_of(group, person_id, score, camera, started_at, clip):
+    """A sighting file's fields for one group, its thumbnail's name apart."""
+    return {
+        "person_id": person_id,
+        "camera": camera,
+        "at": started_at.isoformat(timespec="seconds"),
+        "time": started_at.strftime("%H:%M:%S"),
+        "score": round(score, 3),
+        "frames": group["count"],
+        "face_width": group["width"],
+        "box": [int(v) for v in group["box"]],
+        "reliable": group["width"] >= GOOD_FACE_WIDTH,
+        "clip": _portable(clip),
+    }
 
 
 def _earlier_new_face(gallery, new_here, group, person_id, score):
@@ -1916,17 +1959,19 @@ def _earlier_new_face(gallery, new_here, group, person_id, score):
     return best >= MATCH_THRESHOLD and best > score
 
 
-def _one_visitor(gallery, recorded, tracks):
+def _one_visitor(gallery, recorded, tracks, merge=None):
     """Merge the unnamed entries a clip of one body saw into one, and keep one sighting of it (backlog 44).
 
     A sighting of no entry ("", backlog 45) on that body is the same face: it
-    joins the one kept, its views remembered with it for the visit.
+    joins the one kept, its views remembered with it for the visit. merge
+    makes one entry of the ids; the gallery's merge_unnamed unless given.
     """
     unnamed = [s for s in recorded if not s["name"]]
     if len(unnamed) < 2 or person_tracks(tracks) != 1:
         return recorded
     ids = list(dict.fromkeys(s["person_id"] for s in unnamed if s["person_id"]))
-    target = gallery.merge_unnamed(ids) if len(ids) > 1 else (ids[0] if ids else "")
+    merge = merge or gallery.merge_unnamed
+    target = merge(ids) if len(ids) > 1 else (ids[0] if ids else "")
     if target is None:
         return recorded
     visitor = (gallery.get(target) or {}).get("temporary_name", "") if target else ""
