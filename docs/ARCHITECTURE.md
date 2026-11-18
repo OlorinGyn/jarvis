@@ -1317,6 +1317,82 @@ it; the next signal is the relation in place and time between that short
 track and the dog track near it, measured on a day of production's
 `tracks` (8.4), not on these nineteen clips alone.
 
+**What a name following the body adds over the visit, measured (developer
+37, review 39, 18/11/2026).** Since backlog 41 a resident recognised in a
+visit already explains one faceless body (12.14), so the user asked for the
+gain measured before the design (18/11). `tools/follow_body.py` replays the
+shipped path on the month 10–18/11 (`replay_quick_pass.py --built --aside`,
+12.15), reads every event's `tracks` and the log's restarts — ids start at
+1 again on each, so an id shared by two events counts only within one run —
+and classes every person message Home sends **without a face**. Of 1,252
+person events, 270 messages, **216 faceless** (182 side or best view, 34
+hidden person):
+
+| Class | What tracking could do | Messages | A day |
+|---|---|---|---|
+| (a) | one of its person tracks was in an earlier event of the camera whose full scan named a resident for sure: the name could have followed that body | 3 | 0.3 |
+| (b) | more person tracks at once than faces found, a sure resident among them: a hidden person a body-bound name explains only if every track gets a face | 15 | 1.7 |
+| (c) | neither: no track came from a named event, no resident face | 198 | 22 |
+
+(c) read in review 39: in 172 of the 198 the full scan found no face at
+all; in 19 only a probable resident or a named visitor; in 6 a sure
+resident, after the 45-s deadline had sent "no face" (backlog 46's
+follow-up); 1 an unnamed face.
+
+(a) and (b) are an upper bound, read from the live tracks on disk. **The
+real count** binds each face of the full scan (developer 35's cache) to a
+track: the live loop's phase 0 replayed on the clip — motion on every
+frame, `SubjectDetector` and a fresh `Tracks` on every third — and the
+face given to the person box of the nearest run within 0.5 s that holds
+its centre (the smaller of two). 90 % of the faces bind; on review 39's
+reading of the sheets every face sits on its own body. An event is
+**explained** when every replayed person track has a face or carries a
+sure name from the earlier event. **6 of the 18 are**: 1 of the 3 (a), 5
+of the 15 (b) — and those 5 are one body in the replay that the live run
+counted as two, R58's kind, which a steadier count of tracks at once
+would answer as well as a name. The 12 left hold real second people (the
+resident, then a dog beside him) or one walk cut into many ids (11 on
+`Front/2026-11-15/16-56-11`); a rule "every person track named" keeps the
+hidden-person message there.
+
+- **Ids across events.** 48 of 1,250 consecutive person events of a camera
+  share a track id, all of them one walk cut by the 60-s limit (gap median
+  1 s, at most 3 s; three read on a sheet: one body, the camera's clock a
+  second apart). A walk that leaves the view and comes back never shares
+  one — the 3-s buffer of above. **What a join across that gap could
+  add** (review 39): 331 consecutive pairs start within 10 s of the
+  previous event's end without sharing an id, and in only 5 of them was
+  the first named for sure and the second a faceless message — in nine
+  days, the ceiling of any join by appearance or "the same place" across
+  a gap of up to 10 s.
+- **Loitering** (item 7's "a person nobody accounts for still there after
+  some minutes"). Of 2,088 person tracks, one lives over 2 minutes (3.9,
+  a resident sweeping, over 5 events) and **none 5**: a message by a
+  track's age would not have fired once this month.
+- **The scan a named track would skip.** On 30 events with a sure
+  resident, evenly spread over the month's 297, **23 % of the full
+  scan's frames** (1,184 of 5,234) come after every person track present
+  was already named for sure.
+- **The tool's limit.** Joined clips are placed at their event's
+  `started_at` less `PRE_SECONDS`, but `started_at` is kept to the second
+  and a clip begins where its first 4-s segment opened (`_clip_moments`),
+  so two joined clips can sit up to a few seconds apart (on the sheet's
+  three pairs, within about a second by the camera's clock). It touches
+  only the three (a) chains and the crossing sheet: at worst a body breaks
+  at the join and adds a track, which could leave unexplained the two (a)
+  chains that are not (`Back/2026-11-10/12-03-19`,
+  `Back/2026-11-17/10-58-13`) — two messages in nine days, no change to
+  the conclusion. Within one clip nothing shifts: its runs and its faces
+  share the clip's own clock.
+
+**What it means for part 2** (review 39): the name following the body
+would have changed about one message in nine days that the visit does not
+already handle, and a count of tracks at once five more (R58's side); the
+loitering message would never have fired; what is left of value is scan
+time. The rest of the faceless messages — 22 a day — have no resident
+recognised near them, which no tracking can name. The decision went to
+the user (`PENDING.md`).
+
 ---
 
 ## 8. The recording layer — `clips.py`
@@ -3237,7 +3313,9 @@ messages go at all; this section decides how each one that goes arrives.
 
 **Open, for tracking (backlog 7):** "the same place" becoming "the same
 body", so a new person on the same camera rings again; and a person nobody
-accounts for still there after some minutes, once.
+accounts for still there after some minutes, once. Measured on 10–18/11
+(7.16): no person track lived 5 minutes, so the second would not have
+fired once that month.
 
 ### 12.12 A camera with no picture (backlog 40, `v2026.10.16`)
 

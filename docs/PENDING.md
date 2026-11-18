@@ -184,14 +184,29 @@ grows, decisions are being postponed.
 
 - **Tracking** (16/10/2026) is work now: BACKLOG 1, item 7. Part 1 is
   done (`v2026.10.16.3`, ARCHITECTURE 7.16); part 2's first piece, R59's
-  rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`). Item 40
-  is done (`v2026.10.16`).
+  rule from the tracks, is done as backlog 41 (a) (`v2026.11.17`); the
+  rest measured by developer 37 and waiting for the user (Open
+  discussions, below). Item 40 is done (`v2026.10.16`).
 - **Backlog 28's once-only settle** ran on production on 17/11 at 19:24,
   after the clean-up (HISTORY 13.38). The EPUB's documents were chosen by the user on 14/10/2026 —
 ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 10); the EPUB itself is built when the user asks.
 
 ## Open discussions
+
+**Item 7 part 2: what it still builds** (review 39, 18/11/2026). Measured
+by developer 37 on 10–18/11 (ARCHITECTURE 7.16): of the 216 person
+messages Home sent without a face, a name following the body would have
+changed 1 and a count of tracks at once 5 (R58's side); 198 had no
+resident recognised near them. No track lived 5 minutes, so the loitering
+message would never have fired. What is left of value is the scan: a
+named track not scanned again saves 23 % of a named event's frames, worth
+something only if production's reading of backlog 46 (BACKLOG 3) shows
+the queue still delaying messages. The architect's recommendation: close
+part 2 as measured — tracks stay recorded and keep feeding the visit's
+dog rule, R58 stays a watch — and bring the scan's piece back only if the
+queue asks for it. **The user's to decide**, with what comes after it:
+every other open backlog item is (proposto).
 
 **Messages arrive late** (the user, 18/10/2026) — answered 18/11 and
 built: backlog 46, `v2026.11.18` (CONTEXT 3, ARCHITECTURE 12.15); its

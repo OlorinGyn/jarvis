@@ -3225,3 +3225,75 @@ straight from `cv2.imencode` to Telegram (ARCHITECTURE 12.15).
 `cv2.imencode(".jpg", image)` is `imwrite` into memory: it returns
 `(ok, buffer)`, a numpy array of bytes, and `.tobytes()` makes it a
 `bytes`.
+
+## 57. A binary search, set algebra in operators, the smallest tuple, and a function that remembers (developer 37)
+
+`tools/follow_body.py` measures what a name following the body would add
+over the visit (ARCHITECTURE 7.16). Four small tools of the language carry
+it.
+
+### 57.1 `bisect`: which run a moment belongs to
+
+```python
+restarts = [datetime(2026, 11, 14, 8), datetime(2026, 11, 15, 20, 30)]
+run = bisect.bisect_right(restarts, moment)
+```
+
+A track id is unique only within one run of production: ids start at 1
+again on every restart. `bisect_right` is a binary search on a sorted list
+that returns the **insertion point** — how many elements are `<=` the
+value — so "how many restarts happened before this moment" *is* the run's
+number, with no loop and no `if`. Java's `Collections.binarySearch` and
+C#'s `List.BinarySearch` answer "where is it", and give the insertion
+point only encoded as a negative number; Python hands it over directly.
+`bisect_left` counts only the elements strictly smaller, which matters
+when the value can equal one of them.
+
+### 57.2 Sets with operators
+
+```python
+if ids & earlier_ids: ...                     # intersection: a shared track
+every = persons <= (with_face | carried)       # subset of a union
+```
+
+`&`, `|` and `-` are intersection, union and difference; `<=` is "is a
+subset of", `<` a proper subset. Each returns a new set (or a `bool`) and
+leaves the operands alone — unlike Java's `retainAll`, `addAll` and
+`removeAll`, which change the collection in place, so Java code usually
+copies first. C#'s `HashSet` has `IsSubsetOf` and `IntersectWith`, also in
+place. An empty set is false in an `if`, so `if ids & earlier_ids:` reads
+"if they share an id".
+
+### 57.3 The smallest tuple wins
+
+```python
+around = [(d.w * d.h, tid) for tid, d in observed if contains(d, centre)]
+track = min(around)[1] if around else None
+```
+
+Tuples compare element by element, the first that differs deciding — the
+way strings compare letter by letter. Putting the area first makes `min`
+return the **smallest box** holding the face's centre (the body nearest
+the face when one box sits inside another), and the track id second
+breaks a tie. In Java this is a `Comparator.comparing(...).thenComparing(...)`;
+here the order of the tuple is the comparator.
+
+### 57.4 A function that remembers its arguments
+
+```python
+def identity_of(gallery, sure):
+    def label_of(embedding):
+        person_id, score = gallery.match(embedding)
+        ...
+        return "sure resident" if score >= sure else "probable resident"
+    return label_of
+```
+
+`identity_of` returns a function that keeps `gallery` and `sure` from the
+call that made it — a **closure**, as in JavaScript (section 45). The
+caller (`bind`) only ever calls `label_of(embedding)`, so the tests give it
+`lambda e: "sure resident"` instead of a real gallery. It plays the role of
+a strategy object — an anonymous class implementing a one-method
+interface in Java, or a lambda capturing locals in C#. Python's one
+difference: the inner function may read `gallery` freely, but assigning to
+it would make a new local name, unless declared `nonlocal`.

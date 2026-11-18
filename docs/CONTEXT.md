@@ -313,6 +313,7 @@ tools/
   replay_tracks.py  the live detector's boxes through the live tracker (jarvis.tracks), per phase: what each track saw (item 7, ARCHITECTURE 7.16)
   replay_visits.py  a month of production's person events through notify.after_scan, visit off and on (backlog 41, ARCHITECTURE 12.14)
   replay_quick_pass.py  backlog 46 measured: a quick face pass against the full scan, their Home messages, its cost and the scan queue simulated; --built runs the shipped clips._person_messages on the cached month; reads production in place, writes only a cache under %TEMP% (ARCHITECTURE 10.3, 12.15)
+  follow_body.py  item 7 part 2 measured: each faceless Home message by what a name following the body could do, ids shared across events, tracks living for minutes; --bind binds the cached faces to replayed tracks; read-only (ARCHITECTURE 7.16)
   diagnose.py     capture diagnosis (variants, and --local without a camera)
   probe_rtsp.py   raw RTSP diagnosis (DESCRIBE → SETUP → PLAY)
   rebuild_faces.py rebuilds faces/ from the recorded clips
@@ -387,7 +388,8 @@ uv run python tools/person_signals.py <video>... [--gallery FILE]   where each p
 uv run python tools/replay_notifications.py <log> [--quiet 120] [--since ...]   loud and silent messages a log would give (ARCHITECTURE 12.11)
 uv run python tools/replay_tracks.py <video>... [--join] [--lost 3 ...]   each track's life, frames by label and vote; tracks against boxes at once (ARCHITECTURE 7.16)
 uv run python tools/replay_visits.py C:\JARVIS [--since 2026-10-16T21:28]   production's person events through the visit rules, read-only (ARCHITECTURE 12.14)
-uv run python tools/replay_quick_pass.py C:\JARVIS --since 2026-11-10 --detect   then --compare, --cost N, --bench S, --queue, --built [--aside]: backlog 46's measurement and the shipped path, read-only, below normal priority (HISTORY 13.39, ARCHITECTURE 12.15)
+uv run python tools/replay_quick_pass.py C:\JARVIS --since 2026-11-10 --detect   then --compare, --cost N, --bench S, --queue, --built [--aside] [--messages]: backlog 46's measurement and the shipped path, read-only, below normal priority (HISTORY 13.39, ARCHITECTURE 12.15)
+uv run python tools/follow_body.py C:\JARVIS --since 2026-11-10 [--bind --sample 30]   what a name following the body adds over the visit, from the built replay's messages and the events' tracks; read-only, below normal priority (ARCHITECTURE 7.16)
 uv run python tools/make_epub.py                        the documentation as an EPUB
 uv run python tools/check_doc_refs.py                   every "<DOC> <section>" reference lands on a heading
 tasklist | findstr ffmpeg                               look for an orphaned ffmpeg

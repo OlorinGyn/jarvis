@@ -442,6 +442,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 36 | 17/11/2026 | `2a936e8..165e316`, developer session 34 — backlog 45 step 3 (the face and dog gates, the clean-up) | one hole fixed by tests first (`bf3d6f9`: one stranger's split face sent twice); 473 tests pass, no comments; eDifFIQA's attribution in the README; **`v2026.11.17.3`** deployed, the clean-up and backlog 28's settle applied on production with backups; the cleaning's dry run, the page check and raid log 27 left for after the reset (13.38) |
 | 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s); the user chose to build it, developer 36 planned; **no release** (13.39) |
 | 38 | 18/11/2026 | `fdebd19..c2eedfe`, developer session 36 — backlog 46 built (the quick pass, the networks' turns, the message's three paths, the follow-up) | **two holes fixed by tests first (`3767102`)**: an exception in the quick message skipped the full scan; one body's two visitors named apart by the two passes; 516 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the built replay run again, the same 39 / 74 / 115 s; **release `v2026.11.18`**, deployed at 12:48: 7,437 events, 2,628 face and 3,045 dog sightings, 25 reports read before and after; about 19 s stopped, cameras ok 3 s after the start; the six developer packages review 36 left in production removed by the deploy's sync (13.40) |
+| 39 | 18/11/2026 | `cab34ea..e5ead24`, developer session 37 — item 7 part 2 measured (`follow_body.py`: the faceless Home messages by class, ids across events, tracks living for minutes, faces bound to replayed tracks) | no code fixed; 22 tool tests pass, no comments, `check_doc_refs` 0; part 1 run again on production, the same classes (3 / 15 / 198 of 216); the two sheets read; the joined clips' alignment checked on the log's windows and the camera's clock; two numbers added — (c)'s make-up and the ceiling of a join across the cut (5 in nine days); part 2 adds little over the visit, taken to the user; **no release** (13.41) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -3141,6 +3142,61 @@ about 19 s stopped, both cameras ok 3 s after the start. The deploy's
 run` had put in production (raid log 27). Production's own numbers after
 a day of use are BACKLOG 3's.
 
+### 13.41 Review 39 — developer session 37 (18/11/2026)
+
+Developer 37 reviewed whole (`cab34ea`: `tools/follow_body.py`, 12 tests,
+`replay_quick_pass.built()` returning what it replayed and `--messages`).
+A measurement only: no program code changed. 22 tool tests pass, no
+comments. No code fixed, no release.
+
+**Read against the code.** `classify` adds an event to the camera's named
+list only after its own messages, so no event explains itself; (a)
+matches the faceless event's person tracks against *every* track of the
+named event, dogs' included — looser, right for an upper bound. Runs come
+from the logs' `Starting N camera(s)` lines; the logs reach back to 09/10,
+so every restart of the span is there. `lifetimes` marks a track "with a
+face" when any face was found in its event, not on it — loose again, and
+moot: no track lives 5 minutes. `replayed_runs` is `replay_tracks`'
+phase 0 with the tracker fed only when YOLO ran, as the live loop does
+(7.16). In `bind` the cache's `t` and the replay's `i / 10` are both the
+clip's own clock (pts from 0), so within a clip nothing shifts.
+
+**The time alignment, the developer's first question.** Joined clips are
+placed at `started_at − PRE_SECONDS`, but `started_at` is kept to the
+second and a clip starts where its first 4-s segment opened
+(`_clip_moments`). On `Back/2026-11-12/15-02-32 → 15-03-33` the log's
+dense windows put the clips' real starts about 2.7 and 3.3 s before the
+nominal, give or take the fraction of a second `started_at` drops — the
+join off by under 2 s; the crossing sheet's camera clock shows its three
+pairs within about a second. It can touch only the three
+(a) chains: at worst a body breaks at the join and adds a track, which
+could leave two of them unexplained — two messages in nine days, no change
+to the conclusion. Written into ARCHITECTURE 7.16 as the tool's limit;
+no recommendation, the tool is not the program.
+
+**The sheets.** `binding.jpg`: on all nine runs the red face box sits on
+its own green person box — the resident sweeping, the resident with a box
+and then close with a dog beside him (the face on #1, then #5), the
+resident at night. `crossing.jpg`: three pairs, one body each, the same
+clothes and place across the cut.
+
+**The numbers, run again** (a scratch script over `follow_body`'s own
+functions, 3 min): the built replay 1,252 events, p50/p90/p99 39 / 75 /
+115 s; 270 person messages, 216 faceless (182 no face, 34 hidden person);
+classes 3 / 15 / 198 — the HANDOFF's. Two numbers added: (c)'s make-up
+(172 with no face in the whole clip, 19 a probable resident or a visitor,
+6 a sure resident after the deadline's "no face", 1 unnamed) and the
+ceiling of a join across the cut — 331 pairs within 10 s that share no
+id, of which 5 follow a sure name with a faceless message.
+
+**The design question, answered by the numbers** (ARCHITECTURE 7.16): a
+name following the body adds about one message in nine days over the
+visit, a count of tracks at once five (R58's), the loitering message
+none; the scan saving, 23 % of a named event's frames, is worth only what
+the queue still costs, which production's reading of backlog 46 tomorrow
+says. Taken to the user with the recommendation to close part 2 as
+measured (`PENDING.md`).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -3234,3 +3290,5 @@ of `CONTEXT.md`.
 | A49 | architect | ultracode | 18/11 early morning | review 37: the diff read whole, the numbers reproduced from the developer's cache, two sheets read, the "else full with a deadline" variant and the queue order measured by a scratch replay; HANDOFF integrated, ARCHITECTURE 10.3, PYTHON 55; no release; backlog 46 to the user, whose answer (build at 45 s) came after the window; developer 36 planned and handed over | 6% → 18%, then 0% → 6% in the next window | 27% → 30% | 73k → 272k tokens, a new conversation (started by the developer's handover) |
 | D36 | developer | high | 18/11 morning | session 36: backlog 46 built — the quick pass, `Turns` in place of the lock, the message's three paths and the follow-up, the picture in memory, the `--built` replay on the month (513 tests) | 8% → 23% | 30% → 32% | about 250k tokens at the end, a new conversation |
 | A50 | architect | ultracode | 18/11 12:33–12:55 | review 38: the diff read whole, the turns read for a deadlock, two holes fixed by tests first, the built replay run again (3 min); HANDOFF integrated, ARCHITECTURE 10.20 and 12.15, PYTHON 56, raid log 28; release and deploy `v2026.11.18`, the first live quick passes read; the user's answer — item 7 part 2, measured first — and developer 37 planned and handed over | 25% → about 45% | 32% → 34% | 76k → about 320k tokens, a new conversation (started by the developer's handover) |
+| D37 | developer | high | 18/11 afternoon | session 37: item 7 part 2 measured — `follow_body.py` (the faceless Home messages by class, ids across events, tracks living for minutes, faces bound to replayed tracks on 18 events and 30 sampled), read-only on production, part 2's replay 22 min (12 tool tests) | 46% → 53% | 35% → 36% | 76k → 175k tokens, a new conversation |
+| A51 | architect | ultracode | 18/11 13:15–14:25 | review 39: the tool read whole, part 1 run again on production with two numbers added, the sheets read, the joined clips' alignment checked; HANDOFF integrated, ARCHITECTURE 7.16 and 12.11, PYTHON 57; no release; part 2's decision to the user, not handed over | 53% → 62% | 36% → 37% | 73k → 200k tokens, a new conversation (started by the developer's handover) |
