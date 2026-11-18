@@ -107,7 +107,8 @@ Items 43 and 45 are closed (above, review 36 and the user's answer of
     full scan at most 45 s after the clip is ready — changes 4.4 %
     (about half of them the same face message at the same time, as the
     full scan's follow-up) and cuts p90 to 86 s and p99 from 507 to
-    167 s. **Waits for the user** (`PENDING.md`).
+    167 s. **The user's answer, 18/11: build it at 45 s** (CONTEXT 3) —
+    developer 36, section 3.
 
 ### Decided on 16/10/2026, to build
 
@@ -332,10 +333,67 @@ meets item 46's conditions together; the architect measured one more —
 the message waits for the full scan at most 45 s — and took it to the
 user.
 
-**Nothing planned: backlog 46 waits for the user's answer**
-(`PENDING.md`). If the user chooses to build it, developer 36 builds it
-from the design in HISTORY 13.39; if not, item 46 closes and nothing
-else is planned.
+The user answered on 18/11 (CONTEXT 3): **build backlog 46 at 45 s.**
+
+**Developer 36: backlog 46 built — the message decided by a quick face
+pass, the full scan after it.** The design is HISTORY 13.39's; this is
+its order. Tests first for every rule below; the log lines are what the
+architect will measure production's new delays from, so they matter.
+
+1. **The quick pass**, `faces.quick_scan(clip, camera, started_at,
+   moments, tracks)`: 24 frames (`QUICK_FRAMES`) spread evenly through
+   the frames the full scan reads densely (its person windows; all its
+   frames when there are none), read in time order, stopping after the
+   first face on a person that matches an entry at the user's sure
+   threshold — `observe(..., stop=...)` and `matches`, as the tool does.
+   **It writes nothing to the gallery or the sightings**; it returns the
+   sightings a message needs (`sighting_of`, the name, a picture of the
+   face for `faces_seen`) and the side views it saw. The developer
+   chooses how the frames are selected — by frame number from the full
+   scan's own `_selection`, which needs no extra ffmpeg pass, or by pts
+   as the tool does — and shows on a few production clips that the
+   chosen frames lie inside the windows. One log line per pass: frames
+   read, seconds, and whether it stopped at a sure face.
+2. **The quick pass never waits behind a full scan.** Today one lock
+   (`_SCAN_LOCK`) serialises scans, and a full scan holds it through
+   R23's pause — 46 % of all scan time. A full scan must let a waiting
+   quick pass run between two of its frames and while it pauses; it
+   never yields inside a network call nor while it matches and records.
+   Quick passes run in order of arrival, with no pause of their own
+   (developer 35's bench: 2.1 s, live YOLO 1.8× meanwhile). `scanning()`
+   and `embed_view`'s use of the lock keep working. Test: a quick pass
+   started while a full scan is paused, or between its frames, finishes
+   before that full scan reads another frame.
+3. **The message** (`clips._assemble`, `notify`). After the clip is
+   built: the quick pass. **A face found** → `after_scan` with its
+   sightings at once, as today with the full scan's. **No face** → the
+   message waits for the full scan at most 45 s
+   (`QUICK_DEADLINE_SECONDS`) from that moment; if the full scan ends
+   first, `after_scan` with its sightings, exactly as today, and nothing
+   else; if the deadline comes first, `after_scan` with no sightings —
+   the quick pass's side view if it saw one (`_save_side_view`), else
+   the best view — once, and the full scan's result becomes the
+   follow-up. Either way the full scan then runs as today and alone
+   keeps the views, the sightings, the side view and the gallery.
+4. **The follow-up**, a new function in `notify`: after a message the
+   quick pass decided, the full scan's sightings send **only faces this
+   event did not already send** — not the same entry, and for a face
+   with no entry not the same views (`_again`'s test against the quick
+   pass's references) — each through its case, and in Home only the
+   visit's news. It never sends a faceless message ("no face", "hidden
+   person"). This holds in every mode: in Away, where every person
+   event notifies, a face the quick pass already sent is not sent twice.
+   The visit remembers the full scan's faces as it does today's.
+5. **Read again with the shipped code**: `replay_quick_pass.py` (or a
+   step of it) runs the built path on the cached events, and the
+   HANDOFF compares its message classes with HISTORY 13.39's "else full,
+   D 45 s" row. `check_data` and the full suite as before; no file
+   changes format.
+6. **HANDOFF**: what was built and how the yield in step 2 works, the
+   log lines, the replay's numbers, and what to look at hardest — the
+   lock, the deadline's race with the full scan, the follow-up's
+   dedupe. The architect releases and deploys it, then measures start
+   → sent on production's log after a day of use.
 
 **Waits for the user:** choosing the sure
 threshold for faces and the sure distance for dogs from the two tables in

@@ -209,7 +209,13 @@ of the option list, "the scan in two passes" — a quick pass decides the
 message ahead of the full scan, which keeps the photos — measured first
 on a replay of the month, and built only if almost no message changes and
 the queue falls (backlog 46). The face checked while the event still
-records was not chosen; it stays an idea for later.
+records was not chosen; it stays an idea for later. **Decided, the same
+day** (review 37, HISTORY 13.39): no variant met both conditions; shown
+the architect's — a quick pass of 24 frames decides when it finds a
+face, and otherwise the message waits for the full scan **at most 45 s**
+after the clip is ready, about 3 messages a day changed (mostly an
+extra "no face" for a resident) for p90 147 → 86 s and p99 507 → 167 s —
+the user chose to build it at 45 s.
 
 **Nothing about this house's dogs in the code** (the user, 10/10/2026). Each
 household teaches the system its own dogs on the Dogs tab (ARCHITECTURE 20).

@@ -13,19 +13,6 @@ grows, decisions are being postponed.
 
 ## Waiting for the user
 
-- **Backlog 46: build the quick face pass, or close it** (review 37,
-  HISTORY 13.39). As the user specified it, no variant meets both
-  conditions: deciding by the quick pass alone halves the wait but
-  changes 8 % of the messages; deciding only when it found a face
-  changes 3.4 % and not the wait. The architect's variant — when the
-  quick pass found no face, the message waits for the full scan at most
-  45 s after the clip is ready — changes 4.4 % of the events (about 3
-  a day the user would notice, mostly an extra "no face" for a resident
-  the quick pass missed) and cuts p90 from 147 to 86 s, p99 from 507 to
-  167 s; the median stays at 40 s. **The architect recommends building
-  it at 45 s.** Options: build at 45 s; build with a longer wait (90 s:
-  3.9 %, p90 110 s); close item 46, messages and wait as today. On a
-  "build", developer 36 is planned from HISTORY 13.39's design.
 - **After a power cut the M900 goes to sleep at the sign-in screen**
   (HISTORY 13.26): on 14/10 it booted by itself at 21:47, production started
   and both cameras were ok, and 50 s later Windows (`winlogon.exe`, reason
@@ -194,7 +181,7 @@ ARCHITECTURE and PYTHON only — and `tools/make_epub.py` follows it (CONTEXT
 
 **Messages arrive late** (the user, 18/10/2026) — answered 18/11: the scan
 in two passes is work, backlog 46, measured first (CONTEXT 3); measured
-in review 37, its build waits for the user (above). The face checked
+in review 37 and decided the same day: built at 45 s (CONTEXT 3). The face checked
 while the event records was not chosen, an idea for later. Developer
 35's own idea, untested: an event whose message does not depend on a
 face could skip the queue with no quick pass at all.

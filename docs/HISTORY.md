@@ -405,7 +405,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 34 | 17/11/2026 | `2154a68..59ec29f`, developer session 32 — backlog 45 step 1 (the quality cut measured, `view_quality.py`), backlog 42 | no code fixed; 440 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the verdicts read on the contact sheets — the poor and someone-else's right, the "good" ones recognisable rather than impeccable; no cheap cut reaches 0 wrong, so the cut went to the user: a face-quality model measured first; the 18 views of someone else deleted from production with a backup; **release `v2026.11.17.2`** (backlogs 42 and 44) (13.36) |
 | 35 | 17/11/2026 | `6d141ac..cb20ae2`, developer session 33 — backlog 45 step 2 (eDifFIQA(T) and ArcFace's norm, the halves check) | no code fixed; 446 tests pass, no comments, `check_doc_refs` 0; the alignment measured (the same cut both ways), the four dog verdicts upheld; no signal meets the rule — the cut went to the user with the price of each option, who chose the eye for what is stored and a cut for what enters; developer 34 planned; **no release** (13.37) |
 | 36 | 17/11/2026 | `2a936e8..165e316`, developer session 34 — backlog 45 step 3 (the face and dog gates, the clean-up) | one hole fixed by tests first (`bf3d6f9`: one stranger's split face sent twice); 473 tests pass, no comments; eDifFIQA's attribution in the README; **`v2026.11.17.3`** deployed, the clean-up and backlog 28's settle applied on production with backups; the cleaning's dry run, the page check and raid log 27 left for after the reset (13.38) |
-| 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s) and taken to the user; **no release** (13.39) |
+| 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s); the user chose to build it, developer 36 planned; **no release** (13.39) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -3021,19 +3021,23 @@ gains little on top of the deadline (p90 86 → 82 s) and delays the
 follow-ups — p90 224 → 314 s, p99 456 → 626 s. Those carry the faces
 the quick pass missed, a stranger's among them, so the queue stays FIFO.
 
-**The design, if the user builds it.** Per person event, a quick pass of
-24 frames spread through the person windows, stopping at the first sure
-face, runs ahead of every full scan with no pause, under its own lock or
-priority in `_SCAN_LOCK`. A face found → `notify.after_scan` with its
-sightings at once. No face → wait for the full scan up to 45 s after the
-clip is ready; then `after_scan` with no sightings. The full scan runs as
-today and keeps the views, the sightings and the gallery; its sightings
-go through `after_scan` again in the same visit, whose rule already
-sends only news — a face not yet seen in it, more people at once. Away
-mode needs its own look: there every person event notifies, so a quick
-"no face" followed by the full scan's face is two messages where today
-there is one. **To the user**, with the architect's recommendation to
-build it at 45 s (`PENDING.md`).
+**The design.** Per person event, a quick pass of 24 frames spread
+through the person windows, stopping at the first sure face, runs ahead
+of every full scan with no pause and writes nothing. A face found →
+`notify.after_scan` with its sightings at once. No face → wait for the
+full scan up to 45 s after the clip is ready; then `after_scan` with no
+sightings. The full scan runs as today and alone keeps the views, the
+sightings and the gallery; after a message the quick pass decided, its
+faces go as a follow-up that sends only faces the event did not already
+send, never a faceless message — in every mode, since in Away every
+person event notifies and the visit's news rule is Home's only. **One
+point the simulation did not model:** it let a quick pass wait for the
+full scan already running, pause included; the build has the full scan
+step aside between frames and while it pauses, so a quick pass waits at
+most one frame — the measured delays are an upper bound.
+
+**The user's answer, the same morning: build it at 45 s** (CONTEXT 3).
+Developer 36 planned (BACKLOG 3).
 
 ## 14.3 Usage log
 
@@ -3125,4 +3129,4 @@ of `CONTEXT.md`.
 | A47 | architect | ultracode | 17/11 19:13–19:40 | review 36: the diff read whole, one hole fixed by tests first, the release deployed, the clean-up and the settle applied on production; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 54, README; stopped at the window | 75% → 85% | 21% → 23% | 74k → 208k tokens, a new conversation (started by the developer's handover) |
 | A48 | architect | ultracode | 17/11 22:27 – 18/11 01:35 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month; the user's two answers (43 closed, 46 measured first) waited about three hours; developer 35 planned and handed over | 1% → 15% (one window) | 23% → 25% | 86k → 215k tokens, the same conversation after its summary |
 | D35 | developer | high | 17/11 night – 18/11 04:20 | session 35: backlog 46 measured — the scan's finding split from its recording, `replay_quick_pass.py` (detect, compare, cost, bench, queue), 1,222 events read on production in place (487 tests) | 17% → 28% before the reset, then 0% → 5% | 25% → 27% | about 135k tokens, compacted once during the 2.5 h detection |
-| A49 | architect | ultracode | 18/11 early morning | review 37: the diff read whole, the numbers reproduced from the developer's cache, two sheets read, the "else full with a deadline" variant and the queue order measured by a scratch replay; HANDOFF integrated, ARCHITECTURE 10.3, PYTHON 55; no release; backlog 46 to the user | 6% → 18% | 27% → 29% | 73k → 250k tokens, a new conversation (started by the developer's handover) |
+| A49 | architect | ultracode | 18/11 early morning | review 37: the diff read whole, the numbers reproduced from the developer's cache, two sheets read, the "else full with a deadline" variant and the queue order measured by a scratch replay; HANDOFF integrated, ARCHITECTURE 10.3, PYTHON 55; no release; backlog 46 to the user, whose answer (build at 45 s) came after the window; developer 36 planned and handed over | 6% → 18%, then 0% → 6% in the next window | 27% → 30% | 73k → 272k tokens, a new conversation (started by the developer's handover) |
