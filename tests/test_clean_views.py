@@ -80,7 +80,7 @@ def test_a_named_entry_keeps_its_best_view_by_the_model(gallery):
     assert [p.name for p in gallery.view_dir.glob("*.jpg")] == [chosen[1]]
 
 
-def test_an_unnamed_entry_left_with_none_is_removed_its_sightings_and_number_kept(gallery, folder):
+def test_an_unnamed_entry_left_with_none_is_removed_its_sightings_kept_and_its_number_freed(gallery, folder):
     person_id = gallery.add([vector(0)], "t.jpg", [CROP])
     day = folder / "faces" / "2026-11-17"
     day.mkdir()
@@ -91,7 +91,7 @@ def test_an_unnamed_entry_left_with_none_is_removed_its_sightings_and_number_kep
     assert json.loads((day / "x.json").read_text())["person_id"] == person_id
     assert not list(gallery.view_dir.glob("*.jpg"))
     other = gallery.add([vector(1)], "t.jpg", [CROP])
-    assert gallery.get(other)["temporary_name"] == "Visitor 2"
+    assert gallery.get(other)["temporary_name"] == "Visitor 1"
 
 
 def test_the_eye_decides_what_it_read_and_the_cut_what_it_never_read(tmp_path, monkeypatch):

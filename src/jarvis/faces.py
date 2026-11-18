@@ -11,6 +11,7 @@ embeds the aligned crop. See docs/ARCHITECTURE.md section 10.14.
 """
 
 import hashlib
+import itertools
 import json
 import logging
 import math
@@ -64,7 +65,6 @@ QUALITY_CUT = 0.40
 LEARN_THRESHOLD = settings.DEFAULTS[settings.FACE_SURE_KEY]
 SURE_SWEEP = tuple(round(0.30 + 0.025 * step, 3) for step in range(13))
 COPY_SIMILARITY = 0.9999
-VISITORS_KEY = "visitors"
 VISITOR_NAME = "Visitor {}"
 VISITOR_PATTERN = re.compile(r"Visitor (\d+)")
 SAME_FACE_THRESHOLD = 0.35
@@ -809,12 +809,10 @@ class Gallery:
         return person["id"]
 
     def _next_visitor(self):
-        """The next "Visitor N": N past the counter and every temporary name held, never reused (backlog 44)."""
-        held = [int(found.group(1)) for p in self.people
-                if (found := VISITOR_PATTERN.fullmatch(p.get("temporary_name") or ""))]
-        number = max([self.header.get(VISITORS_KEY, 0), *held]) + 1
-        self.header[VISITORS_KEY] = number
-        return VISITOR_NAME.format(number)
+        """The next "Visitor N": the smallest N of 1 or more that no entry holds (backlog 48)."""
+        held = {int(found.group(1)) for p in self.people
+                if (found := VISITOR_PATTERN.fullmatch(p.get("temporary_name") or ""))}
+        return VISITOR_NAME.format(next(n for n in itertools.count(1) if n not in held))
 
     def name_visitors(self):
         """Give every unnamed entry without one its "Visitor N", in order of first sighting; how many were named."""

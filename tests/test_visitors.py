@@ -1,4 +1,4 @@
-"""Backlog 44: every unnamed face entry gets "Visitor N", N never reused; one body's unnamed entries merge."""
+"""Backlogs 44 and 48: every unnamed face entry gets the smallest free "Visitor N"; one body's unnamed entries merge."""
 
 import json
 from datetime import datetime
@@ -29,15 +29,50 @@ def gallery(tmp_path):
     return faces.Gallery(tmp_path / "faces" / faces.GALLERY_FILE.name)
 
 
-def test_each_new_unnamed_entry_is_the_next_visitor_and_a_number_is_never_reused(gallery):
+def test_each_new_unnamed_entry_is_the_next_visitor_and_a_freed_number_is_given_again(gallery):
     first = gallery.add([vector(1)], "t.jpg")
     second = gallery.add([vector(0, 1)], "t.jpg")
     assert gallery.get(first)["temporary_name"] == "Visitor 1"
     assert gallery.get(second)["temporary_name"] == "Visitor 2"
     gallery.take_out(second)
     third = gallery.add([vector(0, 0, 1)], "t.jpg")
-    assert faces.Gallery(gallery.path).get(third)["temporary_name"] == "Visitor 3"
-    assert json.loads(gallery.path.read_text())["visitors"] == 3
+    assert faces.Gallery(gallery.path).get(third)["temporary_name"] == "Visitor 2"
+
+
+def held_visitors(gallery, numbers):
+    gallery.people = [{"id": f"p_{n}", "name": "", "embeddings": [vector(*([0] * i), 1)],
+                       "temporary_name": f"Visitor {n}", "first_seen": f"2026-11-{i + 1:02d}T10:00:00"}
+                      for i, n in enumerate(numbers)]
+    gallery.save()
+    gallery.load()
+
+
+def test_the_smallest_free_number_fills_a_gap_first(gallery):
+    held_visitors(gallery, [2, 3, 4, 21])
+    first = gallery.add([vector(0, 0, 0, 0, 0, 1)], "t.jpg")
+    second = gallery.add([vector(0, 0, 0, 0, 0, 0, 1)], "t.jpg")
+    assert gallery.get(first)["temporary_name"] == "Visitor 1"
+    assert gallery.get(second)["temporary_name"] == "Visitor 5"
+
+
+def test_a_number_freed_by_naming_merging_or_deleting_is_given_again(gallery):
+    held_visitors(gallery, [1, 2, 3, 4])
+    gallery.rename("p_1", "Ana")
+    assert gallery.get(gallery.add([vector(0, 0, 0, 0, 0, 1)], "t.jpg"))["temporary_name"] == "Visitor 1"
+    gallery.merge_unnamed(["p_2", "p_3"])
+    assert gallery.get(gallery.add([vector(0, 0, 0, 0, 0, 0, 1)], "t.jpg"))["temporary_name"] == "Visitor 3"
+    gallery.take_out("p_4")
+    assert gallery.get(gallery.add([vector(0, 0, 0, 0, 0, 0, 0, 1)], "t.jpg"))["temporary_name"] == "Visitor 4"
+
+
+def test_the_old_counter_is_left_in_the_file_unread(gallery):
+    gallery.people = [{"id": "p_a", "name": "", "embeddings": [vector(1)], "temporary_name": "Visitor 2"}]
+    gallery.header = {"visitors": 34}
+    gallery.save()
+    gallery.load()
+    person_id = gallery.add([vector(0, 1)], "t.jpg")
+    assert gallery.get(person_id)["temporary_name"] == "Visitor 1"
+    assert json.loads(gallery.path.read_text())["visitors"] == 34
 
 
 def test_a_temporary_name_is_not_a_name(gallery):
@@ -82,12 +117,13 @@ def test_existing_unnamed_entries_are_named_once_in_order_of_first_sighting(gall
     assert gallery.get(gallery.add([vector(0, 0, 0, 1)], "t.jpg"))["temporary_name"] == "Visitor 3"
 
 
-def test_a_file_without_the_counter_continues_after_the_highest_visitor(gallery):
-    gallery.people = [{"id": "p_a", "name": "", "embeddings": [vector(1)], "temporary_name": "Visitor 7"}]
+def test_a_file_without_the_counter_takes_the_smallest_free_number(gallery):
+    gallery.people = [{"id": "p_a", "name": "", "embeddings": [vector(1)], "temporary_name": "Visitor 1"}]
     gallery.save()
     gallery.load()
     person_id = gallery.add([vector(0, 1)], "t.jpg")
-    assert gallery.get(person_id)["temporary_name"] == "Visitor 8"
+    assert gallery.get(person_id)["temporary_name"] == "Visitor 2"
+    assert "visitors" not in json.loads(gallery.path.read_text())
 
 
 def test_dogs_get_no_temporary_name(tmp_path):

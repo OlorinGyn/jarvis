@@ -77,13 +77,13 @@ def test_a_named_face_is_never_forgotten(gallery):
     assert faces.Gallery(gallery.path).get(named)["name"] == "Dhaniel"
 
 
-def test_a_forgotten_visitors_number_is_never_given_again(gallery):
+def test_a_forgotten_visitors_number_is_given_again(gallery):
     entry(gallery, 1, TODAY - timedelta(days=10))
     last = entry(gallery, 2, TODAY - timedelta(days=100))
     assert faces.Gallery(gallery.path).get(last)["temporary_name"] == "Visitor 2"
     gallery.forget_unseen(today=TODAY)
     newest = gallery.add([unit(3), unit(3)], "t.jpg")
-    assert faces.Gallery(gallery.path).get(newest)["temporary_name"] == "Visitor 3"
+    assert faces.Gallery(gallery.path).get(newest)["temporary_name"] == "Visitor 2"
 
 
 def test_the_keeper_forgets_at_once_and_then_once_a_day_until_stopped(monkeypatch):
