@@ -308,7 +308,7 @@ def compare(root, since, cache, sheet_dir):
     print(f"{len(span)} person events with a clip since {since:%d/%m %H:%M}; {len(scans)} joined to a scan line; "
           f"sure {sure}; gallery of {len(gallery.people)}")
 
-    passes = {"full": {}} | {f"quick {size}": {} for size in SIZES}
+    passes = {"full": {}} | {f"quick {size}": {} for size in SIZES} | {f"quick {size} else full": {} for size in SIZES}
     read = {name: [] for name in passes}
     stopped = Counter()
     sides = {name: {} for name in passes}
@@ -334,6 +334,12 @@ def compare(root, since, cache, sheet_dir):
             passes[name][meta["key"]] = dry_found(gallery, observations_of(chosen), meta, tracks)
             sides[name][meta["key"]] = any(f["sides"] for f in chosen)
             read[name].append(len(chosen))
+        for size in SIZES:
+            early = "quick %d" % size
+            chosen = early if passes[early][meta["key"]] else "full"
+            passes[f"{early} else full"][meta["key"]] = passes[chosen][meta["key"]]
+            sides[f"{early} else full"][meta["key"]] = sides[chosen][meta["key"]]
+            read[f"{early} else full"].append(read[early][-1])
     if missing:
         print(f"{missing} events to read are not in the cache: run --detect first")
     for key, meta in events.items():
@@ -615,30 +621,47 @@ def queue(root, since, cache):
     error = [abs(fifo_sent[k] - logged[k]) for k in logged]
     print(f"{len(logged)} events with a message after the scan; the FIFO replay's error against the log: "
           f"median {statistics.median(error):.0f} s, p90 {percentile(error, 0.9):.0f} s")
+    full_service = {k: (lambda began, w=max(s["seconds"] - s["paused"], 0.0): finish_with_pause(began, w, busy))
+                    for k, s in scans.items()}
+    modelled = simulate([(ready[k], "full", full_service[k], k) for k in scans], False)
+    modelled_sent = {k: modelled[k] + latency[k] - events[k]["start"].timestamp() for k in logged}
+    error = [abs(modelled_sent[k] - logged[k]) for k in logged]
+    print(f"  the same with each full scan's pause modelled from the recordings: error median "
+          f"{statistics.median(error):.0f} s, p90 {percentile(error, 0.9):.0f} s, so full scans keep their "
+          f"logged time below and a quick pass's pause is pessimistic")
     line("log", list(logged.values()))
     line("FIFO replay (today)", list(fifo_sent.values()))
+    line("FIFO, pause modelled", list(modelled_sent.values()))
     for size in SIZES:
         if size not in fits:
             print("  no cost.json: run --cost first")
             break
-        work = {}
+        work, found = {}, {}
         for key in scans:
             path = cache_path(cache, key)
             if needs_detection(scans[key]) and path.exists():
                 entry = pickle.loads(path.read_bytes())
-                frames = len(quick_frames(entry, size, gallery, sure))
+                chosen = quick_frames(entry, size, gallery, sure)
+                frames = len(chosen)
+                found[key] = bool(dry_found(gallery, observations_of(chosen), events[key], events[key].get("tracks")))
             else:
                 frames = min(size, scans[key]["frames"])
+                found[key] = False
             work[key] = max(fits[size][1] + fits[size][0] * frames, 0.1)
         for pause in (False, True):
             jobs = []
-            for key, scan in scans.items():
+            for key in scans:
                 service = (lambda began, w=work[key]: finish_with_pause(began, w, busy)) if pause else work[key]
                 jobs.append((ready[key], "quick", service, ("quick", key)))
-                jobs.append((ready[key], "full", scan["seconds"], ("full", key)))
+                jobs.append((ready[key], "full", scans[key]["seconds"], ("full", key)))
             done = simulate(jobs, True)
             values = [done[("quick", k)] + latency[k] - events[k]["start"].timestamp() for k in logged]
             line(f"quick {size} first, {'with' if pause else 'no'} pause", values)
+            values = [done[("quick" if found[k] else "full", k)] + latency[k] - events[k]["start"].timestamp()
+                      for k in logged]
+            line(f"quick {size} else full, {'with' if pause else 'no'} pause", values)
+            fulls = [done[("full", k)] + latency[k] - events[k]["start"].timestamp() for k in logged]
+            line(f"  its full scans' follow-ups", fulls)
 
 
 def line(name, values):
