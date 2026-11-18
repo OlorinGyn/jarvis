@@ -379,6 +379,17 @@ h1 {
   margin-top: 0;
 }
 
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-actions .report {
+  flex: 1 1 auto;
+  width: auto;
+}
+
 .report:hover {
   background: var(--alarm);
   color: #fff;

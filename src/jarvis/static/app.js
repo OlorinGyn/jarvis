@@ -513,7 +513,26 @@ function galleryTab(section, api, kind, unnamedLabel) {
       }
       loadList();
     });
-    form.after(report);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "report";
+    remove.textContent = "Delete";
+    remove.title = "Not worth keeping: erase its photos, keep its recordings";
+    remove.addEventListener("click", async () => {
+      const who = entry.temporary_name || `this ${kind}`;
+      if (!confirm(`Delete ${who}? ${deleteWarning(false)}`)) return;
+      try {
+        await send(`${api}/${entry.id}/delete`);
+        listResult.textContent = "Deleted 1.";
+      } catch (problem) {
+        listResult.textContent = `Not deleted: ${problem.message}`;
+      }
+      loadList();
+    });
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    actions.append(report, remove);
+    form.after(actions);
     form.addEventListener("submit", (submitted) => {
       submitted.preventDefault();
       applyName(entry.id, input.value, false);
@@ -676,6 +695,26 @@ function galleryTab(section, api, kind, unnamedLabel) {
       clearSelection();
     } catch (problem) {
       listResult.textContent = `Not reported: ${problem.message}`;
+    }
+    loadList();
+  });
+
+  function deleteWarning(many) {
+    if (kind === "dog" && !many) return "Its photos are erased; its recordings stay.";
+    const warning = "Their photos are erased; their recordings stay.";
+    return kind === "dog" ? warning : `${warning} If they come back, they appear as a new visitor.`;
+  }
+
+  selectBar.querySelector(".select-delete").addEventListener("click", async () => {
+    const count = chosen.size;
+    if (!confirm(`Delete ${count}? ${deleteWarning(count > 1)}`)) return;
+    try {
+      const result = await send(`${api}/delete`, { ids: [...chosen] });
+      listResult.textContent = `Deleted ${result.deleted.length}.` +
+        (result.gone.length ? ` ${result.gone.length} already gone or named.` : "");
+      clearSelection();
+    } catch (problem) {
+      listResult.textContent = `Not deleted: ${problem.message}`;
     }
     loadList();
   });
