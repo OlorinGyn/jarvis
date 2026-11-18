@@ -188,5 +188,5 @@ Nothing of the plan left out.
 ## 8. Usage
 
 - Start: 5-hour window 69 %, weekly 38 %.
-- End: 5-hour window 75 %, weekly 39 % (resets 20:00 and 19:00 UTC);
-  context 152 k tokens at the last reading.
+- End: 5-hour window 76 %, weekly 39 % (resets 20:00 and 19:00 UTC);
+  context 161 k tokens at the last reading.
