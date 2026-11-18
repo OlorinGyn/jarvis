@@ -435,6 +435,31 @@ def _report_many(gallery, payload):
     return {"reported": reported, "gone": gone}
 
 
+def _delete_many(gallery, payload):
+    """Delete many unnamed entries at once, as forgetting them would (backlog 47); named or unknown ones come back as gone."""
+    deleted, gone = [], []
+    for entry_id in dict.fromkeys(_ids(gallery, payload)):
+        entry = gallery.take_out(entry_id)
+        if entry is None:
+            gone.append(entry_id)
+        else:
+            deleted.append(entry)
+    if deleted:
+        logger.info("Deleted %d unnamed %s entries from the page: %s", len(deleted),
+                    "dog" if gallery.id_prefix == "d" else "face",
+                    ", ".join(e.get("temporary_name") or e["id"] for e in deleted))
+    return {"deleted": [e["id"] for e in deleted], "gone": gone}
+
+
+def _delete(gallery, entry_id):
+    """Delete one unnamed entry; 400 for a named one, which is never deleted this way."""
+    _entry_or_404(gallery, entry_id)
+    result = _delete_many(gallery, {"ids": [entry_id]})
+    if not result["deleted"]:
+        raise HTTPException(400, "only an unnamed entry can be deleted")
+    return {"deleted": entry_id}
+
+
 def _page(gallery, entry_id):
     entry = _entry_or_404(gallery, entry_id)
     card = _card(entry)
@@ -694,6 +719,18 @@ def report_person(person_id: str):
     return _report(faces.Gallery(), person_id)
 
 
+@app.post("/api/persons/delete")
+def delete_persons(payload: dict = Body(...)):
+    """Delete the selected unnamed faces: their photos are erased, their recordings stay."""
+    return _delete_many(faces.Gallery(), payload)
+
+
+@app.post("/api/persons/{person_id}/delete")
+def delete_person(person_id: str):
+    """Delete one unnamed face: its photos are erased, its recordings stay."""
+    return _delete(faces.Gallery(), person_id)
+
+
 @app.get("/face/{day}/{name}")
 def face_thumbnail(day: str, name: str):
     if not (SAFE_DAY.match(day) and SAFE_FACE.match(name)):
@@ -779,6 +816,18 @@ def report_dogs(payload: dict = Body(...)):
 @app.post("/api/dogs/{dog_id}/report")
 def report_dog(dog_id: str):
     return _report(dogs.DogGallery(), dog_id)
+
+
+@app.post("/api/dogs/delete")
+def delete_dogs(payload: dict = Body(...)):
+    """Delete the selected unnamed dogs: their photos are erased, their recordings stay."""
+    return _delete_many(dogs.DogGallery(), payload)
+
+
+@app.post("/api/dogs/{dog_id}/delete")
+def delete_dog(dog_id: str):
+    """Delete one unnamed dog: its photos are erased, its recordings stay."""
+    return _delete(dogs.DogGallery(), dog_id)
 
 
 @app.get("/dog-photo/{day}/{name}")
