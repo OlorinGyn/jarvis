@@ -97,6 +97,17 @@ Items 43 and 45 are closed (above, review 36 and the user's answer of
     difference read; (b) the simulated delays fall; (c) the live loop does
     not slow — the quick pass's cost against YOLO while a camera records
     (R21). The architect reads the numbers and plans the build.
+    **Measured (developer 35, review 37, HISTORY 13.39), 1,222 person
+    events of 10–18/11:** the quick pass deciding alone halves the wait
+    (p90 147 → 72 s) but changes 8 % of the events' messages, mostly an
+    extra "no face" for a resident whose face the few frames missed;
+    deciding only when it found a face ("else full") changes 3.4 % and
+    the wait not at all. No variant measured meets (a) and (b) together.
+    The architect's variant — else full, but the message waits for the
+    full scan at most 45 s after the clip is ready — changes 4.4 %
+    (about half of them the same face message at the same time, as the
+    full scan's follow-up) and cuts p90 to 86 s and p99 from 507 to
+    167 s. **Waits for the user** (`PENDING.md`).
 
 ### Decided on 16/10/2026, to build
 
@@ -312,56 +323,19 @@ feeds the memories more boxes and lengthens the chain (ARCHITECTURE 7.14).
 
 ## 3. Next sessions
 
-**Review 36 is done** (HISTORY 13.38): developer 34's gate and clean-up
-reviewed, one hole fixed by tests first (`bf3d6f9`), released as
-**`v2026.11.17.3`** and deployed; the clean-up applied on production (faces
-104 views deleted, dogs 12, recognition wrong 0 / 0) and backlog 28's
-settle run (the user and Izabel at 40 chosen each). After the 5-hour reset:
-the cleaning's (43) dry run on production moved 3 views, all wrong, so
-nothing was applied; People and Dogs read right at 375 px and on a
-desktop; raid log 27 written; the late messages measured.
+**Review 37 is done** (HISTORY 13.39): developer 35's measurement of
+backlog 46 reviewed — the scan's finding split from its recording
+(behaviour unchanged, 487 tests), `tools/replay_quick_pass.py` read-only,
+its numbers reproduced from its cache. **No code fixed, no release**: the
+split ships with the next release. Neither of the developer's variants
+meets item 46's conditions together; the architect measured one more —
+the message waits for the full scan at most 45 s — and took it to the
+user.
 
-The user answered on 18/11 (CONTEXT 3): **backlog 43 is closed, not
-applied; backlog 46, the scan in two passes, is measured first.**
-
-**Developer 35: backlog 46's measurement — nothing changes in what runs
-on production.**
-
-1. **Make the scan's finding reusable without writing.** `_scan_clip`
-   finds the faces and records them in one function; split the finding
-   (frames → observations → groups → matches) from the recording
-   (thumbnails, `add`, `reinforce`, sighting files), tests first, the
-   behaviour and the log lines unchanged — the full suite and
-   `check_data` as before.
-2. **`tools/replay_quick_pass.py <folder> [--since DATE]`**, read-only
-   like `replay_visits.py`: the gallery loaded and never saved, no
-   photo, view or sighting written. For each person event of the span
-   with a clip, with today's gallery: **the quick pass** — a few frames
-   from where the person was (the event's person spans, as the assembly
-   gives the scan its `moments`), stopping at the first sure face; the
-   developer chooses how the frames are picked and says why — and **the
-   full scan** as today. Per event, the identities each finds (named
-   sure, named probable, unknown face, none) and the Home message each
-   would make through `notify.after_scan`'s rules with the visit, as
-   `replay_visits.py` replays them. Every event whose message differs is
-   listed with its event and saved on a contact sheet, for the
-   architect to read. At least two sizes of the quick pass (for
-   instance 8 and 24 frames).
-3. **Its cost on the M900:** the quick pass's seconds per event (median,
-   p90), and YOLO's time per frame while a quick pass runs beside a
-   recording — R21's measurement (HISTORY 13.4), so the architect can
-   decide whether the quick pass needs R21's pause.
-4. **The queue simulated** from production's log, HISTORY 13.38's method
-   (each assembly's "face scan" line against its first "sent"), with the
-   quick pass first and the full scans after: start → sent, median, p90,
-   p99, before and after.
-5. **The span:** production's person events since 10/11, read in place
-   with no write, at below-normal CPU priority — production runs on the
-   same M900 (R12). Tests for the tool's pure parts.
-6. **HANDOFF** with the numbers, every differing message, the cost, and
-   the developer's recommendation for the size and the pause. The build
-   is not part of this session: the architect reads the numbers against
-   item 46's three conditions and plans it.
+**Nothing planned: backlog 46 waits for the user's answer**
+(`PENDING.md`). If the user chooses to build it, developer 36 builds it
+from the design in HISTORY 13.39; if not, item 46 closes and nothing
+else is planned.
 
 **Waits for the user:** choosing the sure
 threshold for faces and the sure distance for dogs from the two tables in

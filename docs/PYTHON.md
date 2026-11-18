@@ -2992,3 +2992,115 @@ C#'s `ReferenceEquals`; `==` on dicts compares contents, like a value
 `None`, because `None` is falsy — C#'s `??` for this case, though `or`
 also replaces `0`, `""` and empty lists, which `??` would not.
 
+
+## 55. A generator the caller answers, a generator closed early, a frame's own clock, two threads on one condition, a queue simulated, and a Win32 call (developer 35)
+
+### 55.1 A generator whose caller answers before the next item
+
+`faces.matches(gallery, observations)` is a generator: it `yield`s one
+dict per face group and stops there until the caller asks for the next.
+The caller may change the dict in between, and the generator reads the
+change when it resumes:
+
+```python
+for match in matches(gallery, observations):
+    recorded.append(_record(gallery, match, ...))   # sets match["person_id"]
+```
+
+```python
+yield match
+if person_id is None:
+    new_here.extend(match["references"])
+if match["person_id"]:
+    seen_here.add(match["person_id"])
+```
+
+`_record` writes the entry a new face made into `match["person_id"]`; the
+generator, resumed, adds it to `seen_here`, so a later group of the same
+person is skipped. The scan writes; the replay tool sets `""` and writes
+nothing — the same skips serve both. In C# this is an `IEnumerable` built
+with `yield return` whose loop body changes the item just returned; in
+Java an `Iterator` whose `next()` reads the element it handed out last.
+It works because the dict is one object shared by both sides (54.3), and
+because a generator runs only when asked: nothing past the `yield` runs
+before the caller's body has.
+
+### 55.2 `contextlib.closing`: a generator stopped halfway still cleans up
+
+The frame reader (`faces.frames_selected`) is a generator with a
+`finally` that kills its ffmpeg (21). A `for` loop that `break`s leaves
+the generator suspended, and its `finally` runs only when the garbage
+collector closes it — some time later. `closing(gen)` calls
+`gen.close()` at the end of the `with`, which raises `GeneratorExit` at
+the paused `yield` and runs the `finally` at once:
+
+```python
+with closing(faces.frames_selected(clip, expression, n, w, h)) as frames:
+    observations, count, _, _ = faces.observe(frames, stop=...)
+```
+
+`observe` stops at the first sure face; the `with` makes sure the ffmpeg
+behind it dies then, not whenever memory is collected. It is `using` in
+C# or try-with-resources in Java, for any object with a `close()`.
+
+### 55.3 A frame's own clock: pts, `showinfo` and `select=eq(pts\,P)`
+
+Every frame of a video carries a **pts**, a presentation timestamp in the
+stream's time base: when the frame is meant to be shown. "Frame *n* is at
+*n* / fps" holds only when the camera keeps a perfect rhythm, and these
+do not: a frame the arithmetic placed at 10.79 s fell outside its window.
+ffmpeg's `showinfo` filter prints each frame that passes it, with its
+`pts` and `pts_time`, on stderr; `select=eq(pts\,1234)+eq(pts\,5678)`
+then keeps exactly those frames on a second run (`+` is "or" in ffmpeg's
+expressions, and the backslash escapes the comma, 10.11). The tool reads
+the stamps once and decodes the very same frames later — checked
+byte-identical.
+
+### 55.4 Two threads on one `threading.Condition`
+
+The pixels come on ffmpeg's stdout and the stamps on its stderr, and a
+pipe read by nobody fills up and blocks the process. So one thread reads
+stderr and appends stamps; the main thread reads a frame from stdout and
+waits for its stamp:
+
+```python
+with ready:
+    stamps.append(stamp)
+    ready.notify_all()
+...
+with ready:
+    ready.wait_for(lambda: len(stamps) > index)
+```
+
+A `Condition` is a lock plus a waiting room: `wait_for` releases the
+lock, sleeps until another thread's `notify_all`, takes the lock again
+and re-checks the predicate. Java's `synchronized` + `wait()` /
+`notifyAll()` in a `while` loop, or C#'s `Monitor.Wait` / `PulseAll`. The
+reader appends `None` at the end, so the waiter never sleeps forever on a
+stamp that will not come.
+
+### 55.5 A queue simulated one event at a time
+
+`simulate(jobs, quick_first)` replays `_SCAN_LOCK` as one worker that is
+never interrupted: take every job ready by now, pick one (oldest first,
+or quick jobs first), advance the clock by its service time, repeat; when
+nothing is waiting, jump the clock to the next arrival. That is a
+**discrete-event simulation**: time moves from event to event, never in
+ticks. The model is trusted only because its FIFO replay of the month
+reproduces the log — 1 s median error, 4 s at p90 — before it is asked
+about an order nobody ran. A service time may be a function of its start
+(`finish_with_pause`): a scan that pauses while a camera records ends
+later when it starts in a busy minute.
+
+### 55.6 A Win32 call through `ctypes`
+
+```python
+kernel = ctypes.windll.kernel32
+kernel.SetPriorityClass(kernel.GetCurrentProcess(), 0x4000)
+```
+
+`ctypes` calls a function of a native DLL with no wrapper written: C#'s
+`[DllImport("kernel32.dll")]`, Java's JNA. `0x4000` is
+`BELOW_NORMAL_PRIORITY_CLASS`; the ffmpeg processes the tool starts
+inherit it, so a measurement running beside production on the M900
+yields the CPU to it (R12).

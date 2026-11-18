@@ -405,6 +405,7 @@ Had it failed, plan B was Flask with a threaded WSGI server, pure Python
 | 34 | 17/11/2026 | `2154a68..59ec29f`, developer session 32 — backlog 45 step 1 (the quality cut measured, `view_quality.py`), backlog 42 | no code fixed; 440 tests pass, `check_data` reads every file, no comments, `check_doc_refs` 0; the verdicts read on the contact sheets — the poor and someone-else's right, the "good" ones recognisable rather than impeccable; no cheap cut reaches 0 wrong, so the cut went to the user: a face-quality model measured first; the 18 views of someone else deleted from production with a backup; **release `v2026.11.17.2`** (backlogs 42 and 44) (13.36) |
 | 35 | 17/11/2026 | `6d141ac..cb20ae2`, developer session 33 — backlog 45 step 2 (eDifFIQA(T) and ArcFace's norm, the halves check) | no code fixed; 446 tests pass, no comments, `check_doc_refs` 0; the alignment measured (the same cut both ways), the four dog verdicts upheld; no signal meets the rule — the cut went to the user with the price of each option, who chose the eye for what is stored and a cut for what enters; developer 34 planned; **no release** (13.37) |
 | 36 | 17/11/2026 | `2a936e8..165e316`, developer session 34 — backlog 45 step 3 (the face and dog gates, the clean-up) | one hole fixed by tests first (`bf3d6f9`: one stranger's split face sent twice); 473 tests pass, no comments; eDifFIQA's attribution in the README; **`v2026.11.17.3`** deployed, the clean-up and backlog 28's settle applied on production with backups; the cleaning's dry run, the page check and raid log 27 left for after the reset (13.38) |
+| 37 | 18/11/2026 | `b1999df..136652b`, developer session 35 — backlog 46 measured (the scan's finding split from its recording, `replay_quick_pass.py`) | no code fixed; 487 tests pass, no comments, `check_doc_refs` 0; the numbers reproduced from the cache, two sheets read; no variant meets item 46's conditions together; the architect's "else full, at most 45 s" measured (4.4 % of events differ, p90 147 → 86 s) and taken to the user; **no release** (13.39) |
 
 ### 13.3 Review 1 — what was fixed on the spot
 
@@ -2946,6 +2947,94 @@ environment — harmless; the next update's sync decides them. A tool run in
   scan in two passes measured first, backlog 46 (CONTEXT 3). Developer
   35 planned: the measurement only (BACKLOG 3).
 
+### 13.39 Review 37 — developer session 35 (18/11/2026)
+
+Developer 35 reviewed whole (`b1999df..136652b`: the scan split in
+`faces.py`, `tools/replay_quick_pass.py`, 14 tests). 487 tests pass, no
+comments in `src/` and `tools/`, `check_data` reads everything,
+`check_doc_refs` 0. **No code fixed, no release**: the split changes
+nothing that runs, and ships with the next release.
+
+**The split, read against the old loop** (ARCHITECTURE 10.3). `matches`
+keeps the old order exactly: being a generator, it matches a group only
+after the caller recorded the one before, so a second group of a new face
+still meets the entry the first made; `new_here` takes only a new face's
+references; `seen_here` takes the entry `_record` wrote back. `observe`
+calls `stop` only on a frame with a face or a side view — right for a
+stop that wants a face. The tool writes nothing to production:
+`Gallery.load` and `match` only read, nothing calls `_record` or `save`,
+and `replay_visits.replay` replaces the send.
+
+**The developer's numbers, reproduced.** A replay of the architect's,
+from the developer's cache (`%TEMP%\jarvis_quick_pass`), gave the "else
+full" rows exactly: 27 and 42 events differing; 39 / 126 / 529 s and 40 /
+124 / 547 s. Two contact sheets read: the classes are as the HANDOFF
+reads them — a resident whose face shows in few frames is missed by 24
+spread frames (the user with headphones at the Back, 13/11 15:02:36 and
+others: a "no face" message the full scan would not send), and today's
+full scan's "unknown face" is often a resident's own poor view (Izabel
+looking down, 10/11 09:01–12:03; the user's "Visitor 4", 13/11 18:37:47),
+which a quick pass that stopped at the resident's sure face never sees.
+
+**Against item 46's three conditions.** The quick pass deciding alone
+meets (b) — p90 147 → 72 s, p99 507 → 167 s — but changes 101 events'
+messages of 1,222 (8 %), 35 of them an extra "no face" for a resident.
+Deciding only when it found a face ("else full") changes 42 (3.4 %, 25
+of them the full scan's face message, which item 46's follow-up sends
+as today) and the wait not at all: most messages are "no face" or
+"hidden person", and those wait for the full scan in the same queue.
+Neither meets (a) and (b) together, as the developer says. (c): a quick
+pass of 24 frames takes 2.1 s median and slows live YOLO 1.8× while it
+runs, as a full scan does for its ~15 s — about a tenth of a full scan's
+harm per event; no pause.
+
+**One more variant, the architect's: else full, with a deadline.** The
+quick pass decides at once when it found a face; when it found none, the
+message waits for the full scan, but at most D seconds after the clip is
+ready — then the quick pass's "no face" goes, and what the full scan
+finds follows as item 46's follow-up. It differs from "else full" only on
+the events whose full scan is late. On the same replay, quick 24, no
+pause, quick passes first:
+
+| Variant | Events differing | Of them, the full scan's face sent as the follow-up | Start → sent, median / p90 / p99 |
+|---|---|---|---|
+| today (the log) | — | — | 40 / 147 / 507 s |
+| quick 24 alone | 101 (8.3 %) | — | 29 / 72 / 167 s |
+| quick 24 else full | 42 (3.4 %) | 25 | 40 / 124 / 547 s |
+| else full, D 30 s | 61 (5.0 %) | 30 | 40 / 80 / 167 s |
+| **else full, D 45 s** | **54 (4.4 %)** | **29** | **40 / 86 / 167 s** |
+| else full, D 60 s | 52 (4.3 %) | 28 | 40 / 95 / 167 s |
+| else full, D 90 s | 48 (3.9 %) | 28 | 40 / 110 / 167 s |
+
+At D 45 s, 218 events go at the deadline. What the user would see change
+is the 25 events whose difference the follow-up does not carry, about 3
+a day: 11 an extra "no face" for a resident the 24 frames missed, 6 a
+"no face" no longer sent through the visit's cascade, 3 a single view
+read as a stranger, the rest "hidden person" against "no face". Quick 8
+gives about the same (50 events, 39 / 87 / 155 s). The full scan's face
+messages keep about today's time — median 87 s against 86 s for the same
+events — a little later at the tail, behind the quick passes.
+
+**Tried and dropped: the full scans still deciding a message first.**
+Putting last the full scans whose message the quick pass already sent
+gains little on top of the deadline (p90 86 → 82 s) and delays the
+follow-ups — p90 224 → 314 s, p99 456 → 626 s. Those carry the faces
+the quick pass missed, a stranger's among them, so the queue stays FIFO.
+
+**The design, if the user builds it.** Per person event, a quick pass of
+24 frames spread through the person windows, stopping at the first sure
+face, runs ahead of every full scan with no pause, under its own lock or
+priority in `_SCAN_LOCK`. A face found → `notify.after_scan` with its
+sightings at once. No face → wait for the full scan up to 45 s after the
+clip is ready; then `after_scan` with no sightings. The full scan runs as
+today and keeps the views, the sightings and the gallery; its sightings
+go through `after_scan` again in the same visit, whose rule already
+sends only news — a face not yet seen in it, more people at once. Away
+mode needs its own look: there every person event notifies, so a quick
+"no face" followed by the full scan's face is two messages where today
+there is one. **To the user**, with the architect's recommendation to
+build it at 45 s (`PENDING.md`).
+
 ## 14.3 Usage log
 
 Every session's row: what it covered and what it cost. How to measure is
@@ -3035,3 +3124,5 @@ of `CONTEXT.md`.
 | D34 | developer | high | 17/11 evening | session 34: backlog 45 step 3 — the read set, the face gate, the dog gate, `clean_views.py` dry-run on a copy (471 tests) | 59% → 74% | 19% → 21% | about 250k tokens, a new conversation |
 | A47 | architect | ultracode | 17/11 19:13–19:40 | review 36: the diff read whole, one hole fixed by tests first, the release deployed, the clean-up and the settle applied on production; HANDOFF integrated, ARCHITECTURE 10.18, PYTHON 54, README; stopped at the window | 75% → 85% | 21% → 23% | 74k → 208k tokens, a new conversation (started by the developer's handover) |
 | A48 | architect | ultracode | 17/11 22:27 – 18/11 01:35 | review 36 finished in the same conversation, woken by its own one-shot wake-up after the window: the cleaning's dry run on production read on a sheet (3 moves, all wrong, not applied), People and Dogs at 375 px and 1024 px, raid log 27, the late messages measured on the month; the user's two answers (43 closed, 46 measured first) waited about three hours; developer 35 planned and handed over | 1% → 15% (one window) | 23% → 25% | 86k → 215k tokens, the same conversation after its summary |
+| D35 | developer | high | 17/11 night – 18/11 04:20 | session 35: backlog 46 measured — the scan's finding split from its recording, `replay_quick_pass.py` (detect, compare, cost, bench, queue), 1,222 events read on production in place (487 tests) | 17% → 28% before the reset, then 0% → 5% | 25% → 27% | about 135k tokens, compacted once during the 2.5 h detection |
+| A49 | architect | ultracode | 18/11 early morning | review 37: the diff read whole, the numbers reproduced from the developer's cache, two sheets read, the "else full with a deadline" variant and the queue order measured by a scratch replay; HANDOFF integrated, ARCHITECTURE 10.3, PYTHON 55; no release; backlog 46 to the user | 6% → 18% | 27% → 29% | 73k → 250k tokens, a new conversation (started by the developer's handover) |

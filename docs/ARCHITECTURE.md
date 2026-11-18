@@ -1644,6 +1644,31 @@ the same person.
 
 The result: an event with one person gives one sighting, not thirty.
 
+**Finding apart from recording (developer 35, 18/11/2026).** `_scan_clip`
+is three pieces, so a replay can find what a scan would find without
+writing anything (backlog 46, `tools/replay_quick_pass.py`):
+
+- `observe(frames, busy, sides, stop)` — frames to face observations: R23's
+  pause, `faces_in`, the person check, the side views. `stop(kept)`, given
+  the faces one frame kept, ends the reading when it returns true; the
+  scan passes none.
+- `matches(gallery, observations)` — a generator: groups, heaviest first,
+  each matched by `_best_view`, with the three skips (a new face of one
+  view, a person already seen here, a new face equal to an earlier new
+  face — `_earlier_new_face`, review 36). It writes nothing. The caller
+  sets the yielded dict's `person_id` to the entry it made, or `""`,
+  before asking for the next group, and the skips read it (PYTHON 55.1).
+- `_record(...)` — the thumbnail, `add` or `reinforce`, the sighting file;
+  `sighting_of` builds the file's fields. `_one_visitor` takes an optional
+  `merge`, so a replay folds one body's unnamed faces without
+  `merge_unnamed` writing.
+
+`frames_selected(clip, expression, limit, w, h)` is the reader under
+`_sampled_frames`, taking any ffmpeg `select` expression; the replay
+selects frames by their pts with it (PYTHON 55.3). Behaviour and log
+lines are unchanged: the suite passed as it was, and the replay
+reproduced production's face-view counts.
+
 ### 10.4 The name is a reference, not a label
 
 The goal of People: **name a person once and have them recognised on their
